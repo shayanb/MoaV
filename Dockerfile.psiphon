@@ -26,5 +26,6 @@ RUN mkdir -p /data
 EXPOSE 8080
 
 # Conduit runs and automatically contributes bandwidth
+# Usage: conduit start -d /data -b <bandwidth_mbps> -m <max_clients>
 ENTRYPOINT ["/app/conduit"]
-CMD ["-dataDir", "/data"]
+CMD ["start", "-d", "/data", "-b", "-1", "-m", "100", "-v"]

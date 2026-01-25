@@ -15,11 +15,11 @@ This guide explains how to connect to MoaV from various devices.
 
 Try these in order. If one doesn't work, try the next:
 
-1. **Reality (VLESS)** - Primary, most reliable
-2. **Hysteria2** - Fast alternative (uses UDP)
-3. **Trojan** - Backup (uses your domain)
+1. **Reality (VLESS)** - Primary, most reliable (port 443)
+2. **Hysteria2** - Fast alternative, uses UDP (port 443)
+3. **Trojan** - Backup, uses your domain (port 8443)
 4. **WireGuard** - Full VPN mode
-5. **DNS Tunnel** - Last resort (very slow)
+5. **DNS Tunnel** - Last resort, very slow (port 53)
 
 ---
 

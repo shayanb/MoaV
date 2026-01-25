@@ -1,22 +1,28 @@
 # wstunnel for wrapping WireGuard in WebSocket
-FROM rust:alpine AS builder
+# Using pre-built binary for faster builds
+FROM debian:bookworm-slim
 
-ARG WSTUNNEL_VERSION=9.2.0
+ARG TARGETARCH
+ARG WSTUNNEL_VERSION=10.1.0
 
-RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconf git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /src
+WORKDIR /app
 
-RUN git clone --depth 1 --branch v${WSTUNNEL_VERSION} https://github.com/erebe/wstunnel.git . && \
-    cargo build --release && \
-    strip target/release/wstunnel
-
-FROM alpine:3.19
-
-RUN apk add --no-cache ca-certificates tzdata
-
-COPY --from=builder /src/target/release/wstunnel /usr/local/bin/wstunnel
+# Download pre-built binary based on architecture
+RUN case "${TARGETARCH}" in \
+        "amd64") ARCH="x86_64-unknown-linux-gnu" ;; \
+        "arm64") ARCH="aarch64-unknown-linux-gnu" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    curl -L -o wstunnel.tar.gz "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_${ARCH}.tar.gz" && \
+    tar -xzf wstunnel.tar.gz && \
+    chmod +x wstunnel && \
+    rm wstunnel.tar.gz
 
 EXPOSE 443
 
-ENTRYPOINT ["wstunnel"]
+ENTRYPOINT ["/app/wstunnel"]

@@ -10,6 +10,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 - **Easy deployment** - Docker Compose based, single command setup
 - **Mobile-friendly** - QR codes and links for easy client import
 - **Decoy website** - Serves innocent content to unauthenticated visitors
+- **Psiphon Conduit** - Optional bandwidth donation to help others bypass censorship
 
 ## Quick Start
 
@@ -25,7 +26,10 @@ nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
 # Initialize (generates keys, users, obtains TLS cert)
 docker compose --profile setup run --rm bootstrap
 
-# Start services
+# Start all services
+docker compose --profile all up -d
+
+# Or start just core services (no WireGuard, dnstt, admin, conduit)
 docker compose up -d
 ```
 
@@ -34,29 +38,28 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         Internet                             │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        │                  │                  │
-   ┌────┴────┐       ┌─────┴─────┐      ┌─────┴─────┐
-   │ 443/tcp │       │ 443/udp   │      │  53/udp   │
-   │ Reality │       │ Hysteria2 │      │   dnstt   │
-   │ Trojan  │       │           │      │           │
-   └────┬────┘       └─────┬─────┘      └─────┬─────┘
-        │                  │                  │
-        └──────────────────┼──────────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │  sing-box   │
-                    │  (unified)  │
-                    └──────┬──────┘
-                           │
-                    ┌──────┴──────┐
-                    │   Direct    │
-                    │   Egress    │
-                    └─────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                           Internet                               │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+     ┌──────────────┬───────────┼───────────┬──────────────┐
+     │              │           │           │              │
+┌────┴────┐   ┌─────┴─────┐ ┌───┴───┐ ┌─────┴─────┐  ┌─────┴─────┐
+│ 443/tcp │   │ 8443/tcp  │ │443/udp│ │  53/udp   │  │  Conduit  │
+│ Reality │   │  Trojan   │ │Hyster.│ │   dnstt   │  │ (donate)  │
+└────┬────┘   └─────┬─────┘ └───┬───┘ └─────┬─────┘  └───────────┘
+     │              │           │           │
+     └──────────────┴───────────┼───────────┘
+                                │
+                         ┌──────┴──────┐
+                         │  sing-box   │
+                         │  (unified)  │
+                         └──────┬──────┘
+                                │
+                         ┌──────┴──────┐
+                         │   Direct    │
+                         │   Egress    │
+                         └─────────────┘
 ```
 
 ## Protocols
@@ -65,7 +68,7 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 |----------|------|---------|-------|----------|
 | Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | Primary, most reliable |
 | Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | Fast, works when TCP throttled |
-| Trojan | 443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
+| Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
 | WireGuard | via wstunnel | ★★★☆☆ | ★★★★★ | Full VPN, system-wide |
 | DNS Tunnel | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort |
 

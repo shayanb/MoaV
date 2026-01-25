@@ -292,9 +292,9 @@ $(cat "$OUTPUT_DIR/hysteria2.txt")
 
 ---
 
-### 3. Trojan - Backup
+### 3. Trojan - Backup (Port 8443)
 
-**Why:** Looks like normal HTTPS. Uses your dedicated domain.
+**Why:** Looks like normal HTTPS. Uses your dedicated domain on port 8443.
 
 **Your Trojan Link:**
 \`\`\`

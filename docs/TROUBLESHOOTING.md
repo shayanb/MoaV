@@ -34,7 +34,22 @@ docker compose logs certbot
    systemctl stop nginx  # or apache2
    ```
 
-3. **Configuration error:**
+3. **Port 53 already in use (for dnstt):**
+
+   This is usually caused by systemd-resolved:
+   ```bash
+   # Check what's using port 53
+   ss -ulnp | grep 53
+
+   # Stop and disable systemd-resolved
+   systemctl stop systemd-resolved
+   systemctl disable systemd-resolved
+
+   # Set up direct DNS resolution
+   echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
+   ```
+
+4. **Configuration error:**
    ```bash
    # Validate sing-box config
    docker compose exec sing-box sing-box check -c /etc/sing-box/config.json

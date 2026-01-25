@@ -145,26 +145,36 @@ This will:
 - Port 80 is temporarily open (for HTTP-01 challenge)
 - Domain propagation is complete (`dig your-domain.com`)
 
-## Step 6: Start Services
+## Step 6: Prepare for DNS Tunnel (Optional)
+
+If you want to use the DNS tunnel (dnstt), you need to free port 53:
 
 ```bash
-# Start main services
-docker compose up -d
+# Stop and disable systemd-resolved (uses port 53)
+systemctl stop systemd-resolved
+systemctl disable systemd-resolved
 
-# If you want WireGuard
-docker compose --profile wireguard up -d
-
-# If you want DNS tunnel
-docker compose --profile dnstt up -d
-
-# If you want admin dashboard
-docker compose --profile admin up -d
-
-# Start everything
-docker compose --profile wireguard --profile dnstt --profile admin up -d
+# Set up direct DNS resolution
+echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
 ```
 
-## Step 7: Verify
+## Step 7: Start Services
+
+```bash
+# Start all services (recommended)
+docker compose --profile all up -d
+
+# Or start just the core services (no WireGuard, dnstt, admin, conduit)
+docker compose up -d
+
+# Or start specific profiles
+docker compose --profile wireguard up -d   # Add WireGuard
+docker compose --profile dnstt up -d       # Add DNS tunnel
+docker compose --profile admin up -d       # Add admin dashboard
+docker compose --profile conduit up -d     # Add Psiphon Conduit (bandwidth donation)
+```
+
+## Step 8: Verify
 
 Check that services are running:
 
@@ -172,15 +182,22 @@ Check that services are running:
 docker compose ps
 ```
 
-Test TLS connection:
+All services should show "Up" or "Up (healthy)".
 
+**Note:** Normal browsers visiting `https://your-domain.com` will get an empty response or connection error. This is expected! Port 443 runs the Reality protocol which impersonates microsoft.com - only clients with the correct config can connect.
+
+To verify the server is working:
 ```bash
-curl -I https://your-domain.com
+# Check sing-box is healthy
+docker compose logs sing-box | tail -20
+
+# Test from a client device with the Reality config
+# If it connects and you can browse, it's working!
 ```
 
-You should see the "Under Construction" page.
+The Trojan fallback (port 8443) serves the decoy "Under Construction" page for invalid auth attempts.
 
-## Step 8: Distribute User Bundles
+## Step 9: Distribute User Bundles
 
 User bundles are in `outputs/bundles/`:
 
