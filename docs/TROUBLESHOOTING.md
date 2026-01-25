@@ -67,6 +67,27 @@ docker compose logs certbot
    docker compose --profile all up -d
    ```
 
+6. **Only some images built:**
+
+   All services require `--profile` to be specified:
+   ```bash
+   # Build ALL images including optional services
+   docker compose --profile all build --no-cache
+
+   # Build only proxy services
+   docker compose --profile proxy build
+
+   # Available profiles: proxy, wireguard, dnstt, admin, conduit, all
+   ```
+
+7. **Port already in use (8443 for Trojan):**
+
+   Change the Trojan port in your .env file:
+   ```bash
+   # In .env
+   PORT_TROJAN=9443  # Or any available port
+   ```
+
 ### Certificate issues
 
 **Certificate not renewing:**
@@ -278,15 +299,15 @@ docker compose logs --tail=100 sing-box
 ### Restart services
 
 ```bash
-# Restart all
-docker compose restart
+# Restart all (specify the profile you're using)
+docker compose --profile all restart
 
-# Restart specific
-docker compose restart sing-box
+# Restart specific service
+docker compose --profile proxy restart sing-box
 
 # Full rebuild
-docker compose down
-docker compose up -d --build
+docker compose --profile all down
+docker compose --profile all up -d --build
 ```
 
 ### Check resource usage

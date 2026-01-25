@@ -164,14 +164,22 @@ echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
 # Start all services (recommended)
 docker compose --profile all up -d
 
-# Or start just the core services (no WireGuard, dnstt, admin, conduit)
-docker compose up -d
+# Or start just the proxy services (Reality, Trojan, Hysteria2)
+docker compose --profile proxy up -d
 
-# Or start specific profiles
-docker compose --profile wireguard up -d   # Add WireGuard
-docker compose --profile dnstt up -d       # Add DNS tunnel
-docker compose --profile admin up -d       # Add admin dashboard
-docker compose --profile conduit up -d     # Add Psiphon Conduit (bandwidth donation)
+# Or combine specific profiles
+docker compose --profile proxy --profile admin up -d          # Proxy + admin dashboard
+docker compose --profile proxy --profile wireguard up -d      # Proxy + WireGuard VPN
+docker compose --profile proxy --profile dnstt up -d          # Proxy + DNS tunnel
+docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon Conduit
+
+# Available profiles:
+#   proxy     - sing-box + decoy (main proxy services)
+#   wireguard - WireGuard VPN via wstunnel
+#   dnstt     - DNS tunnel (last resort)
+#   admin     - Stats dashboard
+#   conduit   - Psiphon bandwidth donation
+#   all       - Everything
 ```
 
 ## Step 8: Verify
@@ -245,11 +253,14 @@ If you need to regenerate all keys and configs (e.g., after changing domain):
 # Remove the bootstrap flag
 docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
 
+# Rebuild all images (if code changed)
+docker compose --profile all build --no-cache
+
 # Re-run bootstrap
 docker compose --profile setup run --rm bootstrap
 
 # Restart services
-docker compose down
+docker compose --profile all down
 docker compose --profile all up -d
 ```
 
@@ -258,10 +269,15 @@ docker compose --profile all up -d
 ```bash
 cd /opt/moav
 git pull
-docker compose build --no-cache
-docker compose down
+
+# Build all images (--profile all includes all services)
+docker compose --profile all build --no-cache
+
+docker compose --profile all down
 docker compose --profile all up -d
 ```
+
+**Note:** Use `--profile all` to build/run everything, or specify individual profiles like `--profile proxy --profile admin`.
 
 ## Troubleshooting
 

@@ -23,14 +23,17 @@ cd MoaV
 cp .env.example .env
 nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
 
+# Build all images
+docker compose --profile all build
+
 # Initialize (generates keys, users, obtains TLS cert)
 docker compose --profile setup run --rm bootstrap
 
 # Start all services
 docker compose --profile all up -d
 
-# Or start just core services (no WireGuard, dnstt, admin, conduit)
-docker compose up -d
+# Or start just the proxy services (Reality, Trojan, Hysteria2)
+docker compose --profile proxy up -d
 ```
 
 See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.

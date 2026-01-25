@@ -23,6 +23,6 @@ EXPOSE 8080
 
 # Conduit runs and automatically contributes bandwidth
 # Usage: conduit start -d /data -b <bandwidth_mbps> -m <max_clients>
-# -b -1 = unlimited bandwidth, -m 100 = max 100 clients, -v = verbose
+# -b 200 = 200 Mbps bandwidth limit, -m 100 = max 100 clients, -v = verbose
 ENTRYPOINT ["/app/conduit"]
-CMD ["start", "-d", "/data", "-b", "-1", "-m", "100", "-v"]
+CMD ["start", "-d", "/data", "-b", "200", "-m", "100", "-v"]

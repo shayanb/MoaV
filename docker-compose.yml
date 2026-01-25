@@ -27,7 +27,7 @@ services:
       - moav_net
     ports:
       - "${PORT_HTTPS:-443}:443/tcp"      # Reality (VLESS)
-      - "8443:8443/tcp"                    # Trojan (backup)
+      - "${PORT_TROJAN:-8443}:8443/tcp"   # Trojan (backup)
       - "${PORT_HYSTERIA:-443}:443/udp"   # Hysteria2 (QUIC)
     volumes:
       - ./configs/sing-box:/etc/sing-box:ro
@@ -36,6 +36,7 @@ services:
       - moav_logs:/var/log/sing-box
     environment:
       - TZ=${TZ:-UTC}
+      - ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true
     cap_add:
       - NET_ADMIN
     healthcheck:
@@ -46,6 +47,9 @@ services:
     depends_on:
       certbot:
         condition: service_completed_successfully
+    profiles:
+      - proxy
+      - all
 
   # ===========================================================================
   # WSTUNNEL + WIREGUARD: WebSocket-wrapped VPN
@@ -58,12 +62,15 @@ services:
     restart: unless-stopped
     networks:
       - moav_net
+    ports:
+      - "8080:8080"
     volumes:
       - ./configs/wstunnel:/etc/wstunnel:ro
       - moav_certs:/certs:ro
       - moav_state:/state
     environment:
       - TZ=${TZ:-UTC}
+    command: ["server", "--restrict-to", "127.0.0.1:51820", "ws://0.0.0.0:8080"]
     profiles:
       - wireguard
       - all
@@ -157,6 +164,9 @@ services:
       - ./web:/usr/share/nginx/html:ro
     expose:
       - "80"
+    profiles:
+      - proxy
+      - all
 
   # ===========================================================================
   # PSIPHON CONDUIT: Bandwidth donation (optional)
