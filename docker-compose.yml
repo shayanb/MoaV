@@ -119,6 +119,8 @@ services:
   certbot:
     image: certbot/certbot:latest
     container_name: moav-certbot
+    ports:
+      - "80:80"
     volumes:
       - moav_certs:/etc/letsencrypt
       - ./web:/var/www/html:ro
