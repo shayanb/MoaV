@@ -1,0 +1,26 @@
+# sing-box multi-protocol proxy server
+FROM golang:1.21-alpine AS builder
+
+ARG SINGBOX_VERSION=1.8.10
+
+RUN apk add --no-cache git build-base
+
+WORKDIR /src
+
+RUN git clone --depth 1 --branch v${SINGBOX_VERSION} https://github.com/SagerNet/sing-box.git . && \
+    go build -o /sing-box -trimpath -ldflags "-s -w" \
+    -tags "with_quic,with_wireguard,with_utls,with_reality_server,with_acme,with_clash_api" \
+    ./cmd/sing-box
+
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /sing-box /usr/local/bin/sing-box
+
+RUN mkdir -p /etc/sing-box /var/log/sing-box /state
+
+EXPOSE 443/tcp 443/udp
+
+ENTRYPOINT ["sing-box"]
+CMD ["run", "-c", "/etc/sing-box/config.json"]

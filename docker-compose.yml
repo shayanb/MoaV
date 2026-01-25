@@ -1,0 +1,227 @@
+version: "3.8"
+
+# =============================================================================
+# MoaV - Multi-protocol Circumvention Stack
+# =============================================================================
+
+networks:
+  moav_net:
+    driver: bridge
+
+volumes:
+  moav_certs:
+  moav_state:
+  moav_logs:
+
+services:
+  # ===========================================================================
+  # SING-BOX: Primary multi-protocol proxy server
+  # Handles: Reality, Trojan, Hysteria2
+  # ===========================================================================
+  sing-box:
+    build:
+      context: .
+      dockerfile: Dockerfile.sing-box
+    container_name: moav-sing-box
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_HTTPS:-443}:443/tcp"      # Reality (VLESS)
+      - "8443:8443/tcp"                    # Trojan (backup)
+      - "${PORT_HYSTERIA:-443}:443/udp"   # Hysteria2 (QUIC)
+    volumes:
+      - ./configs/sing-box:/etc/sing-box:ro
+      - moav_certs:/certs:ro
+      - moav_state:/state
+      - moav_logs:/var/log/sing-box
+    environment:
+      - TZ=${TZ:-UTC}
+    cap_add:
+      - NET_ADMIN
+    healthcheck:
+      test: ["CMD", "sing-box", "check", "-c", "/etc/sing-box/config.json"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      certbot:
+        condition: service_completed_successfully
+
+  # ===========================================================================
+  # WSTUNNEL + WIREGUARD: WebSocket-wrapped VPN
+  # ===========================================================================
+  wstunnel:
+    build:
+      context: .
+      dockerfile: Dockerfile.wstunnel
+    container_name: moav-wstunnel
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - ./configs/wstunnel:/etc/wstunnel:ro
+      - moav_certs:/certs:ro
+      - moav_state:/state
+    environment:
+      - TZ=${TZ:-UTC}
+    profiles:
+      - wireguard
+
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: moav-wireguard
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - ./configs/wireguard:/config
+      - moav_state:/state
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-UTC}
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+    profiles:
+      - wireguard
+
+  # ===========================================================================
+  # DNSTT: DNS tunnel server (last resort)
+  # ===========================================================================
+  dnstt:
+    build:
+      context: .
+      dockerfile: Dockerfile.dnstt
+    container_name: moav-dnstt
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_DNS:-53}:5353/udp"
+    volumes:
+      - ./configs/dnstt:/etc/dnstt:ro
+      - moav_state:/state
+      - ./outputs:/outputs
+    environment:
+      - DNSTT_DOMAIN=${DNSTT_SUBDOMAIN:-t}.${DOMAIN}
+      - TZ=${TZ:-UTC}
+    profiles:
+      - dnstt
+
+  # ===========================================================================
+  # CERTBOT: TLS certificate management
+  # ===========================================================================
+  certbot:
+    image: certbot/certbot:latest
+    container_name: moav-certbot
+    volumes:
+      - moav_certs:/etc/letsencrypt
+      - ./web:/var/www/html:ro
+    environment:
+      - DOMAIN=${DOMAIN}
+      - ACME_EMAIL=${ACME_EMAIL}
+    entrypoint: /bin/sh
+    command: >
+      -c '
+        if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then
+          certbot certonly --standalone \
+            --non-interactive \
+            --agree-tos \
+            --email ${ACME_EMAIL} \
+            --domains ${DOMAIN} \
+            --cert-name ${DOMAIN}
+        else
+          echo "Certificate already exists, skipping..."
+        fi
+      '
+
+  # ===========================================================================
+  # DECOY: Static website (served by sing-box fallback)
+  # ===========================================================================
+  decoy:
+    image: nginx:alpine
+    container_name: moav-decoy
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    expose:
+      - "80"
+
+  # ===========================================================================
+  # PSIPHON CONDUIT: Bandwidth donation (optional)
+  # ===========================================================================
+  psiphon-conduit:
+    build:
+      context: .
+      dockerfile: Dockerfile.psiphon
+    container_name: moav-psiphon
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - moav_state:/state
+    environment:
+      - TZ=${TZ:-UTC}
+    profiles:
+      - psiphon
+
+  # ===========================================================================
+  # ADMIN: Stats dashboard
+  # ===========================================================================
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+    container_name: moav-admin
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "127.0.0.1:${PORT_ADMIN:-8443}:8443"
+    volumes:
+      - ./configs/sing-box:/etc/sing-box:ro
+      - moav_state:/state:ro
+      - moav_logs:/var/log:ro
+      - moav_certs:/certs:ro
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_IP_WHITELIST=${ADMIN_IP_WHITELIST:-}
+      - TZ=${TZ:-UTC}
+    profiles:
+      - admin
+
+  # ===========================================================================
+  # BOOTSTRAP: First-run initialization
+  # ===========================================================================
+  bootstrap:
+    build:
+      context: .
+      dockerfile: Dockerfile.bootstrap
+    container_name: moav-bootstrap
+    volumes:
+      - ./configs:/configs
+      - ./outputs:/outputs
+      - ./scripts:/scripts:ro
+      - moav_state:/state
+      - moav_certs:/certs
+    environment:
+      - DOMAIN=${DOMAIN}
+      - SERVER_IP=${SERVER_IP:-}
+      - INITIAL_USERS=${INITIAL_USERS:-5}
+      - REALITY_TARGET=${REALITY_TARGET:-www.microsoft.com:443}
+      - REALITY_SHORT_ID=${REALITY_SHORT_ID:-}
+      - REALITY_PRIVATE_KEY=${REALITY_PRIVATE_KEY:-}
+      - ENABLE_REALITY=${ENABLE_REALITY:-true}
+      - ENABLE_TROJAN=${ENABLE_TROJAN:-true}
+      - ENABLE_HYSTERIA2=${ENABLE_HYSTERIA2:-true}
+      - ENABLE_WIREGUARD=${ENABLE_WIREGUARD:-true}
+      - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
+    profiles:
+      - setup

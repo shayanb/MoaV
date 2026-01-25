@@ -1,0 +1,16 @@
+# wstunnel configuration
+# This wraps WireGuard traffic in WebSocket to look like HTTPS
+
+# Server mode
+server:
+  # Listen on all interfaces
+  bind: "0.0.0.0:8443"
+
+  # TLS configuration (uses same certs as main site)
+  tls:
+    cert: /certs/live/${DOMAIN}/fullchain.pem
+    key: /certs/live/${DOMAIN}/privkey.pem
+
+  # Restrict to WireGuard traffic
+  restrict_to:
+    - "127.0.0.1:51820"

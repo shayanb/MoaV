@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoaV Dashboard</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --success: #22c55e;
+            --warning: #eab308;
+            --error: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        h1 { font-size: 1.5rem; font-weight: 600; }
+        .timestamp { color: var(--text-muted); font-size: 0.875rem; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+        .card-title {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        .card-value {
+            font-size: 2rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .card-value.success { color: var(--success); }
+        .card-value.warning { color: var(--warning); }
+        .card-value.error { color: var(--error); }
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+        }
+        td { font-variant-numeric: tabular-nums; }
+        .status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .status.online { background: var(--success); }
+        .status.offline { background: var(--error); }
+        .status.unknown { background: var(--warning); }
+        .error-box {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            color: var(--error);
+        }
+        .refresh-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        .refresh-btn:hover { opacity: 0.9; }
+        @media (max-width: 640px) {
+            body { padding: 1rem; }
+            .card-value { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MoaV Dashboard</h1>
+            <div>
+                <span class="timestamp">{{ timestamp }}</span>
+                <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+            </div>
+        </header>
+
+        {% if error %}
+        <div class="error-box">
+            <strong>Error fetching stats:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">Active Connections</div>
+                <div class="card-value {% if total_connections > 0 %}success{% endif %}">
+                    {{ total_connections }}
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">Total Upload</div>
+                <div class="card-value">{{ total_upload }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Total Download</div>
+                <div class="card-value">{{ total_download }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Memory Usage</div>
+                <div class="card-value">{{ memory_usage }}</div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>Users</h2>
+            {% if user_stats %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Connections</th>
+                        <th>Upload</th>
+                        <th>Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user, data in user_stats.items() %}
+                    <tr>
+                        <td>{{ user }}</td>
+                        <td>{{ data.connections }}</td>
+                        <td>{{ format_bytes(data.upload) }}</td>
+                        <td>{{ format_bytes(data.download) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: var(--text-muted);">No active connections</p>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h2>Services</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Description</th>
+                        <th>Port</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="status online"></span>sing-box</td>
+                        <td>Reality, Trojan, Hysteria2</td>
+                        <td>443/tcp, 443/udp</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status online"></span>WireGuard</td>
+                        <td>VPN via wstunnel</td>
+                        <td>443/tcp (shared)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status online"></span>dnstt</td>
+                        <td>DNS tunnel (last resort)</td>
+                        <td>53/udp</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status online"></span>decoy</td>
+                        <td>Cover website</td>
+                        <td>443/tcp (fallback)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh every 30 seconds
+        setTimeout(() => location.reload(), 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+# wstunnel for wrapping WireGuard in WebSocket
+FROM rust:alpine AS builder
+
+ARG WSTUNNEL_VERSION=9.2.0
+
+RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconf git
+
+WORKDIR /src
+
+RUN git clone --depth 1 --branch v${WSTUNNEL_VERSION} https://github.com/erebe/wstunnel.git . && \
+    cargo build --release && \
+    strip target/release/wstunnel
+
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /src/target/release/wstunnel /usr/local/bin/wstunnel
+
+EXPOSE 443
+
+ENTRYPOINT ["wstunnel"]

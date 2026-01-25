@@ -1,0 +1,48 @@
+# Environment files with secrets
+.env
+*.env.local
+
+# Generated outputs (contain user credentials)
+outputs/
+!outputs/.gitkeep
+
+# State and certificates
+state/
+certs/
+
+# Logs
+*.log
+logs/
+
+# Docker volumes (if extracted)
+moav_*/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-*
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+venv/
+.venv/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Generated configs (keep templates)
+configs/sing-box/config.json
+configs/wireguard/wg0.conf
+configs/dnstt/server.conf
+spec.yaml

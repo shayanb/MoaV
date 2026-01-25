@@ -1,0 +1,17 @@
+# Admin stats dashboard
+FROM python:3.12-alpine
+
+RUN apk add --no-cache tzdata
+
+WORKDIR /app
+
+COPY admin/requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY admin/ /app/
+
+EXPOSE 8443
+
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python", "main.py"]

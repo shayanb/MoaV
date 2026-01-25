@@ -1,0 +1,141 @@
+{
+  "log": {
+    "level": "${LOG_LEVEL}",
+    "output": "/var/log/sing-box/sing-box.log",
+    "timestamp": true
+  },
+  "experimental": {
+    "clash_api": {
+      "external_controller": "0.0.0.0:9090",
+      "secret": "${CLASH_API_SECRET}"
+    },
+    "cache_file": {
+      "enabled": true,
+      "path": "/state/sing-box-cache.db"
+    }
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 8080,
+      "sniff": true
+    },
+    {
+      "type": "vless",
+      "tag": "vless-reality-in",
+      "listen": "::",
+      "listen_port": 443,
+      "sniff": true,
+      "sniff_override_destination": true,
+      "users": ${REALITY_USERS_JSON},
+      "tls": {
+        "enabled": true,
+        "server_name": "${REALITY_SERVER_NAME}",
+        "reality": {
+          "enabled": true,
+          "handshake": {
+            "server": "${REALITY_TARGET_HOST}",
+            "server_port": ${REALITY_TARGET_PORT}
+          },
+          "private_key": "${REALITY_PRIVATE_KEY}",
+          "short_id": ["${REALITY_SHORT_ID}"]
+        }
+      },
+      "multiplex": {
+        "enabled": true,
+        "padding": true
+      }
+    },
+    {
+      "type": "trojan",
+      "tag": "trojan-tls-in",
+      "listen": "::",
+      "listen_port": 8443,
+      "sniff": true,
+      "sniff_override_destination": true,
+      "users": ${TROJAN_USERS_JSON},
+      "tls": {
+        "enabled": true,
+        "server_name": "${DOMAIN}",
+        "certificate_path": "/certs/live/${DOMAIN}/fullchain.pem",
+        "key_path": "/certs/live/${DOMAIN}/privkey.pem"
+      },
+      "fallback": {
+        "server": "decoy",
+        "server_port": 80
+      },
+      "multiplex": {
+        "enabled": true,
+        "padding": true
+      }
+    },
+    {
+      "type": "hysteria2",
+      "tag": "hysteria2-in",
+      "listen": "::",
+      "listen_port": 443,
+      "sniff": true,
+      "sniff_override_destination": true,
+      "users": ${HYSTERIA2_USERS_JSON},
+      "tls": {
+        "enabled": true,
+        "server_name": "${DOMAIN}",
+        "alpn": ["h3"],
+        "certificate_path": "/certs/live/${DOMAIN}/fullchain.pem",
+        "key_path": "/certs/live/${DOMAIN}/privkey.pem"
+      },
+      "masquerade": "http://decoy:80"
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "protocol": "dns",
+        "outbound": "dns-out"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      }
+    ],
+    "final": "direct"
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "cloudflare-doh",
+        "address": "https://1.1.1.1/dns-query",
+        "address_resolver": "local",
+        "detour": "direct"
+      },
+      {
+        "tag": "local",
+        "address": "local",
+        "detour": "direct"
+      }
+    ],
+    "rules": [
+      {
+        "outbound": "any",
+        "server": "local"
+      }
+    ],
+    "final": "cloudflare-doh"
+  }
+}

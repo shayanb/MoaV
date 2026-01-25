@@ -1,0 +1,24 @@
+# Psiphon Conduit for bandwidth donation
+# Note: This uses the official Psiphon tunnel-core as conduit is not yet headless
+FROM golang:1.21-alpine AS builder
+
+RUN apk add --no-cache git
+
+WORKDIR /src
+
+# Clone psiphon-tunnel-core
+RUN git clone --depth 1 https://github.com/Psiphon-Labs/psiphon-tunnel-core.git . && \
+    cd ConsoleClient && \
+    go build -o /psiphon-client -trimpath -ldflags "-s -w" .
+
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /psiphon-client /usr/local/bin/psiphon-client
+
+RUN mkdir -p /etc/psiphon /state
+
+COPY configs/psiphon/conduit-config.json /etc/psiphon/config.json
+
+ENTRYPOINT ["psiphon-client", "-config", "/etc/psiphon/config.json"]
