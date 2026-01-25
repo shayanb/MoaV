@@ -78,11 +78,19 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 ## User Management
 
 ```bash
-# Add a new user
+# Add a user to ALL services
 ./scripts/user-add.sh newuser
 
-# Revoke a user
+# Add to specific services only
+./scripts/singbox-user-add.sh newuser  # Reality, Trojan, Hysteria2
+./scripts/wg-user-add.sh newuser       # WireGuard only
+
+# Revoke a user from ALL services
 ./scripts/user-revoke.sh username
+
+# Revoke from specific services only
+./scripts/singbox-user-revoke.sh username
+./scripts/wg-user-revoke.sh username
 
 # List all users
 ./scripts/user-list.sh

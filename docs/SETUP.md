@@ -241,16 +241,36 @@ Each bundle contains:
 
 ## Managing Users
 
-### Add a new user
+### Add a new user to all services
 
 ```bash
 ./scripts/user-add.sh newusername
 ```
 
+This adds the user to sing-box (Reality, Trojan, Hysteria2) and WireGuard, generates all config files, QR codes, and displays the WireGuard QR in the terminal.
+
+### Add to specific services only
+
+```bash
+# Add only to sing-box (Reality, Trojan, Hysteria2)
+./scripts/singbox-user-add.sh newusername
+
+# Add only to WireGuard
+./scripts/wg-user-add.sh newusername
+```
+
 ### Revoke a user
 
 ```bash
+# Revoke from all services
 ./scripts/user-revoke.sh username
+
+# Revoke from specific services
+./scripts/singbox-user-revoke.sh username
+./scripts/wg-user-revoke.sh username
+
+# Keep the bundle folder when revoking
+./scripts/user-revoke.sh username --keep-bundle
 ```
 
 ### List all users
