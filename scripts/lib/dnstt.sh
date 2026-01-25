@@ -6,28 +6,50 @@ DNSTT_CONFIG_DIR="/configs/dnstt"
 generate_dnstt_config() {
     ensure_dir "$DNSTT_CONFIG_DIR"
 
-    # Generate keypair if not exists
+    # Generate keypair if not exists or is empty/invalid
+    local need_keygen=false
     if [[ ! -f "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
+        need_keygen=true
+    elif [[ ! -s "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
+        # File exists but is empty
+        log_info "dnstt key file is empty, regenerating..."
+        need_keygen=true
+    elif [[ $(wc -c < "$STATE_DIR/keys/dnstt-server.key.hex") -lt 60 ]]; then
+        # Key should be 64 hex chars, if less than 60, it's invalid
+        log_info "dnstt key file appears invalid, regenerating..."
+        need_keygen=true
+    fi
+
+    if [[ "$need_keygen" == "true" ]]; then
         log_info "Generating dnstt keypair..."
 
-        # dnstt expects keys in hex format (64 hex chars = 32 bytes)
-        # Generate a random 32-byte private key
-        PRIVKEY_HEX=$(openssl rand -hex 32)
-        echo "$PRIVKEY_HEX" > "$STATE_DIR/keys/dnstt-server.key.hex"
+        # Generate x25519 keypair using openssl
+        openssl genpkey -algorithm x25519 -out "$STATE_DIR/keys/dnstt-temp.pem" 2>/dev/null
 
-        # Generate public key from private key using dnstt's curve25519
-        # Since we can't easily do this without dnstt binary, we'll generate
-        # a keypair using the same method dnstt uses internally
-        # For now, use openssl to generate x25519 keypair and extract hex
-        openssl genpkey -algorithm x25519 -out "$STATE_DIR/keys/dnstt-temp.pem"
+        if [[ ! -f "$STATE_DIR/keys/dnstt-temp.pem" ]]; then
+            log_error "Failed to generate x25519 key with openssl"
+            return 1
+        fi
 
-        # Extract raw private key (last 32 bytes of DER)
+        # Extract raw private key (last 32 bytes of DER) as hex
         openssl pkey -in "$STATE_DIR/keys/dnstt-temp.pem" -outform DER 2>/dev/null | tail -c 32 | xxd -p -c 64 > "$STATE_DIR/keys/dnstt-server.key.hex"
 
-        # Extract raw public key (last 32 bytes of DER pubkey)
+        # Extract raw public key (last 32 bytes of DER pubkey) as hex
         openssl pkey -in "$STATE_DIR/keys/dnstt-temp.pem" -pubout -outform DER 2>/dev/null | tail -c 32 | xxd -p -c 64 > "$STATE_DIR/keys/dnstt-server.pub.hex"
 
         rm -f "$STATE_DIR/keys/dnstt-temp.pem"
+
+        # Verify keys were created
+        if [[ ! -s "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
+            log_error "Failed to generate dnstt private key"
+            return 1
+        fi
+        if [[ ! -s "$STATE_DIR/keys/dnstt-server.pub.hex" ]]; then
+            log_error "Failed to generate dnstt public key"
+            return 1
+        fi
+
+        log_info "dnstt keypair generated successfully"
     fi
 
     local dnstt_pubkey

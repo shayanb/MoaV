@@ -7,6 +7,7 @@ Simple stats viewer for the circumvention stack
 import os
 import json
 import asyncio
+import socket
 from datetime import datetime
 from pathlib import Path
 
@@ -64,6 +65,44 @@ def verify_auth(request: Request, credentials: HTTPBasicCredentials = Depends(se
     return credentials.username
 
 
+def check_host_port(host: str, port: int, timeout: float = 1.0) -> bool:
+    """Check if a host:port is reachable"""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        result = sock.connect_ex((host, port))
+        sock.close()
+        return result == 0
+    except Exception:
+        return False
+
+
+def check_service_status(name: str) -> str:
+    """Check if a Docker service is running by trying to connect to it"""
+    service_checks = {
+        "sing-box": ("moav-sing-box", 9090),
+        "decoy": ("moav-decoy", 80),
+        "wstunnel": ("moav-wstunnel", 8080),
+        "wireguard": ("moav-wireguard", 51820),
+        "dnstt": ("moav-dnstt", 5353),
+        "conduit": ("moav-conduit", 8080),
+    }
+
+    if name not in service_checks:
+        return "unknown"
+
+    host, port = service_checks[name]
+    try:
+        # Try DNS resolution first
+        socket.gethostbyname(host)
+        # Then check port
+        if check_host_port(host, port):
+            return "running"
+        return "stopped"
+    except socket.gaierror:
+        return "stopped"
+
+
 async def fetch_singbox_stats():
     """Fetch stats from sing-box Clash API"""
     stats = {
@@ -98,9 +137,31 @@ async def fetch_singbox_stats():
                 data = resp.json()
                 stats["memory"] = data.get("inuse", 0)
 
+        except httpx.ConnectError:
+            stats["error"] = "sing-box not running (start with --profile proxy)"
         except Exception as e:
             stats["error"] = str(e)
 
+    return stats
+
+
+async def fetch_conduit_stats():
+    """Fetch stats from Psiphon Conduit if running"""
+    stats = {
+        "running": False,
+        "clients": 0,
+        "bytes_relayed": 0,
+        "error": None
+    }
+
+    # Check if conduit is running
+    if check_service_status("conduit") != "running":
+        stats["error"] = "Conduit not running"
+        return stats
+
+    stats["running"] = True
+    # Note: Conduit doesn't expose an API, so we can only show running status
+    # Future: could parse logs for stats
     return stats
 
 
@@ -113,20 +174,45 @@ def format_bytes(bytes_val):
     return f"{bytes_val:.2f} PB"
 
 
-def get_service_status():
-    """Get status of all services"""
-    services = []
-
-    # Check sing-box
-    services.append({
-        "name": "sing-box",
-        "description": "Multi-protocol proxy (Reality, Trojan, Hysteria2)",
-        "status": "unknown",
-        "port": "443/tcp, 443/udp"
-    })
-
-    # Check other services based on docker
-    # This is a simplified check - in production, use docker API
+def get_services_status():
+    """Get status of all services with live checks"""
+    services = [
+        {
+            "name": "sing-box",
+            "description": "Multi-protocol proxy (Reality, Trojan, Hysteria2)",
+            "ports": "443/tcp, 443/udp, 8443/tcp",
+            "profile": "proxy",
+            "status": check_service_status("sing-box")
+        },
+        {
+            "name": "decoy",
+            "description": "Decoy website (nginx)",
+            "ports": "internal",
+            "profile": "proxy",
+            "status": check_service_status("decoy")
+        },
+        {
+            "name": "wstunnel",
+            "description": "WebSocket tunnel for WireGuard",
+            "ports": "8080/tcp",
+            "profile": "wireguard",
+            "status": check_service_status("wstunnel")
+        },
+        {
+            "name": "dnstt",
+            "description": "DNS tunnel (last resort)",
+            "ports": "53/udp",
+            "profile": "dnstt",
+            "status": check_service_status("dnstt")
+        },
+        {
+            "name": "conduit",
+            "description": "Psiphon bandwidth donation",
+            "ports": "dynamic",
+            "profile": "conduit",
+            "status": check_service_status("conduit")
+        },
+    ]
     return services
 
 
@@ -134,7 +220,8 @@ def get_service_status():
 async def dashboard(request: Request, username: str = Depends(verify_auth)):
     """Main dashboard page"""
     stats = await fetch_singbox_stats()
-    services = get_service_status()
+    conduit_stats = await fetch_conduit_stats()
+    services = get_services_status()
 
     # Count active connections by user
     user_stats = {}
@@ -150,6 +237,7 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "stats": stats,
+        "conduit_stats": conduit_stats,
         "services": services,
         "user_stats": user_stats,
         "format_bytes": format_bytes,
@@ -166,7 +254,13 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
 async def api_stats(username: str = Depends(verify_auth)):
     """JSON API for stats"""
     stats = await fetch_singbox_stats()
-    return stats
+    conduit_stats = await fetch_conduit_stats()
+    services = get_services_status()
+    return {
+        "singbox": stats,
+        "conduit": conduit_stats,
+        "services": services
+    }
 
 
 @app.get("/api/health")
@@ -192,7 +286,7 @@ if __name__ == "__main__":
             ssl_keyfile = key_path
             ssl_certfile = cert_path
 
-    # Run without SSL if certs not found (admin is localhost-only anyway)
+    # Run with SSL if certs found
     uvicorn.run(
         app,
         host="0.0.0.0",

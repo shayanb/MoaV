@@ -37,7 +37,7 @@
         .timestamp { color: var(--text-muted); font-size: 0.875rem; }
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
             margin-bottom: 2rem;
         }
@@ -83,16 +83,38 @@
             text-transform: uppercase;
         }
         td { font-variant-numeric: tabular-nums; }
-        .status {
+        .status-dot {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             margin-right: 0.5rem;
         }
-        .status.online { background: var(--success); }
-        .status.offline { background: var(--error); }
-        .status.unknown { background: var(--warning); }
+        .status-dot.running {
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success);
+        }
+        .status-dot.stopped {
+            background: var(--error);
+        }
+        .status-dot.unknown {
+            background: var(--warning);
+        }
+        .status-text {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        .status-text.running {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+        .status-text.stopped {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
         .error-box {
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid var(--error);
@@ -100,6 +122,15 @@
             padding: 1rem;
             margin-bottom: 2rem;
             color: var(--error);
+        }
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            color: var(--accent);
+            font-size: 0.875rem;
         }
         .refresh-btn {
             background: var(--accent);
@@ -111,9 +142,24 @@
             font-size: 0.875rem;
         }
         .refresh-btn:hover { opacity: 0.9; }
+        .profile-tag {
+            font-size: 0.7rem;
+            background: var(--border);
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.2rem;
+            margin-left: 0.5rem;
+            color: var(--text-muted);
+        }
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
         @media (max-width: 640px) {
             body { padding: 1rem; }
             .card-value { font-size: 1.5rem; }
+            .section-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -129,7 +175,7 @@
 
         {% if error %}
         <div class="error-box">
-            <strong>Error fetching stats:</strong> {{ error }}
+            <strong>Error:</strong> {{ error }}
         </div>
         {% endif %}
 
@@ -152,69 +198,76 @@
                 <div class="card-title">Memory Usage</div>
                 <div class="card-value">{{ memory_usage }}</div>
             </div>
+            <div class="card">
+                <div class="card-title">Conduit</div>
+                <div class="card-value {% if conduit_stats.running %}success{% else %}error{% endif %}">
+                    {% if conduit_stats.running %}Active{% else %}Off{% endif %}
+                </div>
+            </div>
         </div>
 
-        <div class="card" style="margin-bottom: 2rem;">
-            <h2>Users</h2>
-            {% if user_stats %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Connections</th>
-                        <th>Upload</th>
-                        <th>Download</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user, data in user_stats.items() %}
-                    <tr>
-                        <td>{{ user }}</td>
-                        <td>{{ data.connections }}</td>
-                        <td>{{ format_bytes(data.upload) }}</td>
-                        <td>{{ format_bytes(data.download) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p style="color: var(--text-muted);">No active connections</p>
-            {% endif %}
+        <div class="section-grid">
+            <div class="card">
+                <h2>Services</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Status</th>
+                            <th>Ports</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for service in services %}
+                        <tr>
+                            <td>
+                                <span class="status-dot {{ service.status }}"></span>
+                                {{ service.name }}
+                                <span class="profile-tag">{{ service.profile }}</span>
+                            </td>
+                            <td>
+                                <span class="status-text {{ service.status }}">{{ service.status }}</span>
+                            </td>
+                            <td>{{ service.ports }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Active Users</h2>
+                {% if user_stats %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Conn</th>
+                            <th>Upload</th>
+                            <th>Download</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user, data in user_stats.items() %}
+                        <tr>
+                            <td>{{ user }}</td>
+                            <td>{{ data.connections }}</td>
+                            <td>{{ format_bytes(data.upload) }}</td>
+                            <td>{{ format_bytes(data.download) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: var(--text-muted);">No active connections</p>
+                {% endif %}
+            </div>
         </div>
 
-        <div class="card">
-            <h2>Services</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Service</th>
-                        <th>Description</th>
-                        <th>Port</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><span class="status online"></span>sing-box</td>
-                        <td>Reality, Trojan, Hysteria2</td>
-                        <td>443/tcp, 443/udp</td>
-                    </tr>
-                    <tr>
-                        <td><span class="status online"></span>WireGuard</td>
-                        <td>VPN via wstunnel</td>
-                        <td>443/tcp (shared)</td>
-                    </tr>
-                    <tr>
-                        <td><span class="status online"></span>dnstt</td>
-                        <td>DNS tunnel (last resort)</td>
-                        <td>53/udp</td>
-                    </tr>
-                    <tr>
-                        <td><span class="status online"></span>decoy</td>
-                        <td>Cover website</td>
-                        <td>443/tcp (fallback)</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="info-box">
+            <strong>Tip:</strong> Start services with:
+            <code>docker compose --profile all up -d</code> or combine profiles like
+            <code>docker compose --profile proxy --profile admin up -d</code>
         </div>
     </div>
 
