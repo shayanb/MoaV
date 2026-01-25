@@ -97,8 +97,16 @@
         .status-dot.stopped {
             background: var(--error);
         }
-        .status-dot.unknown {
+        .status-dot.starting {
             background: var(--warning);
+            animation: pulse 1s infinite;
+        }
+        .status-dot.unknown {
+            background: var(--text-muted);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
         .status-text {
             font-size: 0.75rem;
@@ -114,6 +122,10 @@
         .status-text.stopped {
             background: rgba(239, 68, 68, 0.2);
             color: var(--error);
+        }
+        .status-text.starting {
+            background: rgba(234, 179, 8, 0.2);
+            color: var(--warning);
         }
         .error-box {
             background: rgba(239, 68, 68, 0.1);

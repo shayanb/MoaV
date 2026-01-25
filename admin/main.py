@@ -65,7 +65,7 @@ def verify_auth(request: Request, credentials: HTTPBasicCredentials = Depends(se
     return credentials.username
 
 
-def check_host_port(host: str, port: int, timeout: float = 1.0) -> bool:
+def check_host_port(host: str, port: int, timeout: float = 0.5) -> bool:
     """Check if a host:port is reachable"""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -93,14 +93,18 @@ def check_service_status(name: str) -> str:
 
     host, port = service_checks[name]
     try:
-        # Try DNS resolution first
-        socket.gethostbyname(host)
-        # Then check port
-        if check_host_port(host, port):
+        # Try DNS resolution first - if container exists, Docker DNS resolves it
+        ip = socket.gethostbyname(host)
+        # Then check if port is open
+        if check_host_port(ip, port):
             return "running"
-        return "stopped"
+        # Container exists but port not responding - might be starting up
+        return "starting"
     except socket.gaierror:
+        # DNS resolution failed - container doesn't exist
         return "stopped"
+    except Exception:
+        return "unknown"
 
 
 async def fetch_singbox_stats():
@@ -116,20 +120,17 @@ async def fetch_singbox_stats():
     if CLASH_SECRET:
         headers["Authorization"] = f"Bearer {CLASH_SECRET}"
 
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=3.0) as client:
         try:
-            # Get traffic stats
-            resp = await client.get(f"{SINGBOX_API}/traffic", headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                stats["traffic"]["upload"] = data.get("up", 0)
-                stats["traffic"]["download"] = data.get("down", 0)
-
-            # Get connections
+            # Get connections (includes upload/download per connection)
+            # This is a regular JSON endpoint, not streaming
             resp = await client.get(f"{SINGBOX_API}/connections", headers=headers)
             if resp.status_code == 200:
                 data = resp.json()
-                stats["connections"] = data.get("connections", [])
+                stats["connections"] = data.get("connections", []) or []
+                # Calculate total traffic from connections
+                stats["traffic"]["upload"] = data.get("uploadTotal", 0)
+                stats["traffic"]["download"] = data.get("downloadTotal", 0)
 
             # Get memory
             resp = await client.get(f"{SINGBOX_API}/memory", headers=headers)
@@ -137,8 +138,13 @@ async def fetch_singbox_stats():
                 data = resp.json()
                 stats["memory"] = data.get("inuse", 0)
 
+            # Note: /traffic endpoint is SSE (streaming), skip it
+            # Traffic totals are available from /connections endpoint
+
         except httpx.ConnectError:
             stats["error"] = "sing-box not running (start with --profile proxy)"
+        except httpx.ReadTimeout:
+            stats["error"] = "sing-box API timeout"
         except Exception as e:
             stats["error"] = str(e)
 
