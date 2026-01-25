@@ -177,10 +177,26 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
+    import glob
+
+    # Find certificate files dynamically
+    cert_dirs = glob.glob("/certs/live/*/")
+    ssl_keyfile = None
+    ssl_certfile = None
+
+    if cert_dirs:
+        cert_dir = cert_dirs[0]
+        key_path = f"{cert_dir}privkey.pem"
+        cert_path = f"{cert_dir}fullchain.pem"
+        if Path(key_path).exists() and Path(cert_path).exists():
+            ssl_keyfile = key_path
+            ssl_certfile = cert_path
+
+    # Run without SSL if certs not found (admin is localhost-only anyway)
     uvicorn.run(
         app,
         host="0.0.0.0",
         port=8443,
-        ssl_keyfile="/certs/live/domain/privkey.pem" if Path("/certs/live").exists() else None,
-        ssl_certfile="/certs/live/domain/fullchain.pem" if Path("/certs/live").exists() else None,
+        ssl_keyfile=ssl_keyfile,
+        ssl_certfile=ssl_certfile,
     )

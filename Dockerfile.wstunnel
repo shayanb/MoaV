@@ -3,7 +3,7 @@
 FROM debian:bookworm-slim
 
 ARG TARGETARCH
-ARG WSTUNNEL_VERSION=10.1.0
+ARG WSTUNNEL_VERSION=10.5.1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -13,12 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Download pre-built binary based on architecture
-RUN case "${TARGETARCH}" in \
-        "amd64") ARCH="x86_64-unknown-linux-gnu" ;; \
-        "arm64") ARCH="aarch64-unknown-linux-gnu" ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
-    esac && \
-    curl -L -o wstunnel.tar.gz "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_${ARCH}.tar.gz" && \
+# Format: wstunnel_VERSION_linux_ARCH.tar.gz where ARCH is amd64 or arm64
+RUN curl -L -o wstunnel.tar.gz "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_${TARGETARCH}.tar.gz" && \
     tar -xzf wstunnel.tar.gz && \
     chmod +x wstunnel && \
     rm wstunnel.tar.gz

@@ -55,6 +55,18 @@ docker compose logs certbot
    docker compose exec sing-box sing-box check -c /etc/sing-box/config.json
    ```
 
+5. **Docker network error ("network not found"):**
+
+   This happens when Docker networks get corrupted from failed runs:
+   ```bash
+   # Stop all containers and remove networks
+   docker compose down
+   docker network prune -f
+
+   # Start fresh
+   docker compose --profile all up -d
+   ```
+
 ### Certificate issues
 
 **Certificate not renewing:**

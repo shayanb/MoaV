@@ -51,7 +51,9 @@ mkdir -p "$STATE_DIR"/{users,keys}
 
 # Check if already bootstrapped
 if [[ -f "$STATE_DIR/.bootstrapped" ]]; then
-    log_info "Already bootstrapped. To re-bootstrap, remove $STATE_DIR/.bootstrapped"
+    log_info "Already bootstrapped. To re-bootstrap, run:"
+    log_info "  docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped"
+    log_info "  docker compose --profile setup run --rm bootstrap"
     exit 0
 fi
 

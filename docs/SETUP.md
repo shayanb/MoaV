@@ -237,13 +237,30 @@ Each bundle contains:
 ./scripts/user-list.sh
 ```
 
+## Re-bootstrapping
+
+If you need to regenerate all keys and configs (e.g., after changing domain):
+
+```bash
+# Remove the bootstrap flag
+docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
+
+# Re-run bootstrap
+docker compose --profile setup run --rm bootstrap
+
+# Restart services
+docker compose down
+docker compose --profile all up -d
+```
+
 ## Updating
 
 ```bash
 cd /opt/moav
 git pull
-docker compose pull
-docker compose up -d --build
+docker compose build --no-cache
+docker compose down
+docker compose --profile all up -d
 ```
 
 ## Troubleshooting

@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     pwgen \
     gettext \
     libqrencode-tools \
-    wireguard-tools
+    wireguard-tools \
+    xxd
 
 # Install sing-box for key generation
 COPY --from=ghcr.io/sagernet/sing-box:latest /usr/local/bin/sing-box /usr/local/bin/sing-box
