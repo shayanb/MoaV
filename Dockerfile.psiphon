@@ -1,8 +1,9 @@
 # Psiphon Conduit - Donate bandwidth to help others bypass censorship
+# https://github.com/Psiphon-Inc/conduit
 FROM debian:bookworm-slim
 
 ARG TARGETARCH
-ARG CONDUIT_VERSION=d8522a8
+ARG CONDUIT_VERSION=release-cli-1.0.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -11,13 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Download the appropriate conduit binary based on architecture
-RUN case "${TARGETARCH}" in \
-        "amd64") ARCH="amd64" ;; \
-        "arm64") ARCH="arm64" ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
-    esac && \
-    curl -L -o conduit "https://github.com/ssmirr/conduit/releases/download/${CONDUIT_VERSION}/conduit-linux-${ARCH}" && \
+# Download the conduit binary from official Psiphon-Inc repo
+RUN curl -L -o conduit "https://github.com/Psiphon-Inc/conduit/releases/download/${CONDUIT_VERSION}/conduit-linux-${TARGETARCH}" && \
     chmod +x conduit
 
 # Create data directory for conduit state
@@ -27,5 +23,6 @@ EXPOSE 8080
 
 # Conduit runs and automatically contributes bandwidth
 # Usage: conduit start -d /data -b <bandwidth_mbps> -m <max_clients>
+# -b -1 = unlimited bandwidth, -m 100 = max 100 clients, -v = verbose
 ENTRYPOINT ["/app/conduit"]
 CMD ["start", "-d", "/data", "-b", "-1", "-m", "100", "-v"]

@@ -10,7 +10,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 - **Easy deployment** - Docker Compose based, single command setup
 - **Mobile-friendly** - QR codes and links for easy client import
 - **Decoy website** - Serves innocent content to unauthenticated visitors
-- **Psiphon Conduit** - Optional bandwidth donation to help others bypass censorship
+- **[Psiphon Conduit](https://github.com/Psiphon-Inc/conduit)** - Optional bandwidth donation to help others bypass censorship
 
 ## Quick Start
 
