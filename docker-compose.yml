@@ -36,7 +36,6 @@ services:
       - moav_logs:/var/log/sing-box
     environment:
       - TZ=${TZ:-UTC}
-      - ENABLE_DEPRECATED_SPECIAL_OUTBOUNDS=true
     cap_add:
       - NET_ADMIN
     healthcheck:

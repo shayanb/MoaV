@@ -104,6 +104,38 @@ docker compose exec sing-box openssl x509 -enddate -noout -in /certs/live/*/full
 - Ensure port 80 is open (temporarily)
 - Check rate limits: https://letsencrypt.org/docs/rate-limits/
 
+### Admin dashboard not accessible
+
+**Check if container is running:**
+```bash
+docker compose --profile admin ps
+docker compose --profile admin logs admin
+```
+
+**Verify port is listening:**
+```bash
+# Inside container
+docker exec moav-admin ss -tlnp
+
+# On host
+ss -tlnp | grep 9443
+```
+
+**Test locally first:**
+```bash
+curl -k https://localhost:9443/api/health
+# Should return: {"status":"ok","timestamp":"..."}
+```
+
+**Open firewall:**
+```bash
+ufw allow 9443/tcp
+# or
+iptables -A INPUT -p tcp --dport 9443 -j ACCEPT
+```
+
+**Admin runs on port 9443 by default** (not 8443). The internal container port is 8443, but it's mapped to 9443 externally. Access at `https://yourdomain.com:9443/`
+
 ### sing-box crashes
 
 **Check the logs:**

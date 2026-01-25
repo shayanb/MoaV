@@ -174,12 +174,26 @@ docker compose --profile proxy --profile dnstt up -d          # Proxy + DNS tunn
 docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon Conduit
 
 # Available profiles:
+#   setup     - Bootstrap/initialization (run once)
 #   proxy     - sing-box + decoy (main proxy services)
 #   wireguard - WireGuard VPN via wstunnel
 #   dnstt     - DNS tunnel (last resort)
-#   admin     - Stats dashboard
+#   admin     - Stats dashboard (accessible at https://domain:9443)
 #   conduit   - Psiphon bandwidth donation
 #   all       - Everything
+
+# Note: certbot runs automatically with any profile to manage TLS certificates
+```
+
+**Open required firewall ports:**
+```bash
+# For proxy services
+ufw allow 443/tcp    # Reality + Trojan fallback
+ufw allow 443/udp    # Hysteria2
+ufw allow 53/udp     # DNS tunnel (if using dnstt)
+
+# For admin dashboard
+ufw allow 9443/tcp   # Admin (or your PORT_ADMIN value)
 ```
 
 ## Step 8: Verify
