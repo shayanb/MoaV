@@ -1,24 +1,30 @@
-# Psiphon Conduit for bandwidth donation
-# Note: This uses the official Psiphon tunnel-core as conduit is not yet headless
-FROM golang:1.21-alpine AS builder
+# Psiphon Conduit - Donate bandwidth to help others bypass censorship
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache git
+ARG TARGETARCH
+ARG CONDUIT_VERSION=d8522a8
 
-WORKDIR /src
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Clone psiphon-tunnel-core
-RUN git clone --depth 1 https://github.com/Psiphon-Labs/psiphon-tunnel-core.git . && \
-    cd ConsoleClient && \
-    go build -o /psiphon-client -trimpath -ldflags "-s -w" .
+WORKDIR /app
 
-FROM alpine:3.19
+# Download the appropriate conduit binary based on architecture
+RUN case "${TARGETARCH}" in \
+        "amd64") ARCH="amd64" ;; \
+        "arm64") ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    curl -L -o conduit "https://github.com/ssmirr/conduit/releases/download/${CONDUIT_VERSION}/conduit-linux-${ARCH}" && \
+    chmod +x conduit
 
-RUN apk add --no-cache ca-certificates tzdata
+# Create data directory for conduit state
+RUN mkdir -p /data
 
-COPY --from=builder /psiphon-client /usr/local/bin/psiphon-client
+EXPOSE 8080
 
-RUN mkdir -p /etc/psiphon /state
-
-COPY configs/psiphon/conduit-config.json /etc/psiphon/config.json
-
-ENTRYPOINT ["psiphon-client", "-config", "/etc/psiphon/config.json"]
+# Conduit runs and automatically contributes bandwidth
+ENTRYPOINT ["/app/conduit"]
+CMD ["-dataDir", "/data"]

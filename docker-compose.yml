@@ -1,5 +1,3 @@
-version: "3.8"
-
 # =============================================================================
 # MoaV - Multi-protocol Circumvention Stack
 # =============================================================================
@@ -12,6 +10,7 @@ volumes:
   moav_certs:
   moav_state:
   moav_logs:
+  moav_conduit:
 
 services:
   # ===========================================================================
@@ -158,21 +157,22 @@ services:
 
   # ===========================================================================
   # PSIPHON CONDUIT: Bandwidth donation (optional)
+  # Donates your bandwidth to help others bypass censorship
   # ===========================================================================
   psiphon-conduit:
     build:
       context: .
       dockerfile: Dockerfile.psiphon
-    container_name: moav-psiphon
+    container_name: moav-conduit
     restart: unless-stopped
     networks:
       - moav_net
     volumes:
-      - moav_state:/state
+      - moav_conduit:/data
     environment:
       - TZ=${TZ:-UTC}
     profiles:
-      - psiphon
+      - conduit
 
   # ===========================================================================
   # ADMIN: Stats dashboard
