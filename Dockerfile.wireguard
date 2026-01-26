@@ -1,0 +1,16 @@
+# Minimal WireGuard container - uses config directly without auto-generation
+FROM alpine:3.19
+
+RUN apk add --no-cache \
+    wireguard-tools \
+    iptables \
+    ip6tables \
+    iproute2
+
+# Create config directory
+RUN mkdir -p /etc/wireguard
+
+COPY scripts/wireguard-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
