@@ -23,15 +23,19 @@ if [ "$CONDUIT_STATS_ENABLED" = "true" ] && [ -x /usr/local/bin/conduit-stats ];
     echo "[conduit] Stats collector PID: $STATS_PID"
 fi
 
-# Handle shutdown gracefully
+# Handle shutdown gracefully - use signal numbers for POSIX compatibility
+# 15 = SIGTERM, 2 = SIGINT
 cleanup() {
     echo "[conduit] Shutting down..."
     if [ -n "$STATS_PID" ]; then
         kill "$STATS_PID" 2>/dev/null || true
     fi
+    if [ -n "$CONDUIT_PID" ]; then
+        kill "$CONDUIT_PID" 2>/dev/null || true
+    fi
     exit 0
 }
-trap cleanup SIGTERM SIGINT
+trap cleanup 15 2
 
 # Run conduit in foreground
 /app/conduit start \
