@@ -1,0 +1,15 @@
+# Tor Snowflake Proxy - Help users bypass censorship via Tor
+# https://snowflake.torproject.org/
+FROM thetorproject/snowflake-proxy:latest
+
+# Install iproute2 for tc (traffic control) bandwidth limiting
+# and su-exec for dropping privileges
+USER root
+RUN apk add --no-cache iproute2 su-exec
+
+# Copy entrypoint script
+COPY scripts/snowflake-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Start as root (entrypoint will drop privileges after setting up tc)
+ENTRYPOINT ["/entrypoint.sh"]

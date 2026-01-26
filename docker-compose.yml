@@ -196,6 +196,27 @@ services:
       - all
 
   # ===========================================================================
+  # SNOWFLAKE: Tor Snowflake proxy (bandwidth donation)
+  # Helps users bypass censorship via the Tor network
+  # ===========================================================================
+  snowflake:
+    build:
+      context: .
+      dockerfile: Dockerfile.snowflake
+    container_name: moav-snowflake
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=${TZ:-UTC}
+      - SNOWFLAKE_BANDWIDTH=${SNOWFLAKE_BANDWIDTH:-50}
+      - SNOWFLAKE_CAPACITY=${SNOWFLAKE_CAPACITY:-20}
+    cap_add:
+      - NET_ADMIN
+    profiles:
+      - snowflake
+      - all
+
+  # ===========================================================================
   # ADMIN: Stats dashboard
   # ===========================================================================
   admin:

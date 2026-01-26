@@ -86,6 +86,7 @@ def check_service_status(name: str) -> str:
         "wireguard": "moav-wireguard",
         "dnstt": "moav-dnstt",
         "conduit": "moav-conduit",
+        "snowflake": "moav-snowflake",
     }
 
     if name not in service_hosts:
@@ -243,6 +244,13 @@ def get_services_status():
             "ports": "dynamic",
             "profile": "conduit",
             "status": check_service_status("conduit")
+        },
+        {
+            "name": "snowflake",
+            "description": "Tor Snowflake proxy",
+            "ports": "dynamic",
+            "profile": "snowflake",
+            "status": check_service_status("snowflake")
         },
     ]
     return services

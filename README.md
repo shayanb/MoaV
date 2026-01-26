@@ -11,6 +11,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 - **Mobile-friendly** - QR codes and links for easy client import
 - **Decoy website** - Serves innocent content to unauthenticated visitors
 - **[Psiphon Conduit](https://github.com/Psiphon-Inc/conduit)** - Optional bandwidth donation to help others bypass censorship
+- **[Tor Snowflake](https://snowflake.torproject.org/)** - Optional bandwidth donation to help Tor users bypass censorship
 
 ## Quick Start
 
@@ -41,30 +42,30 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                                 Internet                                    │
-└─────────────────────────────────────┬─────────────────────────────────────┘
-                                      │
-  ┌────────────┬────────────┬─────────┼─────────┬────────────┬────────────┐
-  │            │            │         │         │            │            │
-┌─┴──┐    ┌────┴────┐  ┌────┴────┐ ┌──┴──┐ ┌────┴────┐ ┌─────┴─────┐ ┌────┴────┐
-│443 │    │  8443   │  │   443   │ │51820│ │  8080   │ │    53     │ │ Conduit │
-│tcp │    │   tcp   │  │   udp   │ │ udp │ │   tcp   │ │    udp    │ │(donate) │
-│Real│    │ Trojan  │  │Hysteria2│ │ WG  │ │wstunnel │ │   dnstt   │ │         │
-└─┬──┘    └────┬────┘  └────┬────┘ └──┬──┘ └────┬────┘ └─────┬─────┘ └─────────┘
-  │            │            │         │         │            │
-  └────────────┴────────────┼─────────┴─────────┘            │
-                            │                                │
-                     ┌──────┴──────┐                  ┌──────┴──────┐
-                     │  sing-box   │                  │    dnstt    │
-                     └──────┬──────┘                  └──────┬──────┘
-                            │                                │
-                            └────────────┬───────────────────┘
-                                         │
-                                  ┌──────┴──────┐
-                                  │   Direct    │
-                                  │   Egress    │
-                                  └─────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                    Internet                                       │
+└───────────────────────────────────────┬─────────────────────────────────────────┘
+                                        │
+  ┌──────────┬──────────┬───────────────┼───────────────┬──────────┬──────────────┐
+  │          │          │               │               │          │              │
+┌─┴──┐  ┌────┴────┐ ┌───┴───┐ ┌────┐ ┌──┴──┐ ┌────┐ ┌───┴───┐ ┌────┴────┐ ┌───────┴───────┐
+│443 │  │  8443   │ │  443  │ │5182│ │8080 │ │ 53 │ │Conduit│ │Snowflake│ │   Your VPN    │
+│tcp │  │   tcp   │ │  udp  │ │udp │ │ tcp │ │udp │ │Psiphon│ │   Tor   │ │   Clients     │
+│Real│  │ Trojan  │ │Hyster.│ │ WG │ │wstun│ │dnst│ │donate │ │ donate  │ │               │
+└─┬──┘  └────┬────┘ └───┬───┘ └──┬─┘ └──┬──┘ └─┬──┘ └───────┘ └─────────┘ └───────────────┘
+  │          │          │        │      │      │
+  └──────────┴──────────┼────────┴──────┘      │
+                        │                      │
+                 ┌──────┴──────┐        ┌──────┴──────┐
+                 │  sing-box   │        │    dnstt    │
+                 └──────┬──────┘        └──────┬──────┘
+                        │                      │
+                        └──────────┬───────────┘
+                                   │
+                            ┌──────┴──────┐
+                            │   Direct    │
+                            │   Egress    │
+                            └─────────────┘
 ```
 
 ## Protocols

@@ -180,6 +180,7 @@ docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon 
 #   dnstt     - DNS tunnel (last resort)
 #   admin     - Stats dashboard (accessible at https://domain:9443)
 #   conduit   - Psiphon bandwidth donation (includes traffic stats by country)
+#   snowflake - Tor Snowflake proxy (bandwidth donation for Tor users)
 #   all       - Everything
 
 # Note: certbot runs automatically with any profile to manage TLS certificates
@@ -278,6 +279,51 @@ This adds the user to sing-box (Reality, Trojan, Hysteria2) and WireGuard, gener
 ```bash
 ./scripts/user-list.sh
 ```
+
+## Bandwidth Donation Services
+
+MoaV includes two optional bandwidth donation services that help users in censored regions:
+
+### Psiphon Conduit
+
+Donates bandwidth to the Psiphon network to help users bypass censorship.
+
+```bash
+# Start Conduit
+docker compose --profile conduit up -d
+
+# View live traffic stats by country
+./scripts/conduit-stats.sh
+
+# Get Ryve deep link for mobile import
+./scripts/conduit-info.sh
+```
+
+Configure in `.env`:
+```bash
+CONDUIT_BANDWIDTH=200    # Mbps limit
+CONDUIT_MAX_CLIENTS=100  # Max concurrent clients
+```
+
+### Tor Snowflake
+
+Donates bandwidth to the Tor network as a Snowflake proxy, helping Tor users bypass censorship.
+
+```bash
+# Start Snowflake
+docker compose --profile snowflake up -d
+
+# View logs
+docker compose logs -f snowflake
+```
+
+Configure in `.env`:
+```bash
+SNOWFLAKE_BANDWIDTH=50   # Mbps limit
+SNOWFLAKE_CAPACITY=20    # Max concurrent clients
+```
+
+**Note:** Both services can run simultaneously without conflicts.
 
 ## Conduit Stats (Traffic by Country)
 

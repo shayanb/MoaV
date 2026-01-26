@@ -356,6 +356,29 @@ If enabled on your MoaV server, Conduit donates a portion of your server's bandw
 
 ---
 
+## About Tor Snowflake (Server Feature)
+
+**Note:** Snowflake is NOT a client connection method. It's a server-side feature.
+
+If enabled on your MoaV server, Snowflake acts as a proxy for the [Tor network](https://www.torproject.org/), helping users in censored regions connect to Tor. Snowflake is part of Tor's pluggable transports system.
+
+**For server operators:**
+- Enable with the `snowflake` profile: `docker compose --profile snowflake up -d`
+- Configure limits in `.env`:
+  - `SNOWFLAKE_BANDWIDTH=50` - Mbps limit (default: 50)
+  - `SNOWFLAKE_CAPACITY=20` - Max concurrent clients (default: 20)
+- This is optional and purely for helping others
+
+**For clients:**
+- You don't connect via Snowflake directly
+- If you need Tor, download the Tor Browser from https://www.torproject.org/
+- Tor Browser will automatically use Snowflake bridges when needed
+
+**Can I run both Conduit and Snowflake?**
+Yes! Both services can run simultaneously without conflicts. They donate bandwidth to different networks (Psiphon and Tor respectively).
+
+---
+
 ## Troubleshooting
 
 ### "Connection failed" or "Timeout"
