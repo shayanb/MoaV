@@ -65,7 +65,7 @@ def verify_auth(request: Request, credentials: HTTPBasicCredentials = Depends(se
     return credentials.username
 
 
-def check_host_port(host: str, port: int, timeout: float = 0.5) -> bool:
+def check_host_port(host: str, port: int, timeout: float = 0.3) -> bool:
     """Check if a host:port is reachable"""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -78,31 +78,32 @@ def check_host_port(host: str, port: int, timeout: float = 0.5) -> bool:
 
 
 def check_service_status(name: str) -> str:
-    """Check if a Docker service is running by trying to connect to it"""
-    service_checks = {
-        "sing-box": ("moav-sing-box", 9090),
-        "decoy": ("moav-decoy", 80),
-        "wstunnel": ("moav-wstunnel", 8080),
-        "wireguard": ("moav-wireguard", 51820),
-        "dnstt": ("moav-dnstt", 5353),
-        "conduit": ("moav-conduit", 8080),
+    """Check if a Docker service is running by trying DNS resolution"""
+    service_hosts = {
+        "sing-box": "moav-sing-box",
+        "decoy": "moav-decoy",
+        "wstunnel": "moav-wstunnel",
+        "wireguard": "moav-wireguard",
+        "dnstt": "moav-dnstt",
+        "conduit": "moav-conduit",
     }
 
-    if name not in service_checks:
+    if name not in service_hosts:
         return "unknown"
 
-    host, port = service_checks[name]
+    host = service_hosts[name]
     try:
-        # Try DNS resolution first - if container exists, Docker DNS resolves it
-        ip = socket.gethostbyname(host)
-        # Then check if port is open
-        if check_host_port(ip, port):
-            return "running"
-        # Container exists but port not responding - might be starting up
-        return "starting"
+        # Try DNS resolution - if container exists, Docker DNS resolves it
+        socket.setdefaulttimeout(0.3)
+        socket.gethostbyname(host)
+        # Container exists (DNS resolves), assume running
+        # Skip port check to avoid blocking
+        return "running"
     except socket.gaierror:
         # DNS resolution failed - container doesn't exist
         return "stopped"
+    except socket.timeout:
+        return "unknown"
     except Exception:
         return "unknown"
 
@@ -120,7 +121,10 @@ async def fetch_singbox_stats():
     if CLASH_SECRET:
         headers["Authorization"] = f"Bearer {CLASH_SECRET}"
 
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    # Use explicit timeout config to prevent hanging
+    timeout = httpx.Timeout(connect=2.0, read=2.0, write=2.0, pool=2.0)
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
             # Get connections (includes upload/download per connection)
             # This is a regular JSON endpoint, not streaming
@@ -143,10 +147,14 @@ async def fetch_singbox_stats():
 
         except httpx.ConnectError:
             stats["error"] = "sing-box not running (start with --profile proxy)"
+        except httpx.ConnectTimeout:
+            stats["error"] = "sing-box connection timeout"
         except httpx.ReadTimeout:
+            stats["error"] = "sing-box read timeout"
+        except httpx.TimeoutException:
             stats["error"] = "sing-box API timeout"
         except Exception as e:
-            stats["error"] = str(e)
+            stats["error"] = f"Error: {type(e).__name__}: {str(e)}"
 
     return stats
 

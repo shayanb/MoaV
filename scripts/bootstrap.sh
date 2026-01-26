@@ -116,9 +116,22 @@ fi
 # -----------------------------------------------------------------------------
 # Generate dnstt server config (before creating users)
 # -----------------------------------------------------------------------------
+log_info "ENABLE_DNSTT=${ENABLE_DNSTT:-true}"
 if [[ "${ENABLE_DNSTT:-true}" == "true" ]]; then
     log_info "Generating dnstt server configuration..."
-    generate_dnstt_config
+    if generate_dnstt_config; then
+        log_info "dnstt configuration complete"
+        # Verify key file exists
+        if [[ -f "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
+            log_info "dnstt key file verified: $(wc -c < "$STATE_DIR/keys/dnstt-server.key.hex") bytes"
+        else
+            log_error "dnstt key file NOT found after generation!"
+        fi
+    else
+        log_error "dnstt configuration FAILED"
+    fi
+else
+    log_info "dnstt is disabled, skipping configuration"
 fi
 
 # -----------------------------------------------------------------------------

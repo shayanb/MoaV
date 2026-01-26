@@ -4,30 +4,42 @@
 DNSTT_CONFIG_DIR="/configs/dnstt"
 
 generate_dnstt_config() {
+    log_info "Setting up dnstt configuration..."
+
     ensure_dir "$DNSTT_CONFIG_DIR"
+    ensure_dir "$STATE_DIR/keys"
 
     # Generate keypair if not exists or is empty/invalid
     local need_keygen=false
-    if [[ ! -f "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
+    local key_file="$STATE_DIR/keys/dnstt-server.key.hex"
+
+    if [[ ! -f "$key_file" ]]; then
+        log_info "dnstt key file does not exist, will generate..."
         need_keygen=true
-    elif [[ ! -s "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
-        # File exists but is empty
+    elif [[ ! -s "$key_file" ]]; then
         log_info "dnstt key file is empty, regenerating..."
         need_keygen=true
-    elif [[ $(wc -c < "$STATE_DIR/keys/dnstt-server.key.hex") -lt 60 ]]; then
-        # Key should be 64 hex chars, if less than 60, it's invalid
-        log_info "dnstt key file appears invalid, regenerating..."
-        need_keygen=true
+    else
+        local key_size=$(wc -c < "$key_file" | tr -d ' ')
+        if [[ $key_size -lt 60 ]]; then
+            log_info "dnstt key file too small ($key_size bytes), regenerating..."
+            need_keygen=true
+        else
+            log_info "dnstt key file exists and looks valid ($key_size bytes)"
+        fi
     fi
 
     if [[ "$need_keygen" == "true" ]]; then
-        log_info "Generating dnstt keypair..."
+        log_info "Generating dnstt x25519 keypair..."
 
         # Generate x25519 keypair using openssl
-        openssl genpkey -algorithm x25519 -out "$STATE_DIR/keys/dnstt-temp.pem" 2>/dev/null
+        if ! openssl genpkey -algorithm x25519 -out "$STATE_DIR/keys/dnstt-temp.pem" 2>&1; then
+            log_error "Failed to generate x25519 key with openssl"
+            return 1
+        fi
 
         if [[ ! -f "$STATE_DIR/keys/dnstt-temp.pem" ]]; then
-            log_error "Failed to generate x25519 key with openssl"
+            log_error "x25519 key file was not created"
             return 1
         fi
 
@@ -41,15 +53,18 @@ generate_dnstt_config() {
 
         # Verify keys were created
         if [[ ! -s "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
-            log_error "Failed to generate dnstt private key"
+            log_error "Failed to generate dnstt private key - file is empty"
+            ls -la "$STATE_DIR/keys/" || true
             return 1
         fi
         if [[ ! -s "$STATE_DIR/keys/dnstt-server.pub.hex" ]]; then
-            log_error "Failed to generate dnstt public key"
+            log_error "Failed to generate dnstt public key - file is empty"
             return 1
         fi
 
         log_info "dnstt keypair generated successfully"
+        log_info "Private key at: $STATE_DIR/keys/dnstt-server.key.hex"
+        log_info "Public key at: $STATE_DIR/keys/dnstt-server.pub.hex"
     fi
 
     local dnstt_pubkey
