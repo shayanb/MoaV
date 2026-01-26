@@ -93,14 +93,17 @@ def check_service_status(name: str) -> str:
 
     host = service_hosts[name]
     try:
-        # Try DNS resolution - if container exists, Docker DNS resolves it
-        socket.setdefaulttimeout(0.3)
-        socket.gethostbyname(host)
-        # Container exists (DNS resolves), assume running
-        # Skip port check to avoid blocking
-        return "running"
+        # Try DNS resolution with a local timeout (not global)
+        # Create a socket just for the DNS check
+        old_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(0.5)
+        try:
+            socket.gethostbyname(host)
+            return "running"
+        finally:
+            # Restore original timeout
+            socket.setdefaulttimeout(old_timeout)
     except socket.gaierror:
-        # DNS resolution failed - container doesn't exist
         return "stopped"
     except socket.timeout:
         return "unknown"
@@ -122,39 +125,40 @@ async def fetch_singbox_stats():
         headers["Authorization"] = f"Bearer {CLASH_SECRET}"
 
     # Use explicit timeout config to prevent hanging
-    timeout = httpx.Timeout(connect=2.0, read=2.0, write=2.0, pool=2.0)
+    timeout = httpx.Timeout(connect=1.0, read=2.0, write=1.0, pool=1.0)
 
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        try:
-            # Get connections (includes upload/download per connection)
-            # This is a regular JSON endpoint, not streaming
-            resp = await client.get(f"{SINGBOX_API}/connections", headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                stats["connections"] = data.get("connections", []) or []
-                # Calculate total traffic from connections
-                stats["traffic"]["upload"] = data.get("uploadTotal", 0)
-                stats["traffic"]["download"] = data.get("downloadTotal", 0)
+    try:
+        # Wrap entire operation in asyncio timeout as backup
+        async with asyncio.timeout(5.0):
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                try:
+                    # Get connections (includes upload/download per connection)
+                    resp = await client.get(f"{SINGBOX_API}/connections", headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        stats["connections"] = data.get("connections", []) or []
+                        stats["traffic"]["upload"] = data.get("uploadTotal", 0)
+                        stats["traffic"]["download"] = data.get("downloadTotal", 0)
 
-            # Get memory
-            resp = await client.get(f"{SINGBOX_API}/memory", headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                stats["memory"] = data.get("inuse", 0)
+                    # Get memory
+                    resp = await client.get(f"{SINGBOX_API}/memory", headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        stats["memory"] = data.get("inuse", 0)
 
-            # Note: /traffic endpoint is SSE (streaming), skip it
-            # Traffic totals are available from /connections endpoint
+                except httpx.ConnectError:
+                    stats["error"] = "sing-box API not reachable"
+                except httpx.ConnectTimeout:
+                    stats["error"] = "sing-box connection timeout"
+                except httpx.ReadTimeout:
+                    stats["error"] = "sing-box read timeout"
+                except httpx.TimeoutException:
+                    stats["error"] = "sing-box API timeout"
 
-        except httpx.ConnectError:
-            stats["error"] = "sing-box not running (start with --profile proxy)"
-        except httpx.ConnectTimeout:
-            stats["error"] = "sing-box connection timeout"
-        except httpx.ReadTimeout:
-            stats["error"] = "sing-box read timeout"
-        except httpx.TimeoutException:
-            stats["error"] = "sing-box API timeout"
-        except Exception as e:
-            stats["error"] = f"Error: {type(e).__name__}: {str(e)}"
+    except asyncio.TimeoutError:
+        stats["error"] = "sing-box API timeout (5s)"
+    except Exception as e:
+        stats["error"] = f"Error: {type(e).__name__}: {str(e)}"
 
     return stats
 

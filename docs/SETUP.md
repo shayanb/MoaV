@@ -179,7 +179,7 @@ docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon 
 #   wireguard - WireGuard VPN via wstunnel
 #   dnstt     - DNS tunnel (last resort)
 #   admin     - Stats dashboard (accessible at https://domain:9443)
-#   conduit   - Psiphon bandwidth donation
+#   conduit   - Psiphon bandwidth donation (includes traffic stats by country)
 #   all       - Everything
 
 # Note: certbot runs automatically with any profile to manage TLS certificates
@@ -277,6 +277,36 @@ This adds the user to sing-box (Reality, Trojan, Hysteria2) and WireGuard, gener
 
 ```bash
 ./scripts/user-list.sh
+```
+
+## Conduit Stats (Traffic by Country)
+
+If you're running Psiphon Conduit to donate bandwidth, you can view live traffic statistics:
+
+### Terminal Viewer
+
+```bash
+# Live terminal stats showing traffic by country
+./scripts/conduit-stats.sh
+```
+
+This shows:
+- Traffic FROM (peers connecting to you) - by country
+- Traffic TO (data sent to peers) - by country
+- Real-time updates every 15 seconds
+
+### Admin Dashboard
+
+The admin dashboard (https://your-domain:9443) also shows conduit traffic breakdown by country when conduit is running.
+
+### Get Ryve Deep Link
+
+To import your conduit into the Ryve app:
+
+```bash
+./scripts/conduit-info.sh
+# Or with custom name:
+./scripts/conduit-info.sh "My Conduit Name"
 ```
 
 ## Re-bootstrapping

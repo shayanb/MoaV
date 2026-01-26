@@ -105,6 +105,18 @@ User bundles are generated in `outputs/bundles/<username>/` containing:
 - QR codes for mobile import
 - README with connection instructions
 
+## Conduit Management
+
+If running Psiphon Conduit to donate bandwidth:
+
+```bash
+# View live traffic stats by country
+./scripts/conduit-stats.sh
+
+# Get Ryve deep link for mobile import
+./scripts/conduit-info.sh
+```
+
 ## Client Apps
 
 | Platform | Recommended Apps |
