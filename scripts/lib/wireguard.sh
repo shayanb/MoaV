@@ -8,17 +8,25 @@ WG_SERVER_IP="10.66.66.1"
 
 generate_wireguard_config() {
     ensure_dir "$WG_CONFIG_DIR"
+    ensure_dir "$STATE_DIR/keys"
 
     # Generate server keys if not exist
     if [[ ! -f "$STATE_DIR/keys/wg-server.key" ]]; then
+        log_info "Generating new WireGuard server keys..."
         wg genkey > "$STATE_DIR/keys/wg-server.key"
-        cat "$STATE_DIR/keys/wg-server.key" | wg pubkey > "$STATE_DIR/keys/wg-server.pub"
     fi
 
+    # Always derive public key from private key to ensure consistency
     local server_private_key
     local server_public_key
     server_private_key=$(cat "$STATE_DIR/keys/wg-server.key")
-    server_public_key=$(cat "$STATE_DIR/keys/wg-server.pub")
+    server_public_key=$(echo "$server_private_key" | wg pubkey)
+
+    # Save public key to state (authoritative source)
+    echo "$server_public_key" > "$STATE_DIR/keys/wg-server.pub"
+
+    log_info "WireGuard server private key: $STATE_DIR/keys/wg-server.key"
+    log_info "WireGuard server public key: $server_public_key"
 
     # Create server config
     cat > "$WG_CONFIG_DIR/wg0.conf" <<EOF
@@ -32,10 +40,11 @@ PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -
 # Peers are added dynamically
 EOF
 
-    # Save server public key for client configs
-    echo "$server_public_key" > "$WG_CONFIG_DIR/server.pub"
+    # Save server public key for client configs (copy from state)
+    cp "$STATE_DIR/keys/wg-server.pub" "$WG_CONFIG_DIR/server.pub"
 
     log_info "WireGuard server configuration created"
+    log_info "Server public key saved to: $WG_CONFIG_DIR/server.pub"
 }
 
 # Add a WireGuard peer

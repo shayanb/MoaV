@@ -97,12 +97,30 @@ WG_CLIENT_IP=$CLIENT_IP
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
-# Get server public key
-SERVER_PUBLIC_KEY=$(cat "$WG_CONFIG_DIR/server.pub" 2>/dev/null || echo "")
+# Get server public key - prefer from running WireGuard, fallback to file
+SERVER_PUBLIC_KEY=""
+
+# If WireGuard is running, get the actual public key and sync it
+if docker compose ps wireguard --status running &>/dev/null; then
+    SERVER_PUBLIC_KEY=$(docker compose exec -T wireguard wg show wg0 public-key 2>/dev/null | tr -d '\r\n')
+    if [[ -n "$SERVER_PUBLIC_KEY" ]]; then
+        # Sync to server.pub file to ensure consistency
+        echo "$SERVER_PUBLIC_KEY" > "$WG_CONFIG_DIR/server.pub"
+        log_info "Synced server public key from running WireGuard"
+    fi
+fi
+
+# Fallback to file if not running or couldn't get key
 if [[ -z "$SERVER_PUBLIC_KEY" ]]; then
-    log_error "Server public key not found"
+    SERVER_PUBLIC_KEY=$(cat "$WG_CONFIG_DIR/server.pub" 2>/dev/null | tr -d '\r\n')
+fi
+
+if [[ -z "$SERVER_PUBLIC_KEY" ]]; then
+    log_error "Server public key not found. Is WireGuard configured?"
     exit 1
 fi
+
+log_info "Using server public key: $SERVER_PUBLIC_KEY"
 
 # Get server IP
 SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org || echo "YOUR_SERVER_IP")}"

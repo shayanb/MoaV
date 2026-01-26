@@ -153,18 +153,87 @@ docker compose up -d sing-box
 docker compose --profile setup run --rm bootstrap
 ```
 
+### WireGuard connected but no traffic
+
+**Check if peer is loaded:**
+```bash
+docker compose exec wireguard wg show
+```
+
+Look for your peer's public key. It should show:
+- `latest handshake: X seconds ago`
+- `transfer: X received, X sent`
+
+If there's no handshake, check for **key mismatch**:
+
+```bash
+# What the client config expects (server public key)
+cat configs/wireguard/server.pub
+
+# What's actually running
+docker compose exec wireguard wg show wg0 public-key
+```
+
+**If keys don't match**, run the sync script:
+```bash
+# Automatically sync keys from running WireGuard
+./scripts/wg-sync-keys.sh
+
+# Or manually fix:
+docker compose exec wireguard wg show wg0 public-key > configs/wireguard/server.pub
+
+# Regenerate user with correct key
+./scripts/wg-user-add.sh newuser
+```
+
+**Check NAT/masquerade:**
+```bash
+docker compose exec wireguard iptables -t nat -L -n | grep MASQUERADE
+```
+
+**Check IP forwarding:**
+```bash
+docker compose exec wireguard cat /proc/sys/net/ipv4/ip_forward
+# Should return 1
+```
+
+**Check firewall allows WireGuard port:**
+```bash
+ufw allow 51820/udp
+```
+
 ### DNS tunnel not working
+
+**Check dnstt logs for domain issues:**
+```bash
+docker compose logs dnstt
+```
+
+If you see `NXDOMAIN: not authoritative for example.com`, the domain wasn't set correctly during bootstrap:
+
+```bash
+# Check the config file
+cat configs/dnstt/server.conf
+# Should show: DNSTT_DOMAIN=t.yourdomain.com (not example.com)
+
+# If wrong, update it
+sed -i 's/example.com/yourdomain.com/g' configs/dnstt/server.conf
+
+# Rebuild and restart dnstt
+docker compose build dnstt
+docker compose --profile dnstt up -d dnstt
+```
 
 **Verify NS delegation:**
 ```bash
 dig NS t.yourdomain.com
-# Should return dns.yourdomain.com
+# Should return dns.yourdomain.com (or your server)
 ```
 
 **Test dnstt server:**
 ```bash
 docker compose logs dnstt
-# Should show "listening on :5353"
+# Should show "listening on :5353" and your correct domain
 ```
 
 **Check firewall:**
@@ -309,6 +378,84 @@ During major events, Iran sometimes shuts internet entirely:
 1. DNS tunnel might still work (if any DNS works)
 2. Satellite internet (Starlink) if available
 3. Wait for restoration
+
+---
+
+## Reset and Re-bootstrap
+
+### Full reset (start fresh)
+
+If things are broken beyond repair, reset everything:
+
+```bash
+# Stop all containers
+docker compose --profile all down
+
+# Remove the bootstrap flag and all generated state
+docker run --rm -v moav_moav_state:/state alpine rm -rf /state/.bootstrapped /state/keys /state/users
+
+# Optionally remove generated configs (will be regenerated)
+rm -rf configs/sing-box/config.json configs/wireguard/wg0.conf configs/dnstt/server.conf
+
+# Remove Docker volumes entirely (complete reset)
+docker volume rm moav_moav_state moav_moav_certs moav_moav_logs
+
+# Re-run bootstrap
+docker compose --profile setup run --rm bootstrap
+
+# Start services
+docker compose --profile all up -d
+```
+
+### Partial reset (keep certificates)
+
+To re-bootstrap while keeping your SSL certificates:
+
+```bash
+# Stop services
+docker compose --profile all down
+
+# Remove only the bootstrap flag
+docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
+
+# Re-run bootstrap
+docker compose --profile setup run --rm bootstrap
+
+# Start services
+docker compose --profile all up -d
+```
+
+### Reset only WireGuard
+
+```bash
+# Remove WireGuard config
+rm configs/wireguard/wg0.conf configs/wireguard/server.pub
+
+# Remove WireGuard keys from state
+docker run --rm -v moav_moav_state:/state alpine rm -f /state/keys/wg-server.key /state/keys/wg-server.pub
+
+# Remove bootstrap flag and re-run
+docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
+docker compose --profile setup run --rm bootstrap
+
+# Restart WireGuard
+docker compose --profile wireguard up -d wireguard
+```
+
+### Reset only dnstt
+
+```bash
+# Remove dnstt config and keys
+rm configs/dnstt/server.conf configs/dnstt/server.pub
+docker run --rm -v moav_moav_state:/state alpine rm -f /state/keys/dnstt-*
+
+# Remove bootstrap flag and re-run
+docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
+docker compose --profile setup run --rm bootstrap
+
+# Restart dnstt
+docker compose --profile dnstt up -d dnstt
+```
 
 ---
 

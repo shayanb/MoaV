@@ -111,6 +111,20 @@ export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then
     log_info "Generating WireGuard server configuration..."
     generate_wireguard_config
+
+    # Verify keys are consistent
+    if [[ -f "$STATE_DIR/keys/wg-server.key" ]] && [[ -f "/configs/wireguard/server.pub" ]]; then
+        DERIVED_PUB=$(cat "$STATE_DIR/keys/wg-server.key" | wg pubkey)
+        SAVED_PUB=$(cat "/configs/wireguard/server.pub")
+        if [[ "$DERIVED_PUB" == "$SAVED_PUB" ]]; then
+            log_info "WireGuard keys verified: public key matches private key"
+        else
+            log_error "WireGuard key mismatch! Fixing..."
+            echo "$DERIVED_PUB" > "/configs/wireguard/server.pub"
+            echo "$DERIVED_PUB" > "$STATE_DIR/keys/wg-server.pub"
+            log_info "Fixed server.pub to match private key"
+        fi
+    fi
 fi
 
 # -----------------------------------------------------------------------------

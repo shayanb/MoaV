@@ -21,9 +21,6 @@ RUN mkdir -p /data
 
 EXPOSE 8080
 
-# Environment variables for runtime configuration
-ENV CONDUIT_NAME="conduit-node"
-
 # Use entrypoint script for flexibility
 COPY scripts/conduit-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
