@@ -1,9 +1,10 @@
 # Psiphon Conduit - Donate bandwidth to help others bypass censorship
-# https://github.com/Psiphon-Inc/conduit
+# Using fork with Ryve integration: https://github.com/shayanb/conduit
 FROM debian:bookworm-slim
 
 ARG TARGETARCH
-ARG CONDUIT_VERSION=release-cli-1.0.0
+ARG CONDUIT_REPO=shayanb/conduit
+ARG CONDUIT_VERSION=cli-ryve
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -12,8 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Download the conduit binary from official Psiphon-Inc repo
-RUN curl -L -o conduit "https://github.com/Psiphon-Inc/conduit/releases/download/${CONDUIT_VERSION}/conduit-linux-${TARGETARCH}" && \
+# Download the conduit binary from fork with Ryve support
+RUN curl -L -o conduit "https://github.com/${CONDUIT_REPO}/releases/download/${CONDUIT_VERSION}/conduit-linux-${TARGETARCH}" && \
     chmod +x conduit
 
 # Create data directory for conduit state

@@ -8,29 +8,52 @@ set -e
 DNSTT_DOMAIN="${DNSTT_DOMAIN:-t.example.com}"
 DNSTT_LISTEN="${DNSTT_LISTEN:-:5353}"
 DNSTT_UPSTREAM="${DNSTT_UPSTREAM:-127.0.0.1:8080}"
-DNSTT_KEY_FILE="${DNSTT_KEY_FILE:-/state/keys/dnstt-server.key.hex}"
 
 echo "[dnstt] Starting dnstt-server"
 echo "[dnstt] Domain: $DNSTT_DOMAIN"
 echo "[dnstt] Listen: $DNSTT_LISTEN"
 echo "[dnstt] Upstream: $DNSTT_UPSTREAM"
 
-# Wait for key file
+# Look for key file in multiple formats (for backwards compatibility)
+KEY_HEX="/state/keys/dnstt-server.key.hex"
+KEY_B64="/state/keys/dnstt-server.key.b64"
+
+echo "[dnstt] Looking for key files..."
+ls -la /state/keys/ 2>&1 || echo "[dnstt] /state/keys directory does not exist"
+
+# Wait for any key file to appear
 timeout=60
 elapsed=0
-while [ ! -f "$DNSTT_KEY_FILE" ]; do
-    echo "[dnstt] Waiting for key file at $DNSTT_KEY_FILE..."
+while [ ! -f "$KEY_HEX" ] && [ ! -f "$KEY_B64" ]; do
+    echo "[dnstt] Waiting for key file..."
     sleep 2
     elapsed=$((elapsed + 2))
     if [ $elapsed -ge $timeout ]; then
-        echo "[dnstt] ERROR: Key file not found after ${timeout}s. Run bootstrap first."
+        echo "[dnstt] ERROR: No key file found after ${timeout}s. Run bootstrap first."
+        echo "[dnstt] Expected: $KEY_HEX or $KEY_B64"
+        ls -la /state/keys/ 2>&1 || true
         exit 1
     fi
 done
 
-# Read the hex-encoded private key
-PRIVKEY=$(cat "$DNSTT_KEY_FILE" | tr -d '\n\r ')
+# Load key - prefer hex, fall back to base64 and convert
+if [ -f "$KEY_HEX" ]; then
+    echo "[dnstt] Using hex key file: $KEY_HEX"
+    PRIVKEY=$(cat "$KEY_HEX" | tr -d '\n\r ')
+elif [ -f "$KEY_B64" ]; then
+    echo "[dnstt] Using base64 key file: $KEY_B64 (converting to hex)"
+    # Convert base64 to hex
+    PRIVKEY=$(cat "$KEY_B64" | base64 -d | od -A n -t x1 | tr -d ' \n')
+else
+    echo "[dnstt] ERROR: No valid key file found"
+    exit 1
+fi
 
 echo "[dnstt] Private key loaded (${#PRIVKEY} chars)"
+
+# Validate key length (should be 64 hex chars = 32 bytes)
+if [ ${#PRIVKEY} -ne 64 ]; then
+    echo "[dnstt] WARNING: Key length is ${#PRIVKEY}, expected 64 hex chars"
+fi
 
 exec dnstt-server -udp "$DNSTT_LISTEN" -privkey "$PRIVKEY" "$DNSTT_DOMAIN" "$DNSTT_UPSTREAM"

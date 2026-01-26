@@ -44,27 +44,42 @@ generate_dnstt_config() {
         fi
 
         # Extract raw private key (last 32 bytes of DER) as hex
+        log_info "Extracting private key to $STATE_DIR/keys/dnstt-server.key.hex"
         openssl pkey -in "$STATE_DIR/keys/dnstt-temp.pem" -outform DER 2>/dev/null | tail -c 32 | xxd -p -c 64 > "$STATE_DIR/keys/dnstt-server.key.hex"
 
+        # Verify private key was written
+        if [[ ! -f "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
+            log_error "Private key file was not created!"
+            log_error "Directory contents:"
+            ls -la "$STATE_DIR/keys/" || true
+            return 1
+        fi
+
+        local privkey_size=$(wc -c < "$STATE_DIR/keys/dnstt-server.key.hex" | tr -d ' ')
+        log_info "Private key file size: $privkey_size bytes"
+
         # Extract raw public key (last 32 bytes of DER pubkey) as hex
+        log_info "Extracting public key to $STATE_DIR/keys/dnstt-server.pub.hex"
         openssl pkey -in "$STATE_DIR/keys/dnstt-temp.pem" -pubout -outform DER 2>/dev/null | tail -c 32 | xxd -p -c 64 > "$STATE_DIR/keys/dnstt-server.pub.hex"
 
         rm -f "$STATE_DIR/keys/dnstt-temp.pem"
 
-        # Verify keys were created
+        # Verify keys were created and have content
+        log_info "Verifying key files..."
+        ls -la "$STATE_DIR/keys/"
+
         if [[ ! -s "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
-            log_error "Failed to generate dnstt private key - file is empty"
-            ls -la "$STATE_DIR/keys/" || true
+            log_error "Failed to generate dnstt private key - file is empty or missing"
             return 1
         fi
         if [[ ! -s "$STATE_DIR/keys/dnstt-server.pub.hex" ]]; then
-            log_error "Failed to generate dnstt public key - file is empty"
+            log_error "Failed to generate dnstt public key - file is empty or missing"
             return 1
         fi
 
         log_info "dnstt keypair generated successfully"
-        log_info "Private key at: $STATE_DIR/keys/dnstt-server.key.hex"
-        log_info "Public key at: $STATE_DIR/keys/dnstt-server.pub.hex"
+        log_info "Private key at: $STATE_DIR/keys/dnstt-server.key.hex ($(wc -c < "$STATE_DIR/keys/dnstt-server.key.hex" | tr -d ' ') bytes)"
+        log_info "Public key at: $STATE_DIR/keys/dnstt-server.pub.hex ($(wc -c < "$STATE_DIR/keys/dnstt-server.pub.hex" | tr -d ' ') bytes)"
     fi
 
     local dnstt_pubkey
