@@ -26,11 +26,10 @@ setup_bandwidth_limit() {
     # Clear existing qdisc (ignore errors if none exists)
     tc qdisc del dev "$IFACE" root 2>/dev/null || true
 
-    # Add HTB qdisc with bandwidth limit
     # Convert Mbps to kbit (1 Mbps = 1000 kbit)
     RATE_KBIT=$((SNOWFLAKE_BANDWIDTH * 1000))
 
-    # Set up rate limiting
+    # Set up rate limiting using TBF (Token Bucket Filter)
     tc qdisc add dev "$IFACE" root tbf rate ${RATE_KBIT}kbit burst 32kbit latency 400ms
 
     if [ $? -eq 0 ]; then
@@ -43,21 +42,11 @@ setup_bandwidth_limit() {
 }
 
 # Try to set up bandwidth limiting (requires NET_ADMIN)
-if [ "$(id -u)" = "0" ]; then
-    setup_bandwidth_limit || echo "[snowflake] Continuing without bandwidth limit"
-fi
+setup_bandwidth_limit || echo "[snowflake] Continuing without bandwidth limit"
 
 # Run the proxy with capacity limit
-# Drop privileges to nobody using su-exec if running as root
-if [ "$(id -u)" = "0" ]; then
-    echo "[snowflake] Dropping privileges to nobody"
-    exec su-exec nobody /bin/proxy \
-        -capacity "${SNOWFLAKE_CAPACITY}" \
-        -summary-interval 1h \
-        -verbose
-else
-    exec /bin/proxy \
-        -capacity "${SNOWFLAKE_CAPACITY}" \
-        -summary-interval 1h \
-        -verbose
-fi
+echo "[snowflake] Starting proxy..."
+exec /bin/proxy \
+    -capacity "${SNOWFLAKE_CAPACITY}" \
+    -summary-interval 1h \
+    -verbose
