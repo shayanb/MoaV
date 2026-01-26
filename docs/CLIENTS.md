@@ -13,6 +13,7 @@ This guide explains how to connect to MoaV from various devices.
 | WireGuard (wstunnel) | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | 8080/tcp |
 | DNS Tunnel | dnstt-client | dnstt-client | dnstt-client | dnstt-client | 53/udp |
 | Psiphon | Psiphon | Psiphon | Psiphon | Psiphon | Various |
+| Tor (Snowflake) | Tor Browser, Onion Browser | Tor Browser | Tor Browser | Tor Browser | Various |
 
 ## Protocol Priority
 
@@ -24,7 +25,8 @@ Try these in order. If one doesn't work, try the next:
 4. **WireGuard (Direct)** - Full VPN mode, simple setup (port 51820/udp)
 5. **WireGuard (wstunnel)** - VPN wrapped in WebSocket, for restrictive networks (port 8080/tcp)
 6. **Psiphon** - Standalone app, no server needed, uses Psiphon network
-7. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
+7. **Tor (Snowflake)** - Standalone app, no server needed, uses Tor network
+8. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
 
 ---
 

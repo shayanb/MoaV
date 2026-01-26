@@ -43,7 +43,7 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│                                     Internet                                      │
+│                                Restricted Internet                               │
 └──────────────────────────────────────────┬───────────────────────────────────────┘
                                            │
         ┌────────────────┬─────────────────┼─────────────────┬────────────────┐
@@ -59,19 +59,19 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 │ Reality       │ │ WireGuard   │ │ DNS tunnel    │ │               │ │               │
 │   443/tcp     │ │  51820/udp  │ │    53/udp     │ │    Conduit    │ │   Snowflake   │
 │ Trojan        │ │ wstunnel    │ ├───────────────┤ │   (donate)    │ │   (donate)    │
-│   8443/tcp    │ │   8080/tcp  │ │     dnstt     │ │               │ │               │
+│   8443/tcp    │ │   8080/tcp  │ │     dnstt     │ │   bandwidth   │ │   bandwidth   │
 │ Hysteria2     │ └──────┬──────┘ └───────┬───────┘ └───────┬───────┘ └───────┬───────┘
 │   443/udp     │        │                │                 │                 │
 ├───────────────┤        │                │                 │                 │
-│   sing-box    ├────────┘                │                 │                 │
-└───────┬───────┘                         │                 │                 │
-        │                                 │                 │                 │
-        └─────────────────────────────────┼─────────────────┼─────────────────┘
-                                          │                 │
-                                          ▼                 ▼
-                                 ┌─────────────────────────────┐
-                                 │      Egress Internet        │
-                                 └─────────────────────────────┘
+│   sing-box    |        |                │                 │                 │
+└───────┬───────┘        |                │                 │                 │
+        │                |                │                 │                 │
+        └───────────────────────┬─────────┼────────┬──────────────────────────┘
+                                |         │        |         
+                                ▼         ▼        ▼         
+                            ┌─────────────────────────────┐
+                            │        Open Internet        │
+                            └─────────────────────────────┘
 ```
 
 ## Protocols
@@ -85,6 +85,7 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 | WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN when UDP is blocked |
 | DNS Tunnel | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort, hard to block |
 | Psiphon | - | ★★★★☆ | ★★★☆☆ | Standalone, no server needed |
+| Tor (Snowflake) | - | ★★★★☆ | ★★☆☆☆ | Standalone, uses Tor network |
 
 ## User Management
 
