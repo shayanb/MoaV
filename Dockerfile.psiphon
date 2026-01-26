@@ -14,16 +14,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Download the conduit binary from fork with Ryve support
-RUN curl -L -o conduit "https://github.com/${CONDUIT_REPO}/releases/download/${CONDUIT_VERSION}/conduit-linux-${TARGETARCH}" && \
-    chmod +x conduit
+# Debug: show what arch we're building for
+RUN echo "Building for architecture: ${TARGETARCH}" && \
+    curl -L -o conduit "https://github.com/${CONDUIT_REPO}/releases/download/${CONDUIT_VERSION}/conduit-linux-${TARGETARCH}" && \
+    chmod +x conduit && \
+    file conduit || true
 
 # Create data directory for conduit state
 RUN mkdir -p /data
 
 EXPOSE 8080
 
-# Conduit runs and automatically contributes bandwidth
-# Usage: conduit start -d /data -b <bandwidth_mbps> -m <max_clients>
-# -b 200 = 200 Mbps bandwidth limit, -m 100 = max 100 clients, -v = verbose
-ENTRYPOINT ["/app/conduit"]
-CMD ["start", "-d", "/data", "-b", "200", "-m", "100", "-v"]
+# Environment variables for runtime configuration
+ENV CONDUIT_NAME="conduit-node"
+
+# Conduit with Ryve integration
+# --show-ryve-qr displays QR code for Ryve app linking
+# --name sets the node name shown in Ryve
+COPY scripts/conduit-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

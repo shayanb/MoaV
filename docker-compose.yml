@@ -183,6 +183,9 @@ services:
       - moav_conduit:/data
     environment:
       - TZ=${TZ:-UTC}
+      - CONDUIT_NAME=${CONDUIT_NAME:-conduit-node}
+      - CONDUIT_BANDWIDTH=${CONDUIT_BANDWIDTH:-200}
+      - CONDUIT_MAX_CLIENTS=${CONDUIT_MAX_CLIENTS:-100}
     profiles:
       - conduit
       - all
