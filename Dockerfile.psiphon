@@ -8,6 +8,11 @@ ARG CONDUIT_VERSION=release-cli-1.0.0
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    geoip-bin \
+    geoip-database \
+    tcpdump \
+    iproute2 \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -17,12 +22,13 @@ RUN curl -L -o conduit "https://github.com/Psiphon-Inc/conduit/releases/download
     chmod +x conduit
 
 # Create data directory for conduit state
-RUN mkdir -p /data
+RUN mkdir -p /data /state
 
 EXPOSE 8080
 
-# Use entrypoint script for flexibility
+# Copy scripts
 COPY scripts/conduit-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY scripts/conduit-stats-collector.sh /usr/local/bin/conduit-stats
+RUN chmod +x /entrypoint.sh /usr/local/bin/conduit-stats
 
 ENTRYPOINT ["/entrypoint.sh"]

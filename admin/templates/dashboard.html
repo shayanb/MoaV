@@ -216,6 +216,16 @@
                     {% if conduit_stats.running %}Active{% else %}Off{% endif %}
                 </div>
             </div>
+            {% if conduit_stats.running %}
+            <div class="card">
+                <div class="card-title">Conduit Up</div>
+                <div class="card-value">{{ conduit_stats.bandwidth.upload }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Conduit Down</div>
+                <div class="card-value">{{ conduit_stats.bandwidth.download }}</div>
+            </div>
+            {% endif %}
         </div>
 
         <div class="section-grid">
@@ -275,6 +285,62 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if conduit_stats.running and (conduit_stats.traffic_from or conduit_stats.traffic_to) %}
+        <div class="section-grid">
+            <div class="card">
+                <h2>Conduit Traffic From <span style="font-weight: normal; font-size: 0.75rem; color: var(--text-muted);">(peers connecting to you)</span></h2>
+                {% if conduit_stats.traffic_from %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Country</th>
+                            <th>Total</th>
+                            <th>IPs</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in conduit_stats.traffic_from[:10] %}
+                        <tr>
+                            <td>{{ item.country }}</td>
+                            <td>{{ item.formatted }}</td>
+                            <td>{{ item.ips }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: var(--text-muted);">No incoming traffic</p>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h2>Conduit Traffic To <span style="font-weight: normal; font-size: 0.75rem; color: var(--text-muted);">(data sent to peers)</span></h2>
+                {% if conduit_stats.traffic_to %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Country</th>
+                            <th>Total</th>
+                            <th>IPs</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in conduit_stats.traffic_to[:10] %}
+                        <tr>
+                            <td>{{ item.country }}</td>
+                            <td>{{ item.formatted }}</td>
+                            <td>{{ item.ips }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: var(--text-muted);">No outgoing traffic</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         <div class="info-box">
             <strong>Tip:</strong> Start services with:

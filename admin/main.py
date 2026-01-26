@@ -163,8 +163,10 @@ async def fetch_conduit_stats():
     """Fetch stats from Psiphon Conduit if running"""
     stats = {
         "running": False,
-        "clients": 0,
-        "bytes_relayed": 0,
+        "connections": {"connecting": 0, "connected": 0},
+        "bandwidth": {"upload": "0 B", "download": "0 B"},
+        "traffic_from": [],
+        "traffic_to": [],
         "error": None
     }
 
@@ -174,8 +176,20 @@ async def fetch_conduit_stats():
         return stats
 
     stats["running"] = True
-    # Note: Conduit doesn't expose an API, so we can only show running status
-    # Future: could parse logs for stats
+
+    # Try to read stats from shared state file
+    stats_file = Path("/state/conduit-stats.json")
+    if stats_file.exists():
+        try:
+            with open(stats_file) as f:
+                file_stats = json.load(f)
+                stats["connections"] = file_stats.get("connections", stats["connections"])
+                stats["bandwidth"] = file_stats.get("bandwidth", stats["bandwidth"])
+                stats["traffic_from"] = file_stats.get("traffic_from", [])
+                stats["traffic_to"] = file_stats.get("traffic_to", [])
+        except (json.JSONDecodeError, IOError) as e:
+            stats["error"] = f"Failed to read stats: {e}"
+
     return stats
 
 

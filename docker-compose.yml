@@ -184,10 +184,13 @@ services:
       - moav_net
     volumes:
       - moav_conduit:/data
+      - moav_state:/state
     environment:
       - TZ=${TZ:-UTC}
       - CONDUIT_BANDWIDTH=${CONDUIT_BANDWIDTH:-200}
       - CONDUIT_MAX_CLIENTS=${CONDUIT_MAX_CLIENTS:-100}
+    cap_add:
+      - NET_ADMIN
     profiles:
       - conduit
       - all
