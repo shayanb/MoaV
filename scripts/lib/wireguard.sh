@@ -26,8 +26,8 @@ generate_wireguard_config() {
 Address = $WG_SERVER_IP/24
 ListenPort = $WG_PORT
 PrivateKey = $server_private_key
-PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth+ -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth+ -j MASQUERADE
 
 # Peers are added dynamically
 EOF
@@ -89,7 +89,7 @@ DNS = 1.1.1.1, 8.8.8.8
 [Peer]
 PublicKey = $server_public_key
 AllowedIPs = 0.0.0.0/0, ::/0
-Endpoint = ${SERVER_IP}:443
+Endpoint = ${SERVER_IP}:${PORT_WIREGUARD:-51820}
 PersistentKeepalive = 25
 EOF
 
