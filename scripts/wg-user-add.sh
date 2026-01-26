@@ -118,7 +118,10 @@ EOF
 
 log_info "Added peer to wg0.conf"
 
-# Generate client config
+# Get WireGuard port from env or default
+WG_PORT="${PORT_WIREGUARD:-51820}"
+
+# Generate DIRECT client config (simple, for mobile)
 cat > "$OUTPUT_DIR/wireguard.conf" <<EOF
 [Interface]
 PrivateKey = $CLIENT_PRIVATE_KEY
@@ -128,17 +131,70 @@ DNS = 1.1.1.1, 8.8.8.8
 [Peer]
 PublicKey = $SERVER_PUBLIC_KEY
 AllowedIPs = 0.0.0.0/0, ::/0
-Endpoint = ${SERVER_IP}:443
+Endpoint = ${SERVER_IP}:${WG_PORT}
 PersistentKeepalive = 25
 EOF
 
-log_info "Generated client config"
+log_info "Generated direct WireGuard config"
 
-# Generate QR code
-QR_GENERATED=false
-if command -v qrencode &>/dev/null; then
-    qrencode -o "$OUTPUT_DIR/wireguard-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null && QR_GENERATED=true
-fi
+# Generate wstunnel config (for restrictive networks)
+cat > "$OUTPUT_DIR/wireguard-wstunnel.conf" <<EOF
+[Interface]
+PrivateKey = $CLIENT_PRIVATE_KEY
+Address = $CLIENT_IP/32
+DNS = 1.1.1.1, 8.8.8.8
+
+[Peer]
+PublicKey = $SERVER_PUBLIC_KEY
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = 127.0.0.1:51820
+PersistentKeepalive = 25
+EOF
+
+log_info "Generated wstunnel-mode config"
+
+# Generate wstunnel instructions
+cat > "$OUTPUT_DIR/wireguard-instructions.txt" <<EOF
+# WireGuard over WebSocket (wstunnel) Instructions
+# ================================================
+#
+# This setup tunnels WireGuard through WebSocket to bypass firewalls.
+# You need to run wstunnel client BEFORE connecting WireGuard.
+
+# Step 1: Download wstunnel
+# -------------------------
+# - Windows/Mac/Linux: https://github.com/erebe/wstunnel/releases
+# - Or: cargo install wstunnel
+
+# Step 2: Run wstunnel client
+# ---------------------------
+# This creates a local UDP tunnel to the server:
+
+wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://${SERVER_IP}:8080
+
+# Step 3: Connect WireGuard
+# -------------------------
+# Import wireguard.conf into your WireGuard app.
+# The config points to 127.0.0.1:51820 (the local wstunnel endpoint).
+
+# For Android/iOS:
+# ----------------
+# 1. Install WireGuard app AND a wstunnel-compatible app (or Termux)
+# 2. Run wstunnel in background
+# 3. Then activate WireGuard
+
+# For desktop:
+# ------------
+# Terminal 1: wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://${SERVER_IP}:8080
+# Terminal 2: wg-quick up ./wireguard.conf
+
+# Server info:
+# ------------
+# wstunnel server: ws://${SERVER_IP}:8080
+# Your WireGuard IP: $CLIENT_IP
+EOF
+
+log_info "Generated wstunnel instructions"
 
 # Hot-add peer to running WireGuard if available
 if docker compose ps wireguard --status running &>/dev/null; then
@@ -160,20 +216,28 @@ echo ""
 log_info "=== WireGuard peer '$USERNAME' created ==="
 echo ""
 echo "Client IP: $CLIENT_IP"
-echo "Config saved to: $OUTPUT_DIR/wireguard.conf"
+echo ""
+echo "Configs generated:"
+echo "  - wireguard.conf          (direct mode - simple, for mobile)"
+echo "  - wireguard-wstunnel.conf (wstunnel mode - for restrictive networks)"
+echo "  - wireguard-instructions.txt (setup guide)"
 echo ""
 
-# Display QR code in terminal if possible
+# Display QR code for DIRECT config (simple mode)
 if command -v qrencode &>/dev/null; then
-    echo "=== QR Code (scan with WireGuard app) ==="
+    echo "=== QR Code (Direct Mode - scan with WireGuard app) ==="
     qrencode -t ANSIUTF8 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || true
     echo ""
-fi
-
-if [[ "$QR_GENERATED" == "true" ]]; then
-    log_info "QR image saved to: $OUTPUT_DIR/wireguard-qr.png"
+    # Also save QR as image
+    qrencode -o "$OUTPUT_DIR/wireguard-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null && \
+        log_info "QR image saved to: $OUTPUT_DIR/wireguard-qr.png"
 fi
 
 echo ""
-echo "=== Client Config ==="
+echo "=== Direct Config (use this for mobile) ==="
 cat "$OUTPUT_DIR/wireguard.conf"
+echo ""
+echo "=== wstunnel Mode (for restrictive networks) ==="
+echo "Run wstunnel first:"
+echo "  wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://${SERVER_IP}:8080"
+echo "Then use wireguard-wstunnel.conf"

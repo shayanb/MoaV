@@ -80,6 +80,9 @@ services:
     restart: unless-stopped
     networks:
       - moav_net
+    ports:
+      # Direct WireGuard access (optional, comment out to force wstunnel)
+      - "${PORT_WIREGUARD:-51820}:51820/udp"
     volumes:
       - ./configs/wireguard:/config
       - moav_state:/state
