@@ -197,4 +197,20 @@ MIT
 
 ## Disclaimer
 
-This software is provided for legitimate use cases such as protecting privacy and accessing information. Users are responsible for ensuring their use complies with applicable laws.
+This project provides **general-purpose open-source networking software** only.
+
+It is not a service, not a platform, and not an operated network.
+
+The authors and contributors:
+- Do not operate infrastructure
+- Do not provide access
+- Do not distribute credentials
+- Do not manage users
+- Do not coordinate deployments
+
+All usage, deployment, and operation are the sole responsibility of third parties.
+
+This software is provided **“AS IS”**, without warranty of any kind.  
+The authors and contributors accept **no liability** for any use or misuse of this software.
+
+Users are responsible for complying with all applicable laws and regulations.
