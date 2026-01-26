@@ -38,7 +38,7 @@ if docker compose ps wireguard --status running &>/dev/null; then
 
     echo ""
     echo "=== 4. Config inside container ==="
-    docker compose exec -T wireguard cat /config/wg0.conf 2>/dev/null || echo "ERROR: Cannot read config inside container"
+    docker compose exec -T wireguard cat /etc/wireguard/wg0.conf 2>/dev/null | sed 's/PrivateKey = .*/PrivateKey = [REDACTED]/' || echo "ERROR: Cannot read config inside container"
 
     echo ""
     echo "=== 5. Running WireGuard interface ==="
