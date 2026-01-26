@@ -64,55 +64,66 @@ capture_traffic() {
         return 1
     fi
 
-    echo "[stats] Capturing on $iface (local: $local_ip) for ${CAPTURE_DURATION}s..."
+    # Limit packets to avoid CPU overload (sample ~5000 packets max)
+    MAX_PACKETS="${MAX_PACKETS:-5000}"
+
+    echo "[stats] Capturing on $iface (local: $local_ip) for ${CAPTURE_DURATION}s (max ${MAX_PACKETS} packets)..."
 
     # Temp files
-    raw_file="/tmp/traffic_raw_$$"
     from_file="/tmp/traffic_from_$$"
     to_file="/tmp/traffic_to_$$"
 
-    # Capture traffic with tcpdump
-    # Output: IP src.port > dst.port: ...
-    timeout "$CAPTURE_DURATION" tcpdump -ni "$iface" -l -q 'ip and (tcp or udp) and not port 53' 2>/dev/null > "$raw_file" || true
+    # Capture and process in one pipeline using awk (much faster than shell loop)
+    # tcpdump output format: "IP src.port > dst.port: ..."
+    # -c limits packet count to prevent CPU overload
+    timeout "$CAPTURE_DURATION" tcpdump -ni "$iface" -l -q -c "$MAX_PACKETS" \
+        'ip and (tcp or udp) and not port 53' 2>/dev/null | \
+    awk -v local="$local_ip" -v from_file="$from_file" -v to_file="$to_file" '
+        # Helper: check if IP is private
+        function is_private(ip) {
+            if (ip ~ /^10\./) return 1
+            if (ip ~ /^172\.(1[6-9]|2[0-9]|3[0-1])\./) return 1
+            if (ip ~ /^192\.168\./) return 1
+            if (ip ~ /^127\./) return 1
+            if (ip ~ /^0\./) return 1
+            return 0
+        }
+
+        # Extract IPs from each line
+        {
+            # Find all IP addresses in the line
+            n = 0
+            for (i = 1; i <= NF; i++) {
+                # Match IP pattern (may have .port suffix)
+                if ($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/) {
+                    gsub(/\.[0-9]+:?$/, "", $i)  # Remove port
+                    gsub(/:$/, "", $i)           # Remove trailing colon
+                    if (n == 0) src = $i
+                    else if (n == 1) dst = $i
+                    n++
+                    if (n >= 2) break
+                }
+            }
+
+            if (n < 2) next
+            if (src == dst) next
+
+            # Determine direction based on local IP
+            if (src == local) {
+                if (!is_private(dst)) print dst >> to_file
+            } else if (dst == local) {
+                if (!is_private(src)) print src >> from_file
+            }
+        }
+    ' || true
 
     # Check if we got any data
-    if [ ! -s "$raw_file" ]; then
-        echo "[stats] No traffic captured"
+    if [ ! -s "$from_file" ] && [ ! -s "$to_file" ]; then
+        echo "[stats] No external traffic captured"
         write_stats "running" "[]" "[]"
-        rm -f "$raw_file"
+        rm -f "$from_file" "$to_file"
         return 0
     fi
-
-    # Parse tcpdump output and extract IPs
-    > "$from_file"
-    > "$to_file"
-
-    # Process each line
-    while IFS= read -r line; do
-        # Extract IPs using grep
-        ips=$(echo "$line" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -2)
-        src=$(echo "$ips" | head -1)
-        dst=$(echo "$ips" | tail -1)
-
-        # Skip if no valid IPs
-        [ -z "$src" ] || [ -z "$dst" ] && continue
-        [ "$src" = "$dst" ] && continue
-
-        # Skip private IPs (check both src and dst)
-        case "$src" in
-            10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*|127.*|0.*) continue ;;
-        esac
-        case "$dst" in
-            10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*|127.*|0.*) continue ;;
-        esac
-
-        # Determine direction based on local IP
-        if [ "$src" = "$local_ip" ]; then
-            echo "$dst" >> "$to_file"
-        elif [ "$dst" = "$local_ip" ]; then
-            echo "$src" >> "$from_file"
-        fi
-    done < "$raw_file"
 
     # Count unique IPs and aggregate
     from_ips="/tmp/from_ips_$$"
@@ -182,7 +193,7 @@ capture_traffic() {
     ' "$to_countries" 2>/dev/null)
 
     # Cleanup temp files
-    rm -f "$raw_file" "$from_file" "$to_file" "$from_ips" "$to_ips" "$from_countries" "$to_countries"
+    rm -f "$from_file" "$to_file" "$from_ips" "$to_ips" "$from_countries" "$to_countries"
 
     # Write final stats
     write_stats "running" "[${from_json}]" "[${to_json}]"
