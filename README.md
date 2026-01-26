@@ -4,8 +4,8 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ## Features
 
-- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, WireGuard, DNS tunnel
-- **Stealth-first** - All traffic looks like normal HTTPS or DNS
+- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, WireGuard (direct & wstunnel), DNS tunnel
+- **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, or DNS
 - **Per-user credentials** - Create, revoke, and manage users independently
 - **Easy deployment** - Docker Compose based, single command setup
 - **Mobile-friendly** - QR codes and links for easy client import
@@ -41,28 +41,30 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                           Internet                               │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-     ┌──────────────┬───────────┼───────────┬──────────────┐
-     │              │           │           │              │
-┌────┴────┐   ┌─────┴─────┐ ┌───┴───┐ ┌─────┴─────┐  ┌─────┴─────┐
-│ 443/tcp │   │ 8443/tcp  │ │443/udp│ │  53/udp   │  │  Conduit  │
-│ Reality │   │  Trojan   │ │Hyster.│ │   dnstt   │  │ (donate)  │
-└────┬────┘   └─────┬─────┘ └───┬───┘ └─────┬─────┘  └───────────┘
-     │              │           │           │
-     └──────────────┴───────────┼───────────┘
-                                │
-                         ┌──────┴──────┐
-                         │  sing-box   │
-                         │  (unified)  │
-                         └──────┬──────┘
-                                │
-                         ┌──────┴──────┐
-                         │   Direct    │
-                         │   Egress    │
-                         └─────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                                 Internet                                    │
+└─────────────────────────────────────┬─────────────────────────────────────┘
+                                      │
+  ┌────────────┬────────────┬─────────┼─────────┬────────────┬────────────┐
+  │            │            │         │         │            │            │
+┌─┴──┐    ┌────┴────┐  ┌────┴────┐ ┌──┴──┐ ┌────┴────┐ ┌─────┴─────┐ ┌────┴────┐
+│443 │    │  8443   │  │   443   │ │51820│ │  8080   │ │    53     │ │ Conduit │
+│tcp │    │   tcp   │  │   udp   │ │ udp │ │   tcp   │ │    udp    │ │(donate) │
+│Real│    │ Trojan  │  │Hysteria2│ │ WG  │ │wstunnel │ │   dnstt   │ │         │
+└─┬──┘    └────┬────┘  └────┬────┘ └──┬──┘ └────┬────┘ └─────┬─────┘ └─────────┘
+  │            │            │         │         │            │
+  └────────────┴────────────┼─────────┴─────────┘            │
+                            │                                │
+                     ┌──────┴──────┐                  ┌──────┴──────┐
+                     │  sing-box   │                  │    dnstt    │
+                     └──────┬──────┘                  └──────┬──────┘
+                            │                                │
+                            └────────────┬───────────────────┘
+                                         │
+                                  ┌──────┴──────┐
+                                  │   Direct    │
+                                  │   Egress    │
+                                  └─────────────┘
 ```
 
 ## Protocols
@@ -72,8 +74,10 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 | Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | Primary, most reliable |
 | Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | Fast, works when TCP throttled |
 | Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
-| WireGuard | via wstunnel | ★★★☆☆ | ★★★★★ | Full VPN, system-wide |
-| DNS Tunnel | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort |
+| WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | Full VPN, simple setup |
+| WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN when UDP is blocked |
+| DNS Tunnel | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort, hard to block |
+| Psiphon | - | ★★★★☆ | ★★★☆☆ | Standalone, no server needed |
 
 ## User Management
 
@@ -104,11 +108,11 @@ User bundles are generated in `outputs/bundles/<username>/` containing:
 ## Client Apps
 
 | Platform | Recommended Apps |
-|----------|-----------------|
-| iOS | Shadowrocket, Streisand, Hiddify |
-| Android | v2rayNG, NekoBox, Hiddify |
-| macOS | V2rayU, NekoRay |
-| Windows | v2rayN, NekoRay |
+|----------|------------------|
+| iOS | Shadowrocket, Hiddify, WireGuard, Psiphon |
+| Android | v2rayNG, Hiddify, WireGuard, Psiphon |
+| macOS | NekoRay, WireGuard, Psiphon |
+| Windows | v2rayN, NekoRay, WireGuard, Psiphon |
 
 See [docs/CLIENTS.md](docs/CLIENTS.md) for setup instructions.
 
@@ -125,8 +129,17 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for setup instructions.
 **Server:**
 - Debian 12, Ubuntu 22.04/24.04
 - 1 vCPU, 1GB RAM minimum
-- Public IPv4, ports 443 and 53 open
+- Public IPv4
 - Domain name
+
+**Ports (open as needed):**
+- 80/tcp - Certbot (TLS certificate issuance)
+- 443/tcp - Reality (VLESS)
+- 443/udp - Hysteria2
+- 8443/tcp - Trojan
+- 51820/udp - WireGuard (direct)
+- 8080/tcp - wstunnel (WireGuard over WebSocket)
+- 53/udp - DNS tunnel
 
 **Recommended VPS:**
 - Hetzner (Germany/Finland)

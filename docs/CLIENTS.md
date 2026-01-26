@@ -4,22 +4,27 @@ This guide explains how to connect to MoaV from various devices.
 
 ## Quick Reference
 
-| Protocol | iOS | Android | macOS | Windows |
-|----------|-----|---------|-------|---------|
-| Reality (VLESS) | Shadowrocket, Streisand | v2rayNG, NekoBox | V2rayU, NekoRay | v2rayN, NekoRay |
-| Trojan | Shadowrocket | v2rayNG | V2rayU | v2rayN |
-| Hysteria2 | Shadowrocket | v2rayNG, Hiddify | Hysteria2 CLI | Hysteria2 CLI |
-| WireGuard | WireGuard | WireGuard | WireGuard | WireGuard |
+| Protocol | iOS | Android | macOS | Windows | Port |
+|----------|-----|---------|-------|---------|------|
+| Reality (VLESS) | Shadowrocket, Streisand | v2rayNG, NekoBox | V2rayU, NekoRay | v2rayN, NekoRay | 443/tcp |
+| Trojan | Shadowrocket | v2rayNG | V2rayU | v2rayN | 8443/tcp |
+| Hysteria2 | Shadowrocket | v2rayNG, Hiddify | Hysteria2 CLI | Hysteria2 CLI | 443/udp |
+| WireGuard (Direct) | WireGuard | WireGuard | WireGuard | WireGuard | 51820/udp |
+| WireGuard (wstunnel) | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | 8080/tcp |
+| DNS Tunnel | dnstt-client | dnstt-client | dnstt-client | dnstt-client | 53/udp |
+| Psiphon | Psiphon | Psiphon | Psiphon | Psiphon | Various |
 
 ## Protocol Priority
 
 Try these in order. If one doesn't work, try the next:
 
-1. **Reality (VLESS)** - Primary, most reliable (port 443)
-2. **Hysteria2** - Fast alternative, uses UDP (port 443)
-3. **Trojan** - Backup, uses your domain (port 8443)
-4. **WireGuard** - Full VPN mode
-5. **DNS Tunnel** - Last resort, very slow (port 53)
+1. **Reality (VLESS)** - Primary, most reliable (port 443/tcp)
+2. **Hysteria2** - Fast alternative, uses QUIC/UDP (port 443/udp)
+3. **Trojan** - Backup, uses your domain's TLS cert (port 8443/tcp)
+4. **WireGuard (Direct)** - Full VPN mode, simple setup (port 51820/udp)
+5. **WireGuard (wstunnel)** - VPN wrapped in WebSocket, for restrictive networks (port 8080/tcp)
+6. **Psiphon** - Standalone app, no server needed, uses Psiphon network
+7. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
 
 ---
 
@@ -182,9 +187,18 @@ Same as macOS version.
 
 ## WireGuard Setup
 
-Works on all platforms with the official WireGuard app.
+MoaV provides two WireGuard connection methods:
 
-### iOS / Android
+- **Direct Mode** (`wireguard.conf`) - Simple, fast, uses UDP port 51820
+- **wstunnel Mode** (`wireguard-wstunnel.conf`) - Wrapped in WebSocket, uses TCP port 8080, for networks that block UDP
+
+### Direct Mode (Recommended)
+
+Use this when UDP traffic is allowed. Simple and fast.
+
+**Your config file:** `wireguard.conf`
+
+#### iOS / Android
 
 1. Install "WireGuard" from App Store / Play Store
 2. Tap "+" → "Create from QR code"
@@ -192,12 +206,55 @@ Works on all platforms with the official WireGuard app.
 4. Name it (e.g., "MoaV WG")
 5. Toggle ON to connect
 
-### macOS / Windows
+#### macOS / Windows / Linux
 
 1. Install WireGuard from https://wireguard.com/install/
 2. Click "Import tunnel(s) from file"
 3. Select `wireguard.conf`
 4. Click "Activate"
+
+### wstunnel Mode (For Restrictive Networks)
+
+Use this when UDP is blocked or heavily throttled. Wraps WireGuard in a WebSocket tunnel.
+
+**Your config file:** `wireguard-wstunnel.conf`
+
+#### Requirements
+
+You need both WireGuard and wstunnel client:
+- WireGuard: https://wireguard.com/install/
+- wstunnel: https://github.com/erebe/wstunnel/releases
+
+#### macOS / Linux Setup
+
+```bash
+# 1. Download wstunnel from GitHub releases
+# https://github.com/erebe/wstunnel/releases
+
+# 2. Start wstunnel client (connect to server's port 8080)
+wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://YOUR_SERVER_IP:8080
+
+# 3. In another terminal, import WireGuard config
+# The config points to 127.0.0.1:51820 (local wstunnel)
+sudo wg-quick up ./wireguard-wstunnel.conf
+```
+
+#### Windows Setup
+
+1. Download wstunnel.exe from GitHub releases
+2. Open PowerShell/CMD and run:
+   ```
+   wstunnel.exe client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://YOUR_SERVER_IP:8080
+   ```
+3. Keep this running
+4. Import `wireguard-wstunnel.conf` in WireGuard app
+5. Activate the tunnel
+
+#### iOS / Android (Advanced)
+
+wstunnel on mobile requires additional apps or rooted devices. For most users, try other protocols (Reality, Hysteria2) instead if direct WireGuard is blocked.
+
+**Note:** Replace `YOUR_SERVER_IP` with your actual server IP address.
 
 ---
 
@@ -239,6 +296,66 @@ See `dnstt-instructions.txt` in your bundle for detailed steps.
 
 ---
 
+## Psiphon Setup
+
+Psiphon is a standalone circumvention tool that doesn't require your own server. It connects to the Psiphon network - a large, distributed system designed for censorship circumvention.
+
+**When to use Psiphon:**
+- You don't have access to a MoaV server
+- Your MoaV server is blocked
+- You need a quick, no-setup solution
+
+### iOS
+
+1. Download "Psiphon" from App Store (requires non-IR Apple ID)
+2. Open the app
+3. Tap "Start" to connect
+4. The app automatically finds working servers
+
+### Android
+
+1. Download from:
+   - Google Play: "Psiphon"
+   - Direct APK: https://psiphon.ca/en/download.html
+2. Open the app
+3. Tap "Start" to connect
+
+### Windows
+
+1. Download from https://psiphon.ca/en/download.html
+2. Run the executable (no installation needed)
+3. Click "Connect"
+4. Configure browser to use the local proxy shown in the app
+
+### macOS
+
+1. Download from https://psiphon.ca/en/download.html
+2. Open the app
+3. Click "Connect"
+4. Configure system or browser proxy settings
+
+**Note:** Psiphon uses various protocols internally (SSH, OSSH, etc.) and automatically switches between them to find working connections.
+
+---
+
+## About Psiphon Conduit (Server Feature)
+
+**Note:** Conduit is NOT a client connection method. It's a server-side feature.
+
+If enabled on your MoaV server, Conduit donates a portion of your server's bandwidth to the [Psiphon network](https://psiphon.ca/), helping others in censored regions bypass restrictions. Psiphon is a well-established circumvention tool used by millions.
+
+**For server operators:**
+- Enable with the `conduit` profile: `docker compose --profile conduit up -d`
+- Configure bandwidth limits via `CONDUIT_BANDWIDTH` in `.env`
+- This is optional and purely for helping others
+
+**For clients:**
+- You don't connect via Conduit
+- Use the other protocols (Reality, Hysteria2, Trojan, WireGuard) to connect to your MoaV server
+- If you need Psiphon directly, download their app from https://psiphon.ca/
+
+---
+
 ## Troubleshooting
 
 ### "Connection failed" or "Timeout"
@@ -275,8 +392,11 @@ See `dnstt-instructions.txt` in your bundle for detailed steps.
 
 ## Tips for Iran
 
-1. **Keep multiple configs** - Have Reality, Hysteria2, and DNS tunnel ready
-2. **Download client apps in advance** - Store APKs offline
+1. **Keep multiple configs** - Have Reality, Hysteria2, WireGuard, and DNS tunnel ready
+2. **Download client apps in advance** - Store APKs, wstunnel binaries, and Psiphon offline
 3. **Use mobile data** as backup - Sometimes less filtered than home internet
 4. **Avoid peak hours** - Filtering can be heavier during protests/events
 5. **Update configs quickly** - If server is blocked, switch to backup
+6. **Try wstunnel if UDP is blocked** - Some ISPs block UDP; wstunnel wraps WireGuard in TCP/WebSocket
+7. **Reality is often best** - Mimics legitimate HTTPS traffic to common sites
+8. **Keep Psiphon as backup** - No server needed, works independently of your MoaV setup
