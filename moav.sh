@@ -27,18 +27,20 @@ cd "$SCRIPT_DIR"
 print_header() {
     clear
     echo -e "${CYAN}"
-    echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║                                                                  ║"
-    echo "║   ███╗   ███╗ ██████╗  █████╗ ██╗   ██╗                         ║"
-    echo "║   ████╗ ████║██╔═══██╗██╔══██╗██║   ██║                         ║"
-    echo "║   ██╔████╔██║██║   ██║███████║██║   ██║                         ║"
-    echo "║   ██║╚██╔╝██║██║   ██║██╔══██║╚██╗ ██╔╝                         ║"
-    echo "║   ██║ ╚═╝ ██║╚██████╔╝██║  ██║ ╚████╔╝                          ║"
-    echo "║   ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝  ╚═══╝                           ║"
-    echo "║                                                                  ║"
-    echo "║   Multi-protocol Circumvention Stack                            ║"
-    echo "║                                                                  ║"
-    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo "╔════════════════════════════════════════════════════╗"
+    echo "║                                                    ║"
+    echo "║  ███╗   ███╗ ██████╗  █████╗ ██╗   ██╗             ║"
+    echo "║  ████╗ ████║██╔═══██╗██╔══██╗██║   ██║             ║"
+    echo "║  ██╔████╔██║██║   ██║███████║██║   ██║             ║"
+    echo "║  ██║╚██╔╝██║██║   ██║██╔══██║╚██╗ ██╔╝             ║"
+    echo "║  ██║ ╚═╝ ██║╚██████╔╝██║  ██║ ╚████╔╝              ║"
+    echo "║  ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝  ╚═══╝               ║"
+    echo "║                                                    ║"
+    echo "║           Mother of all VPNs                       ║"
+    echo "║                                                    ║"
+    echo "║  Multi-protocol Circumvention Stack                ║"
+    echo "║                                                    ║"
+    echo "╚════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
 
@@ -267,9 +269,9 @@ select_profiles() {
     echo ""
 
     prompt "Enter choices (e.g., 1 2 4 or 'a' for all): "
-    read -r choices
+    read -r choices </dev/tty
 
-    if [[ "$choices" == "0" ]]; then
+    if [[ "$choices" == "0" || -z "$choices" ]]; then
         return 1
     fi
 
@@ -293,13 +295,13 @@ select_profiles() {
         return 1
     fi
 
-    # Build profile string
+    # Build profile string and store in global variable
     SELECTED_PROFILE_STRING=""
     for p in "${selected_profiles[@]}"; do
         SELECTED_PROFILE_STRING+="--profile $p "
     done
 
-    echo "$SELECTED_PROFILE_STRING"
+    return 0
 }
 
 start_services() {
@@ -322,12 +324,19 @@ start_services() {
             profiles="--profile all"
             ;;
         2)
-            profiles=$(select_profiles) || return 1
+            SELECTED_PROFILE_STRING=""
+            select_profiles || return 1
+            profiles="$SELECTED_PROFILE_STRING"
             ;;
         0|*)
             return 1
             ;;
     esac
+
+    if [[ -z "$profiles" ]]; then
+        warn "No profiles selected"
+        return 1
+    fi
 
     echo ""
     info "Building containers (if needed)..."
