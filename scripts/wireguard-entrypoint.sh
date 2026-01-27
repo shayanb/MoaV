@@ -4,49 +4,44 @@
 # Simple WireGuard entrypoint - just runs wg-quick with the config
 # =============================================================================
 
-# Log with timestamp (MM-DD HH:MM:SS - SERVICE - MESSAGE)
-log() {
-    echo "$(date '+%m-%d %H:%M:%S') - wireguard - $*"
-}
-
 CONFIG_FILE="/etc/wireguard/wg0.conf"
 
-log "Starting WireGuard..."
+echo "[wireguard] Starting WireGuard..."
 
 # Check if config exists
 if [ ! -f "$CONFIG_FILE" ]; then
-    log " ERROR: Config file not found at $CONFIG_FILE"
-    log " Run bootstrap first to generate WireGuard configuration"
+    echo "[wireguard] ERROR: Config file not found at $CONFIG_FILE"
+    echo "[wireguard] Run bootstrap first to generate WireGuard configuration"
     exit 1
 fi
 
 # Show config info (without private keys)
-log " Config file: $CONFIG_FILE"
+echo "[wireguard] Config file: $CONFIG_FILE"
 PEER_COUNT=$(grep -c '^\[Peer\]' "$CONFIG_FILE" || echo 0)
-log " Peer count: $PEER_COUNT"
+echo "[wireguard] Peer count: $PEER_COUNT"
 
 # IP forwarding is set via docker-compose sysctls
-log " IP forwarding: $(cat /proc/sys/net/ipv4/ip_forward)"
+echo "[wireguard] IP forwarding: $(cat /proc/sys/net/ipv4/ip_forward)"
 
 # Bring up WireGuard interface
-log " Running: wg-quick up wg0"
+echo "[wireguard] Running: wg-quick up wg0"
 if ! wg-quick up wg0; then
-    log " ERROR: Failed to bring up WireGuard interface"
-    log " Config content:"
+    echo "[wireguard] ERROR: Failed to bring up WireGuard interface"
+    echo "[wireguard] Config content:"
     cat "$CONFIG_FILE"
     exit 1
 fi
 
 # Show interface status
-log " Interface status:"
+echo "[wireguard] Interface status:"
 wg show wg0
 
 # Keep container running and monitor for config changes
-log " WireGuard is running. Monitoring..."
+echo "[wireguard] WireGuard is running. Monitoring..."
 
 # Trap SIGTERM to gracefully shutdown
 cleanup() {
-    log " Shutting down..."
+    echo "[wireguard] Shutting down..."
     wg-quick down wg0 2>/dev/null || true
     exit 0
 }
@@ -57,7 +52,7 @@ while true; do
     sleep 60
     # Check if interface is still up
     if ! wg show wg0 > /dev/null 2>&1; then
-        log " Interface down, restarting..."
+        echo "[wireguard] Interface down, restarting..."
         wg-quick up wg0 || true
     fi
 done

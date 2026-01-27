@@ -6,21 +6,16 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Timestamp format: MM-DD HH:MM:SS
-timestamp() {
-    date '+%m-%d %H:%M:%S'
-}
-
 log_info() {
-    echo -e "$(timestamp) - bootstrap - ${GREEN}INFO${NC} - $*"
+    echo -e "${GREEN}[INFO]${NC} $*"
 }
 
 log_warn() {
-    echo -e "$(timestamp) - bootstrap - ${YELLOW}WARN${NC} - $*"
+    echo -e "${YELLOW}[WARN]${NC} $*"
 }
 
 log_error() {
-    echo -e "$(timestamp) - bootstrap - ${RED}ERROR${NC} - $*" >&2
+    echo -e "${RED}[ERROR]${NC} $*" >&2
 }
 
 # Generate a random password
