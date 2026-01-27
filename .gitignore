@@ -9,6 +9,7 @@ outputs/
 # State and certificates
 state/
 certs/
+.moav_prereqs_ok
 
 # Logs
 *.log

@@ -20,6 +20,9 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# State file for persistent checks
+PREREQS_FILE="$SCRIPT_DIR/.moav_prereqs_ok"
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -179,18 +182,33 @@ check_prerequisites() {
     if [[ $missing -eq 1 ]]; then
         echo ""
         error "Prerequisites check failed. Please fix the issues above."
+        rm -f "$PREREQS_FILE" 2>/dev/null
         exit 1
     fi
 
     success "All prerequisites met!"
+    # Mark prerequisites as checked
+    touch "$PREREQS_FILE"
+}
+
+prereqs_already_checked() {
+    [[ -f "$PREREQS_FILE" ]]
 }
 
 check_bootstrap() {
-    # Check if bootstrap has been run by looking for state directory contents
-    if docker volume ls | grep -q "moav_moav_state"; then
-        # Volume exists, check if it has been initialized
-        local has_keys=$(docker run --rm -v moav_moav_state:/state alpine sh -c "ls /state/keys 2>/dev/null | wc -l" 2>/dev/null || echo "0")
-        if [[ "$has_keys" -gt 0 ]]; then
+    # Check if bootstrap has been run by looking for local outputs
+    # This is faster than checking docker volumes
+    if [[ -d "outputs/bundles" ]] && [[ -n "$(ls -A outputs/bundles 2>/dev/null)" ]]; then
+        return 0  # Bootstrap has been run
+    fi
+
+    # Fallback: check docker volume (with timeout)
+    if docker volume ls 2>/dev/null | grep -q "moav_moav_state"; then
+        # Quick check - just see if volume exists and has data
+        # Use timeout to prevent hanging
+        local has_keys
+        has_keys=$(timeout 3 docker run --rm -v moav_moav_state:/state alpine sh -c "ls /state/keys 2>/dev/null | head -1" 2>/dev/null || echo "")
+        if [[ -n "$has_keys" ]]; then
             return 0  # Bootstrap has been run
         fi
     fi
@@ -354,10 +372,36 @@ start_services() {
 stop_services() {
     print_section "Stop Services"
 
-    echo "What would you like to stop?"
+    # Get running services
+    local running_services
+    running_services=$(docker compose ps --services --filter "status=running" 2>/dev/null | sort)
+
+    if [[ -z "$running_services" ]]; then
+        warn "No services are currently running"
+        return 0
+    fi
+
+    echo "Running services:"
     echo ""
-    echo -e "  ${WHITE}1)${NC} Stop ALL services"
-    echo -e "  ${WHITE}2)${NC} Stop specific service"
+
+    # Show status table
+    docker compose ps --filter "status=running" 2>/dev/null | head -20
+    echo ""
+
+    echo "Options:"
+    echo ""
+    echo -e "  ${WHITE}a)${NC} Stop ALL services"
+
+    # Build numbered list of services
+    local i=1
+    local services_array=()
+    while IFS= read -r svc; do
+        [[ -z "$svc" ]] && continue
+        services_array+=("$svc")
+        echo -e "  ${WHITE}$i)${NC} Stop $svc"
+        ((i++))
+    done <<< "$running_services"
+
     echo -e "  ${WHITE}0)${NC} Cancel"
     echo ""
 
@@ -365,19 +409,29 @@ stop_services() {
     read -r choice
 
     case $choice in
-        1)
-            run_command "docker compose --profile all down" "Stopping all services"
-            ;;
-        2)
+        a|A)
             echo ""
-            prompt "Enter service name (e.g., sing-box, conduit): "
-            read -r service
-            if [[ -n "$service" ]]; then
-                run_command "docker compose stop $service" "Stopping $service"
+            info "Stopping all services..."
+            docker compose --profile all down
+            success "All services stopped!"
+            ;;
+        0|"")
+            return 0
+            ;;
+        [1-9]*)
+            local idx=$((choice - 1))
+            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
+                local service="${services_array[$idx]}"
+                echo ""
+                info "Stopping $service..."
+                docker compose stop "$service"
+                success "$service stopped!"
+            else
+                warn "Invalid choice"
             fi
             ;;
-        0|*)
-            return 1
+        *)
+            warn "Invalid choice"
             ;;
     esac
 }
@@ -385,10 +439,33 @@ stop_services() {
 restart_services() {
     print_section "Restart Services"
 
-    echo "What would you like to restart?"
+    # Get running services
+    local running_services
+    running_services=$(docker compose ps --services --filter "status=running" 2>/dev/null | sort)
+
+    if [[ -z "$running_services" ]]; then
+        warn "No services are currently running"
+        return 0
+    fi
+
+    echo "Running services:"
     echo ""
-    echo -e "  ${WHITE}1)${NC} Restart ALL services"
-    echo -e "  ${WHITE}2)${NC} Restart specific service"
+    docker compose ps --filter "status=running" 2>/dev/null | head -20
+    echo ""
+
+    echo "Options:"
+    echo ""
+    echo -e "  ${WHITE}a)${NC} Restart ALL services"
+
+    local i=1
+    local services_array=()
+    while IFS= read -r svc; do
+        [[ -z "$svc" ]] && continue
+        services_array+=("$svc")
+        echo -e "  ${WHITE}$i)${NC} Restart $svc"
+        ((i++))
+    done <<< "$running_services"
+
     echo -e "  ${WHITE}0)${NC} Cancel"
     echo ""
 
@@ -396,19 +473,29 @@ restart_services() {
     read -r choice
 
     case $choice in
-        1)
-            run_command "docker compose --profile all restart" "Restarting all services"
-            ;;
-        2)
+        a|A)
             echo ""
-            prompt "Enter service name (e.g., sing-box, conduit): "
-            read -r service
-            if [[ -n "$service" ]]; then
-                run_command "docker compose restart $service" "Restarting $service"
+            info "Restarting all services..."
+            docker compose --profile all restart
+            success "All services restarted!"
+            ;;
+        0|"")
+            return 0
+            ;;
+        [1-9]*)
+            local idx=$((choice - 1))
+            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
+                local service="${services_array[$idx]}"
+                echo ""
+                info "Restarting $service..."
+                docker compose restart "$service"
+                success "$service restarted!"
+            else
+                warn "Invalid choice"
             fi
             ;;
-        0|*)
-            return 1
+        *)
+            warn "Invalid choice"
             ;;
     esac
 }
@@ -416,11 +503,28 @@ restart_services() {
 view_logs() {
     print_section "View Logs"
 
-    echo "Which logs would you like to view?"
+    # Get all services (running or not)
+    local all_services
+    all_services=$(docker compose ps --services -a 2>/dev/null | sort)
+
+    echo "Options:"
     echo ""
-    echo -e "  ${WHITE}1)${NC} All services (follow)"
-    echo -e "  ${WHITE}2)${NC} Specific service"
-    echo -e "  ${WHITE}3)${NC} Last 100 lines (all services)"
+    echo -e "  ${WHITE}a)${NC} All services (follow)"
+    echo -e "  ${WHITE}t)${NC} Last 100 lines (all services)"
+
+    if [[ -n "$all_services" ]]; then
+        echo ""
+        local i=1
+        local services_array=()
+        while IFS= read -r svc; do
+            [[ -z "$svc" ]] && continue
+            services_array+=("$svc")
+            echo -e "  ${WHITE}$i)${NC} $svc"
+            ((i++))
+        done <<< "$all_services"
+    fi
+
+    echo ""
     echo -e "  ${WHITE}0)${NC} Cancel"
     echo ""
 
@@ -428,28 +532,32 @@ view_logs() {
     read -r choice
 
     case $choice in
-        1)
+        a|A)
             echo ""
             info "Showing logs for all services. Press Ctrl+C to exit."
             echo ""
             docker compose --profile all logs -t -f
             ;;
-        2)
-            echo ""
-            prompt "Enter service name (e.g., sing-box, conduit, snowflake): "
-            read -r service
-            if [[ -n "$service" ]]; then
+        t|T)
+            docker compose --profile all logs -t --tail=100
+            ;;
+        0|"")
+            return 0
+            ;;
+        [1-9]*)
+            local idx=$((choice - 1))
+            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
+                local service="${services_array[$idx]}"
                 echo ""
                 info "Showing logs for $service. Press Ctrl+C to exit."
                 echo ""
                 docker compose logs -t -f "$service"
+            else
+                warn "Invalid choice"
             fi
             ;;
-        3)
-            docker compose --profile all logs -t --tail=100
-            ;;
-        0|*)
-            return 1
+        *)
+            warn "Invalid choice"
             ;;
     esac
 }
@@ -667,12 +775,12 @@ main_menu() {
             2) stop_services; press_enter ;;
             3) restart_services; press_enter ;;
             4) show_status; press_enter ;;
-            5) view_logs ;;
+            5) view_logs; press_enter ;;
             6) user_management; press_enter ;;
             7) build_services; press_enter ;;
             0|q|Q)
                 echo ""
-                info "Goodbye!"
+                info "🕊️ Goodbye! ✌️"
                 exit 0
                 ;;
             *)
@@ -823,17 +931,14 @@ cmd_build() {
 # Entry Point
 # =============================================================================
 
-# Track if prerequisites have been checked this session
-PREREQS_CHECKED=false
-
 main_interactive() {
     print_header
 
-    # Check prerequisites only once per session
-    if [[ "$PREREQS_CHECKED" != "true" ]]; then
+    # Check prerequisites only if not already verified
+    if ! prereqs_already_checked; then
         check_prerequisites
-        PREREQS_CHECKED=true
         echo ""
+        sleep 1
     fi
 
     # Check if bootstrap needed
