@@ -67,19 +67,31 @@ cd /opt/moav
 # Upload or download your MoaV files here
 ```
 
-## Easy Mode: Interactive Setup
+## Easy Mode: Using moav.sh
 
-MoaV includes an interactive management script that guides you through setup:
+MoaV includes a management script that can be used interactively or with commands:
 
 ```bash
-./moav.sh
+./moav.sh              # Interactive menu (guides you through setup)
+./moav.sh help         # Show all available commands
 ```
 
-This will:
-- Check prerequisites (Docker, Docker Compose)
-- Create `.env` from template if needed
-- Guide you through bootstrap
-- Provide menu for starting services, user management, logs, etc.
+Or run commands directly:
+
+```bash
+./moav.sh check        # Check prerequisites
+./moav.sh bootstrap    # Run first-time setup
+./moav.sh start        # Start all services
+./moav.sh start proxy admin  # Start specific profiles
+./moav.sh stop         # Stop all services
+./moav.sh status       # Show service status
+./moav.sh logs         # View all logs
+./moav.sh logs sing-box  # View specific service logs
+./moav.sh users        # List users
+./moav.sh user add joe   # Add user
+./moav.sh user revoke joe  # Revoke user
+./moav.sh build        # Build all containers
+```
 
 If you prefer manual setup, continue with the steps below.
 
@@ -176,10 +188,10 @@ echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
 
 ## Step 7: Start Services
 
-**Easy way:** Use the interactive script:
+**Easy way:**
 ```bash
-./moav.sh
-# Select "Start services" from the menu
+./moav.sh start              # Start all services
+./moav.sh start proxy admin  # Or specific profiles
 ```
 
 **Manual way:**
@@ -265,13 +277,14 @@ Each bundle contains:
 
 ## Managing Users
 
-**Easy way:** Use the interactive script:
+**Easy way:**
 ```bash
-./moav.sh
-# Select "User management" from the menu
+./moav.sh users              # List all users
+./moav.sh user add newuser   # Add a user
+./moav.sh user revoke user   # Revoke a user
 ```
 
-**Manual commands:**
+**Manual scripts:**
 
 ### Add a new user to all services
 

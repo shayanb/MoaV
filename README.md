@@ -28,13 +28,20 @@ nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
 ./moav.sh
 ```
 
-The `moav.sh` script provides an interactive menu for:
-- First-time bootstrap (generates keys, users, obtains TLS cert)
-- Starting/stopping services
-- User management (add, revoke, list)
-- Viewing logs and status
+The `moav.sh` script provides an interactive menu, or use commands directly:
 
-**Manual commands** (alternative to moav.sh):
+```bash
+./moav.sh              # Interactive menu
+./moav.sh bootstrap    # First-time setup
+./moav.sh start        # Start all services
+./moav.sh stop         # Stop all services
+./moav.sh status       # View service status
+./moav.sh logs         # View logs (all services)
+./moav.sh user add joe # Add user
+./moav.sh help         # Show all commands
+```
+
+**Manual docker commands** (alternative to moav.sh):
 
 ```bash
 docker compose --profile all build              # Build all images

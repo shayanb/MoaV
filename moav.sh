@@ -684,19 +684,160 @@ main_menu() {
 }
 
 # =============================================================================
+# Command Line Interface
+# =============================================================================
+
+show_usage() {
+    echo "Usage: ./moav.sh [command] [options]"
+    echo ""
+    echo "Commands:"
+    echo "  (no command)     Interactive menu"
+    echo "  help             Show this help message"
+    echo "  check            Run prerequisites check"
+    echo "  bootstrap        Run first-time setup"
+    echo "  start [PROFILE]  Start services (default: all)"
+    echo "  stop             Stop all services"
+    echo "  restart          Restart all services"
+    echo "  status           Show service status"
+    echo "  logs [SERVICE]   View logs (default: all, follow mode)"
+    echo "  users            List all users"
+    echo "  user add NAME    Add a new user"
+    echo "  user revoke NAME Revoke a user"
+    echo "  build            Build all services"
+    echo ""
+    echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, all"
+    echo ""
+    echo "Examples:"
+    echo "  ./moav.sh                    # Interactive menu"
+    echo "  ./moav.sh start              # Start all services"
+    echo "  ./moav.sh start proxy admin  # Start proxy and admin"
+    echo "  ./moav.sh logs sing-box      # View sing-box logs"
+    echo "  ./moav.sh user add john      # Add user 'john'"
+}
+
+cmd_check() {
+    print_header
+    check_prerequisites
+}
+
+cmd_bootstrap() {
+    print_header
+    check_prerequisites
+    echo ""
+    run_bootstrap
+}
+
+cmd_start() {
+    local profiles=""
+    if [[ $# -eq 0 ]]; then
+        profiles="--profile all"
+    else
+        for p in "$@"; do
+            profiles+="--profile $p "
+        done
+    fi
+
+    info "Starting services..."
+    docker compose $profiles up -d
+    success "Services started!"
+    echo ""
+    docker compose $profiles ps
+}
+
+cmd_stop() {
+    info "Stopping all services..."
+    docker compose --profile all down
+    success "Services stopped!"
+}
+
+cmd_restart() {
+    info "Restarting all services..."
+    docker compose --profile all restart
+    success "Services restarted!"
+}
+
+cmd_status() {
+    docker compose --profile all ps
+}
+
+cmd_logs() {
+    local service="${1:-}"
+    if [[ -n "$service" ]]; then
+        docker compose logs -t -f "$service"
+    else
+        docker compose --profile all logs -t -f
+    fi
+}
+
+cmd_users() {
+    list_users
+}
+
+cmd_user() {
+    local action="${1:-}"
+    local username="${2:-}"
+
+    case "$action" in
+        add)
+            if [[ -z "$username" ]]; then
+                error "Usage: ./moav.sh user add USERNAME"
+                exit 1
+            fi
+            if [[ ! "$username" =~ ^[a-zA-Z0-9_]+$ ]]; then
+                error "Username can only contain letters, numbers, and underscores"
+                exit 1
+            fi
+            if [[ -x "./scripts/user-add.sh" ]]; then
+                ./scripts/user-add.sh "$username"
+            else
+                error "User add script not found"
+                exit 1
+            fi
+            ;;
+        revoke)
+            if [[ -z "$username" ]]; then
+                error "Usage: ./moav.sh user revoke USERNAME"
+                exit 1
+            fi
+            if [[ -x "./scripts/user-revoke.sh" ]]; then
+                ./scripts/user-revoke.sh "$username"
+            else
+                error "User revoke script not found"
+                exit 1
+            fi
+            ;;
+        *)
+            error "Usage: ./moav.sh user [add|revoke] USERNAME"
+            exit 1
+            ;;
+    esac
+}
+
+cmd_build() {
+    info "Building all services..."
+    docker compose --profile all build
+    success "Build complete!"
+}
+
+# =============================================================================
 # Entry Point
 # =============================================================================
 
-main() {
+# Track if prerequisites have been checked this session
+PREREQS_CHECKED=false
+
+main_interactive() {
     print_header
 
-    # Check prerequisites
-    check_prerequisites
-    press_enter
+    # Check prerequisites only once per session
+    if [[ "$PREREQS_CHECKED" != "true" ]]; then
+        check_prerequisites
+        PREREQS_CHECKED=true
+        echo ""
+    fi
 
     # Check if bootstrap needed
     if ! check_bootstrap; then
-        print_header
         warn "Bootstrap has not been run yet!"
         echo ""
         info "Bootstrap is required for first-time setup."
@@ -715,6 +856,58 @@ main() {
 
     # Show main menu
     main_menu
+}
+
+main() {
+    local cmd="${1:-}"
+
+    case "$cmd" in
+        "")
+            main_interactive
+            ;;
+        help|--help|-h)
+            show_usage
+            ;;
+        check)
+            cmd_check
+            ;;
+        bootstrap)
+            cmd_bootstrap
+            ;;
+        start)
+            shift
+            cmd_start "$@"
+            ;;
+        stop)
+            cmd_stop
+            ;;
+        restart)
+            cmd_restart
+            ;;
+        status)
+            cmd_status
+            ;;
+        logs)
+            shift
+            cmd_logs "$@"
+            ;;
+        users)
+            cmd_users
+            ;;
+        user)
+            shift
+            cmd_user "$@"
+            ;;
+        build)
+            cmd_build
+            ;;
+        *)
+            error "Unknown command: $cmd"
+            echo ""
+            show_usage
+            exit 1
+            ;;
+    esac
 }
 
 # Run main
