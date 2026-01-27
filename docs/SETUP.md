@@ -67,6 +67,22 @@ cd /opt/moav
 # Upload or download your MoaV files here
 ```
 
+## Easy Mode: Interactive Setup
+
+MoaV includes an interactive management script that guides you through setup:
+
+```bash
+./moav.sh
+```
+
+This will:
+- Check prerequisites (Docker, Docker Compose)
+- Create `.env` from template if needed
+- Guide you through bootstrap
+- Provide menu for starting services, user management, logs, etc.
+
+If you prefer manual setup, continue with the steps below.
+
 ## Step 3: Configure Environment
 
 ```bash
@@ -160,6 +176,13 @@ echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
 
 ## Step 7: Start Services
 
+**Easy way:** Use the interactive script:
+```bash
+./moav.sh
+# Select "Start services" from the menu
+```
+
+**Manual way:**
 ```bash
 # Start all services (recommended)
 docker compose --profile all up -d
@@ -241,6 +264,14 @@ Each bundle contains:
 **Distribute these securely** (encrypted message, in-person, etc.)
 
 ## Managing Users
+
+**Easy way:** Use the interactive script:
+```bash
+./moav.sh
+# Select "User management" from the menu
+```
+
+**Manual commands:**
 
 ### Add a new user to all services
 

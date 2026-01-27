@@ -24,17 +24,23 @@ cd MoaV
 cp .env.example .env
 nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
 
-# Build all images
-docker compose --profile all build
+# Run interactive management script
+./moav.sh
+```
 
-# Initialize (generates keys, users, obtains TLS cert)
-docker compose --profile setup run --rm bootstrap
+The `moav.sh` script provides an interactive menu for:
+- First-time bootstrap (generates keys, users, obtains TLS cert)
+- Starting/stopping services
+- User management (add, revoke, list)
+- Viewing logs and status
 
-# Start all services
-docker compose --profile all up -d
+**Manual commands** (alternative to moav.sh):
 
-# Or start just the proxy services (Reality, Trojan, Hysteria2)
-docker compose --profile proxy up -d
+```bash
+docker compose --profile all build              # Build all images
+docker compose --profile setup run --rm bootstrap  # Initialize
+docker compose --profile all up -d              # Start all services
+docker compose --profile proxy up -d            # Or just proxy services
 ```
 
 See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
@@ -171,6 +177,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for setup instructions.
 
 ```
 MoaV/
+├── moav.sh                 # Interactive management script
 ├── docker-compose.yml      # Main compose file
 ├── .env.example            # Environment template
 ├── Dockerfile.*            # Container definitions
