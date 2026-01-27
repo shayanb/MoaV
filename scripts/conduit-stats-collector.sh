@@ -8,16 +8,17 @@ STATS_FILE="${STATS_FILE:-/state/conduit-stats.json}"
 CAPTURE_DURATION="${CAPTURE_DURATION:-10}"
 
 # Write stats to file
+# Note: Per-country data is estimated from packet counts (500 bytes/packet average)
+# For accurate total bandwidth, see conduit's own [STATS] log output
 write_stats() {
     cat > "$STATS_FILE" << EOF
 {
     "timestamp": "$(date -Iseconds 2>/dev/null || date)",
     "status": "$1",
-    "connections": {"connecting": 0, "connected": 0},
-    "bandwidth": {"upload": "0 B", "download": "0 B"},
     "traffic_from": $2,
     "traffic_to": $3,
     "capture_duration": $CAPTURE_DURATION,
+    "note": "Per-country data is estimated from packet sampling (not actual traffic volume)",
     "error": null
 }
 EOF
@@ -59,7 +60,7 @@ capture_traffic() {
     fi
 
     if [ -z "$local_ip" ]; then
-        echo "[stats]ERROR: Could not determine local IP"
+        echo "[stats] ERROR: Could not determine local IP"
         write_stats "error" "[]" "[]"
         return 1
     fi
@@ -67,7 +68,7 @@ capture_traffic() {
     # Limit packets to avoid CPU overload (sample ~5000 packets max)
     MAX_PACKETS="${MAX_PACKETS:-5000}"
 
-    echo "[stats]Capturing on $iface (local: $local_ip) for ${CAPTURE_DURATION}s (max ${MAX_PACKETS} packets)..."
+    echo "[stats] Capturing on $iface (local: $local_ip) for ${CAPTURE_DURATION}s (max ${MAX_PACKETS} packets)..."
 
     # Temp files
     from_file="/tmp/traffic_from_$$"
@@ -119,7 +120,7 @@ capture_traffic() {
 
     # Check if we got any data
     if [ ! -s "$from_file" ] && [ ! -s "$to_file" ]; then
-        echo "[stats]No external traffic captured"
+        echo "[stats] No external traffic captured"
         write_stats "running" "[]" "[]"
         rm -f "$from_file" "$to_file"
         return 0
@@ -142,8 +143,8 @@ capture_traffic() {
     while read count ip; do
         [ -z "$ip" ] && continue
         country=$(get_country "$ip")
-        # Estimate bytes: count * 100 (avg packet size estimate)
-        bytes=$((count * 100))
+        # Estimate bytes: count * 500 (avg packet size estimate)
+        bytes=$((count * 500))
         echo "${country}|${bytes}|1" >> "$from_countries"
     done < "$from_ips"
 
@@ -151,7 +152,7 @@ capture_traffic() {
     while read count ip; do
         [ -z "$ip" ] && continue
         country=$(get_country "$ip")
-        bytes=$((count * 100))
+        bytes=$((count * 500))
         echo "${country}|${bytes}|1" >> "$to_countries"
     done < "$to_ips"
 
@@ -198,14 +199,14 @@ capture_traffic() {
     # Write final stats
     write_stats "running" "[${from_json}]" "[${to_json}]"
 
-    echo "[stats]Done - from: $(echo "$from_json" | grep -c country || echo 0) countries, to: $(echo "$to_json" | grep -c country || echo 0) countries"
+    echo "[stats] Done - from: $(echo "$from_json" | grep -c country || echo 0) countries, to: $(echo "$to_json" | grep -c country || echo 0) countries"
 }
 
 # Main loop
 main() {
-    echo "[stats]Starting stats collector"
-    echo "[stats]Stats file: $STATS_FILE"
-    echo "[stats]Capture duration: ${CAPTURE_DURATION}s"
+    echo "[stats] Starting stats collector"
+    echo "[stats] Stats file: $STATS_FILE"
+    echo "[stats] Capture duration: ${CAPTURE_DURATION}s"
 
     # Ensure state directory exists
     mkdir -p "$(dirname "$STATS_FILE")" 2>/dev/null || true
