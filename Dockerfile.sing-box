@@ -21,7 +21,9 @@ RUN curl -L -o sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/do
 
 RUN mkdir -p /etc/sing-box /var/log/sing-box /state
 
+COPY scripts/sing-box-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 443/tcp 443/udp 8443/tcp
 
-ENTRYPOINT ["sing-box"]
-CMD ["run", "-c", "/etc/sing-box/config.json"]
+ENTRYPOINT ["/entrypoint.sh"]

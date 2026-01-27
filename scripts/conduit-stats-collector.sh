@@ -4,6 +4,11 @@
 # Collects traffic stats with GeoIP country breakdown
 # =============================================================================
 
+# Log with timestamp (MM-DD HH:MM:SS - SERVICE - MESSAGE)
+log() {
+    echo "$(date '+%m-%d %H:%M:%S') - conduit-stats - $*"
+}
+
 STATS_FILE="${STATS_FILE:-/state/conduit-stats.json}"
 CAPTURE_DURATION="${CAPTURE_DURATION:-10}"
 
@@ -59,7 +64,7 @@ capture_traffic() {
     fi
 
     if [ -z "$local_ip" ]; then
-        echo "[stats] ERROR: Could not determine local IP"
+        log "ERROR: Could not determine local IP"
         write_stats "error" "[]" "[]"
         return 1
     fi
@@ -67,7 +72,7 @@ capture_traffic() {
     # Limit packets to avoid CPU overload (sample ~5000 packets max)
     MAX_PACKETS="${MAX_PACKETS:-5000}"
 
-    echo "[stats] Capturing on $iface (local: $local_ip) for ${CAPTURE_DURATION}s (max ${MAX_PACKETS} packets)..."
+    log "Capturing on $iface (local: $local_ip) for ${CAPTURE_DURATION}s (max ${MAX_PACKETS} packets)..."
 
     # Temp files
     from_file="/tmp/traffic_from_$$"
@@ -119,7 +124,7 @@ capture_traffic() {
 
     # Check if we got any data
     if [ ! -s "$from_file" ] && [ ! -s "$to_file" ]; then
-        echo "[stats] No external traffic captured"
+        log "No external traffic captured"
         write_stats "running" "[]" "[]"
         rm -f "$from_file" "$to_file"
         return 0
@@ -198,14 +203,14 @@ capture_traffic() {
     # Write final stats
     write_stats "running" "[${from_json}]" "[${to_json}]"
 
-    echo "[stats] Done - from: $(echo "$from_json" | grep -c country || echo 0) countries, to: $(echo "$to_json" | grep -c country || echo 0) countries"
+    log "Done - from: $(echo "$from_json" | grep -c country || echo 0) countries, to: $(echo "$to_json" | grep -c country || echo 0) countries"
 }
 
 # Main loop
 main() {
-    echo "[conduit-stats] Starting stats collector"
-    echo "[conduit-stats] Stats file: $STATS_FILE"
-    echo "[conduit-stats] Capture duration: ${CAPTURE_DURATION}s"
+    log "Starting stats collector"
+    log "Stats file: $STATS_FILE"
+    log "Capture duration: ${CAPTURE_DURATION}s"
 
     # Ensure state directory exists
     mkdir -p "$(dirname "$STATS_FILE")" 2>/dev/null || true

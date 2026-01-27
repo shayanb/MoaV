@@ -69,7 +69,8 @@ services:
       - moav_state:/state
     environment:
       - TZ=${TZ:-UTC}
-    command: ["server", "--restrict-to", "127.0.0.1:51820", "ws://0.0.0.0:8080"]
+      - WSTUNNEL_LISTEN=0.0.0.0:8080
+      - WSTUNNEL_RESTRICT=127.0.0.1:51820
     profiles:
       - wireguard
       - all

@@ -19,6 +19,9 @@ RUN curl -L -o wstunnel.tar.gz "https://github.com/erebe/wstunnel/releases/downl
     chmod +x wstunnel && \
     rm wstunnel.tar.gz
 
+COPY scripts/wstunnel-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 443
 
-ENTRYPOINT ["/app/wstunnel"]
+ENTRYPOINT ["/entrypoint.sh"]
