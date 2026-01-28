@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-# Colors (inherit from entrypoint or define)
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -24,7 +24,7 @@ declare -A RESULTS
 declare -A DETAILS
 
 # =============================================================================
-# Logging (same as entrypoint)
+# Logging
 # =============================================================================
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $1" >&2; }
@@ -39,7 +39,6 @@ log_debug() { [[ "${VERBOSE:-false}" == "true" ]] && echo -e "${CYAN}[DEBUG]${NC
 
 cleanup() {
     log_debug "Cleaning up..."
-    # Kill any background processes
     jobs -p | xargs -r kill 2>/dev/null || true
     rm -rf "$TEMP_DIR"
 }
@@ -49,22 +48,30 @@ setup() {
     mkdir -p "$TEMP_DIR"
 }
 
-# Extract server address from config files
-get_server_from_config() {
-    local config_file="$1"
-    local server=""
+# Portable URL parameter extraction (no grep -P)
+extract_param() {
+    local uri="$1"
+    local param="$2"
+    echo "$uri" | sed -n "s/.*[?&]${param}=\([^&#]*\).*/\1/p" | head -1
+}
 
-    if [[ -f "$config_file" ]]; then
-        # Try to extract server from various config formats
-        if [[ "$config_file" == *.json ]]; then
-            server=$(jq -r '.outbounds[0].server // .server // empty' "$config_file" 2>/dev/null || echo "")
-        elif [[ "$config_file" == *.txt ]]; then
-            # Parse URI format (vless://, trojan://, etc.)
-            server=$(grep -oP '(?<=@)[^:]+' "$config_file" 2>/dev/null | head -1 || echo "")
-        fi
-    fi
+# Extract value before @ in URI
+extract_auth() {
+    local uri="$1"
+    local protocol="$2"
+    echo "$uri" | sed -n "s|${protocol}://\([^@]*\)@.*|\1|p" | head -1
+}
 
-    echo "$server"
+# Extract host from URI (between @ and :port or ?)
+extract_host() {
+    local uri="$1"
+    echo "$uri" | sed -n 's|.*@\([^:]*\):.*|\1|p' | head -1
+}
+
+# Extract port from URI
+extract_port() {
+    local uri="$1"
+    echo "$uri" | sed -n 's|.*:\([0-9]*\)[?#].*|\1|p' | head -1
 }
 
 # =============================================================================
@@ -80,7 +87,7 @@ test_reality() {
     local detail=""
 
     # Find Reality config
-    for f in "$CONFIG_DIR"/reality*.json "$CONFIG_DIR"/*reality*.json "$CONFIG_DIR"/reality.txt; do
+    for f in "$CONFIG_DIR"/reality*.txt "$CONFIG_DIR"/reality*.json; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
 
@@ -94,24 +101,26 @@ test_reality() {
 
     log_debug "Using config: $config_file"
 
-    # Generate sing-box client config
     local client_config="$TEMP_DIR/reality-client.json"
 
-    # If it's a URI file, convert to sing-box config
     if [[ "$config_file" == *.txt ]]; then
         local uri=$(cat "$config_file" | tr -d '\n\r')
-        # Parse VLESS URI: vless://uuid@server:port?params#name
-        local uuid=$(echo "$uri" | sed -n 's/vless:\/\/\([^@]*\)@.*/\1/p')
-        local server=$(echo "$uri" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-        local port=$(echo "$uri" | sed -n 's/.*:\([0-9]*\)?.*/\1/p')
-        local params=$(echo "$uri" | sed -n 's/.*?\([^#]*\).*/\1/p')
 
-        # Extract Reality params
-        local sni=$(echo "$params" | grep -oP 'sni=\K[^&]+' || echo "")
-        local pbk=$(echo "$params" | grep -oP 'pbk=\K[^&]+' || echo "")
-        local sid=$(echo "$params" | grep -oP 'sid=\K[^&]+' || echo "")
-        local fp=$(echo "$params" | grep -oP 'fp=\K[^&]+' || echo "chrome")
+        # Parse VLESS URI using portable methods
+        local uuid=$(extract_auth "$uri" "vless")
+        local server=$(extract_host "$uri")
+        local port=$(extract_port "$uri")
+        local sni=$(extract_param "$uri" "sni")
+        local pbk=$(extract_param "$uri" "pbk")
+        local sid=$(extract_param "$uri" "sid")
+        local fp=$(extract_param "$uri" "fp")
 
+        [[ -z "$fp" ]] && fp="chrome"
+        [[ -z "$port" ]] && port="443"
+
+        log_debug "Parsed: server=$server port=$port uuid=$uuid sni=$sni"
+
+        # Generate sing-box 1.12+ compatible config
         cat > "$client_config" << EOF
 {
   "log": {"level": "error"},
@@ -121,8 +130,9 @@ test_reality() {
   "outbounds": [
     {
       "type": "vless",
+      "tag": "proxy",
       "server": "$server",
-      "server_port": ${port:-443},
+      "server_port": $port,
       "uuid": "$uuid",
       "flow": "xtls-rprx-vision",
       "tls": {
@@ -136,21 +146,33 @@ test_reality() {
         }
       }
     }
-  ]
+  ],
+  "route": {
+    "final": "proxy"
+  }
 }
 EOF
     else
-        # Use existing JSON config, add inbound
+        # JSON config - wrap with inbounds
         jq '. + {
           "log": {"level": "error"},
-          "inbounds": [{"type": "socks", "listen": "127.0.0.1", "listen_port": 10800}]
-        }' "$config_file" > "$client_config"
+          "inbounds": [{"type": "socks", "listen": "127.0.0.1", "listen_port": 10800}],
+          "route": {"final": "proxy"}
+        }' "$config_file" > "$client_config" 2>/dev/null || {
+            detail="Failed to parse JSON config"
+            log_error "$detail"
+            RESULTS[reality]="fail"
+            DETAILS[reality]="$detail"
+            return
+        }
     fi
+
+    log_debug "Generated config: $(cat "$client_config")"
 
     # Start sing-box
     sing-box run -c "$client_config" &
     local pid=$!
-    sleep 2
+    sleep 3
 
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
@@ -183,7 +205,7 @@ test_trojan() {
     local config_file=""
     local detail=""
 
-    for f in "$CONFIG_DIR"/trojan*.json "$CONFIG_DIR"/*trojan*.json "$CONFIG_DIR"/trojan.txt; do
+    for f in "$CONFIG_DIR"/trojan*.txt "$CONFIG_DIR"/trojan*.json; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
 
@@ -201,11 +223,14 @@ test_trojan() {
 
     if [[ "$config_file" == *.txt ]]; then
         local uri=$(cat "$config_file" | tr -d '\n\r')
-        # Parse Trojan URI: trojan://password@server:port?params#name
-        local password=$(echo "$uri" | sed -n 's/trojan:\/\/\([^@]*\)@.*/\1/p')
-        local server=$(echo "$uri" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-        local port=$(echo "$uri" | sed -n 's/.*:\([0-9]*\)?.*/\1/p')
-        local sni=$(echo "$uri" | grep -oP 'sni=\K[^&#]+' || echo "$server")
+
+        local password=$(extract_auth "$uri" "trojan")
+        local server=$(extract_host "$uri")
+        local port=$(extract_port "$uri")
+        local sni=$(extract_param "$uri" "sni")
+
+        [[ -z "$sni" ]] && sni="$server"
+        [[ -z "$port" ]] && port="8443"
 
         cat > "$client_config" << EOF
 {
@@ -216,28 +241,38 @@ test_trojan() {
   "outbounds": [
     {
       "type": "trojan",
+      "tag": "proxy",
       "server": "$server",
-      "server_port": ${port:-8443},
+      "server_port": $port,
       "password": "$password",
       "tls": {
         "enabled": true,
-        "server_name": "$sni",
-        "insecure": false
+        "server_name": "$sni"
       }
     }
-  ]
+  ],
+  "route": {
+    "final": "proxy"
+  }
 }
 EOF
     else
         jq '. + {
           "log": {"level": "error"},
-          "inbounds": [{"type": "socks", "listen": "127.0.0.1", "listen_port": 10801}]
-        }' "$config_file" > "$client_config"
+          "inbounds": [{"type": "socks", "listen": "127.0.0.1", "listen_port": 10801}],
+          "route": {"final": "proxy"}
+        }' "$config_file" > "$client_config" 2>/dev/null || {
+            detail="Failed to parse JSON config"
+            log_error "$detail"
+            RESULTS[trojan]="fail"
+            DETAILS[trojan]="$detail"
+            return
+        }
     fi
 
     sing-box run -c "$client_config" &
     local pid=$!
-    sleep 2
+    sleep 3
 
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
@@ -269,7 +304,7 @@ test_hysteria2() {
     local config_file=""
     local detail=""
 
-    for f in "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.json "$CONFIG_DIR"/*hysteria*.yaml "$CONFIG_DIR"/hysteria2.txt; do
+    for f in "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml "$CONFIG_DIR"/hysteria2*.txt; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
 
@@ -284,73 +319,71 @@ test_hysteria2() {
     log_debug "Using config: $config_file"
 
     local client_config="$TEMP_DIR/hysteria2-client.json"
+    local server="" auth="" sni="" host="" port=""
 
     if [[ "$config_file" == *.txt ]]; then
         local uri=$(cat "$config_file" | tr -d '\n\r')
-        # Parse Hysteria2 URI: hysteria2://auth@server:port?params#name
-        local auth=$(echo "$uri" | sed -n 's/hysteria2:\/\/\([^@]*\)@.*/\1/p')
-        local server=$(echo "$uri" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-        local port=$(echo "$uri" | sed -n 's/.*:\([0-9]*\)?.*/\1/p')
-        local sni=$(echo "$uri" | grep -oP 'sni=\K[^&#]+' || echo "$server")
-
-        cat > "$client_config" << EOF
-{
-  "log": {"level": "error"},
-  "inbounds": [
-    {"type": "socks", "listen": "127.0.0.1", "listen_port": 10802}
-  ],
-  "outbounds": [
-    {
-      "type": "hysteria2",
-      "server": "$server",
-      "server_port": ${port:-443},
-      "password": "$auth",
-      "tls": {
-        "enabled": true,
-        "server_name": "$sni",
-        "insecure": false
-      }
-    }
-  ]
-}
-EOF
-    elif [[ "$config_file" == *.yaml ]]; then
-        # Convert YAML to JSON sing-box format
-        local server=$(grep -oP 'server:\s*\K[^\s]+' "$config_file" | head -1)
-        local auth=$(grep -oP 'auth:\s*\K[^\s]+' "$config_file" | head -1)
-        local sni=$(grep -oP 'sni:\s*\K[^\s]+' "$config_file" | head -1 || echo "$server")
-
-        cat > "$client_config" << EOF
-{
-  "log": {"level": "error"},
-  "inbounds": [
-    {"type": "socks", "listen": "127.0.0.1", "listen_port": 10802}
-  ],
-  "outbounds": [
-    {
-      "type": "hysteria2",
-      "server": "${server%:*}",
-      "server_port": ${server#*:},
-      "password": "$auth",
-      "tls": {
-        "enabled": true,
-        "server_name": "$sni",
-        "insecure": false
-      }
-    }
-  ]
-}
-EOF
-    else
-        jq '. + {
-          "log": {"level": "error"},
-          "inbounds": [{"type": "socks", "listen": "127.0.0.1", "listen_port": 10802}]
-        }' "$config_file" > "$client_config"
+        auth=$(extract_auth "$uri" "hysteria2")
+        # For hysteria2, server might include port
+        server=$(echo "$uri" | sed -n 's|.*@\([^?#]*\).*|\1|p' | head -1)
+        sni=$(extract_param "$uri" "sni")
+    elif [[ "$config_file" == *.yaml ]] || [[ "$config_file" == *.yml ]]; then
+        server=$(grep -E "^server:" "$config_file" | sed 's/server:[[:space:]]*//' | tr -d '"' | head -1)
+        auth=$(grep -E "^auth:" "$config_file" | sed 's/auth:[[:space:]]*//' | tr -d '"' | head -1)
+        sni=$(grep -E "^[[:space:]]*sni:" "$config_file" | sed 's/.*sni:[[:space:]]*//' | tr -d '"' | head -1)
     fi
+
+    # Parse host:port
+    if echo "$server" | grep -q ':'; then
+        host="${server%:*}"
+        port="${server##*:}"
+    else
+        host="$server"
+        port="443"
+    fi
+
+    [[ -z "$sni" ]] && sni="$host"
+
+    log_debug "Parsed: host=$host port=$port auth=$auth sni=$sni"
+
+    if [[ -z "$host" ]] || [[ -z "$auth" ]]; then
+        detail="Could not parse Hysteria2 config"
+        log_error "$detail"
+        RESULTS[hysteria2]="fail"
+        DETAILS[hysteria2]="$detail"
+        return
+    fi
+
+    cat > "$client_config" << EOF
+{
+  "log": {"level": "error"},
+  "inbounds": [
+    {"type": "socks", "listen": "127.0.0.1", "listen_port": 10802}
+  ],
+  "outbounds": [
+    {
+      "type": "hysteria2",
+      "tag": "proxy",
+      "server": "$host",
+      "server_port": $port,
+      "password": "$auth",
+      "tls": {
+        "enabled": true,
+        "server_name": "$sni"
+      }
+    }
+  ],
+  "route": {
+    "final": "proxy"
+  }
+}
+EOF
+
+    log_debug "Generated config: $(cat "$client_config")"
 
     sing-box run -c "$client_config" &
     local pid=$!
-    sleep 2
+    sleep 3
 
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
@@ -375,14 +408,14 @@ EOF
     wait $pid 2>/dev/null || true
 }
 
-# Test WireGuard (config validation only - full test requires NET_ADMIN)
+# Test WireGuard (config validation only)
 test_wireguard() {
     log_info "Testing WireGuard (config validation)..."
 
     local config_file=""
     local detail=""
 
-    for f in "$CONFIG_DIR"/wireguard*.conf "$CONFIG_DIR"/wg*.conf "$CONFIG_DIR"/*wireguard*.conf; do
+    for f in "$CONFIG_DIR"/wireguard*.conf "$CONFIG_DIR"/wg*.conf; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
 
@@ -405,9 +438,9 @@ test_wireguard() {
         return
     fi
 
-    # Extract and validate keys
-    local private_key=$(grep -oP 'PrivateKey\s*=\s*\K.+' "$config_file" | tr -d ' ')
-    local endpoint=$(grep -oP 'Endpoint\s*=\s*\K.+' "$config_file" | tr -d ' ')
+    # Extract values using portable grep/sed
+    local private_key=$(grep -E "^PrivateKey" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
+    local endpoint=$(grep -E "^Endpoint" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
 
     if [[ -z "$private_key" ]] || [[ -z "$endpoint" ]]; then
         detail="Missing PrivateKey or Endpoint in config"
@@ -417,9 +450,11 @@ test_wireguard() {
         return
     fi
 
-    # Test endpoint reachability (just port check, not full WG handshake)
+    # Test endpoint reachability
     local host="${endpoint%:*}"
     local port="${endpoint#*:}"
+
+    log_debug "Testing endpoint: $host:$port"
 
     if timeout 5 bash -c "echo >/dev/tcp/$host/$port" 2>/dev/null; then
         log_success "WireGuard endpoint reachable: $endpoint"
@@ -427,13 +462,12 @@ test_wireguard() {
         DETAILS[wireguard]="Config valid, endpoint reachable (full test requires --cap-add NET_ADMIN)"
     else
         # Try wstunnel endpoint (port 8080)
-        local wstunnel_endpoint="${host}:8080"
         if timeout 5 bash -c "echo >/dev/tcp/$host/8080" 2>/dev/null; then
-            log_success "WireGuard wstunnel endpoint reachable: $wstunnel_endpoint"
+            log_success "WireGuard wstunnel endpoint reachable: $host:8080"
             RESULTS[wireguard]="pass"
             DETAILS[wireguard]="Config valid, wstunnel endpoint reachable"
         else
-            detail="Endpoint not reachable: $endpoint (and wstunnel 8080)"
+            detail="Endpoint not reachable: $endpoint"
             log_warn "$detail"
             RESULTS[wireguard]="warn"
             DETAILS[wireguard]="$detail"
@@ -448,7 +482,6 @@ test_dnstt() {
     local config_file=""
     local detail=""
 
-    # Look for dnstt instructions or config
     for f in "$CONFIG_DIR"/dnstt*.txt "$CONFIG_DIR"/*dnstt*; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
@@ -463,13 +496,15 @@ test_dnstt() {
 
     log_debug "Using config: $config_file"
 
-    # Extract domain and pubkey from instructions
-    local domain=$(grep -oP 't\.\K[a-zA-Z0-9.-]+' "$config_file" | head -1)
-    local pubkey=$(grep -oP 'pubkey[=\s]+\K[a-zA-Z0-9+/=]+' "$config_file" | head -1)
+    # Extract domain - look for t.domain.com pattern
+    local domain=$(grep -oE 't\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' "$config_file" | head -1)
+
+    # Extract pubkey - look for base64-like string after "pubkey"
+    local pubkey=$(grep -i "pubkey" "$config_file" | sed 's/.*[=:][[:space:]]*//' | grep -oE '[A-Za-z0-9+/=]{40,}' | head -1)
 
     # Also check for server.pub file
     if [[ -z "$pubkey" ]] && [[ -f "$CONFIG_DIR/server.pub" ]]; then
-        pubkey=$(cat "$CONFIG_DIR/server.pub")
+        pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r')
     fi
 
     if [[ -z "$domain" ]]; then
@@ -480,29 +515,27 @@ test_dnstt() {
         return
     fi
 
-    # Test DNS resolution for tunnel domain
-    if dig +short "test.t.$domain" @8.8.8.8 >/dev/null 2>&1; then
-        log_debug "DNS query for t.$domain succeeded"
-    fi
+    log_debug "Parsed: domain=$domain pubkey=${pubkey:0:20}..."
 
     if [[ -z "$pubkey" ]]; then
         detail="Could not extract public key"
         log_warn "$detail"
         RESULTS[dnstt]="warn"
-        DETAILS[dnstt]="Domain: t.$domain, but missing pubkey for full test"
+        DETAILS[dnstt]="Domain: $domain, but missing pubkey for full test"
         return
     fi
 
     # Try to establish dnstt tunnel briefly
     if command -v dnstt-client >/dev/null 2>&1; then
-        dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "t.$domain" 127.0.0.1:10803 &
+        log_debug "Starting dnstt-client..."
+        dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "$domain" 127.0.0.1:10803 &
         local pid=$!
-        sleep 3
+        sleep 5
 
         if kill -0 $pid 2>/dev/null; then
             log_success "dnstt client started successfully"
             RESULTS[dnstt]="pass"
-            DETAILS[dnstt]="DNS tunnel established to t.$domain"
+            DETAILS[dnstt]="DNS tunnel established to $domain"
             kill $pid 2>/dev/null || true
         else
             detail="dnstt client failed to start"
@@ -512,7 +545,7 @@ test_dnstt() {
         fi
     else
         RESULTS[dnstt]="warn"
-        DETAILS[dnstt]="dnstt-client not available, config looks valid for t.$domain"
+        DETAILS[dnstt]="dnstt-client not available, config looks valid for $domain"
     fi
 }
 
@@ -527,7 +560,6 @@ output_json() {
     local skip_count=0
     local warn_count=0
 
-    # Count results
     for protocol in "${!RESULTS[@]}"; do
         case "${RESULTS[$protocol]}" in
             pass) ((pass_count++)) ;;
@@ -537,10 +569,9 @@ output_json() {
         esac
     done
 
-    # Build JSON
     cat << EOF
 {
-  "timestamp": "$(date -Iseconds)",
+  "timestamp": "$(date -Iseconds 2>/dev/null || date)",
   "config_dir": "$CONFIG_DIR",
   "overall_status": "$overall_status",
   "summary": {
