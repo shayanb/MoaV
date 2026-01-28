@@ -87,20 +87,20 @@ generate_singbox_config() {
     local output_file="$2"
     local config_file=""
 
-    # Find config file
+    # Find config file (prefer .txt over .json to avoid legacy format issues)
     case "$protocol" in
         reality)
-            for f in "$CONFIG_DIR"/reality*.json "$CONFIG_DIR"/reality*.txt; do
+            for f in "$CONFIG_DIR"/reality*.txt "$CONFIG_DIR"/reality*.json; do
                 [[ -f "$f" ]] && config_file="$f" && break
             done
             ;;
         trojan)
-            for f in "$CONFIG_DIR"/trojan*.json "$CONFIG_DIR"/trojan*.txt; do
+            for f in "$CONFIG_DIR"/trojan*.txt "$CONFIG_DIR"/trojan*.json; do
                 [[ -f "$f" ]] && config_file="$f" && break
             done
             ;;
         hysteria2)
-            for f in "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.json "$CONFIG_DIR"/hysteria2*.txt; do
+            for f in "$CONFIG_DIR"/hysteria2*.txt "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml; do
                 [[ -f "$f" ]] && config_file="$f" && break
             done
             ;;

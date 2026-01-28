@@ -1166,11 +1166,29 @@ cmd_client() {
             cmd_test "$@"
             ;;
         connect)
-            local user="${1:-}"
-            local protocol="${2:-auto}"
+            local user=""
+            local protocol="auto"
+
+            # Parse arguments
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --protocol|-p)
+                        protocol="${2:-auto}"
+                        shift 2
+                        ;;
+                    --*)
+                        error "Unknown option: $1"
+                        exit 1
+                        ;;
+                    *)
+                        [[ -z "$user" ]] && user="$1"
+                        shift
+                        ;;
+                esac
+            done
 
             if [[ -z "$user" ]]; then
-                error "Usage: moav client connect USERNAME [PROTOCOL]"
+                error "Usage: moav client connect USERNAME [--protocol PROTOCOL]"
                 echo ""
                 echo "Protocols: auto, reality, trojan, hysteria2, wireguard, psiphon, tor, dnstt"
                 echo ""

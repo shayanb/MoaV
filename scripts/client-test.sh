@@ -304,7 +304,7 @@ test_hysteria2() {
     local config_file=""
     local detail=""
 
-    for f in "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml "$CONFIG_DIR"/hysteria2*.txt; do
+    for f in "$CONFIG_DIR"/hysteria2*.txt "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
 

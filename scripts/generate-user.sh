@@ -43,21 +43,13 @@ REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: 
 log_info "Generating bundle for $USER_ID..."
 
 # -----------------------------------------------------------------------------
-# Generate Reality (VLESS) client config
+# Generate Reality (VLESS) client config (sing-box 1.12+ format)
 # -----------------------------------------------------------------------------
 cat > "$OUTPUT_DIR/reality-singbox.json" <<EOF
 {
   "log": {"level": "info"},
-  "dns": {
-    "servers": [
-      {"tag": "remote", "address": "https://1.1.1.1/dns-query", "detour": "proxy"},
-      {"tag": "local", "address": "local", "detour": "direct"}
-    ],
-    "rules": [{"outbound": "any", "server": "local"}],
-    "final": "remote"
-  },
   "inbounds": [
-    {"type": "tun", "tag": "tun-in", "interface_name": "tun0", "inet4_address": "172.19.0.1/30", "auto_route": true, "strict_route": true, "stack": "system"}
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
   ],
   "outbounds": [
     {
@@ -77,16 +69,9 @@ cat > "$OUTPUT_DIR/reality-singbox.json" <<EOF
           "short_id": "${REALITY_SHORT_ID}"
         }
       }
-    },
-    {"type": "direct", "tag": "direct"},
-    {"type": "block", "tag": "block"},
-    {"type": "dns", "tag": "dns-out"}
+    }
   ],
   "route": {
-    "rules": [
-      {"protocol": "dns", "outbound": "dns-out"},
-      {"geoip": ["private"], "outbound": "direct"}
-    ],
     "auto_detect_interface": true,
     "final": "proxy"
   }
@@ -103,21 +88,13 @@ qrencode -o "$OUTPUT_DIR/reality-qr.png" -s 6 "$REALITY_LINK" 2>/dev/null || tru
 log_info "  - Reality config generated"
 
 # -----------------------------------------------------------------------------
-# Generate Trojan client config
+# Generate Trojan client config (sing-box 1.12+ format)
 # -----------------------------------------------------------------------------
 cat > "$OUTPUT_DIR/trojan-singbox.json" <<EOF
 {
   "log": {"level": "info"},
-  "dns": {
-    "servers": [
-      {"tag": "remote", "address": "https://1.1.1.1/dns-query", "detour": "proxy"},
-      {"tag": "local", "address": "local", "detour": "direct"}
-    ],
-    "rules": [{"outbound": "any", "server": "local"}],
-    "final": "remote"
-  },
   "inbounds": [
-    {"type": "tun", "tag": "tun-in", "interface_name": "tun0", "inet4_address": "172.19.0.1/30", "auto_route": true, "strict_route": true, "stack": "system"}
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
   ],
   "outbounds": [
     {
@@ -131,16 +108,9 @@ cat > "$OUTPUT_DIR/trojan-singbox.json" <<EOF
         "server_name": "${DOMAIN}",
         "utls": {"enabled": true, "fingerprint": "chrome"}
       }
-    },
-    {"type": "direct", "tag": "direct"},
-    {"type": "block", "tag": "block"},
-    {"type": "dns", "tag": "dns-out"}
+    }
   ],
   "route": {
-    "rules": [
-      {"protocol": "dns", "outbound": "dns-out"},
-      {"geoip": ["private"], "outbound": "direct"}
-    ],
     "auto_detect_interface": true,
     "final": "proxy"
   }
@@ -174,16 +144,8 @@ EOF
 cat > "$OUTPUT_DIR/hysteria2-singbox.json" <<EOF
 {
   "log": {"level": "info"},
-  "dns": {
-    "servers": [
-      {"tag": "remote", "address": "https://1.1.1.1/dns-query", "detour": "proxy"},
-      {"tag": "local", "address": "local", "detour": "direct"}
-    ],
-    "rules": [{"outbound": "any", "server": "local"}],
-    "final": "remote"
-  },
   "inbounds": [
-    {"type": "tun", "tag": "tun-in", "interface_name": "tun0", "inet4_address": "172.19.0.1/30", "auto_route": true, "strict_route": true, "stack": "system"}
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
   ],
   "outbounds": [
     {
@@ -196,16 +158,9 @@ cat > "$OUTPUT_DIR/hysteria2-singbox.json" <<EOF
         "enabled": true,
         "server_name": "${DOMAIN}"
       }
-    },
-    {"type": "direct", "tag": "direct"},
-    {"type": "block", "tag": "block"},
-    {"type": "dns", "tag": "dns-out"}
+    }
   ],
   "route": {
-    "rules": [
-      {"protocol": "dns", "outbound": "dns-out"},
-      {"geoip": ["private"], "outbound": "direct"}
-    ],
     "auto_detect_interface": true,
     "final": "proxy"
   }
