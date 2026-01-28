@@ -934,6 +934,7 @@ show_usage() {
     echo "  status                Show service status"
     echo "  logs [SERVICE...]     View logs (default: all, follow mode)"
     echo "  users                 List all users"
+    echo "  user list             List all users"
     echo "  user add NAME         Add a new user"
     echo "  user revoke NAME      Revoke a user"
     echo "  build                 Build all services"
@@ -1055,9 +1056,12 @@ cmd_user() {
     local username="${2:-}"
 
     case "$action" in
+        list|ls)
+            list_users
+            ;;
         add)
             if [[ -z "$username" ]]; then
-                error "Usage: ./moav.sh user add USERNAME"
+                error "Usage: moav user add USERNAME"
                 exit 1
             fi
             if [[ ! "$username" =~ ^[a-zA-Z0-9_]+$ ]]; then
@@ -1071,9 +1075,9 @@ cmd_user() {
                 exit 1
             fi
             ;;
-        revoke)
+        revoke|rm|remove|delete)
             if [[ -z "$username" ]]; then
-                error "Usage: ./moav.sh user revoke USERNAME"
+                error "Usage: moav user revoke USERNAME"
                 exit 1
             fi
             if [[ -x "./scripts/user-revoke.sh" ]]; then
@@ -1084,7 +1088,7 @@ cmd_user() {
             fi
             ;;
         *)
-            error "Usage: ./moav.sh user [add|revoke] USERNAME"
+            error "Usage: moav user [list|add|revoke] [USERNAME]"
             exit 1
             ;;
     esac

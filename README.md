@@ -24,30 +24,33 @@ cd MoaV
 cp .env.example .env
 nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
 
-# Run interactive management script
+# Run interactive setup
 ./moav.sh
 ```
 
-The `moav.sh` script provides an interactive menu, or use commands directly:
+On first run, `moav.sh` will:
+- Check prerequisites (Docker, Docker Compose)
+- Offer to install globally (`moav` command)
+- Guide you through bootstrap (keys, TLS cert, users)
+- Show the main menu
+
+**After installation, use `moav` from anywhere:**
 
 ```bash
-./moav.sh install               # Install globally (then use 'moav' from anywhere)
-moav                            # Interactive menu
-moav start                      # Start all services
-moav start proxy admin          # Start specific profiles
-moav stop conduit               # Stop specific service
-moav logs sing-box conduit      # View specific service logs
-moav user add joe               # Add user
-moav help                       # Show all commands
+moav                      # Interactive menu
+moav help                 # Show all commands
+moav start                # Start all services
+moav stop                 # Stop all services
+moav logs                 # View logs
+moav user add joe         # Add user
 ```
 
-**Manual docker commands** (alternative to moav.sh):
+**Manual docker commands** (alternative):
 
 ```bash
-docker compose --profile all build              # Build all images
+docker compose --profile all build                 # Build all images
 docker compose --profile setup run --rm bootstrap  # Initialize
-docker compose --profile all up -d              # Start all services
-docker compose --profile proxy up -d            # Or just proxy services
+docker compose --profile all up -d                 # Start all services
 ```
 
 See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
@@ -105,22 +108,22 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 ## User Management
 
 ```bash
-# Add a user to ALL services
-./scripts/user-add.sh newuser
+# Using moav (recommended)
+moav user list            # List all users (or: moav users)
+moav user add joe         # Add user to all services
+moav user revoke joe      # Revoke user from all services
+```
 
+**Manual scripts** (for advanced use):
+
+```bash
 # Add to specific services only
-./scripts/singbox-user-add.sh newuser  # Reality, Trojan, Hysteria2
-./scripts/wg-user-add.sh newuser       # WireGuard only
-
-# Revoke a user from ALL services
-./scripts/user-revoke.sh username
+./scripts/singbox-user-add.sh joe     # Reality, Trojan, Hysteria2
+./scripts/wg-user-add.sh joe          # WireGuard only
 
 # Revoke from specific services only
-./scripts/singbox-user-revoke.sh username
-./scripts/wg-user-revoke.sh username
-
-# List all users
-./scripts/user-list.sh
+./scripts/singbox-user-revoke.sh joe
+./scripts/wg-user-revoke.sh joe
 ```
 
 User bundles are generated in `outputs/bundles/<username>/` containing:
@@ -128,16 +131,32 @@ User bundles are generated in `outputs/bundles/<username>/` containing:
 - QR codes for mobile import
 - README with connection instructions
 
+## Service Management
+
+```bash
+moav status               # Show all service status
+moav start                # Start all services
+moav start proxy admin    # Start specific profiles
+moav stop                 # Stop all services
+moav stop conduit         # Stop specific service
+moav restart sing-box     # Restart specific service
+moav logs                 # View all logs (follow mode)
+moav logs conduit         # View specific service logs
+moav build                # Build/rebuild all containers
+```
+
+**Profiles:** `proxy`, `wireguard`, `dnstt`, `admin`, `conduit`, `snowflake`, `all`
+
+**Service aliases:** `conduit`→psiphon-conduit, `singbox`→sing-box, `wg`→wireguard, `dns`→dnstt
+
 ## Conduit Management
 
 If running Psiphon Conduit to donate bandwidth:
 
 ```bash
-# View live traffic stats by country
-./scripts/conduit-stats.sh
-
-# Get Ryve deep link for mobile import
-./scripts/conduit-info.sh
+moav logs conduit             # View conduit logs
+./scripts/conduit-stats.sh    # View live traffic stats by country
+./scripts/conduit-info.sh     # Get Ryve deep link for mobile import
 ```
 
 ## Client Apps
@@ -184,7 +203,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for setup instructions.
 
 ```
 MoaV/
-├── moav.sh                 # Interactive management script
+├── moav.sh                 # CLI management tool (install with: ./moav.sh install)
 ├── docker-compose.yml      # Main compose file
 ├── .env.example            # Environment template
 ├── Dockerfile.*            # Container definitions
