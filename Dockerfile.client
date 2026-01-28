@@ -44,7 +44,6 @@ FROM alpine:3.20
 ARG SINGBOX_VERSION=1.12.17
 ARG WSTUNNEL_VERSION=10.5.1
 ARG SNOWFLAKE_VERSION=2.11.0
-ARG PSIPHON_VERSION=2.0.35
 
 # Install runtime dependencies
 RUN apk add --no-cache \
@@ -52,7 +51,6 @@ RUN apk add --no-cache \
     curl \
     wget \
     jq \
-    unzip \
     ca-certificates \
     iptables \
     ip6tables \
@@ -90,15 +88,12 @@ RUN wget -qO /usr/local/bin/snowflake-client \
 RUN chmod +x /usr/local/bin/snowflake-client 2>/dev/null || true
 RUN rm -f /tmp/snowflake-client-built
 
-# psiphon: extract from Client Library zip (optional)
-RUN wget -qO /tmp/psiphon-client-library.zip \
-    "https://github.com/Psiphon-Labs/psiphon-tunnel-core/releases/download/v${PSIPHON_VERSION}/Psiphon-Client-Library.zip" && \
-    unzip -j /tmp/psiphon-client-library.zip "*/linux/psiphon-tunnel-core" -d /tmp/ && \
-    mv /tmp/psiphon-tunnel-core /usr/local/bin/psiphon-client && \
+# psiphon: download from official binaries repo (optional)
+RUN wget -qO /usr/local/bin/psiphon-client \
+    "https://raw.githubusercontent.com/Psiphon-Labs/psiphon-tunnel-core-binaries/master/linux/psiphon-tunnel-core-x86_64" && \
     chmod +x /usr/local/bin/psiphon-client && \
-    rm -f /tmp/psiphon-client-library.zip && \
-    echo "psiphon: using pre-built binary from library zip" || \
-    (rm -f /tmp/psiphon-client-library.zip /usr/local/bin/psiphon-client && echo "psiphon: not available (optional)")
+    echo "psiphon: using pre-built binary" || \
+    echo "psiphon: not available (optional)"
 
 # dnstt-client: always use built (no official releases)
 RUN cp /tmp/dnstt-client-built /usr/local/bin/dnstt-client && \
