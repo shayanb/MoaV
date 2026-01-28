@@ -42,6 +42,8 @@ nano .env  # تنظیم DOMAIN، ACME_EMAIL، ADMIN_PASSWORD
 - شما را در فرآیند راه‌اندازی اولیه راهنمایی می‌کند (کلیدها، گواهی TLS، کاربران)
 - منوی اصلی را نمایش می‌دهد
 
+<img src="docs/assets/moav.sh.png" alt="منوی تعاملی MoaV" width="400">
+
 **پس از نصب، از هر مکانی از `moav` استفاده کنید:**
 
 <div dir="ltr">

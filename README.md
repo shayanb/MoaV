@@ -39,6 +39,8 @@ On first run, `moav.sh` will:
 - Guide you through bootstrap (keys, TLS cert, users)
 - Show the main menu
 
+<img src="docs/assets/moav.sh.png" alt="MoaV Interactive Menu" width="350">
+
 **After installation, use `moav` from anywhere:**
 
 ```bash
