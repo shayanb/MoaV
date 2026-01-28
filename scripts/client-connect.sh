@@ -249,11 +249,11 @@ EOF
             ;;
 
         wireguard)
-            # Extract WireGuard config values (case-insensitive, allow whitespace)
-            local private_key=$(grep -i "PrivateKey" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
-            local endpoint=$(grep -i "Endpoint" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
-            local peer_public_key=$(grep -i "PublicKey" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
-            local address=$(grep -i "Address" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r' | cut -d',' -f1)
+            # Extract WireGuard config values (case-insensitive, match first = only)
+            local private_key=$(grep -i "PrivateKey" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r')
+            local endpoint=$(grep -i "Endpoint" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r')
+            local peer_public_key=$(grep -i "PublicKey" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r')
+            local address=$(grep -i "Address" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r' | cut -d',' -f1)
 
             local server="${endpoint%:*}"
             local port="${endpoint#*:}"

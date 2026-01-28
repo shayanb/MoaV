@@ -1144,7 +1144,7 @@ cmd_test() {
     info "Testing connectivity for user: $user"
 
     # Build client image if needed
-    if ! docker images | grep -q "moav-client"; then
+    if ! docker images --format "{{.Repository}}" 2>/dev/null | grep -q "^moav-client$"; then
         info "Building client image..."
         docker compose --profile client build client
     fi
@@ -1189,7 +1189,7 @@ cmd_client() {
             info "HTTP proxy will be available at localhost:8080"
 
             # Build client image if needed
-            if ! docker images | grep -q "moav-client"; then
+            if ! docker images --format "{{.Repository}}" 2>/dev/null | grep -q "^moav-client$"; then
                 info "Building client image..."
                 docker compose --profile client build client
             fi

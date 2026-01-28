@@ -438,11 +438,11 @@ test_wireguard() {
         return
     fi
 
-    # Extract values using portable grep/sed (case-insensitive, allow leading whitespace)
-    local private_key=$(grep -i "PrivateKey" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
-    local endpoint=$(grep -i "Endpoint" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
-    local peer_public_key=$(grep -i "PublicKey" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
-    local address=$(grep -i "Address" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r' | cut -d',' -f1)
+    # Extract values using portable grep/sed (case-insensitive, match first = only)
+    local private_key=$(grep -i "PrivateKey" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r')
+    local endpoint=$(grep -i "Endpoint" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r')
+    local peer_public_key=$(grep -i "PublicKey" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r')
+    local address=$(grep -i "Address" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r' | cut -d',' -f1)
 
     log_debug "Extracted: private_key=${private_key:0:10}... endpoint=$endpoint pubkey=${peer_public_key:0:10}... address=$address"
 
