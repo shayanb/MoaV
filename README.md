@@ -1,5 +1,7 @@
 # MoaV
 
+English | **[فارسی](README-fa.md)**
+
 Multi-protocol censorship circumvention stack optimized for hostile network environments.
 
 ## Features
@@ -68,7 +70,6 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 ┌──────────────╪───────────────────────────╪───────────────────────────╪───────────┐
 │              |                 Restricted Internet                   |           │
 └──────────────╪───────────────────────────╪───────────────────────────╪───────────┘
-               │                           │                           │
                │                           │                           │
 ╔══════════════╪═══════════════════════════╪═══════════════════════════╪═══════════╗
 ║              │                           │                           │           ║
@@ -201,6 +202,8 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for setup instructions.
 **Recommended VPS:**
 - Hetzner (Germany/Finland)
 - DigitalOcean (Frankfurt/Amsterdam)
+- ...
+
 
 ## Project Structure
 

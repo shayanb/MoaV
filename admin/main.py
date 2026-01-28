@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 import secrets
@@ -63,18 +63,6 @@ def verify_auth(request: Request, credentials: HTTPBasicCredentials = Depends(se
             headers={"WWW-Authenticate": "Basic"},
         )
     return credentials.username
-
-
-def check_host_port(host: str, port: int, timeout: float = 0.3) -> bool:
-    """Check if a host:port is reachable"""
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((host, port))
-        sock.close()
-        return result == 0
-    except Exception:
-        return False
 
 
 def check_service_status(name: str) -> str:

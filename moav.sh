@@ -937,7 +937,7 @@ show_usage() {
     echo "  user list             List all users"
     echo "  user add NAME         Add a new user"
     echo "  user revoke NAME      Revoke a user"
-    echo "  build                 Build all services"
+    echo "  build [SERVICE...]    Build services (default: all)"
     echo ""
     echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, all"
     echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake"
@@ -950,6 +950,7 @@ show_usage() {
     echo "  moav start proxy admin     # Start proxy and admin profiles"
     echo "  moav stop conduit          # Stop specific service"
     echo "  moav logs sing-box conduit # View specific service logs"
+    echo "  moav build conduit         # Build specific service"
     echo "  moav user add john         # Add user 'john'"
 }
 
@@ -1095,9 +1096,17 @@ cmd_user() {
 }
 
 cmd_build() {
-    info "Building all services..."
-    docker compose --profile all build
-    success "Build complete!"
+    if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
+        info "Building all services..."
+        docker compose --profile all build
+        success "All services built!"
+    else
+        local services
+        services=$(resolve_services "$@")
+        info "Building: $services"
+        docker compose --profile all build $services
+        success "Build complete!"
+    fi
 }
 
 # =============================================================================
@@ -1185,7 +1194,8 @@ main() {
             cmd_user "$@"
             ;;
         build)
-            cmd_build
+            shift
+            cmd_build "$@"
             ;;
         *)
             error "Unknown command: $cmd"

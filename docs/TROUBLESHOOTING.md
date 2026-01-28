@@ -77,7 +77,7 @@ docker compose logs certbot
    # Build only proxy services
    docker compose --profile proxy build
 
-   # Available profiles: proxy, wireguard, dnstt, admin, conduit, all
+   # Available profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, all
    ```
 
 7. **Port already in use (8443 for Trojan):**
