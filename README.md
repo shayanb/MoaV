@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-English | **[فارسی](README-fa.md)** | **[Changelog](CHANGELOG.md)**
+English | **[فارسی](README-fa.md)** 
 
 Multi-protocol censorship circumvention stack optimized for hostile network environments.
 
@@ -281,6 +281,10 @@ See [docs/OPSEC.md](docs/OPSEC.md) for security guidelines.
 ## License
 
 MIT
+
+## Changelog
+See [CHANGELOG.md](CHANGELOG.md) for release notes and version history.
+
 
 ## Disclaimer
 

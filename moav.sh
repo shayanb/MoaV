@@ -52,7 +52,7 @@ print_header() {
     echo "║           Mother of all VPNs                       ║"
     echo "║                                                    ║"
     echo "║  Multi-protocol Circumvention Stack                ║"
-    printf "║  %-50s ║\n" "v${VERSION}"
+    printf "║  %-49s ║\n" "v${VERSION}"
     echo "╚════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
