@@ -353,13 +353,10 @@ docker compose --profile wireguard ps
 nc -vuz YOUR_SERVER_IP 51820
 ```
 
-### Psiphon/Tor fallback not working
+### Tor/Snowflake fallback not working
 
-**These are standalone and don't require your server:**
+**Tor is standalone and doesn't require your server:**
 ```bash
-# Test Psiphon independently
-docker run --rm moav-client psiphon-client --help
-
 # Test Snowflake independently
 docker run --rm moav-client snowflake-client --help
 ```
@@ -367,6 +364,10 @@ docker run --rm moav-client snowflake-client --help
 **If binaries are missing:**
 - Some optional binaries may fail to download during build
 - Check build logs for "not available (optional)" messages
+
+**For Psiphon:**
+- Psiphon is not available via MoaV client
+- Use the [official Psiphon apps](https://psiphon.ca/en/download.html) instead
 
 ---
 
@@ -468,7 +469,7 @@ Home ISPs often have stricter filtering:
 
 ---
 
-## Iran-Specific Issues
+## highly censored environments-Specific Issues
 
 ### All protocols blocked
 
@@ -497,7 +498,7 @@ Signs your protocol is detected:
 
 ### Total internet shutdown
 
-During major events, Iran sometimes shuts internet entirely:
+During major events, Govs sometimes shuts internet entirely:
 
 1. DNS tunnel might still work (if any DNS works)
 2. Satellite internet (Starlink) if available

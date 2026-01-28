@@ -12,8 +12,10 @@ This guide explains how to connect to MoaV from various devices.
 | WireGuard (Direct) | WireGuard | WireGuard | WireGuard | WireGuard | **MoaV Client** | 51820/udp |
 | WireGuard (wstunnel) | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | **MoaV Client** | 8080/tcp |
 | DNS Tunnel | dnstt-client | dnstt-client | dnstt-client | dnstt-client | **MoaV Client** | 53/udp |
-| Psiphon | Psiphon | Psiphon | Psiphon | Psiphon | **MoaV Client** | Various |
+| Psiphon | Psiphon App | Psiphon App | Psiphon App | Psiphon App | Psiphon App¹ | Various |
 | Tor (Snowflake) | Tor Browser, Onion Browser | Tor Browser | Tor Browser | Tor Browser | **MoaV Client** | Various |
+
+¹ Psiphon not available via MoaV client - use [official Psiphon apps](https://psiphon.ca/en/download.html)
 
 ## Protocol Priority
 
@@ -24,9 +26,9 @@ Try these in order. If one doesn't work, try the next:
 3. **Trojan** - Backup, uses your domain's TLS cert (port 8443/tcp)
 4. **WireGuard (Direct)** - Full VPN mode, simple setup (port 51820/udp)
 5. **WireGuard (wstunnel)** - VPN wrapped in WebSocket, for restrictive networks (port 8080/tcp)
-6. **Psiphon** - Standalone app, no server needed, uses Psiphon network
-7. **Tor (Snowflake)** - Standalone app, no server needed, uses Tor network
-8. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
+6. **Tor (Snowflake)** - Uses Tor network (no server needed)
+7. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
+8. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
 
 ---
 
@@ -85,7 +87,6 @@ moav client connect user1 --protocol hysteria2
 moav client connect user1 --protocol trojan
 moav client connect user1 --protocol wireguard
 moav client connect user1 --protocol dnstt
-moav client connect user1 --protocol psiphon
 moav client connect user1 --protocol tor
 ```
 
@@ -104,9 +105,10 @@ CLIENT_HTTP_PORT=8080
 2. Hysteria2 - Fast, UDP-based
 3. Trojan - TLS-based backup
 4. WireGuard - Full VPN
-5. Psiphon - Uses Psiphon network (no server needed)
-6. Tor (Snowflake) - Uses Tor network (no server needed)
-7. dnstt - Last resort, slow but hard to block
+5. Tor (Snowflake) - Uses Tor network (no server needed)
+6. dnstt - Last resort, slow but hard to block
+
+> **Note:** Psiphon is not available via MoaV client. Use the [official Psiphon apps](https://psiphon.ca/en/download.html) instead.
 
 ### Building the Client Image
 
@@ -123,7 +125,6 @@ The client container includes:
 - **wireguard-go** - Userspace WireGuard implementation
 - **wstunnel** - WebSocket tunnel for WireGuard
 - **dnstt-client** - DNS tunnel client
-- **psiphon-tunnel-core** - Psiphon client
 - **snowflake-client** - Tor Snowflake pluggable transport
 - **tor** - Tor daemon
 
@@ -519,7 +520,7 @@ Yes! Both services can run simultaneously without conflicts. They donate bandwid
 
 ---
 
-## Tips for Iran
+## Tips for Highly Censored Environments
 
 1. **Keep multiple configs** - Have Reality, Hysteria2, WireGuard, and DNS tunnel ready
 2. **Download client apps in advance** - Store APKs, wstunnel binaries, and Psiphon offline

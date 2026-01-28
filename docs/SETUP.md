@@ -14,7 +14,7 @@ Complete setup guide for deploying MoaV on a fresh VPS.
 
 ## Recommended VPS Providers
 
-For users in Iran, these providers/regions typically work well:
+For users in middle east, these providers/regions typically work well:
 
 | Provider | Region | Notes |
 |----------|--------|-------|

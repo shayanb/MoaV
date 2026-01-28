@@ -88,12 +88,8 @@ RUN wget -qO /usr/local/bin/snowflake-client \
 RUN chmod +x /usr/local/bin/snowflake-client 2>/dev/null || true
 RUN rm -f /tmp/snowflake-client-built
 
-# psiphon: download from official binaries repo (optional)
-RUN wget -qO /usr/local/bin/psiphon-client \
-    "https://raw.githubusercontent.com/Psiphon-Labs/psiphon-tunnel-core-binaries/master/linux/psiphon-tunnel-core-x86_64" && \
-    chmod +x /usr/local/bin/psiphon-client && \
-    echo "psiphon: using pre-built binary" || \
-    echo "psiphon: not available (optional)"
+# psiphon: NOT included - requires embedded server lists not available for CLI
+# Users should use official Psiphon apps instead (Android/iOS/Windows)
 
 # dnstt-client: always use built (no official releases)
 RUN cp /tmp/dnstt-client-built /usr/local/bin/dnstt-client && \

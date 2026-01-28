@@ -23,7 +23,8 @@ TEST_URL="${TEST_URL:-https://www.google.com/generate_204}"
 TEST_TIMEOUT="${TEST_TIMEOUT:-10}"
 
 # Protocol priority for auto mode
-PROTOCOL_PRIORITY=(reality hysteria2 trojan wireguard psiphon tor dnstt)
+# Note: psiphon excluded - requires embedded server list, not supported in client mode
+PROTOCOL_PRIORITY=(reality hysteria2 trojan wireguard tor dnstt)
 
 # State
 CURRENT_PID=""
@@ -397,44 +398,18 @@ connect_dnstt() {
 }
 
 # Connect using Psiphon (standalone, doesn't need MoaV server)
+# NOTE: Not implemented - Psiphon tunnel-core requires embedded server lists
+# that are not publicly available. Use the official Psiphon apps instead:
+# - Android: https://play.google.com/store/apps/details?id=com.psiphon3
+# - iOS: https://apps.apple.com/app/psiphon/id1276263909
+# - Windows: https://psiphon.ca/en/download.html
 connect_psiphon() {
-    if ! command -v psiphon-client >/dev/null 2>&1; then
-        log_error "psiphon-client not available"
-        return 1
-    fi
-
-    log_info "Starting Psiphon client..."
-    log_info "Note: Psiphon connects to its own network, not your MoaV server"
-
-    # Create minimal Psiphon config
-    local psiphon_config="/tmp/moav-psiphon-config.json"
-    cat > "$psiphon_config" << EOF
-{
-    "LocalSocksProxyPort": $SOCKS_PORT,
-    "LocalHttpProxyPort": $HTTP_PORT,
-    "PropagationChannelId": "FFFFFFFFFFFFFFFF",
-    "SponsorId": "FFFFFFFFFFFFFFFF"
-}
-EOF
-
-    psiphon-client -config "$psiphon_config" &
-    CURRENT_PID=$!
-    CURRENT_PROTOCOL="psiphon"
-
-    sleep 5
-
-    if ! kill -0 $CURRENT_PID 2>/dev/null; then
-        log_error "Psiphon client failed to start"
-        return 1
-    fi
-
-    # Test connection
-    if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
-        return 0
-    else
-        log_warn "Psiphon connection not ready yet, continuing..."
-        return 0  # Psiphon may take time to establish
-    fi
+    log_warn "Psiphon client mode not implemented"
+    log_info "Psiphon requires embedded server lists not available for CLI usage"
+    log_info "Use the official Psiphon apps for your platform instead:"
+    log_info "  - Android/iOS: Search 'Psiphon' in app store"
+    log_info "  - Windows: https://psiphon.ca/en/download.html"
+    return 1
 }
 
 # Connect using Tor with Snowflake
