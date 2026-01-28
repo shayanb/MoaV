@@ -1153,6 +1153,7 @@ cmd_test() {
     docker run --rm \
         -v "$(pwd)/$bundle_path:/config:ro" \
         -v "$(pwd)/outputs/dnstt:/dnstt:ro" \
+        -e ENABLE_DEPRECATED_WIREGUARD_OUTBOUND=true \
         moav-client --test $json_flag
 }
 
@@ -1200,6 +1201,7 @@ cmd_client() {
                 -p 8080:8080 \
                 -v "$(pwd)/$bundle_path:/config:ro" \
                 -v "$(pwd)/outputs/dnstt:/dnstt:ro" \
+                -e ENABLE_DEPRECATED_WIREGUARD_OUTBOUND=true \
                 moav-client --connect -p "$protocol"
             ;;
         build)
