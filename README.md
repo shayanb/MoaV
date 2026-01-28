@@ -31,14 +31,16 @@ nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
 The `moav.sh` script provides an interactive menu, or use commands directly:
 
 ```bash
-./moav.sh              # Interactive menu
-./moav.sh bootstrap    # First-time setup
-./moav.sh start        # Start all services
-./moav.sh stop         # Stop all services
-./moav.sh status       # View service status
-./moav.sh logs         # View logs (all services)
-./moav.sh user add joe # Add user
-./moav.sh help         # Show all commands
+./moav.sh                       # Interactive menu
+./moav.sh bootstrap             # First-time setup
+./moav.sh start                 # Start all services
+./moav.sh start proxy admin     # Start specific profiles
+./moav.sh stop                  # Stop all services
+./moav.sh stop conduit snowflake # Stop specific services
+./moav.sh logs                  # View all logs
+./moav.sh logs sing-box conduit # View specific service logs
+./moav.sh user add joe          # Add user
+./moav.sh help                  # Show all commands
 ```
 
 **Manual docker commands** (alternative to moav.sh):

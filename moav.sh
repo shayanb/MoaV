@@ -704,11 +704,29 @@ revoke_user() {
 build_services() {
     print_section "Build Services"
 
+    # Get all available services from compose
+    local all_services
+    all_services=$(docker compose --profile all config --services 2>/dev/null | sort)
+
     echo "Build options:"
     echo ""
-    echo -e "  ${WHITE}1)${NC} Build all services"
-    echo -e "  ${WHITE}2)${NC} Build all (no cache)"
-    echo -e "  ${WHITE}3)${NC} Build specific service"
+    echo -e "  ${WHITE}a)${NC} Build all services"
+    echo -e "  ${WHITE}n)${NC} Build all (no cache)"
+
+    if [[ -n "$all_services" ]]; then
+        echo ""
+        echo "Build specific service:"
+        local i=1
+        local services_array=()
+        while IFS= read -r svc; do
+            [[ -z "$svc" ]] && continue
+            services_array+=("$svc")
+            echo -e "  ${WHITE}$i)${NC} $svc"
+            ((i++))
+        done <<< "$all_services"
+    fi
+
+    echo ""
     echo -e "  ${WHITE}0)${NC} Cancel"
     echo ""
 
@@ -716,22 +734,35 @@ build_services() {
     read -r choice
 
     case $choice in
-        1)
-            run_command "docker compose --profile all build" "Building all services"
-            ;;
-        2)
-            run_command "docker compose --profile all build --no-cache" "Building all services (no cache)"
-            ;;
-        3)
+        a|A)
             echo ""
-            prompt "Enter service name (e.g., sing-box, conduit): "
-            read -r service
-            if [[ -n "$service" ]]; then
-                run_command "docker compose build $service" "Building $service"
+            info "Building all services..."
+            docker compose --profile all build
+            success "Build complete!"
+            ;;
+        n|N)
+            echo ""
+            info "Building all services (no cache)..."
+            docker compose --profile all build --no-cache
+            success "Build complete!"
+            ;;
+        0|"")
+            return 0
+            ;;
+        [1-9]*)
+            local idx=$((choice - 1))
+            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
+                local service="${services_array[$idx]}"
+                echo ""
+                info "Building $service..."
+                docker compose build "$service"
+                success "$service built!"
+            else
+                warn "Invalid choice"
             fi
             ;;
-        0|*)
-            return 1
+        *)
+            warn "Invalid choice"
             ;;
     esac
 }
@@ -799,28 +830,33 @@ show_usage() {
     echo "Usage: ./moav.sh [command] [options]"
     echo ""
     echo "Commands:"
-    echo "  (no command)     Interactive menu"
-    echo "  help             Show this help message"
-    echo "  check            Run prerequisites check"
-    echo "  bootstrap        Run first-time setup"
-    echo "  start [PROFILE]  Start services (default: all)"
-    echo "  stop             Stop all services"
-    echo "  restart          Restart all services"
-    echo "  status           Show service status"
-    echo "  logs [SERVICE]   View logs (default: all, follow mode)"
-    echo "  users            List all users"
-    echo "  user add NAME    Add a new user"
-    echo "  user revoke NAME Revoke a user"
-    echo "  build            Build all services"
+    echo "  (no command)          Interactive menu"
+    echo "  help                  Show this help message"
+    echo "  check                 Run prerequisites check"
+    echo "  bootstrap             Run first-time setup"
+    echo "  start [PROFILE...]    Start services (default: all)"
+    echo "  stop [SERVICE...]     Stop services (default: all)"
+    echo "  restart [SERVICE...]  Restart services (default: all)"
+    echo "  status                Show service status"
+    echo "  logs [SERVICE...]     View logs (default: all, follow mode)"
+    echo "  users                 List all users"
+    echo "  user add NAME         Add a new user"
+    echo "  user revoke NAME      Revoke a user"
+    echo "  build                 Build all services"
     echo ""
     echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, all"
+    echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, conduit, snowflake"
     echo ""
     echo "Examples:"
-    echo "  ./moav.sh                    # Interactive menu"
-    echo "  ./moav.sh start              # Start all services"
-    echo "  ./moav.sh start proxy admin  # Start proxy and admin"
-    echo "  ./moav.sh logs sing-box      # View sing-box logs"
-    echo "  ./moav.sh user add john      # Add user 'john'"
+    echo "  ./moav.sh                       # Interactive menu"
+    echo "  ./moav.sh start                 # Start all services"
+    echo "  ./moav.sh start proxy admin     # Start proxy and admin profiles"
+    echo "  ./moav.sh stop                  # Stop all services"
+    echo "  ./moav.sh stop conduit admin    # Stop specific services"
+    echo "  ./moav.sh restart sing-box      # Restart sing-box"
+    echo "  ./moav.sh logs                  # View all logs"
+    echo "  ./moav.sh logs sing-box conduit # View specific service logs"
+    echo "  ./moav.sh user add john         # Add user 'john'"
 }
 
 cmd_check() {
@@ -853,15 +889,27 @@ cmd_start() {
 }
 
 cmd_stop() {
-    info "Stopping all services..."
-    docker compose --profile all down
-    success "Services stopped!"
+    if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
+        info "Stopping all services..."
+        docker compose --profile all down
+        success "All services stopped!"
+    else
+        info "Stopping: $*"
+        docker compose stop "$@"
+        success "Services stopped!"
+    fi
 }
 
 cmd_restart() {
-    info "Restarting all services..."
-    docker compose --profile all restart
-    success "Services restarted!"
+    if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
+        info "Restarting all services..."
+        docker compose --profile all restart
+        success "All services restarted!"
+    else
+        info "Restarting: $*"
+        docker compose restart "$@"
+        success "Services restarted!"
+    fi
 }
 
 cmd_status() {
@@ -869,11 +917,10 @@ cmd_status() {
 }
 
 cmd_logs() {
-    local service="${1:-}"
-    if [[ -n "$service" ]]; then
-        docker compose logs -t -f "$service"
-    else
+    if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
         docker compose --profile all logs -t -f
+    else
+        docker compose logs -t -f "$@"
     fi
 }
 
@@ -984,10 +1031,12 @@ main() {
             cmd_start "$@"
             ;;
         stop)
-            cmd_stop
+            shift
+            cmd_stop "$@"
             ;;
         restart)
-            cmd_restart
+            shift
+            cmd_restart "$@"
             ;;
         status)
             cmd_status

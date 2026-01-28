@@ -79,18 +79,20 @@ MoaV includes a management script that can be used interactively or with command
 Or run commands directly:
 
 ```bash
-./moav.sh check        # Check prerequisites
-./moav.sh bootstrap    # Run first-time setup
-./moav.sh start        # Start all services
-./moav.sh start proxy admin  # Start specific profiles
-./moav.sh stop         # Stop all services
-./moav.sh status       # Show service status
-./moav.sh logs         # View all logs
-./moav.sh logs sing-box  # View specific service logs
-./moav.sh users        # List users
-./moav.sh user add joe   # Add user
-./moav.sh user revoke joe  # Revoke user
-./moav.sh build        # Build all containers
+./moav.sh check                    # Check prerequisites
+./moav.sh bootstrap                # Run first-time setup
+./moav.sh start                    # Start all services
+./moav.sh start proxy admin        # Start specific profiles
+./moav.sh stop                     # Stop all services
+./moav.sh stop conduit snowflake   # Stop specific services
+./moav.sh restart sing-box         # Restart specific service
+./moav.sh status                   # Show service status
+./moav.sh logs                     # View all logs
+./moav.sh logs sing-box conduit    # View specific service logs
+./moav.sh users                    # List users
+./moav.sh user add joe             # Add user
+./moav.sh user revoke joe          # Revoke user
+./moav.sh build                    # Build all containers
 ```
 
 If you prefer manual setup, continue with the steps below.
