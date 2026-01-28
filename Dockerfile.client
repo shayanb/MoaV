@@ -1,0 +1,90 @@
+# =============================================================================
+# MoaV Client - Multi-protocol client for testing and connecting
+# =============================================================================
+# Supports: Reality, Trojan, Hysteria2, WireGuard (via wireguard-go + wstunnel),
+#           dnstt, Psiphon, Tor/Snowflake
+# =============================================================================
+
+FROM golang:1.22-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git make wget
+
+# Build sing-box
+ARG SINGBOX_VERSION=1.10.0
+RUN go install -v -tags with_quic,with_utls,with_reality_server,with_clash_api \
+    github.com/sagernet/sing-box/cmd/sing-box@v${SINGBOX_VERSION}
+
+# Build wireguard-go (for future VPN mode)
+RUN go install golang.zx2c4.com/wireguard/cmd/wireguard-go@latest || true
+
+# Download wstunnel binary
+ARG WSTUNNEL_VERSION=10.1.0
+RUN wget -qO- "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_amd64.tar.gz" | tar xz -C /go/bin/ || \
+    echo "wstunnel download failed, optional"
+
+# Build dnstt-client
+RUN git clone https://www.bamsoftware.com/git/dnstt.git /tmp/dnstt && \
+    cd /tmp/dnstt/dnstt-client && \
+    go build -o /go/bin/dnstt-client . || \
+    echo "dnstt build failed, optional"
+
+# Try to build psiphon (may fail due to dependencies)
+RUN go install github.com/Psiphon-Labs/psiphon-tunnel-core/ConsoleClient@latest 2>/dev/null || \
+    echo "Psiphon build skipped (optional)"
+
+# =============================================================================
+# Final image
+# =============================================================================
+FROM alpine:3.19
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    bash \
+    curl \
+    jq \
+    ca-certificates \
+    iptables \
+    ip6tables \
+    iproute2 \
+    bind-tools \
+    geoip \
+    geoip-database \
+    tor \
+    && rm -rf /var/cache/apk/*
+
+# Copy built binaries (use wildcard to handle missing optionals)
+COPY --from=builder /go/bin/sing-box /usr/local/bin/
+COPY --from=builder /go/bin/wireguard-go /usr/local/bin/ 2>/dev/null || true
+COPY --from=builder /go/bin/wstunnel /usr/local/bin/ 2>/dev/null || true
+COPY --from=builder /go/bin/dnstt-client /usr/local/bin/ 2>/dev/null || true
+COPY --from=builder /go/bin/ConsoleClient /usr/local/bin/psiphon-client 2>/dev/null || true
+
+# Download snowflake-client from official Tor project
+ARG SNOWFLAKE_VERSION=2.9.2
+RUN wget -qO /usr/local/bin/snowflake-client \
+    "https://gitlab.torproject.org/api/v4/projects/tpo%2Fanti-censorship%2Fplugable-transports%2Fsnowflake/packages/generic/snowflake-client/${SNOWFLAKE_VERSION}/snowflake-client-linux-amd64" && \
+    chmod +x /usr/local/bin/snowflake-client || \
+    echo "Snowflake download failed, optional"
+
+# Create directories
+RUN mkdir -p /config /app /state /var/log/moav
+
+# Copy scripts
+COPY scripts/client-entrypoint.sh /app/
+COPY scripts/client-test.sh /app/
+COPY scripts/client-connect.sh /app/
+COPY scripts/lib/ /app/lib/
+RUN chmod +x /app/*.sh
+
+# Default ports for proxy mode
+# SOCKS5: 1080, HTTP: 8080
+EXPOSE 1080 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+    CMD curl -sf --socks5 127.0.0.1:1080 https://www.google.com/generate_204 || exit 1
+
+WORKDIR /app
+ENTRYPOINT ["/app/client-entrypoint.sh"]
+CMD ["--help"]

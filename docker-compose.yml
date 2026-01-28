@@ -272,3 +272,22 @@ services:
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
     profiles:
       - setup
+
+  # ===========================================================================
+  # CLIENT: Multi-protocol client for testing and connecting
+  # ===========================================================================
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: moav-client
+    volumes:
+      - ./outputs/bundles:/bundles:ro
+      - ./configs:/configs:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    ports:
+      - "${CLIENT_SOCKS_PORT:-1080}:1080"
+      - "${CLIENT_HTTP_PORT:-8080}:8080"
+    profiles:
+      - client

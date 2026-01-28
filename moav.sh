@@ -938,20 +938,24 @@ show_usage() {
     echo "  user add NAME         Add a new user"
     echo "  user revoke NAME      Revoke a user"
     echo "  build [SERVICE...]    Build services (default: all)"
+    echo "  test USERNAME         Test connectivity for a user"
+    echo "  client                Client mode (test/connect)"
     echo ""
-    echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, all"
+    echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, client, all"
     echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake"
     echo "Aliases:  conduit→psiphon-conduit, singbox→sing-box, wg→wireguard, dns→dnstt"
     echo ""
     echo "Examples:"
-    echo "  moav                       # Interactive menu"
-    echo "  moav install               # Install globally (run from anywhere)"
-    echo "  moav start                 # Start all services"
-    echo "  moav start proxy admin     # Start proxy and admin profiles"
-    echo "  moav stop conduit          # Stop specific service"
-    echo "  moav logs sing-box conduit # View specific service logs"
-    echo "  moav build conduit         # Build specific service"
-    echo "  moav user add john         # Add user 'john'"
+    echo "  moav                           # Interactive menu"
+    echo "  moav install                   # Install globally (run from anywhere)"
+    echo "  moav start                     # Start all services"
+    echo "  moav start proxy admin         # Start proxy and admin profiles"
+    echo "  moav stop conduit              # Stop specific service"
+    echo "  moav logs sing-box conduit     # View specific service logs"
+    echo "  moav build conduit             # Build specific service"
+    echo "  moav user add john             # Add user 'john'"
+    echo "  moav test joe                  # Test connectivity for user joe"
+    echo "  moav client connect joe        # Connect as user joe (exposes proxy)"
 }
 
 cmd_check() {
@@ -1110,6 +1114,117 @@ cmd_build() {
 }
 
 # =============================================================================
+# Client Commands
+# =============================================================================
+
+cmd_test() {
+    local user="${1:-}"
+    local json_flag=""
+
+    # Check for --json flag
+    for arg in "$@"; do
+        [[ "$arg" == "--json" ]] && json_flag="--json"
+        [[ "$arg" != "--json" ]] && [[ -z "$user" ]] && user="$arg"
+    done
+
+    if [[ -z "$user" ]]; then
+        error "Usage: moav test USERNAME [--json]"
+        echo ""
+        echo "Available users:"
+        ls -1 outputs/bundles/ 2>/dev/null || echo "  No users found"
+        exit 1
+    fi
+
+    local bundle_path="outputs/bundles/$user"
+    if [[ ! -d "$bundle_path" ]]; then
+        error "User bundle not found: $bundle_path"
+        exit 1
+    fi
+
+    info "Testing connectivity for user: $user"
+
+    # Build client image if needed
+    if ! docker images | grep -q "moav-client"; then
+        info "Building client image..."
+        docker compose --profile client build client
+    fi
+
+    # Run test
+    docker run --rm \
+        -v "$(pwd)/$bundle_path:/config:ro" \
+        moav-client --test $json_flag
+}
+
+cmd_client() {
+    local action="${1:-}"
+    shift || true
+
+    case "$action" in
+        test)
+            cmd_test "$@"
+            ;;
+        connect)
+            local user="${1:-}"
+            local protocol="${2:-auto}"
+
+            if [[ -z "$user" ]]; then
+                error "Usage: moav client connect USERNAME [PROTOCOL]"
+                echo ""
+                echo "Protocols: auto, reality, trojan, hysteria2, wireguard, psiphon, tor, dnstt"
+                echo ""
+                echo "Available users:"
+                ls -1 outputs/bundles/ 2>/dev/null || echo "  No users found"
+                exit 1
+            fi
+
+            local bundle_path="outputs/bundles/$user"
+            if [[ ! -d "$bundle_path" ]]; then
+                error "User bundle not found: $bundle_path"
+                exit 1
+            fi
+
+            info "Connecting as user: $user (protocol: $protocol)"
+            info "SOCKS5 proxy will be available at localhost:1080"
+            info "HTTP proxy will be available at localhost:8080"
+
+            # Build client image if needed
+            if ! docker images | grep -q "moav-client"; then
+                info "Building client image..."
+                docker compose --profile client build client
+            fi
+
+            # Run client in foreground
+            docker run --rm -it \
+                -p 1080:1080 \
+                -p 8080:8080 \
+                -v "$(pwd)/$bundle_path:/config:ro" \
+                moav-client --connect -p "$protocol"
+            ;;
+        build)
+            info "Building client image..."
+            docker compose --profile client build client
+            success "Client image built!"
+            ;;
+        *)
+            echo "Usage: moav client <command> [options]"
+            echo ""
+            echo "Commands:"
+            echo "  test USERNAME [--json]        Test connectivity for a user"
+            echo "  connect USERNAME [PROTOCOL]   Connect and expose local proxy"
+            echo "  build                         Build the client image"
+            echo ""
+            echo "Protocols: auto, reality, trojan, hysteria2, wireguard, psiphon, tor, dnstt"
+            echo ""
+            echo "Examples:"
+            echo "  moav client test joe              # Test all protocols for user joe"
+            echo "  moav client test joe --json       # Output results as JSON"
+            echo "  moav client connect joe           # Connect using auto-detection"
+            echo "  moav client connect joe reality   # Connect using Reality protocol"
+            ;;
+    esac
+}
+
+# =============================================================================
 # Entry Point
 # =============================================================================
 
@@ -1196,6 +1311,14 @@ main() {
         build)
             shift
             cmd_build "$@"
+            ;;
+        test)
+            shift
+            cmd_test "$@"
+            ;;
+        client)
+            shift
+            cmd_client "$@"
             ;;
         *)
             error "Unknown command: $cmd"
