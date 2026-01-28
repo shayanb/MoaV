@@ -1044,11 +1044,11 @@ cmd_status() {
 
 cmd_logs() {
     if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
-        docker compose --profile all logs -t -f
+        docker compose --profile all logs -t -f --tail 100
     else
         local services
         services=$(resolve_services "$@")
-        docker compose logs -t -f $services
+        docker compose logs -t -f --tail 100 $services
     fi
 }
 

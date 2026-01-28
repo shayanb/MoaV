@@ -442,14 +442,19 @@ connect_tor() {
     log_info "Starting Tor with Snowflake bridge..."
     log_info "Note: Tor connects to its own network, not your MoaV server"
 
-    # Create torrc with Snowflake
+    if ! command -v snowflake-client >/dev/null 2>&1; then
+        log_error "snowflake-client not available"
+        return 1
+    fi
+
+    # Create torrc with Snowflake (simplified config to stay under 510 byte limit)
     local torrc="/tmp/moav-torrc"
     cat > "$torrc" << EOF
 SocksPort 0.0.0.0:$SOCKS_PORT
 DataDirectory /tmp/tor-data
 UseBridges 1
-ClientTransportPlugin snowflake exec /usr/local/bin/snowflake-client -url https://snowflake-broker.torproject.net.global.prod.fastly.net/ -front cdn.sstatic.net -ice stun:stun.l.google.com:19302,stun:stun.voip.blackberry.com:3478,stun:stun.altar.com.pl:3478,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478,stun:stun.sonetel.com:3478,stun:stun.sonetel.net:3478,stun:stun.stunprotocol.org:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.voys.nl:3478
-Bridge snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net ice=stun:stun.l.google.com:19302,stun:stun.voip.blackberry.com:3478,stun:stun.altar.com.pl:3478,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478,stun:stun.sonetel.com:3478,stun:stun.sonetel.net:3478,stun:stun.stunprotocol.org:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.voys.nl:3478 utls-imitate=hellorandomizedalpn
+ClientTransportPlugin snowflake exec /usr/local/bin/snowflake-client
+Bridge snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net ice=stun:stun.l.google.com:19302
 EOF
 
     mkdir -p /tmp/tor-data

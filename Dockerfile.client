@@ -52,6 +52,7 @@ RUN apk add --no-cache \
     curl \
     wget \
     jq \
+    unzip \
     ca-certificates \
     iptables \
     ip6tables \
@@ -89,12 +90,15 @@ RUN wget -qO /usr/local/bin/snowflake-client \
 RUN chmod +x /usr/local/bin/snowflake-client 2>/dev/null || true
 RUN rm -f /tmp/snowflake-client-built
 
-# psiphon: try pre-built (no fallback build, optional)
-RUN wget -qO /usr/local/bin/psiphon-client \
-    "https://github.com/Psiphon-Labs/psiphon-tunnel-core/releases/download/v${PSIPHON_VERSION}/psiphon-tunnel-core-x86_64-linux-gnu" && \
+# psiphon: extract from Client Library zip (optional)
+RUN wget -qO /tmp/psiphon-client-library.zip \
+    "https://github.com/Psiphon-Labs/psiphon-tunnel-core/releases/download/v${PSIPHON_VERSION}/Psiphon-Client-Library.zip" && \
+    unzip -j /tmp/psiphon-client-library.zip "*/linux/psiphon-tunnel-core" -d /tmp/ && \
+    mv /tmp/psiphon-tunnel-core /usr/local/bin/psiphon-client && \
     chmod +x /usr/local/bin/psiphon-client && \
-    echo "psiphon: using pre-built binary" || \
-    echo "psiphon: not available (optional)"
+    rm -f /tmp/psiphon-client-library.zip && \
+    echo "psiphon: using pre-built binary from library zip" || \
+    (rm -f /tmp/psiphon-client-library.zip /usr/local/bin/psiphon-client && echo "psiphon: not available (optional)")
 
 # dnstt-client: always use built (no official releases)
 RUN cp /tmp/dnstt-client-built /usr/local/bin/dnstt-client && \
