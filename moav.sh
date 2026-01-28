@@ -1185,9 +1185,23 @@ cmd_client() {
                 exit 1
             fi
 
+            # Read ports from .env or use defaults
+            local socks_port="${CLIENT_SOCKS_PORT:-1080}"
+            local http_port="${CLIENT_HTTP_PORT:-8080}"
+
+            # Try to load from .env if not already set
+            if [[ -f ".env" ]]; then
+                [[ -z "$CLIENT_SOCKS_PORT" ]] && socks_port=$(grep -E "^CLIENT_SOCKS_PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "' || echo "1080")
+                [[ -z "$CLIENT_HTTP_PORT" ]] && http_port=$(grep -E "^CLIENT_HTTP_PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "' || echo "8080")
+            fi
+
+            # Use alternative ports if defaults are likely in use (running on server)
+            [[ "$socks_port" == "1080" ]] && socks_port="10800"
+            [[ "$http_port" == "8080" ]] && http_port="18080"
+
             info "Connecting as user: $user (protocol: $protocol)"
-            info "SOCKS5 proxy will be available at localhost:1080"
-            info "HTTP proxy will be available at localhost:8080"
+            info "SOCKS5 proxy will be available at localhost:$socks_port"
+            info "HTTP proxy will be available at localhost:$http_port"
 
             # Build client image if needed
             if ! docker images --format "{{.Repository}}" 2>/dev/null | grep -q "^moav-client$"; then
@@ -1197,8 +1211,8 @@ cmd_client() {
 
             # Run client in foreground (mount bundle + dnstt outputs for pubkey)
             docker run --rm -it \
-                -p 1080:1080 \
-                -p 8080:8080 \
+                -p "$socks_port:1080" \
+                -p "$http_port:8080" \
                 -v "$(pwd)/$bundle_path:/config:ro" \
                 -v "$(pwd)/outputs/dnstt:/dnstt:ro" \
                 -e ENABLE_DEPRECATED_WIREGUARD_OUTBOUND=true \
