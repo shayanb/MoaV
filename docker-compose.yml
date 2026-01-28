@@ -190,6 +190,7 @@ services:
       - TZ=${TZ:-UTC}
       - CONDUIT_BANDWIDTH=${CONDUIT_BANDWIDTH:-200}
       - CONDUIT_MAX_CLIENTS=${CONDUIT_MAX_CLIENTS:-100}
+      - CONDUIT_STATS_ENABLED=${CONDUIT_STATS_ENABLED:-false}
     cap_add:
       - NET_ADMIN
     profiles:
