@@ -1185,19 +1185,16 @@ cmd_client() {
                 exit 1
             fi
 
-            # Read ports from .env or use defaults
-            local socks_port="${CLIENT_SOCKS_PORT:-1080}"
-            local http_port="${CLIENT_HTTP_PORT:-8080}"
+            # Read ports from .env or use alternative defaults (to avoid server conflicts)
+            local socks_port="10800"
+            local http_port="18080"
 
-            # Try to load from .env if not already set
             if [[ -f ".env" ]]; then
-                [[ -z "$CLIENT_SOCKS_PORT" ]] && socks_port=$(grep -E "^CLIENT_SOCKS_PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "' || echo "1080")
-                [[ -z "$CLIENT_HTTP_PORT" ]] && http_port=$(grep -E "^CLIENT_HTTP_PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "' || echo "8080")
+                local env_socks=$(grep -E "^CLIENT_SOCKS_PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "')
+                local env_http=$(grep -E "^CLIENT_HTTP_PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d ' "')
+                [[ -n "$env_socks" ]] && socks_port="$env_socks"
+                [[ -n "$env_http" ]] && http_port="$env_http"
             fi
-
-            # Use alternative ports if defaults are likely in use (running on server)
-            [[ "$socks_port" == "1080" ]] && socks_port="10800"
-            [[ "$http_port" == "8080" ]] && http_port="18080"
 
             info "Connecting as user: $user (protocol: $protocol)"
             info "SOCKS5 proxy will be available at localhost:$socks_port"
