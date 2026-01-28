@@ -23,7 +23,7 @@
 
 ```bash
 # کلون کردن مخزن
-git clone https://github.com/YOUR_USERNAME/MoaV.git
+git clone https://github.com/shayanb/MoaV.git
 cd MoaV
 
 # پیکربندی

@@ -1,6 +1,9 @@
 # MoaV
 
-English | **[فارسی](README-fa.md)**
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+English | **[فارسی](README-fa.md)** | **[Changelog](CHANGELOG.md)**
 
 Multi-protocol censorship circumvention stack optimized for hostile network environments.
 
@@ -19,7 +22,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/MoaV.git
+git clone https://github.com/shayanb/MoaV.git
 cd MoaV
 
 # Configure

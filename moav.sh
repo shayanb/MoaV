@@ -27,6 +27,9 @@ done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Version
+VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "dev")
+
 # State file for persistent checks
 PREREQS_FILE="$SCRIPT_DIR/.moav_prereqs_ok"
 
@@ -49,7 +52,7 @@ print_header() {
     echo "║           Mother of all VPNs                       ║"
     echo "║                                                    ║"
     echo "║  Multi-protocol Circumvention Stack                ║"
-    echo "║                                                    ║"
+    printf "║  %-50s ║\n" "v${VERSION}"
     echo "╚════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -919,11 +922,14 @@ main_menu() {
 # =============================================================================
 
 show_usage() {
+    echo "MoaV v${VERSION} - Multi-protocol Circumvention Stack"
+    echo ""
     echo "Usage: moav [command] [options]"
     echo ""
     echo "Commands:"
     echo "  (no command)          Interactive menu"
-    echo "  help                  Show this help message"
+    echo "  help, --help, -h      Show this help message"
+    echo "  version, --version    Show version information"
     echo "  install               Install 'moav' command globally"
     echo "  uninstall             Remove global 'moav' command"
     echo "  check                 Run prerequisites check"
@@ -1302,6 +1308,9 @@ main() {
             ;;
         help|--help|-h)
             show_usage
+            ;;
+        version|--version|-v)
+            echo "MoaV v${VERSION}"
             ;;
         install)
             do_install

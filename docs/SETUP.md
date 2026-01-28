@@ -55,7 +55,7 @@ docker compose version
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/MoaV.git /opt/moav
+git clone https://github.com/shayanb/MoaV.git /opt/moav
 cd /opt/moav
 ```
 
