@@ -3,69 +3,105 @@
 # =============================================================================
 # Supports: Reality, Trojan, Hysteria2, WireGuard (via wireguard-go + wstunnel),
 #           dnstt, Psiphon, Tor/Snowflake
+#
+# Strategy: Download pre-built binaries, fallback to building from source
 # =============================================================================
 
-FROM golang:1.22-alpine AS builder
+# =============================================================================
+# Builder stages - compile from source as fallback
+# =============================================================================
 
-# Install build dependencies
-RUN apk add --no-cache git make wget
-
-# Build sing-box
-ARG SINGBOX_VERSION=1.10.0
+# Build sing-box from source (fallback)
+FROM golang:1.22-alpine AS singbox-builder
+ARG SINGBOX_VERSION=1.12.17
+RUN apk add --no-cache git build-base
 RUN go install -v -tags with_quic,with_utls,with_reality_server,with_clash_api \
-    github.com/sagernet/sing-box/cmd/sing-box@v${SINGBOX_VERSION}
+    github.com/sagernet/sing-box/cmd/sing-box@v${SINGBOX_VERSION} || \
+    echo "sing-box build failed"
+RUN cp /go/bin/sing-box /sing-box 2>/dev/null || touch /sing-box
 
-# Build wireguard-go (for future VPN mode)
-RUN go install golang.zx2c4.com/wireguard/cmd/wireguard-go@latest || true
-
-# Download wstunnel binary
-ARG WSTUNNEL_VERSION=10.1.0
-RUN wget -qO- "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_amd64.tar.gz" | tar xz -C /go/bin/ || \
-    echo "wstunnel download failed, optional"
-
-# Build dnstt-client
+# Build dnstt from source (no official releases)
+FROM golang:1.22-alpine AS dnstt-builder
+RUN apk add --no-cache git
 RUN git clone https://www.bamsoftware.com/git/dnstt.git /tmp/dnstt && \
     cd /tmp/dnstt/dnstt-client && \
-    go build -o /go/bin/dnstt-client . || \
-    echo "dnstt build failed, optional"
+    go build -o /dnstt-client . || touch /dnstt-client
 
-# Try to build psiphon (may fail due to dependencies)
-RUN go install github.com/Psiphon-Labs/psiphon-tunnel-core/ConsoleClient@latest 2>/dev/null || \
-    echo "Psiphon build skipped (optional)"
+# Build snowflake from source (fallback)
+FROM golang:1.22-alpine AS snowflake-builder
+ARG SNOWFLAKE_VERSION=2.11.0
+RUN apk add --no-cache git
+RUN go install gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/v2/client@v${SNOWFLAKE_VERSION} || \
+    echo "snowflake build failed"
+RUN cp /go/bin/client /snowflake-client 2>/dev/null || touch /snowflake-client
 
 # =============================================================================
-# Final image
+# Final image - prefer pre-built binaries, fallback to built versions
 # =============================================================================
-FROM alpine:3.19
+FROM alpine:3.20
+
+# Versions (keep in sync with builder stages)
+ARG SINGBOX_VERSION=1.12.17
+ARG WSTUNNEL_VERSION=10.5.1
+ARG SNOWFLAKE_VERSION=2.11.0
+ARG PSIPHON_VERSION=2.0.35
 
 # Install runtime dependencies
 RUN apk add --no-cache \
     bash \
     curl \
+    wget \
     jq \
     ca-certificates \
     iptables \
     ip6tables \
     iproute2 \
     bind-tools \
-    geoip \
-    geoip-database \
     tor \
     && rm -rf /var/cache/apk/*
 
-# Copy built binaries (use wildcard to handle missing optionals)
-COPY --from=builder /go/bin/sing-box /usr/local/bin/
-COPY --from=builder /go/bin/wireguard-go /usr/local/bin/ 2>/dev/null || true
-COPY --from=builder /go/bin/wstunnel /usr/local/bin/ 2>/dev/null || true
-COPY --from=builder /go/bin/dnstt-client /usr/local/bin/ 2>/dev/null || true
-COPY --from=builder /go/bin/ConsoleClient /usr/local/bin/psiphon-client 2>/dev/null || true
+# Copy built binaries from builder stages (as fallback)
+COPY --from=singbox-builder /sing-box /tmp/sing-box-built
+COPY --from=dnstt-builder /dnstt-client /tmp/dnstt-client-built
+COPY --from=snowflake-builder /snowflake-client /tmp/snowflake-client-built
 
-# Download snowflake-client from official Tor project
-ARG SNOWFLAKE_VERSION=2.9.2
+# sing-box: try pre-built, fallback to built
+RUN wget -qO- "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" | \
+    tar xz -C /tmp && \
+    mv /tmp/sing-box-${SINGBOX_VERSION}-linux-amd64/sing-box /usr/local/bin/ && \
+    rm -rf /tmp/sing-box-* && \
+    echo "sing-box: using pre-built binary" || \
+    (cp /tmp/sing-box-built /usr/local/bin/sing-box && echo "sing-box: using locally built binary")
+RUN chmod +x /usr/local/bin/sing-box && rm -f /tmp/sing-box-built
+
+# wstunnel: try pre-built (no fallback build, optional)
+RUN wget -qO- "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_amd64.tar.gz" | \
+    tar xz -C /usr/local/bin/ && \
+    chmod +x /usr/local/bin/wstunnel && \
+    echo "wstunnel: using pre-built binary" || \
+    echo "wstunnel: not available (optional)"
+
+# snowflake-client: try pre-built, fallback to built
 RUN wget -qO /usr/local/bin/snowflake-client \
-    "https://gitlab.torproject.org/api/v4/projects/tpo%2Fanti-censorship%2Fplugable-transports%2Fsnowflake/packages/generic/snowflake-client/${SNOWFLAKE_VERSION}/snowflake-client-linux-amd64" && \
-    chmod +x /usr/local/bin/snowflake-client || \
-    echo "Snowflake download failed, optional"
+    "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/releases/v${SNOWFLAKE_VERSION}/downloads/client/snowflake-client-linux-amd64" && \
+    echo "snowflake: using pre-built binary" || \
+    (cp /tmp/snowflake-client-built /usr/local/bin/snowflake-client && echo "snowflake: using locally built binary")
+RUN chmod +x /usr/local/bin/snowflake-client 2>/dev/null || true
+RUN rm -f /tmp/snowflake-client-built
+
+# psiphon: try pre-built (no fallback build, optional)
+RUN wget -qO /usr/local/bin/psiphon-client \
+    "https://github.com/Psiphon-Labs/psiphon-tunnel-core/releases/download/v${PSIPHON_VERSION}/psiphon-tunnel-core-x86_64-linux-gnu" && \
+    chmod +x /usr/local/bin/psiphon-client && \
+    echo "psiphon: using pre-built binary" || \
+    echo "psiphon: not available (optional)"
+
+# dnstt-client: always use built (no official releases)
+RUN cp /tmp/dnstt-client-built /usr/local/bin/dnstt-client && \
+    chmod +x /usr/local/bin/dnstt-client && \
+    echo "dnstt: using locally built binary" || \
+    echo "dnstt: build failed (optional)"
+RUN rm -f /tmp/dnstt-client-built
 
 # Create directories
 RUN mkdir -p /config /app /state /var/log/moav
@@ -74,7 +110,6 @@ RUN mkdir -p /config /app /state /var/log/moav
 COPY scripts/client-entrypoint.sh /app/
 COPY scripts/client-test.sh /app/
 COPY scripts/client-connect.sh /app/
-COPY scripts/lib/ /app/lib/
 RUN chmod +x /app/*.sh
 
 # Default ports for proxy mode
