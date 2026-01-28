@@ -438,13 +438,13 @@ test_wireguard() {
         return
     fi
 
-    # Extract values using portable grep/sed
-    local private_key=$(grep -E "^PrivateKey" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
-    local endpoint=$(grep -E "^Endpoint" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
-    local peer_public_key=$(grep -E "^PublicKey" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
-    local address=$(grep -E "^Address" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ' | cut -d',' -f1)
-    local dns=$(grep -E "^DNS" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ' | cut -d',' -f1)
-    local allowed_ips=$(grep -E "^AllowedIPs" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
+    # Extract values using portable grep/sed (case-insensitive, allow leading whitespace)
+    local private_key=$(grep -i "PrivateKey" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
+    local endpoint=$(grep -i "Endpoint" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
+    local peer_public_key=$(grep -i "PublicKey" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r')
+    local address=$(grep -i "Address" "$config_file" | head -1 | sed 's/.*=[[:space:]]*//' | tr -d ' \t\r' | cut -d',' -f1)
+
+    log_debug "Extracted: private_key=${private_key:0:10}... endpoint=$endpoint pubkey=${peer_public_key:0:10}... address=$address"
 
     if [[ -z "$private_key" ]] || [[ -z "$endpoint" ]] || [[ -z "$peer_public_key" ]]; then
         detail="Missing required fields in WireGuard config"
