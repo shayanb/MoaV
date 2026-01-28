@@ -182,6 +182,55 @@ moav build                # ساخت/بازسازی تمام کانتینرها
 
 **نام مستعار سرویس‌ها:** `conduit`←psiphon-conduit، `singbox`←sing-box، `wg`←wireguard، `dns`←dnstt
 
+## تست و کلاینت
+
+MoaV شامل یک کانتینر کلاینت داخلی برای تست اتصال و اتصال از طریق سرور شماست.
+
+### حالت تست
+
+تأیید اینکه تمام پروتکل‌ها برای یک کاربر کار می‌کنند:
+
+<div dir="ltr">
+
+```bash
+moav test user1           # تست تمام پروتکل‌ها برای user1
+moav test user1 --json    # خروجی نتایج به صورت JSON
+```
+
+</div>
+
+تست Reality، Trojan، Hysteria2، WireGuard، و dnstt. گزارش pass/fail/skip برای هر پروتکل.
+
+### حالت کلاینت
+
+استفاده از MoaV به عنوان کلاینت برای اتصال از طریق سرور (اجرای پراکسی SOCKS5/HTTP به صورت محلی):
+
+<div dir="ltr">
+
+```bash
+moav client connect user1              # تشخیص خودکار بهترین پروتکل
+moav client connect user1 --protocol reality   # انتخاب پروتکل خاص
+moav client connect user1 --protocol hysteria2
+```
+
+</div>
+
+کلاینت ارائه می‌دهد:
+- پراکسی SOCKS5 روی پورت 1080 (قابل تنظیم با `CLIENT_SOCKS_PORT`)
+- پراکسی HTTP روی پورت 8080 (قابل تنظیم با `CLIENT_HTTP_PORT`)
+
+پروتکل‌های موجود: `reality`، `trojan`، `hysteria2`، `wireguard`، `dnstt`، `psiphon`، `tor`
+
+ساخت ایمیج کلاینت به صورت جداگانه:
+
+<div dir="ltr">
+
+```bash
+moav client build
+```
+
+</div>
+
 ## مدیریت Conduit
 
 اگر Psiphon Conduit برای اهدای پهنای باند اجرا می‌کنید:

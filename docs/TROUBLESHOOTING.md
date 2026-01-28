@@ -246,6 +246,130 @@ iptables -A INPUT -p udp --dport 53 -j ACCEPT
 
 ---
 
+## MoaV Test/Client Issues
+
+### `moav test` fails to build
+
+**Docker build errors:**
+```bash
+# Rebuild with no cache
+moav client build --no-cache
+
+# Or manually:
+docker build --no-cache -t moav-client -f Dockerfile.client .
+```
+
+**Network issues during build:**
+- Pre-built binaries are downloaded from GitHub/GitLab
+- If downloads fail, the build falls back to compiling from source (slower)
+- Check your server has internet access
+
+### `moav test` shows all protocols as "skip"
+
+**User bundle not found:**
+```bash
+# Check if bundle exists
+ls -la outputs/bundles/user1/
+
+# Regenerate user bundle
+moav user add user1
+```
+
+**Bundle path issue:**
+```bash
+# Verify the bundle contains config files
+ls outputs/bundles/user1/
+# Should contain: reality.txt, trojan.txt, hysteria2.yaml, etc.
+```
+
+### `moav test` shows "sing-box failed to start"
+
+**Configuration format issue:**
+- sing-box 1.12+ requires `route.final` instead of deprecated special outbounds
+- Check sing-box version: `docker run --rm moav-client sing-box version`
+
+**Debug with verbose output:**
+```bash
+# Run test container interactively
+docker run --rm -it \
+  -v "$(pwd)/outputs/bundles/user1:/config:ro" \
+  moav-client /bin/bash
+
+# Inside container, manually test
+VERBOSE=true CONFIG_DIR=/config /app/client-test.sh
+```
+
+### `moav client connect` can't establish connection
+
+**Check server is running:**
+```bash
+moav status
+# Ensure sing-box and other services show as "running"
+```
+
+**Try different protocols:**
+```bash
+moav client connect user1 --protocol hysteria2
+moav client connect user1 --protocol trojan
+```
+
+**Check firewall on server:**
+```bash
+# Server-side
+ufw status
+ss -tlnp  # TCP ports
+ss -ulnp  # UDP ports
+```
+
+### Client proxy ports already in use
+
+**Change ports in .env:**
+```bash
+# In .env
+CLIENT_SOCKS_PORT=10800
+CLIENT_HTTP_PORT=18080
+```
+
+**Or stop conflicting service:**
+```bash
+# Check what's using port 1080
+ss -tlnp | grep 1080
+```
+
+### WireGuard test shows "endpoint not reachable"
+
+This is expected if:
+- UDP port 51820 is blocked by firewall
+- Server WireGuard container is not running
+
+**Check WireGuard is running:**
+```bash
+docker compose --profile wireguard ps
+```
+
+**Check UDP is not blocked:**
+```bash
+# From client machine
+nc -vuz YOUR_SERVER_IP 51820
+```
+
+### Psiphon/Tor fallback not working
+
+**These are standalone and don't require your server:**
+```bash
+# Test Psiphon independently
+docker run --rm moav-client psiphon-client --help
+
+# Test Snowflake independently
+docker run --rm moav-client snowflake-client --help
+```
+
+**If binaries are missing:**
+- Some optional binaries may fail to download during build
+- Check build logs for "not available (optional)" messages
+
+---
+
 ## Client-Side Issues
 
 ### Can't connect at all

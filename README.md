@@ -151,6 +151,42 @@ moav build                # Build/rebuild all containers
 
 **Profiles:** `proxy`, `wireguard`, `dnstt`, `admin`, `conduit`, `snowflake`, `all`
 
+## Testing & Client
+
+MoaV includes a built-in client container for testing connectivity and connecting through your server.
+
+### Test Mode
+
+Verify that all protocols are working for a user:
+
+```bash
+moav test user1           # Test all protocols for user1
+moav test user1 --json    # Output results as JSON
+```
+
+Tests Reality, Trojan, Hysteria2, WireGuard, and dnstt. Reports pass/fail/skip for each protocol.
+
+### Client Mode
+
+Use MoaV as a client to connect through your server (runs SOCKS5/HTTP proxy locally):
+
+```bash
+moav client connect user1              # Auto-detect best protocol
+moav client connect user1 --protocol reality   # Force specific protocol
+moav client connect user1 --protocol hysteria2
+```
+
+The client exposes:
+- SOCKS5 proxy on port 1080 (configurable via `CLIENT_SOCKS_PORT`)
+- HTTP proxy on port 8080 (configurable via `CLIENT_HTTP_PORT`)
+
+Available protocols: `reality`, `trojan`, `hysteria2`, `wireguard`, `dnstt`, `psiphon`, `tor`
+
+Build the client image separately:
+```bash
+moav client build
+```
+
 **Service aliases:** `conduit`→psiphon-conduit, `singbox`→sing-box, `wg`→wireguard, `dns`→dnstt
 
 ## Conduit Management

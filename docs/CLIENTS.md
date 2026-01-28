@@ -4,16 +4,16 @@ This guide explains how to connect to MoaV from various devices.
 
 ## Quick Reference
 
-| Protocol | iOS | Android | macOS | Windows | Port |
-|----------|-----|---------|-------|---------|------|
-| Reality (VLESS) | Shadowrocket, Streisand | v2rayNG, NekoBox | V2rayU, NekoRay | v2rayN, NekoRay | 443/tcp |
-| Trojan | Shadowrocket | v2rayNG | V2rayU | v2rayN | 8443/tcp |
-| Hysteria2 | Shadowrocket | v2rayNG, Hiddify | Hysteria2 CLI | Hysteria2 CLI | 443/udp |
-| WireGuard (Direct) | WireGuard | WireGuard | WireGuard | WireGuard | 51820/udp |
-| WireGuard (wstunnel) | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | 8080/tcp |
-| DNS Tunnel | dnstt-client | dnstt-client | dnstt-client | dnstt-client | 53/udp |
-| Psiphon | Psiphon | Psiphon | Psiphon | Psiphon | Various |
-| Tor (Snowflake) | Tor Browser, Onion Browser | Tor Browser | Tor Browser | Tor Browser | Various |
+| Protocol | iOS | Android | macOS | Windows | Linux | Port |
+|----------|-----|---------|-------|---------|-------|------|
+| Reality (VLESS) | Shadowrocket, Streisand | v2rayNG, NekoBox | V2rayU, NekoRay | v2rayN, NekoRay | **MoaV Client** | 443/tcp |
+| Trojan | Shadowrocket | v2rayNG | V2rayU | v2rayN | **MoaV Client** | 8443/tcp |
+| Hysteria2 | Shadowrocket | v2rayNG, Hiddify | Hysteria2 CLI | Hysteria2 CLI | **MoaV Client** | 443/udp |
+| WireGuard (Direct) | WireGuard | WireGuard | WireGuard | WireGuard | **MoaV Client** | 51820/udp |
+| WireGuard (wstunnel) | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | **MoaV Client** | 8080/tcp |
+| DNS Tunnel | dnstt-client | dnstt-client | dnstt-client | dnstt-client | **MoaV Client** | 53/udp |
+| Psiphon | Psiphon | Psiphon | Psiphon | Psiphon | **MoaV Client** | Various |
+| Tor (Snowflake) | Tor Browser, Onion Browser | Tor Browser | Tor Browser | Tor Browser | **MoaV Client** | Various |
 
 ## Protocol Priority
 
@@ -27,6 +27,110 @@ Try these in order. If one doesn't work, try the next:
 6. **Psiphon** - Standalone app, no server needed, uses Psiphon network
 7. **Tor (Snowflake)** - Standalone app, no server needed, uses Tor network
 8. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
+
+---
+
+## MoaV Client Container (Linux/Docker)
+
+MoaV includes a built-in multi-protocol client container. This is useful for:
+- Testing server connectivity from another machine
+- Running MoaV as a client on Linux servers/desktops
+- Automated testing in CI/CD pipelines
+- Connecting through your MoaV server from a Docker environment
+
+### Testing Connectivity
+
+Test all protocols for a user to verify server is working:
+
+```bash
+# Test all protocols for user1
+moav test user1
+
+# Output results as JSON (for scripts/automation)
+moav test user1 --json
+```
+
+The test checks: Reality, Trojan, Hysteria2, WireGuard (config validation), and dnstt.
+
+**Sample output:**
+```
+═══════════════════════════════════════════════════════════════
+  MoaV Connection Test Results
+═══════════════════════════════════════════════════════════════
+
+  Config: /bundles/user1
+  Time:   Wed Jan 28 10:30:00 UTC 2026
+
+───────────────────────────────────────────────────────────────
+  ✓ reality      Connected via VLESS/Reality
+  ✓ trojan       Connected via Trojan
+  ✓ hysteria2    Connected via Hysteria2
+  ✓ wireguard    Config valid, endpoint reachable
+  ○ dnstt        No dnstt config found in bundle
+
+═══════════════════════════════════════════════════════════════
+```
+
+### Client Mode (Connect Through Server)
+
+Run MoaV as a local proxy client:
+
+```bash
+# Auto-detect best working protocol
+moav client connect user1
+
+# Force a specific protocol
+moav client connect user1 --protocol reality
+moav client connect user1 --protocol hysteria2
+moav client connect user1 --protocol trojan
+moav client connect user1 --protocol wireguard
+moav client connect user1 --protocol dnstt
+moav client connect user1 --protocol psiphon
+moav client connect user1 --protocol tor
+```
+
+**Local proxy endpoints:**
+- SOCKS5: `127.0.0.1:1080`
+- HTTP: `127.0.0.1:8080`
+
+Configure these ports in `.env`:
+```bash
+CLIENT_SOCKS_PORT=1080
+CLIENT_HTTP_PORT=8080
+```
+
+**Protocol fallback order (auto mode):**
+1. Reality (VLESS) - Most reliable
+2. Hysteria2 - Fast, UDP-based
+3. Trojan - TLS-based backup
+4. WireGuard - Full VPN
+5. Psiphon - Uses Psiphon network (no server needed)
+6. Tor (Snowflake) - Uses Tor network (no server needed)
+7. dnstt - Last resort, slow but hard to block
+
+### Building the Client Image
+
+The client image is built automatically when running `moav test` or `moav client`. To build manually:
+
+```bash
+moav client build
+```
+
+### Technical Details
+
+The client container includes:
+- **sing-box** - Handles Reality, Trojan, Hysteria2
+- **wireguard-go** - Userspace WireGuard implementation
+- **wstunnel** - WebSocket tunnel for WireGuard
+- **dnstt-client** - DNS tunnel client
+- **psiphon-tunnel-core** - Psiphon client
+- **snowflake-client** - Tor Snowflake pluggable transport
+- **tor** - Tor daemon
+
+**Container capabilities:**
+- Runs without privileged mode for most protocols
+- WireGuard requires `--cap-add NET_ADMIN` for full functionality
+- Uses Alpine Linux for minimal image size
 
 ---
 
