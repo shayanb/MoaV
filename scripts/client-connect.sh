@@ -55,6 +55,32 @@ trap cleanup SIGTERM SIGINT
 # Protocol Connection Functions
 # =============================================================================
 
+# Portable URL parameter extraction (no grep -P)
+extract_param() {
+    local uri="$1"
+    local param="$2"
+    echo "$uri" | sed -n "s/.*[?&]${param}=\([^&#]*\).*/\1/p" | head -1
+}
+
+# Extract value before @ in URI
+extract_auth() {
+    local uri="$1"
+    local protocol="$2"
+    echo "$uri" | sed -n "s|${protocol}://\([^@]*\)@.*|\1|p" | head -1
+}
+
+# Extract host from URI (between @ and :port or ?)
+extract_host() {
+    local uri="$1"
+    echo "$uri" | sed -n 's|.*@\([^:]*\):.*|\1|p' | head -1
+}
+
+# Extract port from URI
+extract_port() {
+    local uri="$1"
+    echo "$uri" | sed -n 's|.*:\([0-9]*\)[?#].*|\1|p' | head -1
+}
+
 # Generate sing-box client config for proxy protocols
 generate_singbox_config() {
     local protocol="$1"
@@ -78,6 +104,11 @@ generate_singbox_config() {
                 [[ -f "$f" ]] && config_file="$f" && break
             done
             ;;
+        wireguard)
+            for f in "$CONFIG_DIR"/wireguard*.conf "$CONFIG_DIR"/wg*.conf; do
+                [[ -f "$f" ]] && config_file="$f" && break
+            done
+            ;;
     esac
 
     if [[ -z "$config_file" ]]; then
@@ -97,14 +128,16 @@ generate_singbox_config() {
         reality)
             if [[ "$config_file" == *.txt ]]; then
                 local uri=$(cat "$config_file" | tr -d '\n\r')
-                local uuid=$(echo "$uri" | sed -n 's/vless:\/\/\([^@]*\)@.*/\1/p')
-                local server=$(echo "$uri" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-                local port=$(echo "$uri" | sed -n 's/.*:\([0-9]*\)?.*/\1/p')
-                local params=$(echo "$uri" | sed -n 's/.*?\([^#]*\).*/\1/p')
-                local sni=$(echo "$params" | grep -oP 'sni=\K[^&]+' || echo "")
-                local pbk=$(echo "$params" | grep -oP 'pbk=\K[^&]+' || echo "")
-                local sid=$(echo "$params" | grep -oP 'sid=\K[^&]+' || echo "")
-                local fp=$(echo "$params" | grep -oP 'fp=\K[^&]+' || echo "chrome")
+                local uuid=$(extract_auth "$uri" "vless")
+                local server=$(extract_host "$uri")
+                local port=$(extract_port "$uri")
+                local sni=$(extract_param "$uri" "sni")
+                local pbk=$(extract_param "$uri" "pbk")
+                local sid=$(extract_param "$uri" "sid")
+                local fp=$(extract_param "$uri" "fp")
+
+                [[ -z "$fp" ]] && fp="chrome"
+                [[ -z "$port" ]] && port="443"
 
                 cat > "$output_file" << EOF
 {
@@ -115,7 +148,7 @@ generate_singbox_config() {
       "type": "vless",
       "tag": "proxy",
       "server": "$server",
-      "server_port": ${port:-443},
+      "server_port": $port,
       "uuid": "$uuid",
       "flow": "xtls-rprx-vision",
       "tls": {
@@ -128,23 +161,26 @@ generate_singbox_config() {
           "short_id": "$sid"
         }
       }
-    },
-    {"type": "direct", "tag": "direct"}
-  ]
+    }
+  ],
+  "route": {"final": "proxy"}
 }
 EOF
             else
-                jq --argjson inbounds "$inbounds" '. + {"inbounds": $inbounds, "log": {"level": "info", "timestamp": true}}' "$config_file" > "$output_file"
+                jq --argjson inbounds "$inbounds" '. + {"inbounds": $inbounds, "log": {"level": "info", "timestamp": true}, "route": {"final": "proxy"}}' "$config_file" > "$output_file"
             fi
             ;;
 
         trojan)
             if [[ "$config_file" == *.txt ]]; then
                 local uri=$(cat "$config_file" | tr -d '\n\r')
-                local password=$(echo "$uri" | sed -n 's/trojan:\/\/\([^@]*\)@.*/\1/p')
-                local server=$(echo "$uri" | sed -n 's/.*@\([^:]*\):.*/\1/p')
-                local port=$(echo "$uri" | sed -n 's/.*:\([0-9]*\)?.*/\1/p')
-                local sni=$(echo "$uri" | grep -oP 'sni=\K[^&#]+' || echo "$server")
+                local password=$(extract_auth "$uri" "trojan")
+                local server=$(extract_host "$uri")
+                local port=$(extract_port "$uri")
+                local sni=$(extract_param "$uri" "sni")
+
+                [[ -z "$sni" ]] && sni="$server"
+                [[ -z "$port" ]] && port="8443"
 
                 cat > "$output_file" << EOF
 {
@@ -155,19 +191,19 @@ EOF
       "type": "trojan",
       "tag": "proxy",
       "server": "$server",
-      "server_port": ${port:-8443},
+      "server_port": $port,
       "password": "$password",
       "tls": {
         "enabled": true,
         "server_name": "$sni"
       }
-    },
-    {"type": "direct", "tag": "direct"}
-  ]
+    }
+  ],
+  "route": {"final": "proxy"}
 }
 EOF
             else
-                jq --argjson inbounds "$inbounds" '. + {"inbounds": $inbounds, "log": {"level": "info", "timestamp": true}}' "$config_file" > "$output_file"
+                jq --argjson inbounds "$inbounds" '. + {"inbounds": $inbounds, "log": {"level": "info", "timestamp": true}, "route": {"final": "proxy"}}' "$config_file" > "$output_file"
             fi
             ;;
 
@@ -176,18 +212,19 @@ EOF
 
             if [[ "$config_file" == *.txt ]]; then
                 local uri=$(cat "$config_file" | tr -d '\n\r')
-                auth=$(echo "$uri" | sed -n 's/hysteria2:\/\/\([^@]*\)@.*/\1/p')
-                server=$(echo "$uri" | sed -n 's/.*@\([^?#]*\).*/\1/p')
-                sni=$(echo "$uri" | grep -oP 'sni=\K[^&#]+' || echo "${server%:*}")
-            elif [[ "$config_file" == *.yaml ]]; then
-                server=$(grep -oP 'server:\s*\K[^\s]+' "$config_file" | head -1)
-                auth=$(grep -oP 'auth:\s*\K[^\s]+' "$config_file" | head -1)
-                sni=$(grep -oP 'sni:\s*\K[^\s]+' "$config_file" | head -1 || echo "${server%:*}")
+                auth=$(extract_auth "$uri" "hysteria2")
+                server=$(echo "$uri" | sed -n 's|.*@\([^?#]*\).*|\1|p' | head -1)
+                sni=$(extract_param "$uri" "sni")
+            elif [[ "$config_file" == *.yaml ]] || [[ "$config_file" == *.yml ]]; then
+                server=$(grep -E "^server:" "$config_file" | sed 's/server:[[:space:]]*//' | tr -d '"' | head -1)
+                auth=$(grep -E "^auth:" "$config_file" | sed 's/auth:[[:space:]]*//' | tr -d '"' | head -1)
+                sni=$(grep -E "^[[:space:]]*sni:" "$config_file" | sed 's/.*sni:[[:space:]]*//' | tr -d '"' | head -1)
             fi
 
             local host="${server%:*}"
-            local port="${server#*:}"
+            local port="${server##*:}"
             [[ "$port" == "$host" ]] && port=443
+            [[ -z "$sni" ]] && sni="$host"
 
             cat > "$output_file" << EOF
 {
@@ -204,9 +241,40 @@ EOF
         "enabled": true,
         "server_name": "$sni"
       }
-    },
-    {"type": "direct", "tag": "direct"}
-  ]
+    }
+  ],
+  "route": {"final": "proxy"}
+}
+EOF
+            ;;
+
+        wireguard)
+            # Extract WireGuard config values
+            local private_key=$(grep -E "^PrivateKey" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
+            local endpoint=$(grep -E "^Endpoint" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
+            local peer_public_key=$(grep -E "^PublicKey" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
+            local address=$(grep -E "^Address" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ' | cut -d',' -f1)
+
+            local server="${endpoint%:*}"
+            local port="${endpoint#*:}"
+
+            cat > "$output_file" << EOF
+{
+  "log": {"level": "info", "timestamp": true},
+  "inbounds": $inbounds,
+  "outbounds": [
+    {
+      "type": "wireguard",
+      "tag": "proxy",
+      "server": "$server",
+      "server_port": $port,
+      "local_address": ["$address"],
+      "private_key": "$private_key",
+      "peer_public_key": "$peer_public_key",
+      "mtu": 1280
+    }
+  ],
+  "route": {"final": "proxy"}
 }
 EOF
             ;;
@@ -249,12 +317,36 @@ connect_singbox() {
     fi
 }
 
-# Connect using WireGuard via wstunnel + wireguard-go
-# TODO: Implement VPN mode with TUN interface
+# Connect using WireGuard via sing-box
 connect_wireguard() {
-    log_warn "WireGuard client mode not yet implemented (TODO: wireguard-go + wstunnel)"
-    log_info "For now, use WireGuard app directly with the config file"
-    return 1
+    local config_file="/tmp/moav-client-wireguard.json"
+
+    if ! generate_singbox_config "wireguard" "$config_file"; then
+        log_error "Failed to generate config for wireguard"
+        return 1
+    fi
+
+    log_info "Starting sing-box with WireGuard..."
+    sing-box run -c "$config_file" &
+    CURRENT_PID=$!
+    CURRENT_PROTOCOL="wireguard"
+
+    sleep 3
+
+    if ! kill -0 $CURRENT_PID 2>/dev/null; then
+        log_error "sing-box failed to start WireGuard tunnel"
+        return 1
+    fi
+
+    # Test connection
+    if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        return 0
+    else
+        log_warn "Connection test failed for wireguard"
+        kill $CURRENT_PID 2>/dev/null || true
+        CURRENT_PID=""
+        return 1
+    fi
 }
 
 # Connect using dnstt
@@ -270,19 +362,26 @@ connect_dnstt() {
         return 1
     fi
 
-    local domain=$(grep -oP 't\.\K[a-zA-Z0-9.-]+' "$config_file" | head -1)
-    local pubkey=$(grep -oP 'pubkey[=\s]+\K[a-zA-Z0-9+/=]+' "$config_file" | head -1)
+    # Extract domain - look for t.domain.com pattern (portable)
+    local domain=$(grep -oE 't\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' "$config_file" | head -1)
 
-    [[ -z "$pubkey" ]] && [[ -f "$CONFIG_DIR/server.pub" ]] && pubkey=$(cat "$CONFIG_DIR/server.pub")
+    # Extract pubkey from config file (portable)
+    local pubkey=$(grep -i "pubkey" "$config_file" | sed 's/.*[=:][[:space:]]*//' | grep -oE '[A-Za-z0-9+/=]{40,}' | head -1)
+
+    # Check for server.pub in bundle
+    [[ -z "$pubkey" ]] && [[ -f "$CONFIG_DIR/server.pub" ]] && pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r')
+
+    # Check for server.pub in default dnstt outputs location (mounted at /dnstt)
+    [[ -z "$pubkey" ]] && [[ -f "/dnstt/server.pub" ]] && pubkey=$(cat "/dnstt/server.pub" | tr -d '\n\r')
 
     if [[ -z "$domain" ]] || [[ -z "$pubkey" ]]; then
         log_error "Could not extract dnstt domain or pubkey"
         return 1
     fi
 
-    log_info "Starting dnstt client for t.$domain..."
+    log_info "Starting dnstt client for $domain..."
 
-    dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "t.$domain" 127.0.0.1:$SOCKS_PORT &
+    dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "$domain" 127.0.0.1:$SOCKS_PORT &
     CURRENT_PID=$!
     CURRENT_PROTOCOL="dnstt"
 

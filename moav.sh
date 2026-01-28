@@ -1149,9 +1149,10 @@ cmd_test() {
         docker compose --profile client build client
     fi
 
-    # Run test
+    # Run test (mount bundle + dnstt outputs for pubkey)
     docker run --rm \
         -v "$(pwd)/$bundle_path:/config:ro" \
+        -v "$(pwd)/outputs/dnstt:/dnstt:ro" \
         moav-client --test $json_flag
 }
 
@@ -1193,11 +1194,12 @@ cmd_client() {
                 docker compose --profile client build client
             fi
 
-            # Run client in foreground
+            # Run client in foreground (mount bundle + dnstt outputs for pubkey)
             docker run --rm -it \
                 -p 1080:1080 \
                 -p 8080:8080 \
                 -v "$(pwd)/$bundle_path:/config:ro" \
+                -v "$(pwd)/outputs/dnstt:/dnstt:ro" \
                 moav-client --connect -p "$protocol"
             ;;
         build)

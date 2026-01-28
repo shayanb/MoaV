@@ -408,9 +408,9 @@ EOF
     wait $pid 2>/dev/null || true
 }
 
-# Test WireGuard (config validation only)
+# Test WireGuard via sing-box
 test_wireguard() {
-    log_info "Testing WireGuard (config validation)..."
+    log_info "Testing WireGuard..."
 
     local config_file=""
     local detail=""
@@ -441,38 +441,84 @@ test_wireguard() {
     # Extract values using portable grep/sed
     local private_key=$(grep -E "^PrivateKey" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
     local endpoint=$(grep -E "^Endpoint" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
+    local peer_public_key=$(grep -E "^PublicKey" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
+    local address=$(grep -E "^Address" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ' | cut -d',' -f1)
+    local dns=$(grep -E "^DNS" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ' | cut -d',' -f1)
+    local allowed_ips=$(grep -E "^AllowedIPs" "$config_file" | sed 's/.*=[[:space:]]*//' | tr -d ' ')
 
-    if [[ -z "$private_key" ]] || [[ -z "$endpoint" ]]; then
-        detail="Missing PrivateKey or Endpoint in config"
+    if [[ -z "$private_key" ]] || [[ -z "$endpoint" ]] || [[ -z "$peer_public_key" ]]; then
+        detail="Missing required fields in WireGuard config"
         log_error "$detail"
         RESULTS[wireguard]="fail"
         DETAILS[wireguard]="$detail"
         return
     fi
 
-    # Test endpoint reachability
-    local host="${endpoint%:*}"
+    # Parse endpoint
+    local server="${endpoint%:*}"
     local port="${endpoint#*:}"
 
-    log_debug "Testing endpoint: $host:$port"
+    # Extract local address without CIDR
+    local local_address="${address%/*}"
 
-    if timeout 5 bash -c "echo >/dev/tcp/$host/$port" 2>/dev/null; then
-        log_success "WireGuard endpoint reachable: $endpoint"
-        RESULTS[wireguard]="pass"
-        DETAILS[wireguard]="Config valid, endpoint reachable (full test requires --cap-add NET_ADMIN)"
-    else
-        # Try wstunnel endpoint (port 8080)
-        if timeout 5 bash -c "echo >/dev/tcp/$host/8080" 2>/dev/null; then
-            log_success "WireGuard wstunnel endpoint reachable: $host:8080"
-            RESULTS[wireguard]="pass"
-            DETAILS[wireguard]="Config valid, wstunnel endpoint reachable"
-        else
-            detail="Endpoint not reachable: $endpoint"
-            log_warn "$detail"
-            RESULTS[wireguard]="warn"
-            DETAILS[wireguard]="$detail"
-        fi
+    log_debug "Parsed: server=$server port=$port peer_pubkey=${peer_public_key:0:20}..."
+
+    # Generate sing-box config for WireGuard
+    local client_config="$TEMP_DIR/wireguard-client.json"
+
+    cat > "$client_config" << EOF
+{
+  "log": {"level": "error"},
+  "inbounds": [
+    {"type": "socks", "listen": "127.0.0.1", "listen_port": 10804}
+  ],
+  "outbounds": [
+    {
+      "type": "wireguard",
+      "tag": "proxy",
+      "server": "$server",
+      "server_port": $port,
+      "local_address": ["$address"],
+      "private_key": "$private_key",
+      "peer_public_key": "$peer_public_key",
+      "mtu": 1280
+    }
+  ],
+  "route": {
+    "final": "proxy"
+  }
+}
+EOF
+
+    log_debug "Generated config: $(cat "$client_config")"
+
+    # Start sing-box
+    sing-box run -c "$client_config" &
+    local pid=$!
+    sleep 3
+
+    if ! kill -0 $pid 2>/dev/null; then
+        detail="sing-box failed to start WireGuard tunnel"
+        log_error "$detail"
+        RESULTS[wireguard]="fail"
+        DETAILS[wireguard]="$detail"
+        return
     fi
+
+    # Test connection
+    if curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        log_success "WireGuard connection successful"
+        RESULTS[wireguard]="pass"
+        DETAILS[wireguard]="Connected via WireGuard"
+    else
+        detail="Connection test failed (tunnel established but no traffic)"
+        log_error "$detail"
+        RESULTS[wireguard]="fail"
+        DETAILS[wireguard]="$detail"
+    fi
+
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
 }
 
 # Test dnstt (DNS tunnel)
@@ -502,9 +548,16 @@ test_dnstt() {
     # Extract pubkey - look for base64-like string after "pubkey"
     local pubkey=$(grep -i "pubkey" "$config_file" | sed 's/.*[=:][[:space:]]*//' | grep -oE '[A-Za-z0-9+/=]{40,}' | head -1)
 
-    # Also check for server.pub file
+    # Check for server.pub file in bundle
     if [[ -z "$pubkey" ]] && [[ -f "$CONFIG_DIR/server.pub" ]]; then
         pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r')
+        log_debug "Found pubkey in bundle: server.pub"
+    fi
+
+    # Check for server.pub in default dnstt outputs location (mounted at /dnstt)
+    if [[ -z "$pubkey" ]] && [[ -f "/dnstt/server.pub" ]]; then
+        pubkey=$(cat "/dnstt/server.pub" | tr -d '\n\r')
+        log_debug "Found pubkey in /dnstt/server.pub"
     fi
 
     if [[ -z "$domain" ]]; then
@@ -518,7 +571,7 @@ test_dnstt() {
     log_debug "Parsed: domain=$domain pubkey=${pubkey:0:20}..."
 
     if [[ -z "$pubkey" ]]; then
-        detail="Could not extract public key"
+        detail="Could not extract public key (check outputs/dnstt/server.pub)"
         log_warn "$detail"
         RESULTS[dnstt]="warn"
         DETAILS[dnstt]="Domain: $domain, but missing pubkey for full test"
