@@ -73,26 +73,29 @@ MoaV includes a management script that can be used interactively or with command
 
 ```bash
 ./moav.sh              # Interactive menu (guides you through setup)
-./moav.sh help         # Show all available commands
+./moav.sh install      # Install 'moav' command globally
 ```
 
-Or run commands directly:
+After installing, you can run `moav` from anywhere:
 
 ```bash
-./moav.sh check                    # Check prerequisites
-./moav.sh bootstrap                # Run first-time setup
-./moav.sh start                    # Start all services
-./moav.sh start proxy admin        # Start specific profiles
-./moav.sh stop                     # Stop all services
-./moav.sh stop conduit snowflake   # Stop specific services
-./moav.sh restart sing-box         # Restart specific service
-./moav.sh status                   # Show service status
-./moav.sh logs                     # View all logs
-./moav.sh logs sing-box conduit    # View specific service logs
-./moav.sh users                    # List users
-./moav.sh user add joe             # Add user
-./moav.sh user revoke joe          # Revoke user
-./moav.sh build                    # Build all containers
+moav                            # Interactive menu
+moav help                       # Show all available commands
+moav check                      # Check prerequisites
+moav bootstrap                  # Run first-time setup
+moav start                      # Start all services
+moav start proxy admin          # Start specific profiles
+moav stop                       # Stop all services
+moav stop conduit               # Stop specific service
+moav restart sing-box           # Restart specific service
+moav status                     # Show service status
+moav logs                       # View all logs
+moav logs sing-box conduit      # View specific service logs
+moav users                      # List users
+moav user add joe               # Add user
+moav user revoke joe            # Revoke user
+moav build                      # Build all containers
+moav uninstall                  # Remove global command
 ```
 
 If you prefer manual setup, continue with the steps below.
@@ -192,8 +195,8 @@ echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
 
 **Easy way:**
 ```bash
-./moav.sh start              # Start all services
-./moav.sh start proxy admin  # Or specific profiles
+moav start              # Start all services
+moav start proxy admin  # Or specific profiles
 ```
 
 **Manual way:**
@@ -281,9 +284,9 @@ Each bundle contains:
 
 **Easy way:**
 ```bash
-./moav.sh users              # List all users
-./moav.sh user add newuser   # Add a user
-./moav.sh user revoke user   # Revoke a user
+moav users              # List all users
+moav user add newuser   # Add a user
+moav user revoke user   # Revoke a user
 ```
 
 **Manual scripts:**

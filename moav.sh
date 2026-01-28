@@ -189,10 +189,95 @@ check_prerequisites() {
     success "All prerequisites met!"
     # Mark prerequisites as checked
     touch "$PREREQS_FILE"
+
+    # Offer to install globally if not already installed
+    if ! is_installed; then
+        echo ""
+        if confirm "Install 'moav' command globally? (run from anywhere)"; then
+            do_install
+        fi
+    fi
 }
 
 prereqs_already_checked() {
     [[ -f "$PREREQS_FILE" ]]
+}
+
+# =============================================================================
+# Installation
+# =============================================================================
+
+INSTALL_PATH="/usr/local/bin/moav"
+
+is_installed() {
+    [[ -L "$INSTALL_PATH" ]] && [[ "$(readlink "$INSTALL_PATH")" == "$SCRIPT_DIR/moav.sh" ]]
+}
+
+do_install() {
+    local script_path="$SCRIPT_DIR/moav.sh"
+
+    echo ""
+    info "Installing moav to $INSTALL_PATH"
+
+    # Check if already installed correctly
+    if is_installed; then
+        success "Already installed at $INSTALL_PATH"
+        return 0
+    fi
+
+    # Check if something else exists at install path
+    if [[ -e "$INSTALL_PATH" ]]; then
+        warn "File already exists at $INSTALL_PATH"
+        if [[ -L "$INSTALL_PATH" ]]; then
+            local current_target
+            current_target=$(readlink "$INSTALL_PATH")
+            echo "  Current symlink points to: $current_target"
+        fi
+        if ! confirm "Replace it?"; then
+            warn "Installation cancelled"
+            return 1
+        fi
+    fi
+
+    # Need sudo for /usr/local/bin
+    if [[ -w "$(dirname "$INSTALL_PATH")" ]]; then
+        ln -sf "$script_path" "$INSTALL_PATH"
+    else
+        info "Requires sudo to create symlink in /usr/local/bin"
+        sudo ln -sf "$script_path" "$INSTALL_PATH"
+    fi
+
+    if is_installed; then
+        success "Installed! You can now run 'moav' from anywhere"
+        echo ""
+        echo "  Examples:"
+        echo "    moav              # Interactive menu"
+        echo "    moav start        # Start all services"
+        echo "    moav logs conduit # View conduit logs"
+    else
+        error "Installation failed"
+        return 1
+    fi
+}
+
+do_uninstall() {
+    if [[ ! -e "$INSTALL_PATH" ]]; then
+        warn "Not installed (no file at $INSTALL_PATH)"
+        return 0
+    fi
+
+    if [[ -L "$INSTALL_PATH" ]]; then
+        info "Removing symlink at $INSTALL_PATH"
+        if [[ -w "$(dirname "$INSTALL_PATH")" ]]; then
+            rm -f "$INSTALL_PATH"
+        else
+            sudo rm -f "$INSTALL_PATH"
+        fi
+        success "Uninstalled"
+    else
+        error "$INSTALL_PATH is not a symlink, not removing"
+        return 1
+    fi
 }
 
 check_bootstrap() {
@@ -827,11 +912,13 @@ main_menu() {
 # =============================================================================
 
 show_usage() {
-    echo "Usage: ./moav.sh [command] [options]"
+    echo "Usage: moav [command] [options]"
     echo ""
     echo "Commands:"
     echo "  (no command)          Interactive menu"
     echo "  help                  Show this help message"
+    echo "  install               Install 'moav' command globally"
+    echo "  uninstall             Remove global 'moav' command"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup"
     echo "  start [PROFILE...]    Start services (default: all)"
@@ -845,18 +932,17 @@ show_usage() {
     echo "  build                 Build all services"
     echo ""
     echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, all"
-    echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, conduit, snowflake"
+    echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake"
+    echo "Aliases:  conduit→psiphon-conduit, singbox→sing-box, wg→wireguard, dns→dnstt"
     echo ""
     echo "Examples:"
-    echo "  ./moav.sh                       # Interactive menu"
-    echo "  ./moav.sh start                 # Start all services"
-    echo "  ./moav.sh start proxy admin     # Start proxy and admin profiles"
-    echo "  ./moav.sh stop                  # Stop all services"
-    echo "  ./moav.sh stop conduit admin    # Stop specific services"
-    echo "  ./moav.sh restart sing-box      # Restart sing-box"
-    echo "  ./moav.sh logs                  # View all logs"
-    echo "  ./moav.sh logs sing-box conduit # View specific service logs"
-    echo "  ./moav.sh user add john         # Add user 'john'"
+    echo "  moav                       # Interactive menu"
+    echo "  moav install               # Install globally (run from anywhere)"
+    echo "  moav start                 # Start all services"
+    echo "  moav start proxy admin     # Start proxy and admin profiles"
+    echo "  moav stop conduit          # Stop specific service"
+    echo "  moav logs sing-box conduit # View specific service logs"
+    echo "  moav user add john         # Add user 'john'"
 }
 
 cmd_check() {
@@ -888,14 +974,39 @@ cmd_start() {
     docker compose $profiles ps
 }
 
+# Resolve service name aliases to actual docker-compose service names
+resolve_service() {
+    local svc="$1"
+    case "$svc" in
+        conduit|psiphon)    echo "psiphon-conduit" ;;
+        singbox|sing)       echo "sing-box" ;;
+        wg)                 echo "wireguard" ;;
+        ws|tunnel)          echo "wstunnel" ;;
+        dns)                echo "dnstt" ;;
+        snow|tor)           echo "snowflake" ;;
+        *)                  echo "$svc" ;;
+    esac
+}
+
+# Resolve multiple service arguments
+resolve_services() {
+    local resolved=()
+    for svc in "$@"; do
+        resolved+=("$(resolve_service "$svc")")
+    done
+    echo "${resolved[@]}"
+}
+
 cmd_stop() {
     if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
         info "Stopping all services..."
         docker compose --profile all down
         success "All services stopped!"
     else
-        info "Stopping: $*"
-        docker compose stop "$@"
+        local services
+        services=$(resolve_services "$@")
+        info "Stopping: $services"
+        docker compose stop $services
         success "Services stopped!"
     fi
 }
@@ -906,8 +1017,10 @@ cmd_restart() {
         docker compose --profile all restart
         success "All services restarted!"
     else
-        info "Restarting: $*"
-        docker compose restart "$@"
+        local services
+        services=$(resolve_services "$@")
+        info "Restarting: $services"
+        docker compose restart $services
         success "Services restarted!"
     fi
 }
@@ -920,7 +1033,9 @@ cmd_logs() {
     if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
         docker compose --profile all logs -t -f
     else
-        docker compose logs -t -f "$@"
+        local services
+        services=$(resolve_services "$@")
+        docker compose logs -t -f $services
     fi
 }
 
@@ -1019,6 +1134,12 @@ main() {
             ;;
         help|--help|-h)
             show_usage
+            ;;
+        install)
+            do_install
+            ;;
+        uninstall)
+            do_uninstall
             ;;
         check)
             cmd_check
