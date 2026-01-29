@@ -12,9 +12,6 @@ set -euo pipefail
 #   - singbox-user-add.sh (Reality, Trojan, Hysteria2)
 #   - wg-user-add.sh (WireGuard)
 #
-# Options:
-#   --package    Create a distributable zip with HTML guide after user creation
-#
 # For individual services, use the specific scripts directly.
 # =============================================================================
 
@@ -48,12 +45,9 @@ if [[ -z "$USERNAME" ]]; then
     echo "Usage: $0 <username> [--package]"
     echo ""
     echo "Options:"
-    echo "  --package, -p   Create a distributable zip with HTML guide after adding user"
+    echo "  --package, -p   Create a distributable zip with HTML guide"
     echo ""
     echo "This adds a user to ALL enabled services."
-    echo ""
-    echo "Options:"
-    echo "  --package    Create a distributable zip with HTML guide"
     echo ""
     echo "For individual services:"
     echo "  ./scripts/singbox-user-add.sh <username>  # Reality, Trojan, Hysteria2"

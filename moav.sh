@@ -949,7 +949,7 @@ show_usage() {
     echo "  logs [SERVICE...]     View logs (default: all, follow mode)"
     echo "  users                 List all users"
     echo "  user list             List all users"
-    echo "  user add NAME         Add a new user"
+    echo "  user add NAME [-p]    Add a new user (--package creates zip with HTML guide)"
     echo "  user revoke NAME      Revoke a user"
     echo "  build [SERVICE...]    Build services (default: all)"
     echo "  test USERNAME         Test connectivity for a user"
@@ -968,6 +968,7 @@ show_usage() {
     echo "  moav logs sing-box conduit     # View specific service logs"
     echo "  moav build conduit             # Build specific service"
     echo "  moav user add john             # Add user 'john'"
+    echo "  moav user add john --package   # Add user and create zip bundle"
     echo "  moav test joe                  # Test connectivity for user joe"
     echo "  moav client connect joe        # Connect as user joe (exposes proxy)"
 }
@@ -1073,6 +1074,7 @@ cmd_users() {
 cmd_user() {
     local action="${1:-}"
     local username="${2:-}"
+    shift 2 2>/dev/null || shift $# # Shift past action and username to get extra args
 
     case "$action" in
         list|ls)
@@ -1080,7 +1082,7 @@ cmd_user() {
             ;;
         add)
             if [[ -z "$username" ]]; then
-                error "Usage: moav user add USERNAME"
+                error "Usage: moav user add USERNAME [--package]"
                 exit 1
             fi
             if [[ ! "$username" =~ ^[a-zA-Z0-9_]+$ ]]; then
@@ -1088,7 +1090,7 @@ cmd_user() {
                 exit 1
             fi
             if [[ -x "./scripts/user-add.sh" ]]; then
-                ./scripts/user-add.sh "$username"
+                ./scripts/user-add.sh "$username" "$@"
             else
                 error "User add script not found"
                 exit 1
