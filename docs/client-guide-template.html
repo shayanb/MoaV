@@ -66,12 +66,98 @@
             border-color: var(--accent-cyan);
         }
 
-        /* Content visibility */
+        /* Content visibility - CSS-only with :target (works in previews without JS) */
         .lang-en, .lang-fa { display: none; }
+
+        /* Default: show English */
+        .lang-en { display: block; }
+
+        /* When #fa is targeted, show Farsi and hide English */
+        #fa:target ~ .lang-fa { display: block; }
+        #fa:target ~ .lang-en { display: none; }
+        #fa:target ~ .lang-toggle .lang-link-en { background: var(--bg-secondary); color: var(--text-secondary); }
+        #fa:target ~ .lang-toggle .lang-link-fa { background: var(--accent-cyan); color: var(--bg-primary); }
+
+        /* When #en is targeted, ensure English shows */
+        #en:target ~ .lang-en { display: block; }
+        #en:target ~ .lang-fa { display: none; }
+
+        /* RTL for Farsi */
+        #fa:target ~ .lang-fa { direction: rtl; text-align: right; }
+        #fa:target ~ .lang-toggle { justify-content: flex-start; }
+
+        /* JS-based fallback (for full browser support) */
         body.show-en .lang-en { display: block; }
+        body.show-en .lang-fa { display: none; }
         body.show-fa .lang-fa { display: block; }
+        body.show-fa .lang-en { display: none; }
         body.show-fa { direction: rtl; text-align: right; }
         body.show-fa .lang-toggle { justify-content: flex-start; }
+
+        /* Language link styling */
+        .lang-link {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .lang-link:hover {
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+        .lang-link-en {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            border-color: var(--accent-cyan);
+        }
+
+        /* Hidden anchor targets */
+        .lang-target { position: absolute; top: 0; left: 0; visibility: hidden; }
+
+        /* Table of Contents */
+        .toc {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .toc h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .toc-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .toc-list a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toc-list a:hover {
+            text-decoration: underline;
+        }
+        .toc-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
 
         /* Header */
         .header {
@@ -472,10 +558,14 @@
     </style>
 </head>
 <body class="show-en">
+    <!-- Hidden anchor targets for CSS-only language switching -->
+    <div id="en" class="lang-target"></div>
+    <div id="fa" class="lang-target"></div>
+
     <!-- Language Toggle -->
     <div class="lang-toggle">
-        <button class="lang-btn active" onclick="setLang('en')" id="btn-en">English</button>
-        <button class="lang-btn" onclick="setLang('fa')" id="btn-fa">فارسی</button>
+        <a href="#en" class="lang-link lang-link-en" id="btn-en" onclick="setLang && setLang('en')">English</a>
+        <a href="#fa" class="lang-link lang-link-fa" id="btn-fa" onclick="setLang && setLang('fa')">فارسی</a>
     </div>
 
     <!-- ==================== ENGLISH CONTENT ==================== -->
@@ -486,6 +576,21 @@
             <div class="warning">
                 Do not share these credentials with anyone. They are linked to your identity.
             </div>
+        </div>
+
+        <!-- Table of Contents -->
+        <div class="toc">
+            <h3>Quick Navigation</h3>
+            <ul class="toc-list">
+                <li><a href="#en" onclick="scrollToSection('reality-en')">1. Reality (VLESS) <span class="toc-badge badge-primary">Primary</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('hysteria2-en')">2. Hysteria2 <span class="toc-badge badge-secondary">Fast</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('trojan-en')">3. Trojan <span class="toc-badge badge-secondary">Backup</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('wireguard-en')">4. WireGuard <span class="toc-badge badge-secondary">Full VPN</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">5. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('tor-en')">6. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('psiphon-en')">7. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('apps-en')">Recommended Apps</a></li>
+            </ul>
         </div>
 
         <div class="server-info">
@@ -507,7 +612,7 @@
         </div>
 
         <!-- Reality (VLESS) -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="reality-en">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>1. Reality (VLESS)</h2>
@@ -538,7 +643,7 @@
         </div>
 
         <!-- Hysteria2 -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="hysteria2-en">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>2. Hysteria2</h2>
@@ -569,7 +674,7 @@
         </div>
 
         <!-- Trojan -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="trojan-en">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>3. Trojan</h2>
@@ -600,7 +705,7 @@
         </div>
 
         <!-- WireGuard -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="wireguard-en">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>4. WireGuard</h2>
@@ -632,7 +737,7 @@
         </div>
 
         <!-- DNS Tunnel -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="dns-tunnel-en">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>5. DNS Tunnel</h2>
@@ -685,7 +790,7 @@
         </div>
 
         <!-- Tor -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="tor-en">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>6. Tor</h2>
@@ -722,7 +827,7 @@
         </div>
 
         <!-- Psiphon -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="psiphon-en">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>7. Psiphon</h2>
@@ -764,7 +869,7 @@
         </div>
 
         <!-- Apps Section -->
-        <div class="apps-section">
+        <div class="apps-section" id="apps-en">
             <h2>Recommended Apps</h2>
             <table class="apps-table">
                 <thead>
@@ -883,6 +988,21 @@
             </div>
         </div>
 
+        <!-- Table of Contents (Farsi) -->
+        <div class="toc">
+            <h3>فهرست</h3>
+            <ul class="toc-list">
+                <li><a href="#fa" onclick="scrollToSection('reality-fa')">۱. Reality (VLESS) <span class="toc-badge badge-primary">اصلی</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('hysteria2-fa')">۲. Hysteria2 <span class="toc-badge badge-secondary">سریع</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('trojan-fa')">۳. Trojan <span class="toc-badge badge-secondary">پشتیبان</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('wireguard-fa')">۴. WireGuard <span class="toc-badge badge-secondary">VPN کامل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۵. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۶. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۷. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('apps-fa')">اپلیکیشن‌ها</a></li>
+            </ul>
+        </div>
+
         <div class="server-info">
             <h3>اطلاعات سرور</h3>
             <div class="info-grid">
@@ -902,7 +1022,7 @@
         </div>
 
         <!-- Reality (VLESS) -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="reality-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>۱. Reality (VLESS)</h2>
@@ -933,7 +1053,7 @@
         </div>
 
         <!-- Hysteria2 -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="hysteria2-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>۲. Hysteria2</h2>
@@ -964,7 +1084,7 @@
         </div>
 
         <!-- Trojan -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="trojan-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>۳. Trojan</h2>
@@ -995,7 +1115,7 @@
         </div>
 
         <!-- WireGuard -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="wireguard-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>۴. WireGuard</h2>
@@ -1027,7 +1147,7 @@
         </div>
 
         <!-- DNS Tunnel -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="dns-tunnel-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>۵. تونل DNS</h2>
@@ -1078,7 +1198,7 @@
         </div>
 
         <!-- Tor -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="tor-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>۶. Tor</h2>
@@ -1106,7 +1226,7 @@
         </div>
 
         <!-- Psiphon -->
-        <div class="protocol-section">
+        <div class="protocol-section" id="psiphon-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
                     <h2>۷. Psiphon</h2>
@@ -1129,7 +1249,7 @@
         </div>
 
         <!-- Apps Section -->
-        <div class="apps-section">
+        <div class="apps-section" id="apps-fa">
             <h2>اپلیکیشن‌های پیشنهادی</h2>
             <table class="apps-table">
                 <thead>
@@ -1213,37 +1333,44 @@
         function setLang(lang) {
             document.body.classList.remove('show-en', 'show-fa');
             document.body.classList.add('show-' + lang);
-            document.getElementById('btn-en').classList.remove('active');
-            document.getElementById('btn-fa').classList.remove('active');
-            document.getElementById('btn-' + lang).classList.add('active');
             localStorage.setItem('moav-lang', lang);
+        }
+
+        function scrollToSection(id) {
+            var el = document.getElementById(id);
+            if (el) setTimeout(function() { el.scrollIntoView({ behavior: 'smooth' }); }, 10);
         }
 
         function copyConfig(el) {
             if (el.classList.contains('multiline')) return;
-
-            const text = el.textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                el.classList.add('copied');
-                setTimeout(() => el.classList.remove('copied'), 1500);
-            }).catch(() => {
-                // Fallback
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                document.body.appendChild(textarea);
-                textarea.select();
+            var text = el.textContent;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(function() {
+                    el.classList.add('copied');
+                    setTimeout(function() { el.classList.remove('copied'); }, 1500);
+                });
+            } else {
+                var ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
                 document.execCommand('copy');
-                document.body.removeChild(textarea);
+                document.body.removeChild(ta);
                 el.classList.add('copied');
-                setTimeout(() => el.classList.remove('copied'), 1500);
-            });
+                setTimeout(function() { el.classList.remove('copied'); }, 1500);
+            }
         }
 
-        // Load saved language preference
-        const savedLang = localStorage.getItem('moav-lang');
-        if (savedLang) {
-            setLang(savedLang);
-        }
+        // On load: check URL hash or saved preference
+        (function() {
+            var hash = window.location.hash;
+            if (hash === '#fa') setLang('fa');
+            else if (hash === '#en') setLang('en');
+            else {
+                var saved = localStorage.getItem('moav-lang');
+                if (saved) setLang(saved);
+            }
+        })();
     </script>
 </body>
 </html>
