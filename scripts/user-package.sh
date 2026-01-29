@@ -9,6 +9,10 @@ set -euo pipefail
 #   - All config files (.txt, .conf, .yaml)
 #   - QR code images (generated if qrencode available)
 #   - Personalized HTML guide with embedded QR codes
+#
+# Requirements: qrencode (optional, for QR codes)
+#   - macOS: brew install qrencode
+#   - Ubuntu/Debian: apt install qrencode
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -105,12 +109,12 @@ fi
 log_info "Generating QR codes..."
 
 # Check if qrencode is available
-QR_AVAILABLE=false
-if command -v qrencode &>/dev/null; then
-    QR_AVAILABLE=true
+if ! command -v qrencode &>/dev/null; then
+    log_warn "  qrencode not installed - QR codes will be skipped"
+    log_warn "  Install with: brew install qrencode (macOS) or apt install qrencode (Linux)"
+    QR_AVAILABLE=false
 else
-    log_error "  qrencode not installed - QR codes will be skipped"
-    log_error "  Install with: brew install qrencode (macOS) or apt install qrencode (Linux)"
+    QR_AVAILABLE=true
 fi
 
 generate_qr() {
@@ -118,12 +122,14 @@ generate_qr() {
     local output="$2"
     local is_file="${3:-false}"
 
-    if [[ "$QR_AVAILABLE" == "true" ]]; then
-        if [[ "$is_file" == "true" ]]; then
-            qrencode -o "$output" -s 6 -r "$content" 2>/dev/null && return 0
-        else
-            qrencode -o "$output" -s 6 "$content" 2>/dev/null && return 0
-        fi
+    if [[ "$QR_AVAILABLE" != "true" ]]; then
+        return 1
+    fi
+
+    if [[ "$is_file" == "true" ]]; then
+        qrencode -o "$output" -s 6 -r "$content" 2>/dev/null && return 0
+    else
+        qrencode -o "$output" -s 6 "$content" 2>/dev/null && return 0
     fi
     return 1
 }
@@ -135,9 +141,9 @@ QR_REALITY_FILE="$PACKAGE_DIR/reality-qr.png"
 if [[ -n "$CONFIG_REALITY" ]]; then
     if [[ -f "$BUNDLE_DIR/reality-qr.png" ]]; then
         cp "$BUNDLE_DIR/reality-qr.png" "$QR_REALITY_FILE"
-        ((QR_COUNT++))
+        ((QR_COUNT++)) || true
     elif generate_qr "$CONFIG_REALITY" "$QR_REALITY_FILE"; then
-        ((QR_COUNT++))
+        ((QR_COUNT++)) || true
     fi
 fi
 
@@ -146,9 +152,9 @@ QR_HYSTERIA2_FILE="$PACKAGE_DIR/hysteria2-qr.png"
 if [[ -n "$CONFIG_HYSTERIA2" ]]; then
     if [[ -f "$BUNDLE_DIR/hysteria2-qr.png" ]]; then
         cp "$BUNDLE_DIR/hysteria2-qr.png" "$QR_HYSTERIA2_FILE"
-        ((QR_COUNT++))
+        ((QR_COUNT++)) || true
     elif generate_qr "$CONFIG_HYSTERIA2" "$QR_HYSTERIA2_FILE"; then
-        ((QR_COUNT++))
+        ((QR_COUNT++)) || true
     fi
 fi
 
@@ -157,9 +163,9 @@ QR_TROJAN_FILE="$PACKAGE_DIR/trojan-qr.png"
 if [[ -n "$CONFIG_TROJAN" ]]; then
     if [[ -f "$BUNDLE_DIR/trojan-qr.png" ]]; then
         cp "$BUNDLE_DIR/trojan-qr.png" "$QR_TROJAN_FILE"
-        ((QR_COUNT++))
+        ((QR_COUNT++)) || true
     elif generate_qr "$CONFIG_TROJAN" "$QR_TROJAN_FILE"; then
-        ((QR_COUNT++))
+        ((QR_COUNT++)) || true
     fi
 fi
 
@@ -168,16 +174,16 @@ QR_WIREGUARD_FILE="$PACKAGE_DIR/wireguard-qr.png"
 if [[ -n "$CONFIG_WIREGUARD" ]]; then
     if [[ -f "$BUNDLE_DIR/wireguard-qr.png" ]]; then
         cp "$BUNDLE_DIR/wireguard-qr.png" "$QR_WIREGUARD_FILE"
-        ((QR_COUNT++))
+        ((QR_COUNT++)) || true
     elif generate_qr "$BUNDLE_DIR/wireguard.conf" "$QR_WIREGUARD_FILE" "true"; then
-        ((QR_COUNT++))
+        ((QR_COUNT++)) || true
     fi
 fi
 
 if [[ $QR_COUNT -gt 0 ]]; then
     log_info "  $QR_COUNT QR code(s) generated"
 else
-    log_info "  No QR codes generated (qrencode not available or no existing QR files)"
+    log_info "  No QR codes generated"
 fi
 
 # -----------------------------------------------------------------------------
@@ -187,10 +193,11 @@ fi
 qr_to_base64() {
     local file="$1"
     if [[ -f "$file" ]]; then
-        base64 -i "$file" 2>/dev/null | tr -d '\n' || echo ""
+        # Works on both macOS and Linux
+        base64 < "$file" 2>/dev/null | tr -d '\n' || echo ""
     else
-        # Return a placeholder transparent pixel
-        echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        # Return empty - HTML will show fallback message
+        echo ""
     fi
 }
 
@@ -206,7 +213,7 @@ QR_WIREGUARD_B64=$(qr_to_base64 "$QR_WIREGUARD_FILE")
 log_info "Generating HTML guide..."
 
 TEMPLATE_FILE="docs/client-guide-template.html"
-OUTPUT_HTML="$PACKAGE_DIR/guide.html"
+OUTPUT_HTML="$PACKAGE_DIR/README.html"
 
 if [[ ! -f "$TEMPLATE_FILE" ]]; then
     log_error "Template not found: $TEMPLATE_FILE"
@@ -214,10 +221,9 @@ if [[ ! -f "$TEMPLATE_FILE" ]]; then
 fi
 
 # Read template and replace placeholders
-# Using sed with different delimiters due to special characters in configs
 cp "$TEMPLATE_FILE" "$OUTPUT_HTML"
 
-# Simple replacements
+# Simple replacements using sed
 sed -i.bak "s|{{USERNAME}}|$USERNAME|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{SERVER_IP}}|$SERVER_IP|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{DOMAIN}}|$DOMAIN|g" "$OUTPUT_HTML"
@@ -231,29 +237,40 @@ sed -i.bak "s|{{QR_HYSTERIA2}}|$QR_HYSTERIA2_B64|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{QR_TROJAN}}|$QR_TROJAN_B64|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
 
-# Config values (need special handling due to special characters)
-# Use perl for more robust replacement
-if command -v perl &>/dev/null; then
-    # Escape @ symbols to prevent Perl array interpolation
-    CONFIG_REALITY_ESC=$(echo "$CONFIG_REALITY" | sed 's/@/\\@/g')
-    CONFIG_HYSTERIA2_ESC=$(echo "$CONFIG_HYSTERIA2" | sed 's/@/\\@/g')
-    CONFIG_TROJAN_ESC=$(echo "$CONFIG_TROJAN" | sed 's/@/\\@/g')
+# Config values (need special handling due to special characters like @ and &)
+# Escape & for awk replacement (& is special in gsub replacement)
+escape_for_awk() {
+    echo "$1" | sed 's/&/\\\\\\&/g'
+}
 
-    perl -i -pe "s|\{\{CONFIG_REALITY\}\}|$CONFIG_REALITY_ESC|g" "$OUTPUT_HTML"
-    perl -i -pe "s|\{\{CONFIG_HYSTERIA2\}\}|$CONFIG_HYSTERIA2_ESC|g" "$OUTPUT_HTML"
-    perl -i -pe "s|\{\{CONFIG_TROJAN\}\}|$CONFIG_TROJAN_ESC|g" "$OUTPUT_HTML"
-
-    # WireGuard config is multiline, handle separately
-    CONFIG_WIREGUARD_ESCAPED=$(echo "$CONFIG_WIREGUARD" | perl -pe 's/\n/\\n/g; s/\|/\\|/g; s/@/\\@/g')
-    perl -i -pe "s|\{\{CONFIG_WIREGUARD\}\}|$CONFIG_WIREGUARD_ESCAPED|g" "$OUTPUT_HTML"
-    # Restore newlines in WireGuard config
-    perl -i -pe 's/\\n/\n/g' "$OUTPUT_HTML"
+if [[ -n "$CONFIG_REALITY" ]]; then
+    ESCAPED=$(escape_for_awk "$CONFIG_REALITY")
+    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_REALITY\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
 else
-    # Fallback: just note that configs are in separate files
-    sed -i.bak "s|{{CONFIG_REALITY}}|See reality.txt file|g" "$OUTPUT_HTML"
-    sed -i.bak "s|{{CONFIG_HYSTERIA2}}|See hysteria2.txt file|g" "$OUTPUT_HTML"
-    sed -i.bak "s|{{CONFIG_TROJAN}}|See trojan.txt file|g" "$OUTPUT_HTML"
-    sed -i.bak "s|{{CONFIG_WIREGUARD}}|See wireguard.conf file|g" "$OUTPUT_HTML"
+    sed -i.bak "s|{{CONFIG_REALITY}}|No Reality config available|g" "$OUTPUT_HTML"
+fi
+
+if [[ -n "$CONFIG_HYSTERIA2" ]]; then
+    ESCAPED=$(escape_for_awk "$CONFIG_HYSTERIA2")
+    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_HYSTERIA2\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+else
+    sed -i.bak "s|{{CONFIG_HYSTERIA2}}|No Hysteria2 config available|g" "$OUTPUT_HTML"
+fi
+
+if [[ -n "$CONFIG_TROJAN" ]]; then
+    ESCAPED=$(escape_for_awk "$CONFIG_TROJAN")
+    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_TROJAN\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+else
+    sed -i.bak "s|{{CONFIG_TROJAN}}|No Trojan config available|g" "$OUTPUT_HTML"
+fi
+
+# WireGuard config is multiline - handle with awk
+if [[ -n "$CONFIG_WIREGUARD" ]]; then
+    # Escape & and convert newlines
+    ESCAPED=$(echo "$CONFIG_WIREGUARD" | sed 's/&/\\\\\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+    awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+else
+    sed -i.bak "s|{{CONFIG_WIREGUARD}}|No WireGuard config available|g" "$OUTPUT_HTML"
 fi
 
 # Clean up backup files
@@ -274,16 +291,6 @@ for file in "$BUNDLE_DIR"/*.txt "$BUNDLE_DIR"/*.conf "$BUNDLE_DIR"/*.yaml "$BUND
     fi
 done
 
-# Don't copy the old README.md since we have the HTML guide
-# But keep other instruction files
-if [[ -f "$BUNDLE_DIR/dnstt-instructions.txt" ]]; then
-    cp "$BUNDLE_DIR/dnstt-instructions.txt" "$PACKAGE_DIR/"
-fi
-
-if [[ -f "$BUNDLE_DIR/wireguard-instructions.txt" ]]; then
-    cp "$BUNDLE_DIR/wireguard-instructions.txt" "$PACKAGE_DIR/"
-fi
-
 log_info "  Config files copied"
 
 # -----------------------------------------------------------------------------
@@ -298,7 +305,7 @@ OUTPUT_ZIP="outputs/bundles/${USERNAME}-configs.zip"
 rm -f "$OUTPUT_ZIP"
 
 # Create zip
-(cd "$TEMP_DIR" && zip -r "$SCRIPT_DIR/../$OUTPUT_ZIP" "$USERNAME-moav-configs" -x "*.bak")
+(cd "$TEMP_DIR" && zip -r "$SCRIPT_DIR/../$OUTPUT_ZIP" "$USERNAME-moav-configs" -x "*.bak" -x "*.tmp")
 
 # Clean up temp directory
 rm -rf "$TEMP_DIR"
@@ -323,4 +330,4 @@ unzip -l "$OUTPUT_ZIP" | grep -E "^\s+[0-9]+" | grep -v "files$"
 
 echo ""
 log_info "Distribute this zip file securely to the user."
-log_info "The HTML guide (guide.html) includes all instructions and QR codes."
+log_info "The HTML guide (README.html) includes all instructions and QR codes."

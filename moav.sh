@@ -189,6 +189,14 @@ check_prerequisites() {
         missing=1
     fi
 
+    # Check optional dependencies
+    if command -v qrencode &> /dev/null; then
+        success "qrencode is installed (for QR codes in user packages)"
+    else
+        warn "qrencode not installed (optional, for user-package.sh QR codes)"
+        echo "  Install with: apt install qrencode (Linux) or brew install qrencode (macOS)"
+    fi
+
     if [[ $missing -eq 1 ]]; then
         echo ""
         error "Prerequisites check failed. Please fix the issues above."
