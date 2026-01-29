@@ -19,30 +19,81 @@ This guide explains how to connect to MoaV from various devices.
 
 ### Client Apps
 
-| App | Platforms | Protocols | Link |
-|-----|-----------|-----------|------|
-| [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118) | iOS | VLESS, VMess, Trojan, Hysteria2 | [App Store](https://apps.apple.com/app/shadowrocket/id932747118) |
-| [Streisand](https://apps.apple.com/app/streisand/id6450534064) | iOS | VLESS, Hysteria2, multi-protocol | [App Store](https://apps.apple.com/app/streisand/id6450534064) |
-| [Pharos Pro](https://apps.apple.com/app/pharos-pro/id1456628148) | iOS | Hysteria2, VLESS | App Store |
-| [Loon](https://apps.apple.com/app/loon/id1373567447) | iOS | Hysteria2, VLESS, Trojan | App Store |
-| [Egern](https://apps.apple.com/app/egern/id1616105820) | iOS | Hysteria2 | App Store |
-| [HitProxy](https://apps.apple.com/app/hitproxy/id6502572134) | iOS | VLESS, WireGuard | [App Store](https://apps.apple.com/app/hitproxy/id6502572134) |
-| [v2rayNG](https://github.com/2dust/v2rayNG) | Android | VLESS, VMess, Trojan, WS/TLS | [GitHub](https://github.com/2dust/v2rayNG/releases) |
-| [Hiddify](https://hiddify.com/) | Android, Windows, macOS, Linux | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/hiddify/hiddify-next/releases) |
-| [NekoBox](https://github.com/MatsuriDayo/NekoBoxForAndroid) | Android | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/NekoBoxForAndroid/releases) |
-| [V2Box](https://github.com/nicrame/V2Box) | Android | Hysteria2, VLESS, multi-protocol | [GitHub](https://github.com/nicrame/V2Box) |
-| [HTTP Injector](https://play.google.com/store/apps/details?id=com.evozi.injector) | Android | DNS Tunnel, Hysteria, VLESS, WireGuard | [Play Store](https://play.google.com/store/apps/details?id=com.evozi.injector) |
-| [v2rayN](https://github.com/2dust/v2rayN) | Windows | VLESS, VMess, Trojan, WS/TLS | [GitHub](https://github.com/2dust/v2rayN/releases) |
-| [NekoRay](https://github.com/MatsuriDayo/nekoray) | Windows, macOS | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) |
-| [sing-box](https://sing-box.sagernet.org/) | All platforms | VLESS, VMess, Trojan, Hysteria2, DNS | [GitHub](https://github.com/SagerNet/sing-box) |
-| [Clash.Meta](https://github.com/MetaCubeX/mihomo) | All platforms | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/MetaCubeX/mihomo) |
-| [WireGuard](https://www.wireguard.com/) | All platforms | WireGuard | [Official](https://www.wireguard.com/install/) |
-| [Amnezia VPN](https://amnezia.org/) | All platforms | AmneziaWG, WireGuard, OpenVPN | [GitHub](https://github.com/amnezia-vpn/amnezia-client) |
-| [Tor Browser](https://www.torproject.org/) | All platforms | Tor, Snowflake | [Official](https://www.torproject.org/download/) |
-| [Psiphon](https://psiphon.ca/) | iOS, Android, Windows | Psiphon protocol | [Official](https://psiphon.ca/download.html) |
-| **MoaV Client** | Linux/Docker | All MoaV protocols | Built-in |
+#### iOS
 
-¹ Psiphon not available via MoaV client - use [official Psiphon apps](https://psiphon.ca/download.html)
+| App | Protocols | Link |
+|-----|-----------|------|
+| [Shadowrocket](https://apps.apple.com/us/app/shadowrocket/id932747118) | VLESS, VMess, Trojan, Hysteria2, WireGuard | [App Store ($2.99)](https://apps.apple.com/us/app/shadowrocket/id932747118) |
+| [Streisand](https://apps.apple.com/us/app/streisand/id6450534064) | VLESS/Reality, VMess, Trojan, Hysteria2, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/streisand/id6450534064) |
+| [Hiddify](https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532) | VLESS, VMess, Hysteria2, Trojan, Reality, SSH | [App Store (Free)](https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532) |
+| [V2Box](https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690) | VLESS, VMess, Trojan, Hysteria2, Reality | [App Store](https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690) |
+| [sing-box](https://apps.apple.com/us/app/sing-box-vt/id6673731168) | VLESS, VMess, Trojan, Hysteria2, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/sing-box-vt/id6673731168) |
+| [Loon](https://apps.apple.com/us/app/loon/id1373567447) | VLESS/Reality, Hysteria2, Trojan, WireGuard | [App Store](https://apps.apple.com/us/app/loon/id1373567447) |
+| [Pharos Pro](https://apps.apple.com/us/app/pharos-pro/id1456610173) | VLESS, Hysteria2, Trojan, TUIC | [App Store ($2.99)](https://apps.apple.com/us/app/pharos-pro/id1456610173) |
+| [Onion Browser](https://apps.apple.com/us/app/onion-browser/id519296448) | Tor | [App Store (Free)](https://apps.apple.com/us/app/onion-browser/id519296448) |
+| [Psiphon](https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909) | Psiphon | [App Store (Free)](https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909) |
+| [WireGuard](https://apps.apple.com/us/app/wireguard/id1441195209) | WireGuard | [App Store (Free)](https://apps.apple.com/us/app/wireguard/id1441195209) |
+
+#### Android
+
+| App | Protocols | Link |
+|-----|-----------|------|
+| [v2rayNG](https://github.com/2dust/v2rayNG) | VLESS, VMess, Trojan, Shadowsocks | [GitHub](https://github.com/2dust/v2rayNG/releases) |
+| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality, SSH | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| [NekoBox](https://github.com/MatsuriDayo/NekoBoxForAndroid) | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/NekoBoxForAndroid/releases) |
+| [V2Box](https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box) | VLESS, VMess, Trojan, Hysteria2, Reality | [Play Store](https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box) |
+| [sing-box](https://github.com/SagerNet/sing-box) | VLESS, VMess, Trojan, Hysteria2, WireGuard | [F-Droid](https://f-droid.org/packages/io.nekohasekai.sfa/) / [GitHub](https://github.com/SagerNet/sing-box/releases) |
+| [HTTP Injector](https://play.google.com/store/apps/details?id=com.evozi.injector) | VLESS, Hysteria, DNS Tunnel, WireGuard, SSH | [Play Store](https://play.google.com/store/apps/details?id=com.evozi.injector) |
+| [Clash Meta](https://github.com/MetaCubeX/ClashMetaForAndroid) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/MetaCubeX/ClashMetaForAndroid/releases) |
+| [Tor Browser](https://www.torproject.org/download/) | Tor | [Play Store](https://play.google.com/store/apps/details?id=org.torproject.torbrowser) / [Official](https://www.torproject.org/download/) |
+| [Psiphon](https://psiphon.ca/) | Psiphon | [Play Store](https://play.google.com/store/apps/details?id=com.psiphon3) / [APK](https://psiphon.ca/en/download.html) |
+| [WireGuard](https://www.wireguard.com/) | WireGuard | [Play Store](https://play.google.com/store/apps/details?id=com.wireguard.android) |
+
+#### Windows
+
+| App | Protocols | Link |
+|-----|-----------|------|
+| [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2, TUIC | [GitHub](https://github.com/2dust/v2rayN/releases) |
+| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| [NekoRay](https://github.com/MatsuriDayo/nekoray) | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) ¹ |
+| [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/mihomo-party-org/mihomo-party/releases) |
+| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
+| [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
+| [Psiphon](https://psiphon.ca/) | Psiphon | [Official](https://psiphon.ca/en/download.html) |
+| [WireGuard](https://www.wireguard.com/) | WireGuard | [Official](https://www.wireguard.com/install/) |
+
+#### macOS
+
+| App | Protocols | Link |
+|-----|-----------|------|
+| [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2 | [GitHub](https://github.com/2dust/v2rayN/releases) |
+| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| [NekoRay](https://github.com/MatsuriDayo/nekoray) | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) ¹ |
+| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
+| [sing-box](https://sing-box.sagernet.org/) | VLESS, VMess, Trojan, Hysteria2, WireGuard | [Homebrew](https://formulae.brew.sh/formula/sing-box) / [GitHub](https://github.com/SagerNet/sing-box) |
+| [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
+| [Psiphon](https://psiphon.ca/) | Psiphon | [App Store (Apple Silicon)](https://apps.apple.com/us/app/psiphon/id1276263909) |
+| [WireGuard](https://www.wireguard.com/) | WireGuard | [App Store](https://apps.apple.com/us/app/wireguard/id1451685025) |
+
+#### Linux
+
+| App | Protocols | Link |
+|-----|-----------|------|
+| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2 | [GitHub](https://github.com/2dust/v2rayN/releases) |
+| [sing-box](https://sing-box.sagernet.org/) | VLESS, VMess, Trojan, Hysteria2, WireGuard, DNS | [GitHub](https://github.com/SagerNet/sing-box) |
+| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
+| [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/mihomo-party-org/mihomo-party/releases) |
+| [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
+| [WireGuard](https://www.wireguard.com/) | WireGuard | [Official](https://www.wireguard.com/install/) |
+| **MoaV Client** | All MoaV protocols | Built-in (Docker) |
+
+¹ NekoRay: Repository notes it is no longer actively maintained. Consider alternatives like Hiddify or Clash Verge.
+
+**Notes:**
+- Psiphon is not available via MoaV client - use [official Psiphon apps](https://psiphon.ca/download.html)
+- iOS has no official Tor Browser; use [Onion Browser](https://apps.apple.com/us/app/onion-browser/id519296448) instead (Tor Project recommended)
+- Psiphon for Linux is not officially available
 
 ## Protocol Priority
 
