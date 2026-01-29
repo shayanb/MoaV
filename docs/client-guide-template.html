@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoaV Connection Guide - {{USERNAME}}</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-cyan: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --border-color: #30363d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Language Toggle */
+        .lang-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            justify-content: flex-end;
+        }
+
+        .lang-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+
+        .lang-btn.active {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            border-color: var(--accent-cyan);
+        }
+
+        /* Content visibility */
+        .lang-en, .lang-fa {
+            display: none;
+        }
+
+        body.show-en .lang-en {
+            display: block;
+        }
+
+        body.show-fa .lang-fa {
+            display: block;
+        }
+
+        body.show-fa {
+            direction: rtl;
+            text-align: right;
+        }
+
+        body.show-fa .lang-toggle {
+            justify-content: flex-start;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: var(--accent-cyan);
+        }
+
+        .header .subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .header .warning {
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--accent-red);
+        }
+
+        /* Server Info */
+        .server-info {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .server-info h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .info-value {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 13px;
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+            padding: 6px 10px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+
+        /* Protocol Sections */
+        .protocol-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .protocol-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .protocol-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .protocol-title h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .protocol-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .badge-primary {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .badge-secondary {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+        }
+
+        .badge-fallback {
+            background: var(--accent-orange);
+            color: var(--bg-primary);
+        }
+
+        .protocol-port {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .protocol-content {
+            padding: 16px;
+        }
+
+        .protocol-desc {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        /* QR Code */
+        .qr-section {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .qr-code {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .qr-code img {
+            display: block;
+            width: 150px;
+            height: 150px;
+        }
+
+        .qr-instructions {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .qr-instructions h4 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .qr-instructions ol {
+            padding-left: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        body.show-fa .qr-instructions ol {
+            padding-left: 0;
+            padding-right: 20px;
+        }
+
+        .qr-instructions li {
+            margin-bottom: 6px;
+        }
+
+        /* Config Box */
+        .config-box {
+            margin-top: 16px;
+        }
+
+        .config-box h4 {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .config-value {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 11px;
+            word-break: break-all;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .config-value.multiline {
+            white-space: pre-wrap;
+        }
+
+        /* Apps Table */
+        .apps-section {
+            margin-top: 32px;
+        }
+
+        .apps-section h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .apps-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .apps-table th,
+        .apps-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        body.show-fa .apps-table th,
+        body.show-fa .apps-table td {
+            text-align: right;
+        }
+
+        .apps-table th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .apps-table td {
+            background: var(--bg-secondary);
+        }
+
+        .apps-table a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        .apps-table a:hover {
+            text-decoration: underline;
+        }
+
+        .platform-icon {
+            margin-right: 6px;
+        }
+
+        body.show-fa .platform-icon {
+            margin-right: 0;
+            margin-left: 6px;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 32px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .qr-section {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .qr-instructions {
+                text-align: center;
+            }
+
+            body.show-fa .qr-instructions {
+                text-align: center;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="show-en">
+    <!-- Language Toggle -->
+    <div class="lang-toggle">
+        <button class="lang-btn active" onclick="setLang('en')" id="btn-en">English</button>
+        <button class="lang-btn" onclick="setLang('fa')" id="btn-fa">فارسی</button>
+    </div>
+
+    <!-- ==================== ENGLISH CONTENT ==================== -->
+    <div class="lang-en">
+        <div class="header">
+            <h1>MoaV Connection Guide</h1>
+            <p class="subtitle">Personal configuration for <strong>{{USERNAME}}</strong></p>
+            <div class="warning">
+                ⚠️ Do not share these credentials with anyone. They are linked to your identity.
+            </div>
+        </div>
+
+        <div class="server-info">
+            <h3>Server Information</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Server IP</span>
+                    <span class="info-value">{{SERVER_IP}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Domain</span>
+                    <span class="info-value">{{DOMAIN}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Generated</span>
+                    <span class="info-value">{{GENERATED_DATE}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reality (VLESS) -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>1. Reality (VLESS)</h2>
+                    <span class="protocol-badge badge-primary">Primary</span>
+                </div>
+                <span class="protocol-port">Port 443/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">Most reliable protocol. Impersonates legitimate TLS traffic to bypass deep packet inspection.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_REALITY}}" alt="Reality QR Code">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install <strong>Shadowrocket</strong> (iOS), <strong>v2rayNG</strong> (Android), or <strong>Hiddify</strong></li>
+                            <li>Scan the QR code or import the config link below</li>
+                            <li>Enable the connection</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>Config Link (tap to copy)</h4>
+                    <div class="config-value">{{CONFIG_REALITY}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hysteria2 -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>2. Hysteria2</h2>
+                    <span class="protocol-badge badge-secondary">Fast</span>
+                </div>
+                <span class="protocol-port">Port 443/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">QUIC-based protocol optimized for lossy networks. Great for unstable connections.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_HYSTERIA2}}" alt="Hysteria2 QR Code">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install <strong>Shadowrocket</strong>, <strong>Hiddify</strong>, or <strong>sing-box</strong></li>
+                            <li>Scan the QR code or import the config link</li>
+                            <li>Enable the connection</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>Config Link</h4>
+                    <div class="config-value">{{CONFIG_HYSTERIA2}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trojan -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>3. Trojan</h2>
+                    <span class="protocol-badge badge-secondary">Backup</span>
+                </div>
+                <span class="protocol-port">Port 8443/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">Looks like normal HTTPS traffic. Battle-tested reliability.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_TROJAN}}" alt="Trojan QR Code">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install <strong>Shadowrocket</strong>, <strong>v2rayNG</strong>, or <strong>Hiddify</strong></li>
+                            <li>Scan the QR code or import the config link</li>
+                            <li>Enable the connection</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>Config Link</h4>
+                    <div class="config-value">{{CONFIG_TROJAN}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WireGuard -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>4. WireGuard</h2>
+                    <span class="protocol-badge badge-secondary">Full VPN</span>
+                </div>
+                <span class="protocol-port">Port 51820/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">Full VPN mode with all traffic routed. Simple setup with official WireGuard app.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_WIREGUARD}}" alt="WireGuard QR Code">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install the official <strong>WireGuard</strong> app</li>
+                            <li>Tap "+" → "Create from QR code"</li>
+                            <li>Scan the QR code</li>
+                            <li>Name it (e.g., "MoaV") and activate</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>WireGuard Config File</h4>
+                    <div class="config-value multiline">{{CONFIG_WIREGUARD}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DNS Tunnel -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>5. DNS Tunnel</h2>
+                    <span class="protocol-badge badge-fallback">Last Resort</span>
+                </div>
+                <span class="protocol-port">Port 53/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">Very slow but works when everything else is blocked. Only use as last resort.</p>
+                <div class="config-box">
+                    <h4>DNS Tunnel Domain</h4>
+                    <div class="config-value">{{DNSTT_DOMAIN}}</div>
+                </div>
+                <div class="config-box">
+                    <h4>Server Public Key</h4>
+                    <div class="config-value">{{DNSTT_PUBKEY}}</div>
+                </div>
+                <div class="config-box">
+                    <h4>Command (run on computer)</h4>
+                    <div class="config-value">dnstt-client -doh https://1.1.1.1/dns-query -pubkey {{DNSTT_PUBKEY}} {{DNSTT_DOMAIN}} 127.0.0.1:1080</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Apps Section -->
+        <div class="apps-section">
+            <h2>Recommended Apps</h2>
+            <table class="apps-table">
+                <thead>
+                    <tr>
+                        <th>Platform</th>
+                        <th>Recommended Apps</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="platform-icon">📱</span>iOS</td>
+                        <td>
+                            <a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a>,
+                            <a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a>,
+                            <a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a>,
+                            <a href="https://apps.apple.com/us/app/wireguard/id1441195209" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="platform-icon">🤖</span>Android</td>
+                        <td>
+                            <a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a>,
+                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>,
+                            <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank">NekoBox</a>,
+                            <a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="platform-icon">🪟</span>Windows</td>
+                        <td>
+                            <a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a>,
+                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>,
+                            <a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="platform-icon">🍎</span>macOS</td>
+                        <td>
+                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>,
+                            <a href="https://github.com/clash-verge-rev/clash-verge-rev/releases" target="_blank">Clash Verge</a>,
+                            <a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="platform-icon">🐧</span>Linux</td>
+                        <td>
+                            <a href="https://github.com/SagerNet/sing-box" target="_blank">sing-box</a>,
+                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>,
+                            <a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>Generated by <a href="https://moav.sh" target="_blank">MoaV</a> - Mother of all VPNs</p>
+            <p>For full documentation, visit <a href="https://github.com/shayanb/MoaV" target="_blank">github.com/shayanb/MoaV</a></p>
+        </div>
+    </div>
+
+    <!-- ==================== FARSI CONTENT ==================== -->
+    <div class="lang-fa">
+        <div class="header">
+            <h1>راهنمای اتصال MoaV</h1>
+            <p class="subtitle">تنظیمات شخصی برای <strong>{{USERNAME}}</strong></p>
+            <div class="warning">
+                ⚠️ این اطلاعات را با کسی به اشتراک نگذارید. این اطلاعات به هویت شما متصل است.
+            </div>
+        </div>
+
+        <div class="server-info">
+            <h3>اطلاعات سرور</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">آی‌پی سرور</span>
+                    <span class="info-value">{{SERVER_IP}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">دامنه</span>
+                    <span class="info-value">{{DOMAIN}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">تاریخ ایجاد</span>
+                    <span class="info-value">{{GENERATED_DATE}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reality (VLESS) -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۱. Reality (VLESS)</h2>
+                    <span class="protocol-badge badge-primary">اصلی</span>
+                </div>
+                <span class="protocol-port">پورت 443/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">قابل اعتمادترین پروتکل. ترافیک TLS واقعی را تقلید می‌کند تا از بازرسی عمیق بسته‌ها عبور کند.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_REALITY}}" alt="QR Code Reality">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li><strong>Shadowrocket</strong> (iOS)، <strong>v2rayNG</strong> (Android) یا <strong>Hiddify</strong> را نصب کنید</li>
+                            <li>کد QR را اسکن کنید یا لینک کانفیگ زیر را وارد کنید</li>
+                            <li>اتصال را فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>لینک کانفیگ</h4>
+                    <div class="config-value">{{CONFIG_REALITY}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hysteria2 -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۲. Hysteria2</h2>
+                    <span class="protocol-badge badge-secondary">سریع</span>
+                </div>
+                <span class="protocol-port">پورت 443/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">پروتکل مبتنی بر QUIC بهینه‌سازی شده برای شبکه‌های ناپایدار. عالی برای اتصالات نامنظم.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_HYSTERIA2}}" alt="QR Code Hysteria2">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li><strong>Shadowrocket</strong>، <strong>Hiddify</strong> یا <strong>sing-box</strong> را نصب کنید</li>
+                            <li>کد QR را اسکن کنید یا لینک کانفیگ را وارد کنید</li>
+                            <li>اتصال را فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>لینک کانفیگ</h4>
+                    <div class="config-value">{{CONFIG_HYSTERIA2}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trojan -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۳. Trojan</h2>
+                    <span class="protocol-badge badge-secondary">پشتیبان</span>
+                </div>
+                <span class="protocol-port">پورت 8443/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">شبیه ترافیک HTTPS معمولی به نظر می‌رسد. قابلیت اطمینان آزمایش‌شده.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_TROJAN}}" alt="QR Code Trojan">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li><strong>Shadowrocket</strong>، <strong>v2rayNG</strong> یا <strong>Hiddify</strong> را نصب کنید</li>
+                            <li>کد QR را اسکن کنید یا لینک کانفیگ را وارد کنید</li>
+                            <li>اتصال را فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>لینک کانفیگ</h4>
+                    <div class="config-value">{{CONFIG_TROJAN}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WireGuard -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۴. WireGuard</h2>
+                    <span class="protocol-badge badge-secondary">VPN کامل</span>
+                </div>
+                <span class="protocol-port">پورت 51820/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">حالت VPN کامل با هدایت تمام ترافیک. نصب ساده با اپ رسمی WireGuard.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_WIREGUARD}}" alt="QR Code WireGuard">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li>اپ رسمی <strong>WireGuard</strong> را نصب کنید</li>
+                            <li>روی "+" بزنید → "Create from QR code"</li>
+                            <li>کد QR را اسکن کنید</li>
+                            <li>یک نام انتخاب کنید (مثلاً "MoaV") و فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>فایل کانفیگ WireGuard</h4>
+                    <div class="config-value multiline">{{CONFIG_WIREGUARD}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DNS Tunnel -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۵. تونل DNS</h2>
+                    <span class="protocol-badge badge-fallback">آخرین راه‌حل</span>
+                </div>
+                <span class="protocol-port">پورت 53/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">بسیار کند اما وقتی همه چیز مسدود است کار می‌کند. فقط به عنوان آخرین راه‌حل استفاده کنید.</p>
+                <div class="config-box">
+                    <h4>دامنه تونل DNS</h4>
+                    <div class="config-value">{{DNSTT_DOMAIN}}</div>
+                </div>
+                <div class="config-box">
+                    <h4>کلید عمومی سرور</h4>
+                    <div class="config-value">{{DNSTT_PUBKEY}}</div>
+                </div>
+                <div class="config-box">
+                    <h4>دستور (در کامپیوتر اجرا کنید)</h4>
+                    <div class="config-value">dnstt-client -doh https://1.1.1.1/dns-query -pubkey {{DNSTT_PUBKEY}} {{DNSTT_DOMAIN}} 127.0.0.1:1080</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Apps Section -->
+        <div class="apps-section">
+            <h2>اپلیکیشن‌های پیشنهادی</h2>
+            <table class="apps-table">
+                <thead>
+                    <tr>
+                        <th>پلتفرم</th>
+                        <th>اپلیکیشن‌های پیشنهادی</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="platform-icon">📱</span>iOS</td>
+                        <td>
+                            <a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a>،
+                            <a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a>،
+                            <a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a>،
+                            <a href="https://apps.apple.com/us/app/wireguard/id1441195209" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="platform-icon">🤖</span>Android</td>
+                        <td>
+                            <a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a>،
+                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>،
+                            <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank">NekoBox</a>،
+                            <a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="platform-icon">🪟</span>Windows</td>
+                        <td>
+                            <a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a>،
+                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>،
+                            <a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="platform-icon">🍎</span>macOS</td>
+                        <td>
+                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>،
+                            <a href="https://github.com/clash-verge-rev/clash-verge-rev/releases" target="_blank">Clash Verge</a>،
+                            <a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="platform-icon">🐧</span>Linux</td>
+                        <td>
+                            <a href="https://github.com/SagerNet/sing-box" target="_blank">sing-box</a>،
+                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>،
+                            <a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>ساخته شده توسط <a href="https://moav.sh" target="_blank">MoaV</a> - مادر همه VPNها</p>
+            <p>برای مستندات کامل، به <a href="https://github.com/shayanb/MoaV" target="_blank">github.com/shayanb/MoaV</a> مراجعه کنید</p>
+        </div>
+    </div>
+
+    <script>
+        function setLang(lang) {
+            document.body.classList.remove('show-en', 'show-fa');
+            document.body.classList.add('show-' + lang);
+            document.getElementById('btn-en').classList.remove('active');
+            document.getElementById('btn-fa').classList.remove('active');
+            document.getElementById('btn-' + lang).classList.add('active');
+            localStorage.setItem('moav-lang', lang);
+        }
+
+        // Load saved language preference
+        const savedLang = localStorage.getItem('moav-lang');
+        if (savedLang) {
+            setLang(savedLang);
+        }
+    </script>
+</body>
+</html>

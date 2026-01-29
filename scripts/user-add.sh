@@ -3,11 +3,14 @@ set -euo pipefail
 
 # =============================================================================
 # Add a new user to ALL enabled services
-# Usage: ./scripts/user-add.sh <username>
+# Usage: ./scripts/user-add.sh <username> [--package]
 #
 # This is the master script that calls individual service scripts:
 #   - singbox-user-add.sh (Reality, Trojan, Hysteria2)
 #   - wg-user-add.sh (WireGuard)
+#
+# Options:
+#   --package    Create a distributable zip with HTML guide after user creation
 #
 # For individual services, use the specific scripts directly.
 # =============================================================================
@@ -17,12 +20,34 @@ cd "$SCRIPT_DIR/.."
 
 source scripts/lib/common.sh
 
-USERNAME="${1:-}"
+# Parse arguments
+USERNAME=""
+CREATE_PACKAGE=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --package)
+            CREATE_PACKAGE=true
+            ;;
+        -*)
+            echo "Unknown option: $arg"
+            exit 1
+            ;;
+        *)
+            if [[ -z "$USERNAME" ]]; then
+                USERNAME="$arg"
+            fi
+            ;;
+    esac
+done
 
 if [[ -z "$USERNAME" ]]; then
-    echo "Usage: $0 <username>"
+    echo "Usage: $0 <username> [--package]"
     echo ""
     echo "This adds a user to ALL enabled services."
+    echo ""
+    echo "Options:"
+    echo "  --package    Create a distributable zip with HTML guide"
     echo ""
     echo "For individual services:"
     echo "  ./scripts/singbox-user-add.sh <username>  # Reality, Trojan, Hysteria2"
@@ -206,4 +231,13 @@ if [[ ${#ERRORS[@]} -gt 0 ]]; then
     exit 1
 fi
 
-log_info "Distribute the bundle securely to the user."
+# -----------------------------------------------------------------------------
+# Create package if requested
+# -----------------------------------------------------------------------------
+if [[ "$CREATE_PACKAGE" == "true" ]]; then
+    echo ""
+    "$SCRIPT_DIR/user-package.sh" "$USERNAME"
+else
+    log_info "Distribute the bundle securely to the user."
+    log_info "Tip: Use --package flag to create a zip with HTML guide."
+fi
