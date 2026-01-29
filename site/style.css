@@ -606,11 +606,48 @@ section {
     color: var(--text-secondary);
 }
 
-.client-apps {
+/* Client Apps Table */
+.client-table {
+    margin-top: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+}
+
+.client-row {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.client-row:last-child {
+    border-bottom: none;
+}
+
+.client-platform {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.platform-icon {
+    font-size: 16px;
+}
+
+.client-apps-cell {
+    flex: 1;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 12px;
+    padding: 10px 16px;
 }
 
 .client-tag {
@@ -629,6 +666,19 @@ section {
     transform: translateY(-2px);
     border-color: rgba(255, 255, 255, 0.2);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 600px) {
+    .client-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .client-platform {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
 }
 
 /* =============================================================================
@@ -672,19 +722,24 @@ section {
     margin: 0 auto 20px;
 }
 
-.support-icon.coffee {
-    background: linear-gradient(135deg, #ff813f, #ff5f5f);
+/* Action card icon colors */
+.support-icon.share {
+    background: linear-gradient(135deg, var(--accent-cyan), #00a8cc);
     color: white;
 }
 
-.support-icon.btc {
-    background: linear-gradient(135deg, #f7931a, #ffab00);
+.support-icon.code {
+    background: linear-gradient(135deg, var(--accent-purple), #5a3fd6);
     color: white;
 }
 
-.support-icon.eth {
-    background: linear-gradient(135deg, #627eea, #8c6dfd);
-    color: white;
+.support-icon.test {
+    background: linear-gradient(135deg, var(--accent-green), #00cc88);
+    color: var(--bg-primary);
+}
+
+.support-card.action {
+    display: block;
 }
 
 .support-card h3 {
@@ -695,21 +750,98 @@ section {
 .support-card p {
     font-size: 14px;
     color: var(--text-secondary);
+    line-height: 1.6;
 }
 
-.crypto-address {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    word-break: break-all;
-    margin-bottom: 12px;
-    padding: 8px;
+/* Donate section - compact inline style */
+.donate-section {
+    text-align: center;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.donate-intro {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.donate-options {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+}
+
+.donate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    padding: 10px 16px;
     background: var(--bg-secondary);
-    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
 }
 
-.copy-btn.small {
-    font-size: 11px;
-    padding: 6px 12px;
+.donate-btn:hover {
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    transform: translateY(-2px);
+}
+
+.donate-icon {
+    font-size: 16px;
+}
+
+/* Crypto button specific */
+.crypto-btn {
+    position: relative;
+}
+
+.crypto-btn .copied-indicator {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: var(--accent-green);
+    color: var(--bg-primary);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+
+.crypto-btn.copied .copied-indicator {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.crypto-btn.copied {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+@media (max-width: 768px) {
+    .donate-options {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .donate-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 .contribute-cta {

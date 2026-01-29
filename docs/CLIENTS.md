@@ -4,18 +4,45 @@ This guide explains how to connect to MoaV from various devices.
 
 ## Quick Reference
 
-| Protocol | iOS | Android | macOS | Windows | Linux | Port |
-|----------|-----|---------|-------|---------|-------|------|
-| Reality (VLESS) | Shadowrocket, Streisand | v2rayNG, NekoBox | V2rayU, NekoRay | v2rayN, NekoRay | **MoaV Client** | 443/tcp |
-| Trojan | Shadowrocket | v2rayNG | V2rayU | v2rayN | **MoaV Client** | 8443/tcp |
-| Hysteria2 | Shadowrocket | v2rayNG, Hiddify | Hysteria2 CLI | Hysteria2 CLI | **MoaV Client** | 443/udp |
-| WireGuard (Direct) | WireGuard | WireGuard | WireGuard | WireGuard | **MoaV Client** | 51820/udp |
-| WireGuard (wstunnel) | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | WireGuard + wstunnel | **MoaV Client** | 8080/tcp |
-| DNS Tunnel | dnstt-client | dnstt-client | dnstt-client | dnstt-client | **MoaV Client** | 53/udp |
-| Psiphon | Psiphon App | Psiphon App | Psiphon App | Psiphon App | Psiphon App¹ | Various |
-| Tor (Snowflake) | Tor Browser, Onion Browser | Tor Browser | Tor Browser | Tor Browser | **MoaV Client** | Various |
+### Protocol Support by Port
 
-¹ Psiphon not available via MoaV client - use [official Psiphon apps](https://psiphon.ca/en/download.html)
+| Protocol | Port | Description |
+|----------|------|-------------|
+| [Reality (VLESS)](https://github.com/XTLS/REALITY) | 443/tcp | TLS camouflage, virtually undetectable |
+| [Trojan](https://trojan-gfw.github.io/trojan/) | 8443/tcp | HTTPS mimicry, battle-tested |
+| [Hysteria2](https://v2.hysteria.network/) | 443/udp | QUIC-based, fast on lossy networks |
+| [WireGuard](https://www.wireguard.com/) (Direct) | 51820/udp | Full VPN mode, simple setup |
+| [WireGuard](https://www.wireguard.com/) + [wstunnel](https://github.com/erebe/wstunnel) | 8080/tcp | VPN wrapped in WebSocket |
+| [DNS Tunnel](https://www.bamsoftware.com/software/dnstt/) | 53/udp | Last resort, slow but hard to block |
+| [Psiphon](https://psiphon.ca/) | Various | Standalone app, uses Psiphon network |
+| [Tor](https://www.torproject.org/) (Snowflake) | Various | Uses Tor network |
+
+### Client Apps
+
+| App | Platforms | Protocols | Link |
+|-----|-----------|-----------|------|
+| [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118) | iOS | VLESS, VMess, Trojan, Hysteria2 | [App Store](https://apps.apple.com/app/shadowrocket/id932747118) |
+| [Streisand](https://apps.apple.com/app/streisand/id6450534064) | iOS | VLESS, Hysteria2, multi-protocol | [App Store](https://apps.apple.com/app/streisand/id6450534064) |
+| [Pharos Pro](https://apps.apple.com/app/pharos-pro/id1456628148) | iOS | Hysteria2, VLESS | App Store |
+| [Loon](https://apps.apple.com/app/loon/id1373567447) | iOS | Hysteria2, VLESS, Trojan | App Store |
+| [Egern](https://apps.apple.com/app/egern/id1616105820) | iOS | Hysteria2 | App Store |
+| [HitProxy](https://apps.apple.com/app/hitproxy/id6502572134) | iOS | VLESS, WireGuard | [App Store](https://apps.apple.com/app/hitproxy/id6502572134) |
+| [v2rayNG](https://github.com/2dust/v2rayNG) | Android | VLESS, VMess, Trojan, WS/TLS | [GitHub](https://github.com/2dust/v2rayNG/releases) |
+| [Hiddify](https://hiddify.com/) | Android, Windows, macOS, Linux | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/hiddify/hiddify-next/releases) |
+| [NekoBox](https://github.com/MatsuriDayo/NekoBoxForAndroid) | Android | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/NekoBoxForAndroid/releases) |
+| [V2Box](https://github.com/nicrame/V2Box) | Android | Hysteria2, VLESS, multi-protocol | [GitHub](https://github.com/nicrame/V2Box) |
+| [HTTP Injector](https://play.google.com/store/apps/details?id=com.evozi.injector) | Android | DNS Tunnel, Hysteria, VLESS, WireGuard | [Play Store](https://play.google.com/store/apps/details?id=com.evozi.injector) |
+| [v2rayN](https://github.com/2dust/v2rayN) | Windows | VLESS, VMess, Trojan, WS/TLS | [GitHub](https://github.com/2dust/v2rayN/releases) |
+| [NekoRay](https://github.com/MatsuriDayo/nekoray) | Windows, macOS | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) |
+| [sing-box](https://sing-box.sagernet.org/) | All platforms | VLESS, VMess, Trojan, Hysteria2, DNS | [GitHub](https://github.com/SagerNet/sing-box) |
+| [Clash.Meta](https://github.com/MetaCubeX/mihomo) | All platforms | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/MetaCubeX/mihomo) |
+| [WireGuard](https://www.wireguard.com/) | All platforms | WireGuard | [Official](https://www.wireguard.com/install/) |
+| [Amnezia VPN](https://amnezia.org/) | All platforms | AmneziaWG, WireGuard, OpenVPN | [GitHub](https://github.com/amnezia-vpn/amnezia-client) |
+| [Tor Browser](https://www.torproject.org/) | All platforms | Tor, Snowflake | [Official](https://www.torproject.org/download/) |
+| [Psiphon](https://psiphon.ca/) | iOS, Android, Windows | Psiphon protocol | [Official](https://psiphon.ca/download.html) |
+| **MoaV Client** | Linux/Docker | All MoaV protocols | Built-in |
+
+¹ Psiphon not available via MoaV client - use [official Psiphon apps](https://psiphon.ca/download.html)
 
 ## Protocol Priority
 

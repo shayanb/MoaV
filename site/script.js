@@ -5,6 +5,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     initNetworkBackground();
     initCopyButtons();
+    initCryptoButtons();
     initTypingAnimation();
 });
 
@@ -221,6 +222,35 @@ function initCopyButtons() {
                 setTimeout(() => {
                     button.classList.remove('copied');
                     button.innerHTML = originalContent;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        });
+    });
+}
+
+/* =============================================================================
+   Crypto Donation Buttons - Copy on Click
+   ============================================================================= */
+
+function initCryptoButtons() {
+    const cryptoButtons = document.querySelectorAll('.crypto-btn');
+
+    cryptoButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            const address = button.dataset.address;
+
+            if (!address) return;
+
+            try {
+                await navigator.clipboard.writeText(address);
+
+                // Visual feedback
+                button.classList.add('copied');
+
+                setTimeout(() => {
+                    button.classList.remove('copied');
                 }, 2000);
             } catch (err) {
                 console.error('Failed to copy:', err);
