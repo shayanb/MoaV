@@ -16,6 +16,7 @@
             --accent-green: #3fb950;
             --accent-orange: #d29922;
             --accent-red: #f85149;
+            --accent-purple: #a371f7;
             --border-color: #30363d;
         }
 
@@ -211,6 +212,11 @@
             color: var(--bg-primary);
         }
 
+        .badge-standalone {
+            background: var(--accent-purple);
+            color: var(--bg-primary);
+        }
+
         .protocol-port {
             font-family: monospace;
             font-size: 12px;
@@ -248,6 +254,18 @@
             height: 150px;
         }
 
+        .qr-code.qr-missing {
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 174px;
+            height: 174px;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+        }
+
         .qr-instructions {
             flex: 1;
             min-width: 250px;
@@ -259,13 +277,13 @@
             color: var(--text-primary);
         }
 
-        .qr-instructions ol {
+        .qr-instructions ol, .qr-instructions ul {
             padding-left: 20px;
             color: var(--text-secondary);
             font-size: 13px;
         }
 
-        body.show-fa .qr-instructions ol {
+        body.show-fa .qr-instructions ol, body.show-fa .qr-instructions ul {
             padding-left: 0;
             padding-right: 20px;
         }
@@ -295,10 +313,38 @@
             word-break: break-all;
             color: var(--text-secondary);
             position: relative;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .config-value:hover {
+            border-color: var(--accent-cyan);
         }
 
         .config-value.multiline {
             white-space: pre-wrap;
+            cursor: default;
+        }
+
+        .config-value.multiline:hover {
+            border-color: var(--border-color);
+        }
+
+        .config-value.copied {
+            border-color: var(--accent-green);
+        }
+
+        .config-value.copied::after {
+            content: 'Copied!';
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            background: var(--accent-green);
+            color: var(--bg-primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
         }
 
         /* Apps Table */
@@ -321,7 +367,7 @@
 
         .apps-table th,
         .apps-table td {
-            padding: 12px;
+            padding: 10px 12px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
         }
@@ -350,6 +396,11 @@
             text-decoration: underline;
         }
 
+        .apps-table .protocols {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
         .platform-icon {
             margin-right: 6px;
         }
@@ -357,6 +408,46 @@
         body.show-fa .platform-icon {
             margin-right: 0;
             margin-left: 6px;
+        }
+
+        /* Extra Section */
+        .extra-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .extra-section h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .extra-section p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .extra-section ul {
+            padding-left: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        body.show-fa .extra-section ul {
+            padding-left: 0;
+            padding-right: 20px;
+        }
+
+        .extra-section li {
+            margin-bottom: 4px;
+        }
+
+        .extra-section a {
+            color: var(--accent-cyan);
         }
 
         /* Footer */
@@ -367,6 +458,11 @@
             text-align: center;
             color: var(--text-muted);
             font-size: 12px;
+        }
+
+        .footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
         }
 
         /* Responsive */
@@ -387,6 +483,15 @@
             .info-grid {
                 grid-template-columns: 1fr;
             }
+
+            .apps-table {
+                font-size: 11px;
+            }
+
+            .apps-table th,
+            .apps-table td {
+                padding: 8px 6px;
+            }
         }
     </style>
 </head>
@@ -403,7 +508,7 @@
             <h1>MoaV Connection Guide</h1>
             <p class="subtitle">Personal configuration for <strong>{{USERNAME}}</strong></p>
             <div class="warning">
-                ⚠️ Do not share these credentials with anyone. They are linked to your identity.
+                Do not share these credentials with anyone. They are linked to your identity.
             </div>
         </div>
 
@@ -437,21 +542,21 @@
             <div class="protocol-content">
                 <p class="protocol-desc">Most reliable protocol. Impersonates legitimate TLS traffic to bypass deep packet inspection.</p>
                 <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_REALITY}}" alt="Reality QR Code">
+                    <div class="qr-code" id="qr-reality-en">
+                        <img src="data:image/png;base64,{{QR_REALITY}}" alt="Reality QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR code<br>not available<br><br>Use config below';">
                     </div>
                     <div class="qr-instructions">
                         <h4>How to connect:</h4>
                         <ol>
                             <li>Install <strong>Shadowrocket</strong> (iOS), <strong>v2rayNG</strong> (Android), or <strong>Hiddify</strong></li>
-                            <li>Scan the QR code or import the config link below</li>
-                            <li>Enable the connection</li>
+                            <li>Scan the QR code or tap the config link below to copy</li>
+                            <li>Import in the app and enable the connection</li>
                         </ol>
                     </div>
                 </div>
                 <div class="config-box">
-                    <h4>Config Link (tap to copy)</h4>
-                    <div class="config-value">{{CONFIG_REALITY}}</div>
+                    <h4>Config Link (click to copy)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_REALITY}}</div>
                 </div>
             </div>
         </div>
@@ -468,21 +573,21 @@
             <div class="protocol-content">
                 <p class="protocol-desc">QUIC-based protocol optimized for lossy networks. Great for unstable connections.</p>
                 <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_HYSTERIA2}}" alt="Hysteria2 QR Code">
+                    <div class="qr-code" id="qr-hysteria2-en">
+                        <img src="data:image/png;base64,{{QR_HYSTERIA2}}" alt="Hysteria2 QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR code<br>not available<br><br>Use config below';">
                     </div>
                     <div class="qr-instructions">
                         <h4>How to connect:</h4>
                         <ol>
                             <li>Install <strong>Shadowrocket</strong>, <strong>Hiddify</strong>, or <strong>sing-box</strong></li>
-                            <li>Scan the QR code or import the config link</li>
+                            <li>Scan the QR code or copy the config link</li>
                             <li>Enable the connection</li>
                         </ol>
                     </div>
                 </div>
                 <div class="config-box">
-                    <h4>Config Link</h4>
-                    <div class="config-value">{{CONFIG_HYSTERIA2}}</div>
+                    <h4>Config Link (click to copy)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_HYSTERIA2}}</div>
                 </div>
             </div>
         </div>
@@ -499,21 +604,21 @@
             <div class="protocol-content">
                 <p class="protocol-desc">Looks like normal HTTPS traffic. Battle-tested reliability.</p>
                 <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_TROJAN}}" alt="Trojan QR Code">
+                    <div class="qr-code" id="qr-trojan-en">
+                        <img src="data:image/png;base64,{{QR_TROJAN}}" alt="Trojan QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR code<br>not available<br><br>Use config below';">
                     </div>
                     <div class="qr-instructions">
                         <h4>How to connect:</h4>
                         <ol>
                             <li>Install <strong>Shadowrocket</strong>, <strong>v2rayNG</strong>, or <strong>Hiddify</strong></li>
-                            <li>Scan the QR code or import the config link</li>
+                            <li>Scan the QR code or copy the config link</li>
                             <li>Enable the connection</li>
                         </ol>
                     </div>
                 </div>
                 <div class="config-box">
-                    <h4>Config Link</h4>
-                    <div class="config-value">{{CONFIG_TROJAN}}</div>
+                    <h4>Config Link (click to copy)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_TROJAN}}</div>
                 </div>
             </div>
         </div>
@@ -530,21 +635,21 @@
             <div class="protocol-content">
                 <p class="protocol-desc">Full VPN mode with all traffic routed. Simple setup with official WireGuard app.</p>
                 <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_WIREGUARD}}" alt="WireGuard QR Code">
+                    <div class="qr-code" id="qr-wireguard-en">
+                        <img src="data:image/png;base64,{{QR_WIREGUARD}}" alt="WireGuard QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR code<br>not available<br><br>Use config below';">
                     </div>
                     <div class="qr-instructions">
                         <h4>How to connect:</h4>
                         <ol>
                             <li>Install the official <strong>WireGuard</strong> app</li>
-                            <li>Tap "+" → "Create from QR code"</li>
+                            <li>Tap "+" then "Create from QR code"</li>
                             <li>Scan the QR code</li>
                             <li>Name it (e.g., "MoaV") and activate</li>
                         </ol>
                     </div>
                 </div>
                 <div class="config-box">
-                    <h4>WireGuard Config File</h4>
+                    <h4>WireGuard Config File (save as .conf)</h4>
                     <div class="config-value multiline">{{CONFIG_WIREGUARD}}</div>
                 </div>
             </div>
@@ -560,18 +665,125 @@
                 <span class="protocol-port">Port 53/udp</span>
             </div>
             <div class="protocol-content">
-                <p class="protocol-desc">Very slow but works when everything else is blocked. Only use as last resort.</p>
+                <p class="protocol-desc">Very slow but works when everything else is blocked. Tunnels data through DNS queries. Only use as last resort.</p>
+
+                <div class="extra-section">
+                    <h3>How DNS Tunnel Works</h3>
+                    <p>DNS tunneling encodes data in DNS queries. Since DNS is essential for the internet, it's rarely completely blocked. The trade-off is very slow speeds (expect 10-50 KB/s).</p>
+                </div>
+
+                <div class="extra-section">
+                    <h3>Desktop Setup (Windows/macOS/Linux)</h3>
+                    <ol>
+                        <li>Download <a href="https://www.bamsoftware.com/software/dnstt/" target="_blank">dnstt-client</a> for your OS</li>
+                        <li>Open Terminal/Command Prompt</li>
+                        <li>Run this command to create a local SOCKS5 proxy on port 1080:</li>
+                    </ol>
+                    <div class="config-box">
+                        <div class="config-value" onclick="copyConfig(this)">dnstt-client -doh https://1.1.1.1/dns-query -pubkey {{DNSTT_PUBKEY}} {{DNSTT_DOMAIN}} 127.0.0.1:1080</div>
+                    </div>
+                    <p style="margin-top: 12px;">Then configure your browser to use SOCKS5 proxy: <code>127.0.0.1:1080</code></p>
+                </div>
+
+                <div class="extra-section">
+                    <h3>Mobile Setup (Android)</h3>
+                    <p><strong><a href="https://play.google.com/store/apps/details?id=com.evozi.injector" target="_blank">HTTP Injector</a></strong> supports DNS tunneling:</p>
+                    <ol>
+                        <li>Install HTTP Injector from Play Store</li>
+                        <li>Create new config with DNS Tunnel mode</li>
+                        <li>Enter DNS domain: <code>{{DNSTT_DOMAIN}}</code></li>
+                        <li>Set remote proxy to your server</li>
+                    </ol>
+                    <p style="margin-top: 8px; color: var(--text-muted); font-size: 12px;">Note: iOS has no good DNS tunnel apps. Use desktop if possible.</p>
+                </div>
+
                 <div class="config-box">
                     <h4>DNS Tunnel Domain</h4>
-                    <div class="config-value">{{DNSTT_DOMAIN}}</div>
+                    <div class="config-value" onclick="copyConfig(this)">{{DNSTT_DOMAIN}}</div>
                 </div>
                 <div class="config-box">
                     <h4>Server Public Key</h4>
-                    <div class="config-value">{{DNSTT_PUBKEY}}</div>
+                    <div class="config-value" onclick="copyConfig(this)">{{DNSTT_PUBKEY}}</div>
                 </div>
-                <div class="config-box">
-                    <h4>Command (run on computer)</h4>
-                    <div class="config-value">dnstt-client -doh https://1.1.1.1/dns-query -pubkey {{DNSTT_PUBKEY}} {{DNSTT_DOMAIN}} 127.0.0.1:1080</div>
+            </div>
+        </div>
+
+        <!-- Tor -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>6. Tor</h2>
+                    <span class="protocol-badge badge-standalone">Standalone</span>
+                </div>
+                <span class="protocol-port">Various</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">The Tor network provides anonymous access to the internet. Does not require your MoaV server - connects to the global Tor network.</p>
+
+                <div class="extra-section">
+                    <h3>When to use Tor</h3>
+                    <ul>
+                        <li>All MoaV protocols are blocked</li>
+                        <li>You need strong anonymity</li>
+                        <li>Accessing .onion sites</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h3>Download Tor Browser</h3>
+                    <ul>
+                        <li><strong>Windows/macOS/Linux:</strong> <a href="https://www.torproject.org/download/" target="_blank">torproject.org/download</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=org.torproject.torbrowser" target="_blank">Tor Browser on Play Store</a></li>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/us/app/onion-browser/id519296448" target="_blank">Onion Browser</a> (Tor Project recommended)</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h3>If Tor is blocked</h3>
+                    <p>Use <strong>bridges</strong> in Tor Browser settings. Select "Snowflake" or "obfs4" bridges which are harder to detect.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Psiphon -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>7. Psiphon</h2>
+                    <span class="protocol-badge badge-standalone">Standalone</span>
+                </div>
+                <span class="protocol-port">Various</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">Free circumvention tool with its own network. Does not require your MoaV server - connects to Psiphon's global infrastructure.</p>
+
+                <div class="extra-section">
+                    <h3>When to use Psiphon</h3>
+                    <ul>
+                        <li>All MoaV protocols are blocked</li>
+                        <li>You need a quick, no-setup solution</li>
+                        <li>Your MoaV server IP is blocked</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h3>Download Psiphon</h3>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909" target="_blank">Psiphon on App Store</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=com.psiphon3" target="_blank">Psiphon on Play Store</a> or <a href="https://psiphon.ca/en/download.html" target="_blank">Direct APK</a></li>
+                        <li><strong>Windows:</strong> <a href="https://psiphon.ca/en/download.html" target="_blank">psiphon.ca/download</a></li>
+                        <li><strong>macOS (Apple Silicon):</strong> <a href="https://apps.apple.com/us/app/psiphon/id1276263909" target="_blank">Psiphon on App Store</a></li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h3>How to use</h3>
+                    <ol>
+                        <li>Download and open Psiphon</li>
+                        <li>Tap "Start" or "Connect"</li>
+                        <li>Wait for connection (it automatically finds working servers)</li>
+                        <li>Browse freely</li>
+                    </ol>
                 </div>
             </div>
         </div>
@@ -583,51 +795,128 @@
                 <thead>
                     <tr>
                         <th>Platform</th>
-                        <th>Recommended Apps</th>
+                        <th>App</th>
+                        <th>Protocols</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- iOS -->
                     <tr>
-                        <td><span class="platform-icon">📱</span>iOS</td>
-                        <td>
-                            <a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a>,
-                            <a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a>,
-                            <a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a>,
-                            <a href="https://apps.apple.com/us/app/wireguard/id1441195209" target="_blank">WireGuard</a>
-                        </td>
+                        <td rowspan="6"><span class="platform-icon">📱</span>iOS</td>
+                        <td><a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a> ($2.99)</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
-                        <td><span class="platform-icon">🤖</span>Android</td>
-                        <td>
-                            <a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a>,
-                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>,
-                            <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank">NekoBox</a>,
-                            <a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a>
-                        </td>
+                        <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (Free)</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
-                        <td><span class="platform-icon">🪟</span>Windows</td>
-                        <td>
-                            <a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a>,
-                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>,
-                            <a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a>
-                        </td>
+                        <td><a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a> (Free)</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
                     <tr>
-                        <td><span class="platform-icon">🍎</span>macOS</td>
-                        <td>
-                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>,
-                            <a href="https://github.com/clash-verge-rev/clash-verge-rev/releases" target="_blank">Clash Verge</a>,
-                            <a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a>
-                        </td>
+                        <td><a href="https://apps.apple.com/us/app/wireguard/id1441195209" target="_blank">WireGuard</a> (Free)</td>
+                        <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
-                        <td><span class="platform-icon">🐧</span>Linux</td>
-                        <td>
-                            <a href="https://github.com/SagerNet/sing-box" target="_blank">sing-box</a>,
-                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>,
-                            <a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a>
-                        </td>
+                        <td><a href="https://apps.apple.com/us/app/onion-browser/id519296448" target="_blank">Onion Browser</a> (Free)</td>
+                        <td class="protocols">Tor</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909" target="_blank">Psiphon</a> (Free)</td>
+                        <td class="protocols">Psiphon</td>
+                    </tr>
+                    <!-- Android -->
+                    <tr>
+                        <td rowspan="7"><span class="platform-icon">🤖</span>Android</td>
+                        <td><a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank">NekoBox</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a></td>
+                        <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=com.evozi.injector" target="_blank">HTTP Injector</a></td>
+                        <td class="protocols">DNS Tunnel, SSH</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=org.torproject.torbrowser" target="_blank">Tor Browser</a></td>
+                        <td class="protocols">Tor</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=com.psiphon3" target="_blank">Psiphon</a></td>
+                        <td class="protocols">Psiphon</td>
+                    </tr>
+                    <!-- Windows -->
+                    <tr>
+                        <td rowspan="5"><span class="platform-icon">🪟</span>Windows</td>
+                        <td><a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
+                        <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
+                        <td class="protocols">Tor</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://psiphon.ca/en/download.html" target="_blank">Psiphon</a></td>
+                        <td class="protocols">Psiphon</td>
+                    </tr>
+                    <!-- macOS -->
+                    <tr>
+                        <td rowspan="5"><span class="platform-icon">🍎</span>macOS</td>
+                        <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/clash-verge-rev/clash-verge-rev/releases" target="_blank">Clash Verge</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a></td>
+                        <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
+                        <td class="protocols">Tor</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/psiphon/id1276263909" target="_blank">Psiphon</a></td>
+                        <td class="protocols">Psiphon</td>
+                    </tr>
+                    <!-- Linux -->
+                    <tr>
+                        <td rowspan="4"><span class="platform-icon">🐧</span>Linux</td>
+                        <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/SagerNet/sing-box" target="_blank">sing-box</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard, DNS</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
+                        <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
+                        <td class="protocols">Tor</td>
                     </tr>
                 </tbody>
             </table>
@@ -645,7 +934,7 @@
             <h1>راهنمای اتصال MoaV</h1>
             <p class="subtitle">تنظیمات شخصی برای <strong>{{USERNAME}}</strong></p>
             <div class="warning">
-                ⚠️ این اطلاعات را با کسی به اشتراک نگذارید. این اطلاعات به هویت شما متصل است.
+                این اطلاعات را با کسی به اشتراک نگذارید. این اطلاعات به هویت شما متصل است.
             </div>
         </div>
 
@@ -679,21 +968,21 @@
             <div class="protocol-content">
                 <p class="protocol-desc">قابل اعتمادترین پروتکل. ترافیک TLS واقعی را تقلید می‌کند تا از بازرسی عمیق بسته‌ها عبور کند.</p>
                 <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_REALITY}}" alt="QR Code Reality">
+                    <div class="qr-code" id="qr-reality-fa">
+                        <img src="data:image/png;base64,{{QR_REALITY}}" alt="QR Code Reality" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='کد QR<br>در دسترس نیست<br><br>از لینک زیر استفاده کنید';">
                     </div>
                     <div class="qr-instructions">
                         <h4>نحوه اتصال:</h4>
                         <ol>
                             <li><strong>Shadowrocket</strong> (iOS)، <strong>v2rayNG</strong> (Android) یا <strong>Hiddify</strong> را نصب کنید</li>
-                            <li>کد QR را اسکن کنید یا لینک کانفیگ زیر را وارد کنید</li>
-                            <li>اتصال را فعال کنید</li>
+                            <li>کد QR را اسکن کنید یا روی لینک زیر کلیک کنید تا کپی شود</li>
+                            <li>در برنامه وارد کنید و اتصال را فعال کنید</li>
                         </ol>
                     </div>
                 </div>
                 <div class="config-box">
-                    <h4>لینک کانفیگ</h4>
-                    <div class="config-value">{{CONFIG_REALITY}}</div>
+                    <h4>لینک کانفیگ (کلیک برای کپی)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_REALITY}}</div>
                 </div>
             </div>
         </div>
@@ -710,21 +999,21 @@
             <div class="protocol-content">
                 <p class="protocol-desc">پروتکل مبتنی بر QUIC بهینه‌سازی شده برای شبکه‌های ناپایدار. عالی برای اتصالات نامنظم.</p>
                 <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_HYSTERIA2}}" alt="QR Code Hysteria2">
+                    <div class="qr-code" id="qr-hysteria2-fa">
+                        <img src="data:image/png;base64,{{QR_HYSTERIA2}}" alt="QR Code Hysteria2" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='کد QR<br>در دسترس نیست<br><br>از لینک زیر استفاده کنید';">
                     </div>
                     <div class="qr-instructions">
                         <h4>نحوه اتصال:</h4>
                         <ol>
                             <li><strong>Shadowrocket</strong>، <strong>Hiddify</strong> یا <strong>sing-box</strong> را نصب کنید</li>
-                            <li>کد QR را اسکن کنید یا لینک کانفیگ را وارد کنید</li>
+                            <li>کد QR را اسکن کنید یا لینک کانفیگ را کپی کنید</li>
                             <li>اتصال را فعال کنید</li>
                         </ol>
                     </div>
                 </div>
                 <div class="config-box">
-                    <h4>لینک کانفیگ</h4>
-                    <div class="config-value">{{CONFIG_HYSTERIA2}}</div>
+                    <h4>لینک کانفیگ (کلیک برای کپی)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_HYSTERIA2}}</div>
                 </div>
             </div>
         </div>
@@ -741,21 +1030,21 @@
             <div class="protocol-content">
                 <p class="protocol-desc">شبیه ترافیک HTTPS معمولی به نظر می‌رسد. قابلیت اطمینان آزمایش‌شده.</p>
                 <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_TROJAN}}" alt="QR Code Trojan">
+                    <div class="qr-code" id="qr-trojan-fa">
+                        <img src="data:image/png;base64,{{QR_TROJAN}}" alt="QR Code Trojan" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='کد QR<br>در دسترس نیست<br><br>از لینک زیر استفاده کنید';">
                     </div>
                     <div class="qr-instructions">
                         <h4>نحوه اتصال:</h4>
                         <ol>
                             <li><strong>Shadowrocket</strong>، <strong>v2rayNG</strong> یا <strong>Hiddify</strong> را نصب کنید</li>
-                            <li>کد QR را اسکن کنید یا لینک کانفیگ را وارد کنید</li>
+                            <li>کد QR را اسکن کنید یا لینک کانفیگ را کپی کنید</li>
                             <li>اتصال را فعال کنید</li>
                         </ol>
                     </div>
                 </div>
                 <div class="config-box">
-                    <h4>لینک کانفیگ</h4>
-                    <div class="config-value">{{CONFIG_TROJAN}}</div>
+                    <h4>لینک کانفیگ (کلیک برای کپی)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_TROJAN}}</div>
                 </div>
             </div>
         </div>
@@ -772,21 +1061,21 @@
             <div class="protocol-content">
                 <p class="protocol-desc">حالت VPN کامل با هدایت تمام ترافیک. نصب ساده با اپ رسمی WireGuard.</p>
                 <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_WIREGUARD}}" alt="QR Code WireGuard">
+                    <div class="qr-code" id="qr-wireguard-fa">
+                        <img src="data:image/png;base64,{{QR_WIREGUARD}}" alt="QR Code WireGuard" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='کد QR<br>در دسترس نیست<br><br>از کانفیگ زیر استفاده کنید';">
                     </div>
                     <div class="qr-instructions">
                         <h4>نحوه اتصال:</h4>
                         <ol>
                             <li>اپ رسمی <strong>WireGuard</strong> را نصب کنید</li>
-                            <li>روی "+" بزنید → "Create from QR code"</li>
+                            <li>روی "+" بزنید سپس "Create from QR code"</li>
                             <li>کد QR را اسکن کنید</li>
                             <li>یک نام انتخاب کنید (مثلاً "MoaV") و فعال کنید</li>
                         </ol>
                     </div>
                 </div>
                 <div class="config-box">
-                    <h4>فایل کانفیگ WireGuard</h4>
+                    <h4>فایل کانفیگ WireGuard (ذخیره با پسوند .conf)</h4>
                     <div class="config-value multiline">{{CONFIG_WIREGUARD}}</div>
                 </div>
             </div>
@@ -802,18 +1091,125 @@
                 <span class="protocol-port">پورت 53/udp</span>
             </div>
             <div class="protocol-content">
-                <p class="protocol-desc">بسیار کند اما وقتی همه چیز مسدود است کار می‌کند. فقط به عنوان آخرین راه‌حل استفاده کنید.</p>
+                <p class="protocol-desc">بسیار کند اما وقتی همه چیز مسدود است کار می‌کند. داده‌ها را از طریق درخواست‌های DNS تونل می‌کند. فقط به عنوان آخرین راه‌حل استفاده کنید.</p>
+
+                <div class="extra-section">
+                    <h3>تونل DNS چگونه کار می‌کند</h3>
+                    <p>تونل DNS داده‌ها را در درخواست‌های DNS کدگذاری می‌کند. چون DNS برای اینترنت ضروری است، به ندرت کاملاً مسدود می‌شود. سرعت بسیار کم است (انتظار ۱۰-۵۰ کیلوبایت در ثانیه).</p>
+                </div>
+
+                <div class="extra-section">
+                    <h3>راه‌اندازی دسکتاپ (Windows/macOS/Linux)</h3>
+                    <ol>
+                        <li><a href="https://www.bamsoftware.com/software/dnstt/" target="_blank">dnstt-client</a> را برای سیستم عامل خود دانلود کنید</li>
+                        <li>Terminal یا Command Prompt را باز کنید</li>
+                        <li>این دستور را اجرا کنید تا یک پروکسی SOCKS5 محلی روی پورت 1080 ایجاد شود:</li>
+                    </ol>
+                    <div class="config-box">
+                        <div class="config-value" onclick="copyConfig(this)">dnstt-client -doh https://1.1.1.1/dns-query -pubkey {{DNSTT_PUBKEY}} {{DNSTT_DOMAIN}} 127.0.0.1:1080</div>
+                    </div>
+                    <p style="margin-top: 12px;">سپس مرورگر را برای استفاده از پروکسی SOCKS5 تنظیم کنید: <code>127.0.0.1:1080</code></p>
+                </div>
+
+                <div class="extra-section">
+                    <h3>راه‌اندازی موبایل (Android)</h3>
+                    <p><strong><a href="https://play.google.com/store/apps/details?id=com.evozi.injector" target="_blank">HTTP Injector</a></strong> از تونل DNS پشتیبانی می‌کند:</p>
+                    <ol>
+                        <li>HTTP Injector را از Play Store نصب کنید</li>
+                        <li>کانفیگ جدید با حالت DNS Tunnel بسازید</li>
+                        <li>دامنه DNS را وارد کنید: <code>{{DNSTT_DOMAIN}}</code></li>
+                        <li>پروکسی ریموت را روی سرور خود تنظیم کنید</li>
+                    </ol>
+                    <p style="margin-top: 8px; color: var(--text-muted); font-size: 12px;">توجه: iOS برنامه تونل DNS خوبی ندارد. در صورت امکان از دسکتاپ استفاده کنید.</p>
+                </div>
+
                 <div class="config-box">
                     <h4>دامنه تونل DNS</h4>
-                    <div class="config-value">{{DNSTT_DOMAIN}}</div>
+                    <div class="config-value" onclick="copyConfig(this)">{{DNSTT_DOMAIN}}</div>
                 </div>
                 <div class="config-box">
                     <h4>کلید عمومی سرور</h4>
-                    <div class="config-value">{{DNSTT_PUBKEY}}</div>
+                    <div class="config-value" onclick="copyConfig(this)">{{DNSTT_PUBKEY}}</div>
                 </div>
-                <div class="config-box">
-                    <h4>دستور (در کامپیوتر اجرا کنید)</h4>
-                    <div class="config-value">dnstt-client -doh https://1.1.1.1/dns-query -pubkey {{DNSTT_PUBKEY}} {{DNSTT_DOMAIN}} 127.0.0.1:1080</div>
+            </div>
+        </div>
+
+        <!-- Tor -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۶. Tor</h2>
+                    <span class="protocol-badge badge-standalone">مستقل</span>
+                </div>
+                <span class="protocol-port">مختلف</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">شبکه Tor دسترسی ناشناس به اینترنت فراهم می‌کند. نیازی به سرور MoaV شما ندارد - به شبکه جهانی Tor متصل می‌شود.</p>
+
+                <div class="extra-section">
+                    <h3>چه زمانی از Tor استفاده کنید</h3>
+                    <ul>
+                        <li>همه پروتکل‌های MoaV مسدود هستند</li>
+                        <li>به ناشناسی قوی نیاز دارید</li>
+                        <li>دسترسی به سایت‌های .onion</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h3>دانلود مرورگر Tor</h3>
+                    <ul>
+                        <li><strong>Windows/macOS/Linux:</strong> <a href="https://www.torproject.org/download/" target="_blank">torproject.org/download</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=org.torproject.torbrowser" target="_blank">Tor Browser در Play Store</a></li>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/us/app/onion-browser/id519296448" target="_blank">Onion Browser</a> (توصیه شده توسط Tor Project)</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h3>اگر Tor مسدود است</h3>
+                    <p>از <strong>پل‌ها (bridges)</strong> در تنظیمات Tor Browser استفاده کنید. پل‌های "Snowflake" یا "obfs4" را انتخاب کنید که سخت‌تر شناسایی می‌شوند.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Psiphon -->
+        <div class="protocol-section">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۷. Psiphon</h2>
+                    <span class="protocol-badge badge-standalone">مستقل</span>
+                </div>
+                <span class="protocol-port">مختلف</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">ابزار رایگان دور زدن فیلترینگ با شبکه خودش. نیازی به سرور MoaV شما ندارد - به زیرساخت جهانی Psiphon متصل می‌شود.</p>
+
+                <div class="extra-section">
+                    <h3>چه زمانی از Psiphon استفاده کنید</h3>
+                    <ul>
+                        <li>همه پروتکل‌های MoaV مسدود هستند</li>
+                        <li>به راه‌حل سریع و بدون تنظیم نیاز دارید</li>
+                        <li>آی‌پی سرور MoaV شما مسدود شده</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h3>دانلود Psiphon</h3>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909" target="_blank">Psiphon در App Store</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=com.psiphon3" target="_blank">Psiphon در Play Store</a> یا <a href="https://psiphon.ca/en/download.html" target="_blank">APK مستقیم</a></li>
+                        <li><strong>Windows:</strong> <a href="https://psiphon.ca/en/download.html" target="_blank">psiphon.ca/download</a></li>
+                        <li><strong>macOS (Apple Silicon):</strong> <a href="https://apps.apple.com/us/app/psiphon/id1276263909" target="_blank">Psiphon در App Store</a></li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h3>نحوه استفاده</h3>
+                    <ol>
+                        <li>Psiphon را دانلود و باز کنید</li>
+                        <li>روی "Start" یا "Connect" بزنید</li>
+                        <li>منتظر اتصال بمانید (خودکار سرورهای فعال را پیدا می‌کند)</li>
+                        <li>آزادانه وبگردی کنید</li>
+                    </ol>
                 </div>
             </div>
         </div>
@@ -825,51 +1221,128 @@
                 <thead>
                     <tr>
                         <th>پلتفرم</th>
-                        <th>اپلیکیشن‌های پیشنهادی</th>
+                        <th>اپلیکیشن</th>
+                        <th>پروتکل‌ها</th>
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- iOS -->
                     <tr>
-                        <td><span class="platform-icon">📱</span>iOS</td>
-                        <td>
-                            <a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a>،
-                            <a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a>،
-                            <a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a>،
-                            <a href="https://apps.apple.com/us/app/wireguard/id1441195209" target="_blank">WireGuard</a>
-                        </td>
+                        <td rowspan="6"><span class="platform-icon">📱</span>iOS</td>
+                        <td><a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a> ($2.99)</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
-                        <td><span class="platform-icon">🤖</span>Android</td>
-                        <td>
-                            <a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a>،
-                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>،
-                            <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank">NekoBox</a>،
-                            <a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a>
-                        </td>
+                        <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (رایگان)</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
-                        <td><span class="platform-icon">🪟</span>Windows</td>
-                        <td>
-                            <a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a>،
-                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>،
-                            <a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a>
-                        </td>
+                        <td><a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a> (رایگان)</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
                     <tr>
-                        <td><span class="platform-icon">🍎</span>macOS</td>
-                        <td>
-                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>،
-                            <a href="https://github.com/clash-verge-rev/clash-verge-rev/releases" target="_blank">Clash Verge</a>،
-                            <a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a>
-                        </td>
+                        <td><a href="https://apps.apple.com/us/app/wireguard/id1441195209" target="_blank">WireGuard</a> (رایگان)</td>
+                        <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
-                        <td><span class="platform-icon">🐧</span>Linux</td>
-                        <td>
-                            <a href="https://github.com/SagerNet/sing-box" target="_blank">sing-box</a>،
-                            <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a>،
-                            <a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a>
-                        </td>
+                        <td><a href="https://apps.apple.com/us/app/onion-browser/id519296448" target="_blank">Onion Browser</a> (رایگان)</td>
+                        <td class="protocols">Tor</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909" target="_blank">Psiphon</a> (رایگان)</td>
+                        <td class="protocols">Psiphon</td>
+                    </tr>
+                    <!-- Android -->
+                    <tr>
+                        <td rowspan="7"><span class="platform-icon">🤖</span>Android</td>
+                        <td><a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank">NekoBox</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a></td>
+                        <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=com.evozi.injector" target="_blank">HTTP Injector</a></td>
+                        <td class="protocols">تونل DNS, SSH</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=org.torproject.torbrowser" target="_blank">Tor Browser</a></td>
+                        <td class="protocols">Tor</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=com.psiphon3" target="_blank">Psiphon</a></td>
+                        <td class="protocols">Psiphon</td>
+                    </tr>
+                    <!-- Windows -->
+                    <tr>
+                        <td rowspan="5"><span class="platform-icon">🪟</span>Windows</td>
+                        <td><a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
+                        <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
+                        <td class="protocols">Tor</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://psiphon.ca/en/download.html" target="_blank">Psiphon</a></td>
+                        <td class="protocols">Psiphon</td>
+                    </tr>
+                    <!-- macOS -->
+                    <tr>
+                        <td rowspan="5"><span class="platform-icon">🍎</span>macOS</td>
+                        <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/clash-verge-rev/clash-verge-rev/releases" target="_blank">Clash Verge</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a></td>
+                        <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
+                        <td class="protocols">Tor</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/psiphon/id1276263909" target="_blank">Psiphon</a></td>
+                        <td class="protocols">Psiphon</td>
+                    </tr>
+                    <!-- Linux -->
+                    <tr>
+                        <td rowspan="4"><span class="platform-icon">🐧</span>Linux</td>
+                        <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/SagerNet/sing-box" target="_blank">sing-box</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard, DNS</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
+                        <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
+                        <td class="protocols">Tor</td>
                     </tr>
                 </tbody>
             </table>
@@ -889,6 +1362,31 @@
             document.getElementById('btn-fa').classList.remove('active');
             document.getElementById('btn-' + lang).classList.add('active');
             localStorage.setItem('moav-lang', lang);
+        }
+
+        function copyConfig(el) {
+            // Don't copy multiline configs (WireGuard)
+            if (el.classList.contains('multiline')) return;
+
+            const text = el.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                el.classList.add('copied');
+                setTimeout(() => {
+                    el.classList.remove('copied');
+                }, 1500);
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                el.classList.add('copied');
+                setTimeout(() => {
+                    el.classList.remove('copied');
+                }, 1500);
+            });
         }
 
         // Load saved language preference
