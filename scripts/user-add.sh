@@ -5,6 +5,9 @@ set -euo pipefail
 # Add a new user to ALL enabled services
 # Usage: ./scripts/user-add.sh <username> [--package]
 #
+# Options:
+#   --package, -p   Create a distributable zip with HTML guide
+#
 # This is the master script that calls individual service scripts:
 #   - singbox-user-add.sh (Reality, Trojan, Hysteria2)
 #   - wg-user-add.sh (WireGuard)
@@ -24,25 +27,28 @@ source scripts/lib/common.sh
 USERNAME=""
 CREATE_PACKAGE=false
 
-for arg in "$@"; do
-    case "$arg" in
-        --package)
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --package|-p)
             CREATE_PACKAGE=true
+            shift
             ;;
         -*)
-            echo "Unknown option: $arg"
+            echo "Unknown option: $1"
             exit 1
             ;;
         *)
-            if [[ -z "$USERNAME" ]]; then
-                USERNAME="$arg"
-            fi
+            USERNAME="$1"
+            shift
             ;;
     esac
 done
 
 if [[ -z "$USERNAME" ]]; then
     echo "Usage: $0 <username> [--package]"
+    echo ""
+    echo "Options:"
+    echo "  --package, -p   Create a distributable zip with HTML guide after adding user"
     echo ""
     echo "This adds a user to ALL enabled services."
     echo ""
@@ -236,8 +242,14 @@ fi
 # -----------------------------------------------------------------------------
 if [[ "$CREATE_PACKAGE" == "true" ]]; then
     echo ""
-    "$SCRIPT_DIR/user-package.sh" "$USERNAME"
+    log_info "Creating distributable package..."
+    if "$SCRIPT_DIR/user-package.sh" "$USERNAME"; then
+        log_info "✓ Package created successfully"
+    else
+        log_error "✗ Failed to create package"
+        exit 1
+    fi
 else
     log_info "Distribute the bundle securely to the user."
-    log_info "Tip: Use --package flag to create a zip with HTML guide."
+    log_info "Tip: Use --package to create a zip with HTML guide"
 fi

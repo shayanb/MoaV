@@ -67,6 +67,18 @@ echo "=== Ryve Deep Link ==="
 echo ""
 echo "$DEEP_LINK"
 echo ""
+
+# Generate QR code if qrencode is available
+if command -v qrencode &>/dev/null; then
+    echo "=== QR Code ==="
+    echo ""
+    qrencode -t ANSIUTF8 "$DEEP_LINK"
+    echo ""
+else
+    echo "(Install qrencode for QR code: apt install qrencode or brew install qrencode)"
+    echo ""
+fi
+
 echo "=========================================="
-echo "Copy this link and open on your phone to import in Ryve"
+echo "Scan the QR code or copy the link to import in Ryve"
 echo "=========================================="
