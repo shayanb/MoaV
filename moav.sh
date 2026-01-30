@@ -1148,7 +1148,7 @@ show_usage() {
     echo "  stop [SERVICE...]     Stop services (default: all)"
     echo "  restart [SERVICE...]  Restart services (default: all)"
     echo "  status                Show service status"
-    echo "  logs [SERVICE...]     View logs (default: all, follow mode)"
+    echo "  logs [SERVICE...] [-n] View logs (default: all, follow mode, -n for no-follow)"
     echo "  users                 List all users"
     echo "  user list             List all users"
     echo "  user add NAME [-p]    Add a new user (--package creates zip with HTML guide)"
@@ -1168,7 +1168,8 @@ show_usage() {
     echo "  moav start                     # Start all services"
     echo "  moav start proxy admin         # Start proxy and admin profiles"
     echo "  moav stop conduit              # Stop specific service"
-    echo "  moav logs sing-box conduit     # View specific service logs"
+    echo "  moav logs sing-box             # Follow sing-box logs (Ctrl+C to exit)"
+    echo "  moav logs -n                   # Show last 100 lines without following"
     echo "  moav build conduit             # Build specific service"
     echo "  moav profiles                  # Change default services"
     echo "  moav user add john             # Add user 'john'"
@@ -1326,12 +1327,52 @@ cmd_status() {
 }
 
 cmd_logs() {
-    if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
-        docker compose --profile all logs -t -f --tail 100
+    local follow=true
+    local tail_lines=100
+    local services_to_log=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --no-follow|-n)
+                follow=false
+                shift
+                ;;
+            --tail=*)
+                tail_lines="${1#*=}"
+                shift
+                ;;
+            --tail)
+                tail_lines="$2"
+                shift 2
+                ;;
+            all)
+                shift
+                ;;
+            *)
+                if [[ -z "$services_to_log" ]]; then
+                    services_to_log=$(resolve_services "$1")
+                else
+                    services_to_log="$services_to_log $(resolve_services "$1")"
+                fi
+                shift
+                ;;
+        esac
+    done
+
+    # Build docker compose command
+    local cmd="docker compose"
+    if [[ -z "$services_to_log" ]]; then
+        cmd="$cmd --profile all"
+    fi
+    cmd="$cmd logs -t --tail $tail_lines"
+
+    if [[ "$follow" == "true" ]]; then
+        echo -e "${CYAN}Following logs (Ctrl+C to exit)...${NC}"
+        echo ""
+        $cmd -f $services_to_log
     else
-        local services
-        services=$(resolve_services "$@")
-        docker compose logs -t -f --tail 100 $services
+        $cmd $services_to_log
     fi
 }
 
