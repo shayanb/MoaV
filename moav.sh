@@ -390,7 +390,7 @@ get_running_services() {
 
 show_status() {
     # Get service status from docker compose
-    local raw_status
+    local raw_status json_lines
     raw_status=$(docker compose --profile all ps --format json 2>/dev/null)
 
     if [[ -z "$raw_status" ]] || [[ "$raw_status" == "[]" ]]; then
@@ -401,24 +401,69 @@ show_status() {
         return
     fi
 
+    # Handle both JSON array format and NDJSON (one object per line)
+    # If it starts with '[', it's a JSON array - split into lines
+    if [[ "$raw_status" == "["* ]]; then
+        # Convert JSON array to one object per line (split on },{ )
+        json_lines=$(echo "$raw_status" | sed 's/^\[//;s/\]$//;s/},{/}\n{/g')
+    else
+        json_lines="$raw_status"
+    fi
+
     print_section "Service Status"
     echo ""
-    echo -e "  ${CYAN}┌──────────────────────┬────────────┬─────────────────────────────┐${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}Service${NC}              ${CYAN}│${NC}  ${WHITE}Status${NC}    ${CYAN}│${NC}  ${WHITE}Ports${NC}                       ${CYAN}│${NC}"
-    echo -e "  ${CYAN}├──────────────────────┼────────────┼─────────────────────────────┤${NC}"
+    echo -e "  ${CYAN}┌──────────────┬─────────────┬─────────────────────┬─────────────────────┬─────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}Service${NC}      ${CYAN}│${NC}  ${WHITE}Status${NC}     ${CYAN}│${NC}  ${WHITE}Created${NC}             ${CYAN}│${NC}  ${WHITE}Uptime${NC}              ${CYAN}│${NC}  ${WHITE}Ports${NC}      ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├──────────────┼─────────────┼─────────────────────┼─────────────────────┼─────────────┤${NC}"
 
-    # Parse JSON and display each service
-    echo "$raw_status" | while IFS= read -r line; do
+    # Parse JSON and display each service (using here-string to avoid subshell)
+    while IFS= read -r line; do
         [[ -z "$line" ]] && continue
 
-        local name state ports health
+        local name state ports health status_str created_ts uptime created
         name=$(echo "$line" | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)
         state=$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
         health=$(echo "$line" | grep -o '"Health":"[^"]*"' | head -1 | cut -d'"' -f4)
+        status_str=$(echo "$line" | grep -o '"Status":"[^"]*"' | head -1 | cut -d'"' -f4)
+        created_ts=$(echo "$line" | grep -o '"Created":[0-9]*' | head -1 | cut -d':' -f2)
         ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | tr '\n' ',' | sed 's/,$//')
 
         [[ -z "$name" ]] && continue
         name="${name#moav-}"
+
+        # Format created timestamp
+        created="-"
+        if [[ -n "$created_ts" ]] && [[ "$created_ts" != "0" ]]; then
+            # Convert Unix timestamp to readable format
+            if [[ "$(uname)" == "Darwin" ]]; then
+                created=$(date -r "$created_ts" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "-")
+            else
+                created=$(date -d "@$created_ts" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "-")
+            fi
+        fi
+
+        # Calculate detailed uptime from created timestamp
+        uptime="-"
+        if [[ -n "$created_ts" ]] && [[ "$created_ts" != "0" ]] && [[ "$state" == "running" ]]; then
+            local now_ts elapsed days hours mins secs
+            now_ts=$(date +%s)
+            elapsed=$((now_ts - created_ts))
+
+            days=$((elapsed / 86400))
+            hours=$(( (elapsed % 86400) / 3600 ))
+            mins=$(( (elapsed % 3600) / 60 ))
+            secs=$((elapsed % 60))
+
+            if [[ $days -gt 0 ]]; then
+                uptime="${days}d ${hours}h ${mins}m"
+            elif [[ $hours -gt 0 ]]; then
+                uptime="${hours}h ${mins}m ${secs}s"
+            elif [[ $mins -gt 0 ]]; then
+                uptime="${mins}m ${secs}s"
+            else
+                uptime="${secs}s"
+            fi
+        fi
 
         local status_display status_color
         if [[ "$state" == "running" ]]; then
@@ -435,6 +480,7 @@ show_status() {
         elif [[ "$state" == "exited" ]]; then
             status_color="${RED}"
             status_display="○ stopped"
+            uptime="-"
         else
             status_color="${YELLOW}"
             status_display="◐ ${state}"
@@ -442,11 +488,11 @@ show_status() {
 
         [[ -z "$ports" ]] && ports="-"
 
-        printf "  ${CYAN}│${NC}  %-18s  ${CYAN}│${NC}  ${status_color}%-8s${NC}  ${CYAN}│${NC}  %-25s  ${CYAN}│${NC}\n" \
-            "$name" "$status_display" "$ports"
-    done
+        printf "  ${CYAN}│${NC}  %-10s  ${CYAN}│${NC}  ${status_color}%-9s${NC}  ${CYAN}│${NC}  %-17s  ${CYAN}│${NC}  %-17s  ${CYAN}│${NC}  %-9s  ${CYAN}│${NC}\n" \
+            "$name" "$status_display" "$created" "$uptime" "$ports"
+    done <<< "$json_lines"
 
-    echo -e "  ${CYAN}└──────────────────────┴────────────┴─────────────────────────────┘${NC}"
+    echo -e "  ${CYAN}└──────────────┴─────────────┴─────────────────────┴─────────────────────┴─────────────┘${NC}"
     echo ""
 }
 
@@ -461,18 +507,18 @@ select_profiles() {
 
     echo ""
     echo -e "  ${CYAN}┌─────────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}#${NC}   ${WHITE}Profile${NC}      ${WHITE}Description${NC}                                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}#${NC}   ${WHITE}Profile${NC}      ${WHITE}Description${NC}                                   ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site      ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel           ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}              ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}4${NC}   admin        Stats dashboard (port 9443)                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel            ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}                ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}4${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}5${NC}   conduit      Psiphon bandwidth donation ${BLUE}(altruistic)${NC}    ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   snowflake    Tor Snowflake donation ${BLUE}(altruistic)${NC}         ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}5${NC}   conduit      Psiphon bandwidth donation$       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   snowflake    Tor Snowflake donation           ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          Start all services                           ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${RED}0${NC}   Cancel       Exit without selecting                       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          Start all services                            ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${RED}0${NC}   Cancel       Exit without selecting                        ${CYAN}│${NC}"
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
