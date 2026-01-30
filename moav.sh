@@ -427,7 +427,8 @@ show_status() {
         status_str=$(echo "$line" | grep -o '"Status":"[^"]*"' | head -1 | cut -d'"' -f4)
         # CreatedAt is a datetime string like "2026-01-28 19:56:32 +0000 UTC"
         created_at=$(echo "$line" | grep -o '"CreatedAt":"[^"]*"' | head -1 | cut -d'"' -f4)
-        ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | tr '\n' ',' | sed 's/,$//')
+        # Extract ports - use || true to prevent exit on empty Publishers array
+        ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | grep -v '^0$' | tr '\n' ',' | sed 's/,$//' || true)
 
         [[ -z "$name" ]] && continue
         name="${name#moav-}"
