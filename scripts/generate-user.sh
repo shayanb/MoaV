@@ -183,7 +183,8 @@ if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then
     wireguard_add_peer "$USER_ID" "$PEER_NUM"
     wireguard_generate_client_config "$USER_ID" "$OUTPUT_DIR"
     qrencode -o "$OUTPUT_DIR/wireguard-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || true
-    log_info "  - WireGuard config generated"
+    qrencode -o "$OUTPUT_DIR/wireguard-wstunnel-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || true
+    log_info "  - WireGuard config generated (direct + wstunnel)"
 fi
 
 # -----------------------------------------------------------------------------
@@ -258,13 +259,21 @@ $(cat "$OUTPUT_DIR/trojan.txt")
 
 ---
 
-### 4. WireGuard + wstunnel - Full VPN Mode
+### 4. WireGuard - Full VPN Mode
 
-**Why:** Full system VPN. Wrapped in WebSocket to avoid detection.
+**Why:** Full system VPN with all traffic routed through the tunnel.
 
+**Direct Connection (if WireGuard is not blocked):**
 1. Install WireGuard app (iOS/Android/Mac/Windows)
 2. Import \`wireguard.conf\` or scan \`wireguard-qr.png\`
 3. Connect
+
+**Via WebSocket (for censored networks like Iran/China/Russia):**
+If direct WireGuard is blocked, use wstunnel to wrap traffic in WebSocket:
+1. Download wstunnel from https://github.com/erebe/wstunnel/releases
+2. Run: \`wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 wss://${SERVER_IP}:8080\`
+3. Import \`wireguard-wstunnel.conf\` (points to localhost)
+4. Connect WireGuard while wstunnel is running
 
 ---
 

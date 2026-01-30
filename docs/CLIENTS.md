@@ -66,6 +66,7 @@ This guide explains how to connect to MoaV from various devices.
 
 | App | Protocols | Link |
 |-----|-----------|------|
+| [Streisand](https://apps.apple.com/us/app/streisand/id6450534064) | VLESS/Reality, VMess, Trojan, Hysteria2, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/streisand/id6450534064) |
 | [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2 | [GitHub](https://github.com/2dust/v2rayN/releases) |
 | [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
 | [NekoRay](https://github.com/MatsuriDayo/nekoray) | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) ¹ |

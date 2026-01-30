@@ -733,6 +733,46 @@
                     <h4>WireGuard Config File (save as .conf)</h4>
                     <div class="config-value multiline">{{CONFIG_WIREGUARD}}</div>
                 </div>
+
+                <!-- WireGuard over WebSocket (wstunnel) -->
+                <div class="extra-section" style="margin-top: 20px; border: 1px solid var(--accent-orange); background: rgba(210, 153, 34, 0.1);">
+                    <h4 style="color: var(--accent-orange);">WireGuard over WebSocket (For Censored Networks)</h4>
+                    <p>If direct WireGuard is blocked (common in Iran, China, Russia), use wstunnel to wrap WireGuard traffic in a WebSocket connection that looks like normal HTTPS.</p>
+
+                    <div style="margin-top: 12px;">
+                        <strong>Desktop Setup (Windows/macOS/Linux):</strong>
+                        <ol>
+                            <li>Download <a href="https://github.com/erebe/wstunnel/releases" target="_blank">wstunnel</a> for your OS</li>
+                            <li>Run wstunnel client to create a local tunnel:</li>
+                        </ol>
+                        <div class="config-box" style="margin: 10px 0;">
+                            <div class="config-value" onclick="copyConfig(this)">wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 wss://{{SERVER_IP}}:8080</div>
+                        </div>
+                        <ol start="3">
+                            <li>Keep wstunnel running, then import the WireGuard-wstunnel config below</li>
+                            <li>Connect WireGuard as normal</li>
+                        </ol>
+                    </div>
+
+                    <div style="margin-top: 12px;">
+                        <strong>Mobile Setup:</strong>
+                        <p style="color: var(--text-muted); font-size: 12px;">Mobile requires running wstunnel in Termux (Android) or using an app that supports WireGuard-over-WebSocket. For most users, we recommend using Reality or Hysteria2 on mobile instead.</p>
+                    </div>
+                </div>
+
+                <div class="qr-section" style="margin-top: 16px;">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_WIREGUARD_WSTUNNEL}}" alt="WireGuard wstunnel QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR not available<br>Use config below';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>WireGuard-wstunnel Config</h4>
+                        <p style="font-size: 12px; color: var(--text-muted);">Use this config AFTER starting wstunnel client. Points to localhost instead of server.</p>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>WireGuard-wstunnel Config File (save as .conf)</h4>
+                    <div class="config-value multiline">{{CONFIG_WIREGUARD_WSTUNNEL}}</div>
+                </div>
             </div>
         </div>
 
@@ -881,16 +921,20 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td rowspan="5"><span class="platform-icon">📱</span>iOS</td>
+                        <td rowspan="6"><span class="platform-icon">📱</span>iOS</td>
                         <td><a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a> ($2.99)</td>
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (Free)</td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a> (Free)</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690" target="_blank">V2Box</a> (Free)</td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
                     <tr>
@@ -940,7 +984,11 @@
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="4"><span class="platform-icon">🍎</span>macOS</td>
+                        <td rowspan="5"><span class="platform-icon">🍎</span>macOS</td>
+                        <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (Free)</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -1143,6 +1191,46 @@
                     <h4>فایل کانفیگ WireGuard (ذخیره با پسوند .conf)</h4>
                     <div class="config-value multiline">{{CONFIG_WIREGUARD}}</div>
                 </div>
+
+                <!-- WireGuard over WebSocket (wstunnel) -->
+                <div class="extra-section" style="margin-top: 20px; border: 1px solid var(--accent-orange); background: rgba(210, 153, 34, 0.1);">
+                    <h4 style="color: var(--accent-orange);">WireGuard از طریق WebSocket (برای شبکه‌های سانسور شده)</h4>
+                    <p>اگر WireGuard مستقیم مسدود است (رایج در ایران، چین، روسیه)، از wstunnel استفاده کنید تا ترافیک WireGuard را در یک اتصال WebSocket که شبیه HTTPS معمولی است پنهان کنید.</p>
+
+                    <div style="margin-top: 12px;">
+                        <strong>راه‌اندازی دسکتاپ (Windows/macOS/Linux):</strong>
+                        <ol>
+                            <li><a href="https://github.com/erebe/wstunnel/releases" target="_blank">wstunnel</a> را برای سیستم عامل خود دانلود کنید</li>
+                            <li>wstunnel client را اجرا کنید تا یک تونل محلی ایجاد شود:</li>
+                        </ol>
+                        <div class="config-box" style="margin: 10px 0;">
+                            <div class="config-value" onclick="copyConfig(this)">wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 wss://{{SERVER_IP}}:8080</div>
+                        </div>
+                        <ol start="3">
+                            <li>wstunnel را روشن نگه دارید، سپس کانفیگ WireGuard-wstunnel زیر را وارد کنید</li>
+                            <li>WireGuard را به صورت عادی وصل کنید</li>
+                        </ol>
+                    </div>
+
+                    <div style="margin-top: 12px;">
+                        <strong>راه‌اندازی موبایل:</strong>
+                        <p style="color: var(--text-muted); font-size: 12px;">برای موبایل نیاز به اجرای wstunnel در Termux (Android) است. برای اکثر کاربران، توصیه می‌کنیم در موبایل از Reality یا Hysteria2 استفاده کنید.</p>
+                    </div>
+                </div>
+
+                <div class="qr-section" style="margin-top: 16px;">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_WIREGUARD_WSTUNNEL}}" alt="QR Code WireGuard wstunnel" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR در دسترس نیست<br>از کانفیگ زیر استفاده کنید';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>کانفیگ WireGuard-wstunnel</h4>
+                        <p style="font-size: 12px; color: var(--text-muted);">این کانفیگ را بعد از اجرای wstunnel client استفاده کنید. به localhost اشاره می‌کند.</p>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>فایل کانفیگ WireGuard-wstunnel (ذخیره با پسوند .conf)</h4>
+                    <div class="config-value multiline">{{CONFIG_WIREGUARD_WSTUNNEL}}</div>
+                </div>
             </div>
         </div>
 
@@ -1261,9 +1349,17 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td rowspan="4"><span class="platform-icon">📱</span>iOS</td>
+                        <td rowspan="6"><span class="platform-icon">📱</span>iOS</td>
                         <td><a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690" target="_blank">V2Box</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a></td>
@@ -1308,9 +1404,13 @@
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="3"><span class="platform-icon">🍎</span>macOS</td>
+                        <td rowspan="4"><span class="platform-icon">🍎</span>macOS</td>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a></td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a></td>

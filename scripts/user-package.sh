@@ -92,6 +92,12 @@ if [[ -f "$BUNDLE_DIR/wireguard.conf" ]]; then
     CONFIG_WIREGUARD=$(cat "$BUNDLE_DIR/wireguard.conf")
 fi
 
+# WireGuard-wstunnel config (for censored networks)
+CONFIG_WIREGUARD_WSTUNNEL=""
+if [[ -f "$BUNDLE_DIR/wireguard-wstunnel.conf" ]]; then
+    CONFIG_WIREGUARD_WSTUNNEL=$(cat "$BUNDLE_DIR/wireguard-wstunnel.conf")
+fi
+
 # DNS Tunnel info
 DNSTT_DOMAIN="${DNSTT_SUBDOMAIN:-t}.${DOMAIN}"
 DNSTT_PUBKEY=""
@@ -180,6 +186,17 @@ if [[ -n "$CONFIG_WIREGUARD" ]]; then
     fi
 fi
 
+# Generate QR for WireGuard-wstunnel
+QR_WIREGUARD_WSTUNNEL_FILE="$PACKAGE_DIR/wireguard-wstunnel-qr.png"
+if [[ -n "$CONFIG_WIREGUARD_WSTUNNEL" ]]; then
+    if [[ -f "$BUNDLE_DIR/wireguard-wstunnel-qr.png" ]]; then
+        cp "$BUNDLE_DIR/wireguard-wstunnel-qr.png" "$QR_WIREGUARD_WSTUNNEL_FILE"
+        ((QR_COUNT++)) || true
+    elif generate_qr "$BUNDLE_DIR/wireguard-wstunnel.conf" "$QR_WIREGUARD_WSTUNNEL_FILE" "true"; then
+        ((QR_COUNT++)) || true
+    fi
+fi
+
 if [[ $QR_COUNT -gt 0 ]]; then
     log_info "  $QR_COUNT QR code(s) generated"
 else
@@ -205,6 +222,7 @@ QR_REALITY_B64=$(qr_to_base64 "$QR_REALITY_FILE")
 QR_HYSTERIA2_B64=$(qr_to_base64 "$QR_HYSTERIA2_FILE")
 QR_TROJAN_B64=$(qr_to_base64 "$QR_TROJAN_FILE")
 QR_WIREGUARD_B64=$(qr_to_base64 "$QR_WIREGUARD_FILE")
+QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$QR_WIREGUARD_WSTUNNEL_FILE")
 
 # -----------------------------------------------------------------------------
 # Generate HTML guide from template
@@ -236,6 +254,7 @@ sed -i.bak "s|{{QR_REALITY}}|$QR_REALITY_B64|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{QR_HYSTERIA2}}|$QR_HYSTERIA2_B64|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{QR_TROJAN}}|$QR_TROJAN_B64|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
+sed -i.bak "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
 
 # Config values (need special handling due to special characters like @ and &)
 # Escape & for awk replacement (& is special in gsub replacement)
@@ -271,6 +290,15 @@ if [[ -n "$CONFIG_WIREGUARD" ]]; then
     awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
 else
     sed -i.bak "s|{{CONFIG_WIREGUARD}}|No WireGuard config available|g" "$OUTPUT_HTML"
+fi
+
+# WireGuard-wstunnel config is multiline - handle with awk
+if [[ -n "$CONFIG_WIREGUARD_WSTUNNEL" ]]; then
+    # Escape & and convert newlines
+    ESCAPED=$(echo "$CONFIG_WIREGUARD_WSTUNNEL" | sed 's/&/\\\\\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+    awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD_WSTUNNEL\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+else
+    sed -i.bak "s|{{CONFIG_WIREGUARD_WSTUNNEL}}|No WireGuard-wstunnel config available|g" "$OUTPUT_HTML"
 fi
 
 # Clean up backup files

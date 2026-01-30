@@ -89,6 +89,7 @@ wireguard_generate_client_config() {
     local server_public_key
     server_public_key=$(cat "$WG_CONFIG_DIR/server.pub")
 
+    # Direct WireGuard config
     cat > "$output_dir/wireguard.conf" <<EOF
 [Interface]
 PrivateKey = $WG_PRIVATE_KEY
@@ -99,6 +100,21 @@ DNS = 1.1.1.1, 8.8.8.8
 PublicKey = $server_public_key
 AllowedIPs = 0.0.0.0/0, ::/0
 Endpoint = ${SERVER_IP}:${PORT_WIREGUARD:-51820}
+PersistentKeepalive = 25
+EOF
+
+    # WireGuard-wstunnel config (for censored networks)
+    # Points to localhost - user must run wstunnel client first
+    cat > "$output_dir/wireguard-wstunnel.conf" <<EOF
+[Interface]
+PrivateKey = $WG_PRIVATE_KEY
+Address = $WG_CLIENT_IP/32
+DNS = 1.1.1.1, 8.8.8.8
+
+[Peer]
+PublicKey = $server_public_key
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = 127.0.0.1:51820
 PersistentKeepalive = 25
 EOF
 
