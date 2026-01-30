@@ -420,49 +420,31 @@ show_status() {
     while IFS= read -r line; do
         [[ -z "$line" ]] && continue
 
-        local name state ports health status_str created_ts uptime created
+        local name state ports health status_str created_at uptime created
         name=$(echo "$line" | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)
         state=$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
         health=$(echo "$line" | grep -o '"Health":"[^"]*"' | head -1 | cut -d'"' -f4)
         status_str=$(echo "$line" | grep -o '"Status":"[^"]*"' | head -1 | cut -d'"' -f4)
-        created_ts=$(echo "$line" | grep -o '"Created":[0-9]*' | head -1 | cut -d':' -f2)
+        # CreatedAt is a datetime string like "2026-01-28 19:56:32 +0000 UTC"
+        created_at=$(echo "$line" | grep -o '"CreatedAt":"[^"]*"' | head -1 | cut -d'"' -f4)
         ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | tr '\n' ',' | sed 's/,$//')
 
         [[ -z "$name" ]] && continue
         name="${name#moav-}"
 
-        # Format created timestamp
+        # Format created datetime (extract just date and time, remove timezone)
         created="-"
-        if [[ -n "$created_ts" ]] && [[ "$created_ts" != "0" ]]; then
-            # Convert Unix timestamp to readable format
-            if [[ "$(uname)" == "Darwin" ]]; then
-                created=$(date -r "$created_ts" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "-")
-            else
-                created=$(date -d "@$created_ts" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "-")
-            fi
+        if [[ -n "$created_at" ]]; then
+            # Extract "YYYY-MM-DD HH:MM:SS" from "2026-01-28 19:56:32 +0000 UTC"
+            created=$(echo "$created_at" | cut -d' ' -f1,2)
         fi
 
-        # Calculate detailed uptime from created timestamp
+        # Parse uptime from Status field (e.g., "Up 29 hours", "Up 28 minutes")
         uptime="-"
-        if [[ -n "$created_ts" ]] && [[ "$created_ts" != "0" ]] && [[ "$state" == "running" ]]; then
-            local now_ts elapsed days hours mins secs
-            now_ts=$(date +%s)
-            elapsed=$((now_ts - created_ts))
-
-            days=$((elapsed / 86400))
-            hours=$(( (elapsed % 86400) / 3600 ))
-            mins=$(( (elapsed % 3600) / 60 ))
-            secs=$((elapsed % 60))
-
-            if [[ $days -gt 0 ]]; then
-                uptime="${days}d ${hours}h ${mins}m"
-            elif [[ $hours -gt 0 ]]; then
-                uptime="${hours}h ${mins}m ${secs}s"
-            elif [[ $mins -gt 0 ]]; then
-                uptime="${mins}m ${secs}s"
-            else
-                uptime="${secs}s"
-            fi
+        if [[ "$state" == "running" ]] && [[ "$status_str" =~ ^Up[[:space:]]+(.*) ]]; then
+            uptime="${BASH_REMATCH[1]}"
+            # Clean up health status suffix if present (e.g., "28 minutes (healthy)")
+            uptime="${uptime%% (*}"
         fi
 
         local status_display status_color
