@@ -413,16 +413,16 @@ show_versions() {
     echo ""
     echo -e "  ${WHITE}Component Versions:${NC}"
     echo ""
-    echo -e "  ${CYAN}┌───────────────────┬─────────────┬─────────────────────────────────┐${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}Component${NC}         ${CYAN}│${NC}  ${WHITE}Version${NC}    ${CYAN}│${NC}  ${WHITE}Source${NC}                          ${CYAN}│${NC}"
-    echo -e "  ${CYAN}├───────────────────┼─────────────┼─────────────────────────────────┤${NC}"
-    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${GREEN}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "sing-box" "$singbox_ver" "github.com/SagerNet/sing-box"
-    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${GREEN}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "wstunnel" "$wstunnel_ver" "github.com/erebe/wstunnel"
-    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${GREEN}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "conduit" "$conduit_ver" "github.com/Psiphon-Inc/conduit"
-    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${DIM}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "snowflake" "latest" "torproject.org (built from src)"
-    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${DIM}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "dnstt" "latest" "bamsoftware.com (built from src)"
-    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${DIM}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "wireguard" "alpine" "wireguard-tools package"
-    echo -e "  ${CYAN}└───────────────────┴─────────────┴─────────────────────────────────┘${NC}"
+    echo -e "  ${CYAN}┌──────────────┬──────────┬──────────────────────────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC} ${WHITE}Component${NC}    ${CYAN}│${NC} ${WHITE}Version${NC}  ${CYAN}│${NC} ${WHITE}Source${NC}                           ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├──────────────┼──────────┼──────────────────────────────────┤${NC}"
+    printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${GREEN}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "sing-box" "$singbox_ver" "github.com/SagerNet/sing-box"
+    printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${GREEN}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "wstunnel" "$wstunnel_ver" "github.com/erebe/wstunnel"
+    printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${GREEN}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "conduit" "$conduit_ver" "github.com/Psiphon-Inc/conduit"
+    printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${DIM}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "snowflake" "latest" "torproject.org (built from src)"
+    printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${DIM}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "dnstt" "latest" "bamsoftware.com (built from src)"
+    printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${DIM}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "wireguard" "alpine" "wireguard-tools package"
+    echo -e "  ${CYAN}└──────────────┴──────────┴──────────────────────────────────┘${NC}"
     echo ""
     echo -e "  ${DIM}Versions can be changed in .env and rebuilt with: moav build${NC}"
     echo ""
@@ -452,9 +452,9 @@ show_status() {
 
     print_section "Service Status"
     echo ""
-    echo -e "  ${CYAN}┌──────────────┬─────────────┬─────────────────────┬───────────────┬─────────────┐${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}Service${NC}      ${CYAN}│${NC}  ${WHITE}Status${NC}     ${CYAN}│${NC}  ${WHITE}Created${NC}             ${CYAN}│${NC}  ${WHITE}Uptime${NC}       ${CYAN}│${NC}  ${WHITE}Ports${NC}      ${CYAN}│${NC}"
-    echo -e "  ${CYAN}├──────────────┼─────────────┼─────────────────────┼───────────────┼─────────────┤${NC}"
+    echo -e "  ${CYAN}┌────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
+    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}    ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Created${NC}             ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├────────────┼───────────┼─────────────────────┼──────────────┼───────────┤${NC}"
 
     # Parse JSON and display each service (using here-string to avoid subshell)
     while IFS= read -r line; do
@@ -515,11 +515,11 @@ show_status() {
 
         [[ -z "$ports" ]] && ports="-"
 
-        printf "  ${CYAN}│${NC}  %-10s  ${CYAN}│${NC}  ${status_color}%-9s${NC}  ${CYAN}│${NC}  %-17s  ${CYAN}│${NC}  %-11s  ${CYAN}│${NC}  %-9s  ${CYAN}│${NC}\n" \
+        printf "  ${CYAN}│${NC} %-10s ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
             "$name" "$status_display" "$created" "$uptime" "$ports"
     done <<< "$json_lines"
 
-    echo -e "  ${CYAN}└──────────────┴─────────────┴─────────────────────┴───────────────┴─────────────┘${NC}"
+    echo -e "  ${CYAN}└────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
     echo ""
 }
 
