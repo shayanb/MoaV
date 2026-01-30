@@ -30,6 +30,19 @@ cd "$SCRIPT_DIR"
 # Version
 VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "dev")
 
+# Component versions (read from .env or use defaults)
+get_component_version() {
+    local var_name="$1"
+    local default="$2"
+    local env_file="$SCRIPT_DIR/.env"
+    if [[ -f "$env_file" ]]; then
+        local val
+        val=$(grep "^${var_name}=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+        [[ -n "$val" ]] && echo "$val" && return
+    fi
+    echo "$default"
+}
+
 # State file for persistent checks
 PREREQS_FILE="$SCRIPT_DIR/.moav_prereqs_ok"
 
@@ -386,6 +399,33 @@ run_bootstrap() {
 
 get_running_services() {
     docker compose ps --services --filter "status=running" 2>/dev/null || echo ""
+}
+
+show_versions() {
+    local singbox_ver wstunnel_ver conduit_ver
+    singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
+    wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
+    conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
+
+    echo ""
+    echo -e "${CYAN}MoaV${NC} v${VERSION}"
+    echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "  ${WHITE}Component Versions:${NC}"
+    echo ""
+    echo -e "  ${CYAN}┌───────────────────┬─────────────┬─────────────────────────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}Component${NC}         ${CYAN}│${NC}  ${WHITE}Version${NC}    ${CYAN}│${NC}  ${WHITE}Source${NC}                          ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├───────────────────┼─────────────┼─────────────────────────────────┤${NC}"
+    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${GREEN}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "sing-box" "$singbox_ver" "github.com/SagerNet/sing-box"
+    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${GREEN}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "wstunnel" "$wstunnel_ver" "github.com/erebe/wstunnel"
+    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${GREEN}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "conduit" "$conduit_ver" "github.com/Psiphon-Inc/conduit"
+    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${DIM}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "snowflake" "latest" "torproject.org (built from src)"
+    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${DIM}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "dnstt" "latest" "bamsoftware.com (built from src)"
+    printf "  ${CYAN}│${NC}  %-15s  ${CYAN}│${NC}  ${DIM}%-9s${NC}  ${CYAN}│${NC}  %-29s  ${CYAN}│${NC}\n" "wireguard" "alpine" "wireguard-tools package"
+    echo -e "  ${CYAN}└───────────────────┴─────────────┴─────────────────────────────────┘${NC}"
+    echo ""
+    echo -e "  ${DIM}Versions can be changed in .env and rebuilt with: moav build${NC}"
+    echo ""
 }
 
 show_status() {
@@ -1263,7 +1303,16 @@ cmd_restart() {
 }
 
 cmd_status() {
-    print_header
+    # Simple header without clearing terminal
+    local singbox_ver wstunnel_ver conduit_ver
+    singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
+    wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
+    conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
+
+    echo ""
+    echo -e "${CYAN}MoaV${NC} v${VERSION}  ${DIM}│${NC}  ${DIM}sing-box ${singbox_ver}  wstunnel ${wstunnel_ver}  conduit ${conduit_ver}${NC}"
+    echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
     show_status
 
     # Show default profiles
@@ -1273,7 +1322,7 @@ cmd_status() {
         info "Default profiles: ${WHITE}$defaults${NC}"
     fi
     echo ""
-    echo -e "  ${CYAN}Commands:${NC} moav logs [service] | moav stop | moav restart"
+    echo -e "  ${CYAN}Commands:${NC} moav logs [service] | moav stop | moav restart | moav version"
 }
 
 cmd_logs() {
@@ -1551,7 +1600,7 @@ main() {
             show_usage
             ;;
         version|--version|-v)
-            echo "MoaV v${VERSION}"
+            show_versions
             ;;
         install)
             do_install
