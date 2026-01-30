@@ -389,13 +389,65 @@ get_running_services() {
 }
 
 show_status() {
+    # Get service status from docker compose
+    local raw_status
+    raw_status=$(docker compose --profile all ps --format json 2>/dev/null)
+
+    if [[ -z "$raw_status" ]] || [[ "$raw_status" == "[]" ]]; then
+        print_section "Service Status"
+        echo ""
+        warn "No services are running"
+        echo ""
+        return
+    fi
+
     print_section "Service Status"
-
-    docker compose --profile all ps
-
     echo ""
-    info "To view logs: docker compose logs -t -f [service]"
-    info "To stop all:  docker compose --profile all down"
+    echo -e "  ${CYAN}┌──────────────────────┬────────────┬─────────────────────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}Service${NC}              ${CYAN}│${NC}  ${WHITE}Status${NC}    ${CYAN}│${NC}  ${WHITE}Ports${NC}                       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├──────────────────────┼────────────┼─────────────────────────────┤${NC}"
+
+    # Parse JSON and display each service
+    echo "$raw_status" | while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+
+        local name state ports health
+        name=$(echo "$line" | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)
+        state=$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
+        health=$(echo "$line" | grep -o '"Health":"[^"]*"' | head -1 | cut -d'"' -f4)
+        ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | tr '\n' ',' | sed 's/,$//')
+
+        [[ -z "$name" ]] && continue
+        name="${name#moav-}"
+
+        local status_display status_color
+        if [[ "$state" == "running" ]]; then
+            if [[ "$health" == "healthy" ]] || [[ -z "$health" ]]; then
+                status_color="${GREEN}"
+                status_display="● running"
+            elif [[ "$health" == "unhealthy" ]]; then
+                status_color="${RED}"
+                status_display="○ unhealthy"
+            else
+                status_color="${YELLOW}"
+                status_display="◐ starting"
+            fi
+        elif [[ "$state" == "exited" ]]; then
+            status_color="${RED}"
+            status_display="○ stopped"
+        else
+            status_color="${YELLOW}"
+            status_display="◐ ${state}"
+        fi
+
+        [[ -z "$ports" ]] && ports="-"
+
+        printf "  ${CYAN}│${NC}  %-18s  ${CYAN}│${NC}  ${status_color}%-8s${NC}  ${CYAN}│${NC}  %-25s  ${CYAN}│${NC}\n" \
+            "$name" "$status_display" "$ports"
+    done
+
+    echo -e "  ${CYAN}└──────────────────────┴────────────┴─────────────────────────────┘${NC}"
+    echo ""
 }
 
 # Display service selection menu and populate SELECTED_PROFILES array
@@ -407,17 +459,21 @@ select_profiles() {
 
     print_section "Select Services"
 
-    echo "Available service profiles:"
     echo ""
-    echo -e "  ${WHITE}1)${NC} proxy      - sing-box (Reality, Trojan, Hysteria2) + decoy website"
-    echo -e "  ${WHITE}2)${NC} wireguard  - WireGuard VPN via wstunnel"
-    echo -e "  ${WHITE}3)${NC} dnstt      - DNS tunnel (last resort)"
-    echo -e "  ${WHITE}4)${NC} admin      - Stats dashboard (port 9443)"
-    echo -e "  ${WHITE}5)${NC} conduit    - Psiphon bandwidth donation"
-    echo -e "  ${WHITE}6)${NC} snowflake  - Tor Snowflake bandwidth donation"
-    echo ""
-    echo -e "  ${WHITE}a)${NC} ALL        - All services"
-    echo -e "  ${WHITE}0)${NC} Cancel"
+    echo -e "  ${CYAN}┌─────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}#${NC}   ${WHITE}Profile${NC}      ${WHITE}Description${NC}                                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site      ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel           ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}              ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}4${NC}   admin        Stats dashboard (port 9443)                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}5${NC}   conduit      Psiphon bandwidth donation ${BLUE}(altruistic)${NC}    ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   snowflake    Tor Snowflake donation ${BLUE}(altruistic)${NC}         ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          Start all services                           ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${RED}0${NC}   Cancel       Exit without selecting                       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
     prompt "Enter choices (e.g., 1 2 4 or 'a' for all): "
@@ -1024,6 +1080,7 @@ show_usage() {
     echo "  user list             List all users"
     echo "  user add NAME [-p]    Add a new user (--package creates zip with HTML guide)"
     echo "  user revoke NAME      Revoke a user"
+    echo "  user package NAME     Create distributable zip for existing user"
     echo "  build [SERVICE...]    Build services (default: all)"
     echo "  test USERNAME         Test connectivity for a user"
     echo "  client                Client mode (test/connect)"
@@ -1061,23 +1118,33 @@ cmd_bootstrap() {
 
 cmd_profiles() {
     print_header
-    echo ""
+
+    print_section "Default Profiles"
 
     local current
     current=$(get_default_profiles)
+
+    echo ""
     if [[ -n "$current" ]]; then
-        info "Current default profiles: $current"
+        echo -e "  Current defaults: ${GREEN}${current}${NC}"
+        echo ""
+        echo -e "  These profiles will start when you run ${CYAN}moav start${NC} without arguments."
     else
-        info "No default profiles set (will start all services)"
+        echo -e "  ${YELLOW}No default profiles set${NC}"
+        echo ""
+        echo -e "  Running ${CYAN}moav start${NC} will start ${WHITE}all${NC} services."
     fi
     echo ""
 
-    if select_profiles "save"; then
+    if confirm "Change default profiles?" "y"; then
         echo ""
-        if confirm "Build selected services now?" "n"; then
-            info "Building..."
-            docker compose $SELECTED_PROFILE_STRING build
-            success "Build complete!"
+        if select_profiles "save"; then
+            echo ""
+            if confirm "Build selected services now?" "n"; then
+                info "Building..."
+                docker compose $SELECTED_PROFILE_STRING build
+                success "Build complete!"
+            fi
         fi
     fi
 }
@@ -1163,7 +1230,17 @@ cmd_restart() {
 }
 
 cmd_status() {
-    docker compose --profile all ps
+    print_header
+    show_status
+
+    # Show default profiles
+    local defaults
+    defaults=$(get_default_profiles)
+    if [[ -n "$defaults" ]]; then
+        info "Default profiles: ${WHITE}$defaults${NC}"
+    fi
+    echo ""
+    echo -e "  ${CYAN}Commands:${NC} moav logs [service] | moav stop | moav restart"
 }
 
 cmd_logs() {
@@ -1217,8 +1294,20 @@ cmd_user() {
                 exit 1
             fi
             ;;
+        package|pkg)
+            if [[ -z "$username" ]]; then
+                error "Usage: moav user package USERNAME"
+                exit 1
+            fi
+            if [[ -x "./scripts/user-package.sh" ]]; then
+                ./scripts/user-package.sh "$username"
+            else
+                error "User package script not found"
+                exit 1
+            fi
+            ;;
         *)
-            error "Usage: moav user [list|add|revoke] [USERNAME]"
+            error "Usage: moav user [list|add|revoke|package] [USERNAME]"
             exit 1
             ;;
     esac
