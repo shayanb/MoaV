@@ -184,6 +184,26 @@ moav build                # ساخت/بازسازی تمام کانتینرها
 
 **نام مستعار سرویس‌ها:** `conduit`←psiphon-conduit، `singbox`←sing-box، `wg`←wireguard، `dns`←dnstt
 
+## مهاجرت سرور
+
+خروجی گرفتن و انتقال MoaV به سرور جدید:
+
+<div dir="ltr">
+
+```bash
+# خروجی کامل (کلیدها، کاربران، تنظیمات)
+moav export                        # ایجاد moav-backup-TIMESTAMP.tar.gz
+
+# در سرور جدید: وارد کردن و به‌روزرسانی IP
+moav import moav-backup-*.tar.gz   # بازیابی تنظیمات
+moav migrate-ip 1.2.3.4            # به‌روزرسانی همه تنظیمات با IP جدید
+moav start                         # شروع سرویس‌ها
+```
+
+</div>
+
+برای جزئیات بیشتر به [docs/SETUP.md](docs/SETUP.md#server-migration) مراجعه کنید.
+
 ## تست و کلاینت
 
 MoaV شامل یک کانتینر کلاینت داخلی برای تست اتصال و اتصال از طریق سرور شماست.

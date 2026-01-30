@@ -12,6 +12,19 @@ Complete setup guide for deploying MoaV on a fresh VPS.
 
 - A domain name (see [DNS.md](DNS.md) for configuration)
 
+- **Optional but recommended:** `qrencode` for generating QR codes
+  ```bash
+  # Debian/Ubuntu
+  sudo apt install qrencode
+
+  # RHEL/Fedora
+  sudo dnf install qrencode
+
+  # macOS
+  brew install qrencode
+  ```
+  The `moav check` command will offer to install this automatically.
+
 ## Recommended VPS Providers
 
 For users in middle east, these providers/regions typically work well:
@@ -94,7 +107,11 @@ moav logs sing-box conduit      # View specific service logs
 moav users                      # List users
 moav user add joe               # Add user
 moav user revoke joe            # Revoke user
+moav user package joe           # Create distributable zip
 moav build                      # Build all containers
+moav export                     # Export full backup
+moav import backup.tar.gz      # Import from backup
+moav migrate-ip 1.2.3.4        # Update to new IP
 moav uninstall                  # Remove global command
 ```
 
@@ -437,6 +454,111 @@ docker compose --profile all up -d
 ```
 
 **Note:** Use `--profile all` to build/run everything, or specify individual profiles like `--profile proxy --profile admin`.
+
+## Server Migration
+
+MoaV includes built-in tools for exporting your entire configuration and migrating to a new server.
+
+### Export Configuration
+
+Create a full backup of your MoaV installation:
+
+```bash
+# Export to timestamped file
+moav export
+
+# Or specify a filename
+moav export mybackup.tar.gz
+```
+
+The backup includes:
+- `.env` file (configuration)
+- All cryptographic keys (Reality, WireGuard, dnstt)
+- User credentials and configs
+- Generated user bundles
+
+**Security Note:** The backup contains private keys. Transfer securely and delete after import.
+
+### Import Configuration
+
+On a new server, after installing MoaV:
+
+```bash
+# Copy backup to new server
+scp moav-backup-*.tar.gz user@new-server:/opt/moav/
+
+# On new server
+cd /opt/moav
+moav import moav-backup-*.tar.gz
+```
+
+### Migrate IP Address
+
+When moving to a new server with a different IP:
+
+```bash
+# Update SERVER_IP and regenerate all user configs
+moav migrate-ip NEW_IP_ADDRESS
+
+# Example
+moav migrate-ip 203.0.113.50
+```
+
+This automatically:
+1. Updates `SERVER_IP` in `.env`
+2. Updates all user bundle configs (Reality, Trojan, Hysteria2, WireGuard)
+3. Regenerates QR codes (if qrencode is installed)
+
+### Full Migration Workflow
+
+```bash
+# === ON OLD SERVER ===
+cd /opt/moav
+moav export
+# Creates: moav-backup-YYYYMMDD_HHMMSS.tar.gz
+
+# Transfer to new server
+scp moav-backup-*.tar.gz root@NEW_SERVER:/opt/moav/
+
+# === ON NEW SERVER ===
+# 1. Install MoaV first (Step 1-2 from this guide)
+cd /opt/moav
+
+# 2. Import configuration
+moav import moav-backup-*.tar.gz
+
+# 3. Update to new IP (if IP changed)
+moav migrate-ip $(curl -s https://api.ipify.org)
+
+# 4. Update DNS records to point to new server IP
+# (See DNS.md)
+
+# 5. Start services
+moav start
+
+# 6. Distribute updated configs to users
+moav user package user1
+moav user package user2
+# ... or regenerate all:
+for user in outputs/bundles/*/; do
+    username=$(basename "$user")
+    [[ "$username" != *-configs ]] && moav user package "$username"
+done
+```
+
+### Interactive Migration Menu
+
+You can also use the interactive menu:
+
+```bash
+moav
+# Select: 8) Export/Import (migration)
+```
+
+This provides guided options for:
+- Export configuration backup
+- Import configuration backup
+- Migrate to new IP address
 
 ## Troubleshooting
 

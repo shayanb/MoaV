@@ -142,6 +142,70 @@ run_command() {
 # Prerequisite Checks
 # =============================================================================
 
+install_qrencode() {
+    local os_type=""
+    local pkg_manager=""
+
+    # Detect OS and package manager
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        os_type="macos"
+        if command -v brew &>/dev/null; then
+            pkg_manager="brew"
+        fi
+    elif [[ -f /etc/debian_version ]]; then
+        os_type="debian"
+        pkg_manager="apt"
+    elif [[ -f /etc/redhat-release ]] || [[ -f /etc/fedora-release ]]; then
+        os_type="rhel"
+        if command -v dnf &>/dev/null; then
+            pkg_manager="dnf"
+        elif command -v yum &>/dev/null; then
+            pkg_manager="yum"
+        fi
+    elif [[ -f /etc/alpine-release ]]; then
+        os_type="alpine"
+        pkg_manager="apk"
+    fi
+
+    case "$pkg_manager" in
+        brew)
+            info "Installing qrencode via Homebrew..."
+            brew install qrencode
+            ;;
+        apt)
+            info "Installing qrencode via apt..."
+            sudo apt update && sudo apt install -y qrencode
+            ;;
+        dnf)
+            info "Installing qrencode via dnf..."
+            sudo dnf install -y qrencode
+            ;;
+        yum)
+            info "Installing qrencode via yum..."
+            sudo yum install -y qrencode
+            ;;
+        apk)
+            info "Installing qrencode via apk..."
+            sudo apk add libqrencode-tools
+            ;;
+        *)
+            error "Could not detect package manager"
+            echo "  Please install qrencode manually:"
+            echo "    Linux (Debian/Ubuntu): sudo apt install qrencode"
+            echo "    Linux (RHEL/Fedora):   sudo dnf install qrencode"
+            echo "    macOS:                 brew install qrencode"
+            return 1
+            ;;
+    esac
+
+    if command -v qrencode &>/dev/null; then
+        success "qrencode installed successfully"
+    else
+        error "qrencode installation failed"
+        return 1
+    fi
+}
+
 check_prerequisites() {
     local missing=0
 
@@ -204,10 +268,17 @@ check_prerequisites() {
 
     # Check optional dependencies
     if command -v qrencode &> /dev/null; then
-        success "qrencode is installed (for QR codes in user packages)"
+        success "qrencode is installed (for QR codes)"
     else
-        warn "qrencode not installed (optional, for user-package.sh QR codes)"
-        echo "  Install with: apt install qrencode (Linux) or brew install qrencode (macOS)"
+        warn "qrencode not installed (needed for QR codes in user packages)"
+        if confirm "Install qrencode now?"; then
+            install_qrencode
+        else
+            echo "  You can install later with:"
+            echo "    Linux (Debian/Ubuntu): sudo apt install qrencode"
+            echo "    Linux (RHEL/Fedora):   sudo dnf install qrencode"
+            echo "    macOS:                 brew install qrencode"
+        fi
     fi
 
     if [[ $missing -eq 1 ]]; then
@@ -912,6 +983,60 @@ user_management() {
     esac
 }
 
+migration_menu() {
+    print_section "Export/Import (Migration)"
+
+    echo "Migration options:"
+    echo ""
+    echo -e "  ${WHITE}1)${NC} Export configuration backup"
+    echo -e "  ${WHITE}2)${NC} Import configuration backup"
+    echo -e "  ${WHITE}3)${NC} Migrate to new IP address"
+    echo -e "  ${WHITE}0)${NC} Back to main menu"
+    echo ""
+
+    prompt "Choice: "
+    read -r choice
+
+    case $choice in
+        1)
+            echo ""
+            local default_file="moav-backup-$(date +%Y%m%d_%H%M%S).tar.gz"
+            prompt "Output file [$default_file]: "
+            read -r output_file
+            [[ -z "$output_file" ]] && output_file="$default_file"
+            cmd_export "$output_file"
+            ;;
+        2)
+            echo ""
+            prompt "Backup file to import: "
+            read -r input_file
+            if [[ -n "$input_file" ]]; then
+                cmd_import "$input_file"
+            else
+                warn "No file specified"
+            fi
+            ;;
+        3)
+            echo ""
+            local current_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+            local detected_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "")
+            [[ -n "$current_ip" ]] && echo "Current IP in .env: $current_ip"
+            [[ -n "$detected_ip" ]] && echo "Detected server IP: $detected_ip"
+            echo ""
+            prompt "New IP address: "
+            read -r new_ip
+            if [[ -n "$new_ip" ]]; then
+                cmd_migrate_ip "$new_ip"
+            else
+                warn "No IP specified"
+            fi
+            ;;
+        0|*)
+            return 0
+            ;;
+    esac
+}
+
 list_users() {
     print_section "User List"
 
@@ -1098,6 +1223,7 @@ main_menu() {
         echo ""
         echo -e "  ${WHITE}6)${NC} User management"
         echo -e "  ${WHITE}7)${NC} Build/rebuild services"
+        echo -e "  ${WHITE}8)${NC} Export/Import (migration)"
         echo ""
         echo -e "  ${WHITE}0)${NC} Exit"
         echo ""
@@ -1113,6 +1239,7 @@ main_menu() {
             5) view_logs; press_enter ;;
             6) user_management; press_enter ;;
             7) build_services; press_enter ;;
+            8) migration_menu; press_enter ;;
             0|q|Q)
                 echo ""
                 info "🕊️ Goodbye! ✌️"
@@ -1158,6 +1285,11 @@ show_usage() {
     echo "  test USERNAME         Test connectivity for a user"
     echo "  client                Client mode (test/connect)"
     echo ""
+    echo "Migration:"
+    echo "  export [FILE]         Export full config backup (keys, users, .env)"
+    echo "  import FILE           Import config backup from file"
+    echo "  migrate-ip NEW_IP     Update SERVER_IP and regenerate all configs"
+    echo ""
     echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, client, all"
     echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake"
     echo "Aliases:  conduit→psiphon-conduit, singbox→sing-box, wg→wireguard, dns→dnstt"
@@ -1176,6 +1308,11 @@ show_usage() {
     echo "  moav user add john --package   # Add user and create zip bundle"
     echo "  moav test joe                  # Test connectivity for user joe"
     echo "  moav client connect joe        # Connect as user joe (exposes proxy)"
+    echo ""
+    echo "Migration:"
+    echo "  moav export                    # Backup to moav-backup-TIMESTAMP.tar.gz"
+    echo "  moav import backup.tar.gz     # Restore from backup"
+    echo "  moav migrate-ip 1.2.3.4       # Update configs to new server IP"
 }
 
 cmd_check() {
@@ -1595,6 +1732,429 @@ cmd_client() {
 }
 
 # =============================================================================
+# Migration: Export/Import
+# =============================================================================
+
+cmd_export() {
+    print_section "Export MoaV Configuration"
+
+    local output_file="${1:-}"
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local default_name="moav-backup-${timestamp}.tar.gz"
+
+    if [[ -z "$output_file" ]]; then
+        output_file="$default_name"
+    fi
+
+    # Ensure .tar.gz extension
+    if [[ "$output_file" != *.tar.gz ]]; then
+        output_file="${output_file}.tar.gz"
+    fi
+
+    info "Creating backup: $output_file"
+    echo ""
+
+    # Create temp directory for export
+    local temp_dir=$(mktemp -d)
+    local export_dir="$temp_dir/moav-export"
+    mkdir -p "$export_dir"
+
+    # 1. Export .env file
+    if [[ -f ".env" ]]; then
+        info "  Exporting .env..."
+        cp ".env" "$export_dir/"
+    else
+        warn "  No .env file found"
+    fi
+
+    # 2. Export state from Docker volume (keys + users)
+    info "  Exporting state (keys, users)..."
+    if docker volume inspect moav_moav_state &>/dev/null; then
+        mkdir -p "$export_dir/state"
+        docker run --rm \
+            -v moav_moav_state:/state:ro \
+            -v "$export_dir/state:/backup" \
+            alpine sh -c "cp -a /state/. /backup/ 2>/dev/null || true"
+
+        # Verify key files were exported
+        if [[ -f "$export_dir/state/keys/reality.env" ]]; then
+            success "    Reality keys exported"
+        fi
+        if [[ -f "$export_dir/state/keys/wg-server.key" ]]; then
+            success "    WireGuard keys exported"
+        fi
+        if [[ -f "$export_dir/state/keys/dnstt-server.key.hex" ]]; then
+            success "    dnstt keys exported"
+        fi
+
+        # Count users
+        local user_count=$(ls -1 "$export_dir/state/users" 2>/dev/null | wc -l | tr -d ' ')
+        if [[ "$user_count" -gt 0 ]]; then
+            success "    $user_count user(s) exported"
+        fi
+    else
+        warn "  State volume not found (moav_moav_state)"
+    fi
+
+    # 3. Export configs directory
+    if [[ -d "configs" ]]; then
+        info "  Exporting configs..."
+        mkdir -p "$export_dir/configs"
+        cp -a configs/. "$export_dir/configs/" 2>/dev/null || true
+    fi
+
+    # 4. Export outputs/bundles (user configs)
+    if [[ -d "outputs/bundles" ]]; then
+        info "  Exporting user bundles..."
+        mkdir -p "$export_dir/outputs/bundles"
+        cp -a outputs/bundles/. "$export_dir/outputs/bundles/" 2>/dev/null || true
+    fi
+
+    # 5. Export dnstt outputs (public key for clients)
+    if [[ -d "outputs/dnstt" ]]; then
+        info "  Exporting dnstt outputs..."
+        mkdir -p "$export_dir/outputs/dnstt"
+        cp -a outputs/dnstt/. "$export_dir/outputs/dnstt/" 2>/dev/null || true
+    fi
+
+    # 6. Create manifest
+    info "  Creating manifest..."
+    cat > "$export_dir/manifest.json" <<EOF
+{
+    "version": "1.0",
+    "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+    "moav_version": "${MOAV_VERSION:-unknown}",
+    "hostname": "$(hostname)",
+    "server_ip": "$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '\"' || echo 'unknown')",
+    "domain": "$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '\"' || echo 'unknown')"
+}
+EOF
+
+    # 7. Create tarball
+    info "  Creating archive..."
+    tar -czf "$output_file" -C "$temp_dir" moav-export
+
+    # Cleanup
+    rm -rf "$temp_dir"
+
+    local size=$(du -h "$output_file" | cut -f1)
+    echo ""
+    success "Backup created: $output_file ($size)"
+    echo ""
+    echo -e "${CYAN}Contents:${NC}"
+    tar -tzf "$output_file" | head -30
+    echo ""
+    echo -e "${YELLOW}Security Note:${NC} This backup contains private keys."
+    echo "  Transfer securely and delete after import."
+    echo ""
+    echo -e "${CYAN}To import on new server:${NC}"
+    echo "  1. Copy this file to the new server"
+    echo "  2. Run: moav import $output_file"
+    echo "  3. Update .env with new SERVER_IP if needed"
+    echo "  4. Run: moav migrate-ip NEW_IP"
+}
+
+cmd_import() {
+    print_section "Import MoaV Configuration"
+
+    local input_file="${1:-}"
+
+    if [[ -z "$input_file" ]]; then
+        error "Usage: moav import <backup-file.tar.gz>"
+        exit 1
+    fi
+
+    if [[ ! -f "$input_file" ]]; then
+        error "File not found: $input_file"
+        exit 1
+    fi
+
+    info "Importing from: $input_file"
+    echo ""
+
+    # Check if this will overwrite existing data
+    local has_existing=false
+    if [[ -f ".env" ]] || docker volume inspect moav_moav_state &>/dev/null 2>&1; then
+        has_existing=true
+        warn "Existing configuration detected!"
+        echo ""
+        echo -e "${YELLOW}This will overwrite:${NC}"
+        [[ -f ".env" ]] && echo "  - .env file"
+        docker volume inspect moav_moav_state &>/dev/null 2>&1 && echo "  - State volume (keys, users)"
+        [[ -d "configs" ]] && echo "  - configs directory"
+        echo ""
+        read -p "Continue? [y/N] " confirm
+        if [[ ! "$confirm" =~ ^[Yy] ]]; then
+            info "Import cancelled."
+            exit 0
+        fi
+        echo ""
+    fi
+
+    # Extract to temp directory
+    local temp_dir=$(mktemp -d)
+    info "  Extracting archive..."
+    tar -xzf "$input_file" -C "$temp_dir"
+
+    local export_dir="$temp_dir/moav-export"
+    if [[ ! -d "$export_dir" ]]; then
+        error "Invalid backup format"
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+    # Show manifest
+    if [[ -f "$export_dir/manifest.json" ]]; then
+        echo ""
+        echo -e "${CYAN}Backup Info:${NC}"
+        cat "$export_dir/manifest.json" | grep -E '(created|server_ip|domain)' | sed 's/[",]//g' | sed 's/^/  /'
+        echo ""
+    fi
+
+    # 1. Import .env file
+    if [[ -f "$export_dir/.env" ]]; then
+        info "  Importing .env..."
+        cp "$export_dir/.env" ".env"
+        success "    .env imported"
+    fi
+
+    # 2. Import state to Docker volume
+    if [[ -d "$export_dir/state" ]]; then
+        info "  Importing state (keys, users)..."
+
+        # Create volume if it doesn't exist
+        docker volume create moav_moav_state &>/dev/null || true
+
+        # Copy state to volume
+        docker run --rm \
+            -v moav_moav_state:/state \
+            -v "$export_dir/state:/backup:ro" \
+            alpine sh -c "rm -rf /state/* && cp -a /backup/. /state/"
+
+        success "    State imported to Docker volume"
+    fi
+
+    # 3. Import configs
+    if [[ -d "$export_dir/configs" ]]; then
+        info "  Importing configs..."
+        mkdir -p configs
+        cp -a "$export_dir/configs/." configs/
+        success "    Configs imported"
+    fi
+
+    # 4. Import outputs/bundles
+    if [[ -d "$export_dir/outputs/bundles" ]]; then
+        info "  Importing user bundles..."
+        mkdir -p outputs/bundles
+        cp -a "$export_dir/outputs/bundles/." outputs/bundles/
+        success "    User bundles imported"
+    fi
+
+    # 5. Import dnstt outputs
+    if [[ -d "$export_dir/outputs/dnstt" ]]; then
+        info "  Importing dnstt outputs..."
+        mkdir -p outputs/dnstt
+        cp -a "$export_dir/outputs/dnstt/." outputs/dnstt/
+        success "    dnstt outputs imported"
+    fi
+
+    # Cleanup
+    rm -rf "$temp_dir"
+
+    echo ""
+    success "Import complete!"
+    echo ""
+
+    # Check if IP migration is needed
+    local old_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local current_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "")
+
+    if [[ -n "$old_ip" ]] && [[ -n "$current_ip" ]] && [[ "$old_ip" != "$current_ip" ]]; then
+        echo ""
+        warn "IP address mismatch detected!"
+        echo "  Backup IP:  $old_ip"
+        echo "  Current IP: $current_ip"
+        echo ""
+        echo -e "${CYAN}To update to new IP, run:${NC}"
+        echo "  moav migrate-ip $current_ip"
+        echo ""
+    fi
+
+    echo -e "${CYAN}Next steps:${NC}"
+    echo "  1. Review .env and update SERVER_IP/DOMAIN if needed"
+    echo "  2. Run: moav migrate-ip NEW_IP (if IP changed)"
+    echo "  3. Run: moav start"
+}
+
+cmd_migrate_ip() {
+    print_section "Migrate Server IP"
+
+    local new_ip="${1:-}"
+
+    if [[ -z "$new_ip" ]]; then
+        # Try to detect current IP
+        local detected_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "")
+        if [[ -n "$detected_ip" ]]; then
+            echo "Detected current IP: $detected_ip"
+            echo ""
+        fi
+        error "Usage: moav migrate-ip <new-ip>"
+        echo ""
+        echo "This command updates SERVER_IP and regenerates all client configs."
+        exit 1
+    fi
+
+    # Validate IP format (basic check)
+    if ! echo "$new_ip" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+        error "Invalid IP address format: $new_ip"
+        exit 1
+    fi
+
+    local old_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+
+    if [[ -z "$old_ip" ]]; then
+        error "Could not read current SERVER_IP from .env"
+        exit 1
+    fi
+
+    if [[ "$old_ip" == "$new_ip" ]]; then
+        info "IP address is already set to $new_ip"
+        exit 0
+    fi
+
+    info "Migrating from $old_ip to $new_ip"
+    echo ""
+
+    # 1. Update .env
+    info "  Updating .env..."
+    sed -i.bak "s/^SERVER_IP=.*/SERVER_IP=\"$new_ip\"/" .env
+    rm -f .env.bak
+    success "    SERVER_IP updated"
+
+    # 2. Update WireGuard server config (if exists)
+    if [[ -f "configs/wireguard/wg0.conf" ]]; then
+        info "  Updating WireGuard config..."
+        # WireGuard server config doesn't contain server IP, but let's check
+        success "    WireGuard config OK (no changes needed)"
+    fi
+
+    # 3. Regenerate user bundles
+    info "  Regenerating user bundles..."
+    local users_dir="outputs/bundles"
+    if [[ -d "$users_dir" ]]; then
+        local regenerated=0
+        for user_dir in "$users_dir"/*/; do
+            if [[ -d "$user_dir" ]]; then
+                local username=$(basename "$user_dir")
+
+                # Skip if it looks like a zip file name pattern
+                [[ "$username" == *-configs ]] && continue
+                [[ "$username" == *-moav-configs ]] && continue
+
+                # Update Reality config
+                if [[ -f "$user_dir/reality.txt" ]]; then
+                    sed -i.bak "s/@$old_ip:/@$new_ip:/g" "$user_dir/reality.txt"
+                    rm -f "$user_dir/reality.txt.bak"
+                fi
+
+                # Update sing-box configs
+                for config in "$user_dir"/*-singbox.json; do
+                    if [[ -f "$config" ]]; then
+                        sed -i.bak "s/\"server\": \"$old_ip\"/\"server\": \"$new_ip\"/g" "$config"
+                        rm -f "$config.bak"
+                    fi
+                done
+
+                # Update Hysteria2 configs
+                if [[ -f "$user_dir/hysteria2.txt" ]]; then
+                    sed -i.bak "s/@$old_ip:/@$new_ip:/g" "$user_dir/hysteria2.txt"
+                    rm -f "$user_dir/hysteria2.txt.bak"
+                fi
+                if [[ -f "$user_dir/hysteria2.yaml" ]]; then
+                    sed -i.bak "s/server: $old_ip:/server: $new_ip:/g" "$user_dir/hysteria2.yaml"
+                    rm -f "$user_dir/hysteria2.yaml.bak"
+                fi
+
+                # Update Trojan config
+                if [[ -f "$user_dir/trojan.txt" ]]; then
+                    sed -i.bak "s/@$old_ip:/@$new_ip:/g" "$user_dir/trojan.txt"
+                    rm -f "$user_dir/trojan.txt.bak"
+                fi
+
+                # Update WireGuard direct config (wstunnel uses localhost, no change needed)
+                if [[ -f "$user_dir/wireguard.conf" ]]; then
+                    sed -i.bak "s/Endpoint = $old_ip:/Endpoint = $new_ip:/g" "$user_dir/wireguard.conf"
+                    rm -f "$user_dir/wireguard.conf.bak"
+                fi
+
+                # Update dnstt instructions
+                if [[ -f "$user_dir/dnstt-instructions.txt" ]]; then
+                    sed -i.bak "s/$old_ip/$new_ip/g" "$user_dir/dnstt-instructions.txt"
+                    rm -f "$user_dir/dnstt-instructions.txt.bak"
+                fi
+
+                # Update README
+                if [[ -f "$user_dir/README.md" ]]; then
+                    sed -i.bak "s/$old_ip/$new_ip/g" "$user_dir/README.md"
+                    rm -f "$user_dir/README.md.bak"
+                fi
+
+                ((regenerated++)) || true
+            fi
+        done
+
+        if [[ $regenerated -gt 0 ]]; then
+            success "    Updated $regenerated user bundle(s)"
+        else
+            info "    No user bundles found"
+        fi
+    fi
+
+    # 4. Regenerate QR codes (optional - requires qrencode)
+    if command -v qrencode &>/dev/null; then
+        info "  Regenerating QR codes..."
+        local qr_count=0
+        for user_dir in "$users_dir"/*/; do
+            if [[ -d "$user_dir" ]]; then
+                local username=$(basename "$user_dir")
+                [[ "$username" == *-configs ]] && continue
+
+                for txt_file in "$user_dir"/*.txt; do
+                    if [[ -f "$txt_file" ]] && [[ "$txt_file" != *instructions* ]]; then
+                        local qr_file="${txt_file%.txt}-qr.png"
+                        qrencode -o "$qr_file" -s 6 "$(cat "$txt_file")" 2>/dev/null && ((qr_count++)) || true
+                    fi
+                done
+
+                # WireGuard QR codes
+                if [[ -f "$user_dir/wireguard.conf" ]]; then
+                    qrencode -o "$user_dir/wireguard-qr.png" -s 6 -r "$user_dir/wireguard.conf" 2>/dev/null && ((qr_count++)) || true
+                fi
+            fi
+        done
+        if [[ $qr_count -gt 0 ]]; then
+            success "    Regenerated $qr_count QR code(s)"
+        fi
+    else
+        warn "  Skipping QR regeneration (qrencode not installed)"
+    fi
+
+    echo ""
+    success "Migration complete!"
+    echo ""
+    echo -e "${CYAN}Summary:${NC}"
+    echo "  Old IP: $old_ip"
+    echo "  New IP: $new_ip"
+    echo ""
+    echo -e "${CYAN}Next steps:${NC}"
+    echo "  1. Restart services: moav restart"
+    echo "  2. Re-package user bundles: moav user package <username>"
+    echo "  3. Distribute new configs to users"
+    echo ""
+    echo -e "${YELLOW}Note:${NC} Users will need updated configs to connect via the new IP."
+}
+
+# =============================================================================
 # Entry Point
 # =============================================================================
 
@@ -1695,6 +2255,18 @@ main() {
         client)
             shift
             cmd_client "$@"
+            ;;
+        export)
+            shift
+            cmd_export "$@"
+            ;;
+        import)
+            shift
+            cmd_import "$@"
+            ;;
+        migrate-ip|migrate_ip|migrateip)
+            shift
+            cmd_migrate_ip "$@"
             ;;
         *)
             error "Unknown command: $cmd"

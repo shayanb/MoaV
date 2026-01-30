@@ -156,6 +156,22 @@ moav build                # Build/rebuild all containers
 
 **Profiles:** `proxy`, `wireguard`, `dnstt`, `admin`, `conduit`, `snowflake`, `all`
 
+## Server Migration
+
+Export and migrate your MoaV installation to a new server:
+
+```bash
+# Export full backup (keys, users, configs)
+moav export                        # Creates moav-backup-TIMESTAMP.tar.gz
+
+# On new server: import and update IP
+moav import moav-backup-*.tar.gz   # Restore configuration
+moav migrate-ip 1.2.3.4            # Update all configs to new IP
+moav start                         # Start services
+```
+
+See [docs/SETUP.md](docs/SETUP.md#server-migration) for detailed migration workflow.
+
 ## Testing & Client
 
 MoaV includes a built-in client container for testing connectivity and connecting through your server.
