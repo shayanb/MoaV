@@ -122,13 +122,37 @@ body {
 
 .hero-content {
     text-align: center;
-    max-width: 800px;
+    max-width: 900px;
     position: relative;
     z-index: 1;
 }
 
-.logo-ascii {
+/* Hero Brand - Logo + ASCII side by side */
+.hero-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
     margin-bottom: 24px;
+}
+
+.hero-logo {
+    width: clamp(150px, 22vw, 260px);
+    height: auto;
+    filter: drop-shadow(0 0 30px rgba(0, 212, 255, 0.5));
+}
+
+.brand-text {
+    text-align: left;
+}
+
+.brand-text .tagline {
+    text-align: left;
+    margin-bottom: 0;
+}
+
+.logo-ascii {
+    margin-bottom: 8px;
 }
 
 .logo-ascii pre {
@@ -833,6 +857,23 @@ section {
 }
 
 @media (max-width: 768px) {
+    .hero-brand {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .brand-text {
+        text-align: center;
+    }
+
+    .brand-text .tagline {
+        text-align: center;
+    }
+
+    .hero-logo {
+        width: clamp(100px, 30vw, 160px);
+    }
+
     .donate-options {
         flex-direction: column;
         gap: 12px;
