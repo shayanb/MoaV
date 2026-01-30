@@ -412,9 +412,9 @@ show_status() {
 
     print_section "Service Status"
     echo ""
-    echo -e "  ${CYAN}┌──────────────┬─────────────┬─────────────────────┬─────────────────────┬─────────────┐${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}Service${NC}      ${CYAN}│${NC}  ${WHITE}Status${NC}     ${CYAN}│${NC}  ${WHITE}Created${NC}             ${CYAN}│${NC}  ${WHITE}Uptime${NC}              ${CYAN}│${NC}  ${WHITE}Ports${NC}      ${CYAN}│${NC}"
-    echo -e "  ${CYAN}├──────────────┼─────────────┼─────────────────────┼─────────────────────┼─────────────┤${NC}"
+    echo -e "  ${CYAN}┌──────────────┬─────────────┬─────────────────────┬───────────────┬─────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}Service${NC}      ${CYAN}│${NC}  ${WHITE}Status${NC}     ${CYAN}│${NC}  ${WHITE}Created${NC}             ${CYAN}│${NC}  ${WHITE}Uptime${NC}       ${CYAN}│${NC}  ${WHITE}Ports${NC}      ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├──────────────┼─────────────┼─────────────────────┼───────────────┼─────────────┤${NC}"
 
     # Parse JSON and display each service (using here-string to avoid subshell)
     while IFS= read -r line; do
@@ -446,6 +446,10 @@ show_status() {
             uptime="${BASH_REMATCH[1]}"
             # Clean up health status suffix if present (e.g., "28 minutes (healthy)")
             uptime="${uptime%% (*}"
+            # Shorten common long phrases to fit column
+            uptime="${uptime/About an /~1 }"
+            uptime="${uptime/About a /~1 }"
+            uptime="${uptime/Less than a /< 1 }"
         fi
 
         local status_display status_color
@@ -471,11 +475,11 @@ show_status() {
 
         [[ -z "$ports" ]] && ports="-"
 
-        printf "  ${CYAN}│${NC}  %-10s  ${CYAN}│${NC}  ${status_color}%-9s${NC}  ${CYAN}│${NC}  %-17s  ${CYAN}│${NC}  %-17s  ${CYAN}│${NC}  %-9s  ${CYAN}│${NC}\n" \
+        printf "  ${CYAN}│${NC}  %-10s  ${CYAN}│${NC}  ${status_color}%-9s${NC}  ${CYAN}│${NC}  %-17s  ${CYAN}│${NC}  %-11s  ${CYAN}│${NC}  %-9s  ${CYAN}│${NC}\n" \
             "$name" "$status_display" "$created" "$uptime" "$ports"
     done <<< "$json_lines"
 
-    echo -e "  ${CYAN}└──────────────┴─────────────┴─────────────────────┴─────────────────────┴─────────────┘${NC}"
+    echo -e "  ${CYAN}└──────────────┴─────────────┴─────────────────────┴───────────────┴─────────────┘${NC}"
     echo ""
 }
 
