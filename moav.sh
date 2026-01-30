@@ -332,24 +332,51 @@ run_bootstrap() {
     echo "  Your domain should point to this server's IP address."
     echo ""
 
-    if confirm "Run bootstrap now?" "y"; then
-        echo ""
-        info "Building bootstrap container..."
-        docker compose --profile setup build bootstrap
-
-        echo ""
-        info "Running bootstrap..."
-        docker compose --profile setup run --rm bootstrap
-
-        echo ""
-        success "Bootstrap completed!"
-        echo ""
-        info "User bundles have been created in: outputs/bundles/"
-        echo "  Each bundle contains configuration files and QR codes"
-        echo "  for connecting to your server."
-    else
+    if ! confirm "Run bootstrap now?" "y"; then
         warn "Bootstrap skipped. You'll need to run it before starting services."
         return 1
+    fi
+
+    echo ""
+    info "Building bootstrap container..."
+    docker compose --profile setup build bootstrap
+
+    echo ""
+    info "Running bootstrap..."
+    docker compose --profile setup run --rm bootstrap
+
+    echo ""
+    success "Bootstrap completed!"
+    echo ""
+    info "User bundles have been created in: outputs/bundles/"
+    echo "  Each bundle contains configuration files and QR codes"
+    echo "  for connecting to your server."
+
+    # Service selection
+    echo ""
+    print_section "Service Selection"
+    echo "Select which services to build and set as default for 'moav start'."
+    echo ""
+
+    if select_profiles "save"; then
+        echo ""
+        info "Building selected services..."
+        docker compose $SELECTED_PROFILE_STRING build
+
+        echo ""
+        if confirm "Start services now?" "y"; then
+            info "Starting services..."
+            docker compose $SELECTED_PROFILE_STRING up -d
+            echo ""
+            success "Services started!"
+            docker compose $SELECTED_PROFILE_STRING ps
+        else
+            echo ""
+            info "You can start services later with: moav start"
+        fi
+    else
+        echo ""
+        info "You can select and start services later with: moav start"
     fi
 }
 
@@ -371,10 +398,14 @@ show_status() {
     info "To stop all:  docker compose --profile all down"
 }
 
+# Display service selection menu and populate SELECTED_PROFILES array
+# Usage: select_profiles [save_to_env]
+#   save_to_env: if "save", updates DEFAULT_PROFILES in .env
 select_profiles() {
-    local selected_profiles=()
+    local save_to_env="${1:-}"
+    SELECTED_PROFILES=()
 
-    print_section "Select Services to Start"
+    print_section "Select Services"
 
     echo "Available service profiles:"
     echo ""
@@ -385,7 +416,7 @@ select_profiles() {
     echo -e "  ${WHITE}5)${NC} conduit    - Psiphon bandwidth donation"
     echo -e "  ${WHITE}6)${NC} snowflake  - Tor Snowflake bandwidth donation"
     echo ""
-    echo -e "  ${WHITE}a)${NC} ALL        - Start all services"
+    echo -e "  ${WHITE}a)${NC} ALL        - All services"
     echo -e "  ${WHITE}0)${NC} Cancel"
     echo ""
 
@@ -397,32 +428,73 @@ select_profiles() {
     fi
 
     if [[ "$choices" == "a" || "$choices" == "A" ]]; then
-        selected_profiles=("all")
+        SELECTED_PROFILES=("all")
     else
         for choice in $choices; do
             case $choice in
-                1) selected_profiles+=("proxy") ;;
-                2) selected_profiles+=("wireguard") ;;
-                3) selected_profiles+=("dnstt") ;;
-                4) selected_profiles+=("admin") ;;
-                5) selected_profiles+=("conduit") ;;
-                6) selected_profiles+=("snowflake") ;;
+                1) SELECTED_PROFILES+=("proxy") ;;
+                2) SELECTED_PROFILES+=("wireguard") ;;
+                3) SELECTED_PROFILES+=("dnstt") ;;
+                4) SELECTED_PROFILES+=("admin") ;;
+                5) SELECTED_PROFILES+=("conduit") ;;
+                6) SELECTED_PROFILES+=("snowflake") ;;
             esac
         done
     fi
 
-    if [[ ${#selected_profiles[@]} -eq 0 ]]; then
+    if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
         warn "No profiles selected"
         return 1
     fi
 
-    # Build profile string and store in global variable
+    # Build profile string for docker compose
     SELECTED_PROFILE_STRING=""
-    for p in "${selected_profiles[@]}"; do
+    for p in "${SELECTED_PROFILES[@]}"; do
         SELECTED_PROFILE_STRING+="--profile $p "
     done
 
+    # Save to .env if requested
+    if [[ "$save_to_env" == "save" ]]; then
+        save_default_profiles
+    fi
+
     return 0
+}
+
+# Save selected profiles to .env
+save_default_profiles() {
+    local profiles_str="${SELECTED_PROFILES[*]}"
+    local env_file="$SCRIPT_DIR/.env"
+
+    if [[ ! -f "$env_file" ]]; then
+        warn "No .env file found, cannot save defaults"
+        return 1
+    fi
+
+    # Update or add DEFAULT_PROFILES in .env
+    if grep -q "^DEFAULT_PROFILES=" "$env_file" 2>/dev/null; then
+        # Update existing line
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES=$profiles_str/" "$env_file"
+        else
+            sed -i "s/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES=$profiles_str/" "$env_file"
+        fi
+    else
+        # Add new line
+        echo "" >> "$env_file"
+        echo "# Default profiles for 'moav start'" >> "$env_file"
+        echo "DEFAULT_PROFILES=$profiles_str" >> "$env_file"
+    fi
+
+    success "Saved default profiles: $profiles_str"
+}
+
+# Get default profiles from .env
+get_default_profiles() {
+    local env_file="$SCRIPT_DIR/.env"
+    if [[ -f "$env_file" ]]; then
+        grep "^DEFAULT_PROFILES=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'"
+    fi
 }
 
 start_services() {
@@ -941,8 +1013,9 @@ show_usage() {
     echo "  install               Install 'moav' command globally"
     echo "  uninstall             Remove global 'moav' command"
     echo "  check                 Run prerequisites check"
-    echo "  bootstrap             Run first-time setup"
-    echo "  start [PROFILE...]    Start services (default: all)"
+    echo "  bootstrap             Run first-time setup (includes service selection)"
+    echo "  profiles              Change default services for 'moav start'"
+    echo "  start [PROFILE...]    Start services (uses DEFAULT_PROFILES from .env)"
     echo "  stop [SERVICE...]     Stop services (default: all)"
     echo "  restart [SERVICE...]  Restart services (default: all)"
     echo "  status                Show service status"
@@ -967,6 +1040,7 @@ show_usage() {
     echo "  moav stop conduit              # Stop specific service"
     echo "  moav logs sing-box conduit     # View specific service logs"
     echo "  moav build conduit             # Build specific service"
+    echo "  moav profiles                  # Change default services"
     echo "  moav user add john             # Add user 'john'"
     echo "  moav user add john --package   # Add user and create zip bundle"
     echo "  moav test joe                  # Test connectivity for user joe"
@@ -985,10 +1059,45 @@ cmd_bootstrap() {
     run_bootstrap
 }
 
+cmd_profiles() {
+    print_header
+    echo ""
+
+    local current
+    current=$(get_default_profiles)
+    if [[ -n "$current" ]]; then
+        info "Current default profiles: $current"
+    else
+        info "No default profiles set (will start all services)"
+    fi
+    echo ""
+
+    if select_profiles "save"; then
+        echo ""
+        if confirm "Build selected services now?" "n"; then
+            info "Building..."
+            docker compose $SELECTED_PROFILE_STRING build
+            success "Build complete!"
+        fi
+    fi
+}
+
 cmd_start() {
     local profiles=""
+
     if [[ $# -eq 0 ]]; then
-        profiles="--profile all"
+        # No arguments - check for DEFAULT_PROFILES in .env
+        local defaults
+        defaults=$(get_default_profiles)
+        if [[ -n "$defaults" ]]; then
+            info "Using default profiles from .env: $defaults"
+            for p in $defaults; do
+                profiles+="--profile $p "
+            done
+        else
+            # No defaults set - use all
+            profiles="--profile all"
+        fi
     else
         for p in "$@"; do
             profiles+="--profile $p "
@@ -1333,6 +1442,9 @@ main() {
             ;;
         bootstrap)
             cmd_bootstrap
+            ;;
+        profiles)
+            cmd_profiles
             ;;
         start)
             shift
