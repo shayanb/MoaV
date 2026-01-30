@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Download the conduit binary from official Psiphon-Inc repo
-RUN curl -L -o conduit "https://github.com/Psiphon-Inc/conduit/releases/download/${CONDUIT_VERSION}/conduit-linux-${TARGETARCH}" && \
+# Note: Release tags use format "release-cli-X.Y.Z"
+RUN curl -fL -o conduit "https://github.com/Psiphon-Inc/conduit/releases/download/release-cli-${CONDUIT_VERSION}/conduit-linux-${TARGETARCH}" && \
     chmod +x conduit
 
 # Create data directory for conduit state

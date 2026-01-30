@@ -153,6 +153,11 @@ services:
           echo "Certificate already exists, skipping..."
         fi
       '
+    profiles:
+      - proxy
+      - wireguard
+      - dnstt
+      - all
 
   # ===========================================================================
   # DECOY: Static website (served by sing-box fallback)
