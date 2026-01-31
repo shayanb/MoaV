@@ -1133,6 +1133,7 @@ migration_menu() {
     echo -e "  ${WHITE}1)${NC} Export configuration backup"
     echo -e "  ${WHITE}2)${NC} Import configuration backup"
     echo -e "  ${WHITE}3)${NC} Migrate to new IP address"
+    echo -e "  ${WHITE}4)${NC} Regenerate all user bundles"
     echo -e "  ${WHITE}0)${NC} Back to main menu"
     echo ""
 
@@ -1172,6 +1173,9 @@ migration_menu() {
             else
                 warn "No IP specified"
             fi
+            ;;
+        4)
+            cmd_regenerate_users
             ;;
         0|*)
             return 0
@@ -1432,6 +1436,7 @@ show_usage() {
     echo "  export [FILE]         Export full config backup (keys, users, .env)"
     echo "  import FILE           Import config backup from file"
     echo "  migrate-ip NEW_IP     Update SERVER_IP and regenerate all configs"
+    echo "  regenerate-users      Regenerate all user bundles with current .env"
     echo ""
     echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, client, all"
     echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake"
@@ -2134,7 +2139,7 @@ cmd_import() {
 
     echo -e "${CYAN}Next steps:${NC}"
     echo "  1. Review .env and update SERVER_IP/DOMAIN if needed"
-    echo "  2. Run: moav migrate-ip NEW_IP (if IP changed)"
+    echo "  2. Regenerate user configs: moav regenerate-users"
     echo "  3. Run: moav start"
 }
 
@@ -2164,9 +2169,17 @@ cmd_migrate_ip() {
 
     local old_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
 
+    # If old_ip is empty (auto-detect mode), try to detect current IP for config updates
     if [[ -z "$old_ip" ]]; then
-        error "Could not read current SERVER_IP from .env"
-        exit 1
+        info "SERVER_IP not set in .env (auto-detect mode)"
+        old_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "")
+        if [[ -z "$old_ip" ]]; then
+            warn "Could not detect current IP. Will set new IP but cannot update existing configs."
+            echo "  Run user regeneration manually after migration if needed."
+            echo ""
+        else
+            info "Detected current IP: $old_ip"
+        fi
     fi
 
     if [[ "$old_ip" == "$new_ip" ]]; then
@@ -2174,7 +2187,11 @@ cmd_migrate_ip() {
         exit 0
     fi
 
-    info "Migrating from $old_ip to $new_ip"
+    if [[ -n "$old_ip" ]]; then
+        info "Migrating from $old_ip to $new_ip"
+    else
+        info "Setting IP to $new_ip"
+    fi
     echo ""
 
     # 1. Update .env
@@ -2190,10 +2207,13 @@ cmd_migrate_ip() {
         success "    WireGuard config OK (no changes needed)"
     fi
 
-    # 3. Regenerate user bundles
+    # 3. Regenerate user bundles (only if we have old_ip to replace)
     info "  Regenerating user bundles..."
     local users_dir="outputs/bundles"
-    if [[ -d "$users_dir" ]]; then
+    if [[ -z "$old_ip" ]]; then
+        warn "    Cannot update configs without old IP. Skipping bundle regeneration."
+        echo "    Run 'moav user package <username>' to regenerate individual user bundles."
+    elif [[ -d "$users_dir" ]]; then
         local regenerated=0
         for user_dir in "$users_dir"/*/; do
             if [[ -d "$user_dir" ]]; then
@@ -2263,7 +2283,10 @@ cmd_migrate_ip() {
     fi
 
     # 4. Regenerate QR codes (optional - requires qrencode)
-    if command -v qrencode &>/dev/null; then
+    # Only regenerate if we updated the configs above
+    if [[ -z "$old_ip" ]]; then
+        : # Skip QR regeneration since configs weren't updated
+    elif command -v qrencode &>/dev/null; then
         info "  Regenerating QR codes..."
         local qr_count=0
         for user_dir in "$users_dir"/*/; do
@@ -2295,7 +2318,11 @@ cmd_migrate_ip() {
     success "Migration complete!"
     echo ""
     echo -e "${CYAN}Summary:${NC}"
-    echo "  Old IP: $old_ip"
+    if [[ -n "$old_ip" ]]; then
+        echo "  Old IP: $old_ip"
+    else
+        echo "  Old IP: (was auto-detect)"
+    fi
     echo "  New IP: $new_ip"
     echo ""
     echo -e "${CYAN}Next steps:${NC}"
@@ -2304,6 +2331,105 @@ cmd_migrate_ip() {
     echo "  3. Distribute new configs to users"
     echo ""
     echo -e "${YELLOW}Note:${NC} Users will need updated configs to connect via the new IP."
+    echo "      Or they can manually update the IP in their client app."
+}
+
+cmd_regenerate_users() {
+    print_section "Regenerate User Bundles"
+
+    info "This will regenerate all user config bundles using current .env settings."
+    echo "  - Credentials (UUIDs, passwords, keys) remain unchanged"
+    echo "  - IP and domain will be updated from .env"
+    echo ""
+
+    # Check if bootstrap has been run
+    if ! check_bootstrap; then
+        error "Bootstrap has not been run. Run 'moav bootstrap' first."
+        exit 1
+    fi
+
+    # Load current settings
+    local server_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+
+    # Auto-detect IP if not set
+    if [[ -z "$server_ip" ]]; then
+        server_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "")
+        if [[ -n "$server_ip" ]]; then
+            info "SERVER_IP not set, using detected IP: $server_ip"
+        else
+            error "Could not determine server IP. Set SERVER_IP in .env"
+            exit 1
+        fi
+    fi
+
+    echo -e "  Server IP: ${CYAN}$server_ip${NC}"
+    echo -e "  Domain:    ${CYAN}${domain:-not set}${NC}"
+    echo ""
+
+    if ! confirm "Regenerate all user bundles?" "y"; then
+        info "Cancelled."
+        exit 0
+    fi
+
+    echo ""
+
+    # Find existing users from state volume
+    info "Finding existing users..."
+
+    # Run regeneration in bootstrap container
+    local user_count=0
+    local users_found=""
+
+    # List users from the state volume
+    users_found=$(docker run --rm \
+        -v moav_moav_state:/state:ro \
+        alpine sh -c "ls /state/users 2>/dev/null" 2>/dev/null || echo "")
+
+    if [[ -z "$users_found" ]]; then
+        warn "No users found in state volume."
+        echo "  Users are created during bootstrap or with 'moav user add'"
+        exit 0
+    fi
+
+    echo "  Found users: $users_found"
+    echo ""
+
+    info "Regenerating bundles..."
+
+    # Run the regeneration using bootstrap container
+    # This mounts all necessary volumes and has the generate scripts
+    for username in $users_found; do
+        echo -n "  Regenerating $username... "
+
+        if docker compose run --rm -T \
+            -e "SERVER_IP=$server_ip" \
+            -e "DOMAIN=$domain" \
+            bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
+            echo -e "${GREEN}✓${NC}"
+            ((user_count++)) || true
+        else
+            echo -e "${RED}✗${NC}"
+            warn "    Failed to regenerate $username"
+        fi
+    done
+
+    echo ""
+
+    if [[ $user_count -gt 0 ]]; then
+        success "Regenerated $user_count user bundle(s)"
+        echo ""
+        echo -e "${CYAN}Bundles location:${NC} outputs/bundles/"
+        echo ""
+        echo -e "${CYAN}Next steps:${NC}"
+        echo "  1. Distribute new configs to users"
+        echo "  2. Or create zip packages: moav user package <username>"
+        echo ""
+        echo -e "${YELLOW}Note:${NC} Users can also manually update the IP in their client app"
+        echo "      since credentials haven't changed."
+    else
+        warn "No bundles were regenerated."
+    fi
 }
 
 # =============================================================================
@@ -2422,6 +2548,9 @@ main() {
         migrate-ip|migrate_ip|migrateip)
             shift
             cmd_migrate_ip "$@"
+            ;;
+        regenerate-users|regenerate_users|regen-users)
+            cmd_regenerate_users
             ;;
         *)
             error "Unknown command: $cmd"
