@@ -1,9 +1,10 @@
 # MoaV
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)
 
-English | **[فارسی](README-fa.md)** 
+English | **[فارسی](README-fa.md)** | **[Website](https://moav.sh)**
 
 Multi-protocol censorship circumvention stack optimized for hostile network environments.
 

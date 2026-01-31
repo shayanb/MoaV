@@ -425,6 +425,59 @@ section {
     border-bottom-color: var(--accent-cyan);
 }
 
+/* Protocol CTA Card */
+.protocol-card-cta {
+    border: 1px dashed rgba(123, 92, 255, 0.4);
+    background: rgba(123, 92, 255, 0.05);
+}
+
+.protocol-card-cta::before {
+    background: var(--gradient-secondary);
+    opacity: 1;
+}
+
+.protocol-card-cta .protocol-icon {
+    color: var(--accent-purple);
+}
+
+.protocol-card-cta:hover {
+    border-color: var(--accent-purple);
+    background: rgba(123, 92, 255, 0.1);
+}
+
+.protocol-cta-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.btn-small {
+    display: inline-block;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: var(--transition);
+    background: var(--accent-purple);
+    color: white;
+}
+
+.btn-small:hover {
+    background: #8b6aff;
+    transform: translateY(-1px);
+}
+
+.btn-small.btn-outline {
+    background: transparent;
+    border: 1px solid var(--accent-purple);
+    color: var(--accent-purple);
+}
+
+.btn-small.btn-outline:hover {
+    background: rgba(123, 92, 255, 0.1);
+}
+
 /* =============================================================================
    Why Section
    ============================================================================= */

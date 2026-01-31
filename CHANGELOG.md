@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-01-31
+
+### Added
+- Website link badge in README
+- GitHub issue templates (bug reports, feature requests)
+- "Your Protocol?" CTA card in Multi-Protocol Arsenal section
+- Server Management demo on website
+
+### Changed
+- Status table column widths to accommodate longer service names
+
 ## [1.0.2] - 2025-01-31
 
 ### Added
@@ -75,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/shayanb/MoaV/compare/v1.0.2...v1.1.1
 [1.0.2]: https://github.com/shayanb/MoaV/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/shayanb/MoaV/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/shayanb/MoaV/releases/tag/v1.0.0

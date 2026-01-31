@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/shayanb/MoaV/tree/main/docs
+    about: Check the docs before opening an issue
+  - name: Website
+    url: https://moav.sh
+    about: Visit the MoaV website for demos and guides
