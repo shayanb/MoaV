@@ -494,6 +494,13 @@ section {
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: var(--border-radius);
     overflow: hidden;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.demo-box:hover {
+    border-color: rgba(0, 212, 255, 0.3);
+    transform: translateY(-2px);
 }
 
 .demo-header {
@@ -518,6 +525,66 @@ section {
     font-weight: 500;
 }
 
+/* Demo Video Container */
+.demo-video-container {
+    position: relative;
+    aspect-ratio: 16/10;
+    background: #000;
+    overflow: hidden;
+}
+
+.demo-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Hide placeholder when video loads successfully */
+.demo-video-container .demo-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-card);
+    z-index: 1;
+}
+
+.demo-video-container.video-loaded .demo-placeholder {
+    display: none;
+}
+
+/* Overlay with expand hint */
+.demo-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transition: var(--transition);
+    z-index: 2;
+}
+
+.demo-box:hover .demo-overlay {
+    opacity: 1;
+}
+
+.expand-icon {
+    color: var(--accent-cyan);
+}
+
+.expand-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
 .demo-placeholder {
     aspect-ratio: 16/10;
     display: flex;
@@ -540,6 +607,95 @@ section {
 
 .demo-placeholder p {
     font-size: 14px;
+}
+
+/* Demo Modal */
+.demo-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.demo-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.demo-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    cursor: pointer;
+}
+
+.demo-modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.demo-modal.active .demo-modal-content {
+    transform: scale(1);
+}
+
+.demo-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    z-index: 10;
+}
+
+.demo-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.demo-modal-title {
+    padding: 16px 24px;
+    padding-right: 60px;
+    font-size: 18px;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.demo-modal-video {
+    display: block;
+    max-width: 100%;
+    max-height: calc(90vh - 60px);
+    background: #000;
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+    overflow: hidden;
 }
 
 .architecture-box {

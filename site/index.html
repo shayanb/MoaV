@@ -354,93 +354,132 @@
 
             <div class="demo-grid">
                 <!-- Demo Box 1: Installation -->
-                <!-- TODO: Add GIF showing:
-                     - git clone command
-                     - cd into directory
-                     - ./moav.sh first run
-                     - Prerequisites check passing
-                     - Global install prompt
-                -->
-                <div class="demo-box">
+                <div class="demo-box" data-demo="install">
                     <div class="demo-header">
                         <span class="demo-number">01</span>
-                        <h3>Installation</h3>
+                        <h3>Quick Installation</h3>
                     </div>
-                    <div class="demo-placeholder">
-                        <div class="placeholder-icon">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
+                    <div class="demo-video-container">
+                        <!-- Video will autoplay muted and loop as thumbnail -->
+                        <video class="demo-video" autoplay muted loop playsinline data-src="demos/install.webm">
+                            <source src="demos/install.webm" type="video/webm">
+                        </video>
+                        <!-- Fallback placeholder shown if video doesn't exist -->
+                        <div class="demo-placeholder">
+                            <div class="placeholder-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                            </div>
+                            <p>Demo coming soon</p>
                         </div>
-                        <p>Installation demo coming soon</p>
+                        <div class="demo-overlay">
+                            <span class="expand-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                </svg>
+                            </span>
+                            <span class="expand-text">Click to enlarge</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Demo Box 2: Bootstrap -->
-                <!-- TODO: Add GIF showing:
-                     - Bootstrap wizard running
-                     - Key generation
-                     - TLS certificate setup
-                     - First user creation
-                     - QR code generation
-                -->
-                <div class="demo-box">
+                <div class="demo-box" data-demo="bootstrap">
                     <div class="demo-header">
                         <span class="demo-number">02</span>
                         <h3>Bootstrap & Setup</h3>
                     </div>
-                    <div class="demo-placeholder">
-                        <div class="placeholder-icon">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
+                    <div class="demo-video-container">
+                        <video class="demo-video" autoplay muted loop playsinline data-src="demos/bootstrap.webm">
+                            <source src="demos/bootstrap.webm" type="video/webm">
+                        </video>
+                        <div class="demo-placeholder">
+                            <div class="placeholder-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                            </div>
+                            <p>Demo coming soon</p>
                         </div>
-                        <p>Setup wizard demo coming soon</p>
+                        <div class="demo-overlay">
+                            <span class="expand-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                </svg>
+                            </span>
+                            <span class="expand-text">Click to enlarge</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Demo Box 3: Running Services -->
-                <!-- TODO: Add GIF showing:
-                     - moav start command
-                     - Services spinning up
-                     - moav status showing all green
-                     - Docker containers running
-                -->
-                <div class="demo-box">
+                <div class="demo-box" data-demo="services">
                     <div class="demo-header">
                         <span class="demo-number">03</span>
-                        <h3>Running Services</h3>
+                        <h3>Services & Status</h3>
                     </div>
-                    <div class="demo-placeholder">
-                        <div class="placeholder-icon">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
+                    <div class="demo-video-container">
+                        <video class="demo-video" autoplay muted loop playsinline data-src="demos/services.webm">
+                            <source src="demos/services.webm" type="video/webm">
+                        </video>
+                        <div class="demo-placeholder">
+                            <div class="placeholder-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                            </div>
+                            <p>Demo coming soon</p>
                         </div>
-                        <p>Services demo coming soon</p>
+                        <div class="demo-overlay">
+                            <span class="expand-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                </svg>
+                            </span>
+                            <span class="expand-text">Click to enlarge</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Demo Box 4: User Management -->
-                <!-- TODO: Add GIF showing:
-                     - moav user add <name>
-                     - Credentials generated
-                     - QR codes displayed
-                     - moav user list
-                     - moav user revoke
-                -->
-                <div class="demo-box">
+                <div class="demo-box" data-demo="users">
                     <div class="demo-header">
                         <span class="demo-number">04</span>
                         <h3>User Management</h3>
                     </div>
-                    <div class="demo-placeholder">
-                        <div class="placeholder-icon">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                                <polygon points="5 3 19 12 5 21 5 3"/>
-                            </svg>
+                    <div class="demo-video-container">
+                        <video class="demo-video" autoplay muted loop playsinline data-src="demos/users.webm">
+                            <source src="demos/users.webm" type="video/webm">
+                        </video>
+                        <div class="demo-placeholder">
+                            <div class="placeholder-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                            </div>
+                            <p>Demo coming soon</p>
                         </div>
-                        <p>User management demo coming soon</p>
+                        <div class="demo-overlay">
+                            <span class="expand-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                </svg>
+                            </span>
+                            <span class="expand-text">Click to enlarge</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -702,6 +741,23 @@ nano .env  # Set DOMAIN, ACME_EMAIL</pre>
             </div>
         </div>
     </footer>
+
+    <!-- Video Modal -->
+    <div id="demo-modal" class="demo-modal">
+        <div class="demo-modal-backdrop"></div>
+        <div class="demo-modal-content">
+            <button class="demo-modal-close" aria-label="Close modal">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+            <div class="demo-modal-title"></div>
+            <video class="demo-modal-video" controls autoplay loop>
+                <source src="" type="video/webm">
+            </video>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>

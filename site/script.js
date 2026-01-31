@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initCopyButtons();
     initCryptoButtons();
     initTypingAnimation();
+    initDemoVideos();
+    initDemoModal();
 });
 
 /* =============================================================================
@@ -350,3 +352,99 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+/* =============================================================================
+   Demo Videos - Check if video exists and show/hide placeholder
+   ============================================================================= */
+
+function initDemoVideos() {
+    const demoBoxes = document.querySelectorAll('.demo-box[data-demo]');
+
+    demoBoxes.forEach(box => {
+        const video = box.querySelector('.demo-video');
+        const container = box.querySelector('.demo-video-container');
+
+        if (!video || !container) return;
+
+        // Check if video can be loaded
+        video.addEventListener('loadeddata', () => {
+            container.classList.add('video-loaded');
+        });
+
+        video.addEventListener('error', () => {
+            // Video failed to load, placeholder will show
+            container.classList.remove('video-loaded');
+        });
+
+        // Try to load the video
+        video.load();
+    });
+}
+
+/* =============================================================================
+   Demo Modal - Lightbox for demo videos
+   ============================================================================= */
+
+function initDemoModal() {
+    const modal = document.getElementById('demo-modal');
+    if (!modal) return;
+
+    const backdrop = modal.querySelector('.demo-modal-backdrop');
+    const closeBtn = modal.querySelector('.demo-modal-close');
+    const modalVideo = modal.querySelector('.demo-modal-video');
+    const modalTitle = modal.querySelector('.demo-modal-title');
+
+    // Demo titles mapping
+    const demoTitles = {
+        'install': 'Quick Installation',
+        'bootstrap': 'Bootstrap & Setup',
+        'services': 'Services & Status',
+        'users': 'User Management'
+    };
+
+    // Open modal when clicking on demo box
+    document.querySelectorAll('.demo-box[data-demo]').forEach(box => {
+        box.addEventListener('click', () => {
+            const demoName = box.dataset.demo;
+            const video = box.querySelector('.demo-video');
+
+            // Only open modal if video exists and loaded
+            if (!video || !box.querySelector('.demo-video-container').classList.contains('video-loaded')) {
+                return;
+            }
+
+            const videoSrc = video.querySelector('source')?.src || video.dataset.src;
+
+            // Set modal content
+            modalTitle.textContent = demoTitles[demoName] || demoName;
+            modalVideo.querySelector('source').src = videoSrc;
+            modalVideo.load();
+            modalVideo.play();
+
+            // Open modal
+            modal.classList.add('active');
+            document.body.classList.add('modal-open');
+        });
+    });
+
+    // Close modal functions
+    function closeModal() {
+        modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
+        modalVideo.pause();
+        modalVideo.currentTime = 0;
+    }
+
+    // Close on backdrop click
+    backdrop.addEventListener('click', closeModal);
+
+    // Close on close button click
+    closeBtn.addEventListener('click', closeModal);
+
+    // Close on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+}

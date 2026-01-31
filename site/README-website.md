@@ -14,8 +14,8 @@ site/
 ├── README-website.md
 └── assets/
     ├── moav.sh.png    # Terminal screenshot
-    ├── favicon.png    # Favicon (TODO)
-    └── og-image.png   # Social share image (TODO)
+    ├── favicon.png    # Favicon 
+    └── og-image.png   # Social share image
 ```
 
 ## Deployment
@@ -40,8 +40,6 @@ cd site && python3 -m http.server 8000
 
 ## Assets TODO
 
-- [ ] `assets/favicon.png` - Site favicon
-- [ ] `assets/og-image.png` - Social share image (1200x630px recommended)
 - [ ] Demo GIFs for the "See It In Action" section:
   - Installation process
   - Bootstrap wizard
