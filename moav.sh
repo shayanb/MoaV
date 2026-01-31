@@ -17,6 +17,9 @@ DIM='\033[2m'
 NC='\033[0m'
 
 # Get script directory (resolve symlinks)
+# Save original working directory before changing to script dir
+ORIGINAL_PWD="$PWD"
+
 SOURCE="${BASH_SOURCE[0]}"
 while [[ -L "$SOURCE" ]]; do
     DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
@@ -2003,6 +2006,13 @@ cmd_import() {
     if [[ -z "$input_file" ]]; then
         error "Usage: moav import <backup-file.tar.gz>"
         exit 1
+    fi
+
+    # Resolve relative paths from original working directory
+    if [[ "$input_file" != /* ]]; then
+        if [[ -f "$ORIGINAL_PWD/$input_file" ]]; then
+            input_file="$ORIGINAL_PWD/$input_file"
+        fi
     fi
 
     if [[ ! -f "$input_file" ]]; then
