@@ -108,14 +108,23 @@ confirm() {
         prompt "$message [y/N]: "
     fi
 
-    # Read from /dev/tty to work when stdin is piped
+    # Read single character from /dev/tty to work when stdin is piped
     local response
-    if read -r response < /dev/tty 2>/dev/null; then
+    if read -n 1 -r response < /dev/tty 2>/dev/null; then
+        echo ""  # newline after single-char input
         response=${response:-$default}
     else
+        echo ""
         response="$default"
     fi
-    [[ "$response" =~ ^[Yy]$ ]]
+
+    if [[ "$default" == "y" ]]; then
+        # Default yes: return true unless explicitly 'n' or 'N'
+        [[ ! "$response" =~ ^[Nn]$ ]]
+    else
+        # Default no: return true only if 'y' or 'Y'
+        [[ "$response" =~ ^[Yy]$ ]]
+    fi
 }
 
 press_enter() {
@@ -552,12 +561,6 @@ run_bootstrap() {
     echo "  Your domain should point to this server's IP address."
     echo ""
 
-    if ! confirm "Run bootstrap now?" "y"; then
-        warn "Bootstrap skipped. You'll need to run it before starting services."
-        return 1
-    fi
-
-    echo ""
     info "Building bootstrap container..."
     docker compose --profile setup build bootstrap
 
@@ -757,7 +760,7 @@ select_profiles() {
     echo ""
 
     prompt "Enter choices (e.g., 1 2 4 or 'a' for all): "
-    read -r choice < /dev/tty 2>/dev/null || choice=""s </dev/tty
+    read -r choices < /dev/tty 2>/dev/null || choices=""
 
     if [[ "$choices" == "0" || -z "$choices" ]]; then
         return 1

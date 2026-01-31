@@ -173,7 +173,7 @@ if [[ ${#needs_install[@]} -gt 0 ]]; then
                     info "Installing git..."
                     case "$OS_TYPE" in
                         debian)
-                            sudo apt update && sudo apt install -y git
+                            sudo DEBIAN_FRONTEND=noninteractive apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y git
                             ;;
                         rhel)
                             sudo dnf install -y git || sudo yum install -y git
@@ -202,7 +202,8 @@ if [[ ${#needs_install[@]} -gt 0 ]]; then
                     case "$OS_TYPE" in
                         debian|rhel)
                             # Official Docker install script handles both Docker and Compose
-                            curl -fsSL https://get.docker.com | sh
+                            # DEBIAN_FRONTEND prevents interactive prompts during install
+                            curl -fsSL https://get.docker.com | sudo DEBIAN_FRONTEND=noninteractive sh
 
                             # Add current user to docker group
                             sudo usermod -aG docker "$(whoami)" 2>/dev/null || true
@@ -243,7 +244,7 @@ if [[ ${#needs_install[@]} -gt 0 ]]; then
                     info "Installing qrencode..."
                     case "$OS_TYPE" in
                         debian)
-                            sudo apt update && sudo apt install -y qrencode
+                            sudo DEBIAN_FRONTEND=noninteractive apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y qrencode
                             ;;
                         rhel)
                             sudo dnf install -y qrencode || sudo yum install -y qrencode
