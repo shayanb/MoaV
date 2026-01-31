@@ -585,6 +585,9 @@ run_bootstrap() {
     echo ""
 
     if select_profiles "save"; then
+        # Check DNS setup if dnstt is selected
+        check_dns_for_dnstt
+
         echo ""
         info "Building selected services..."
         docker compose $SELECTED_PROFILE_STRING build
@@ -604,6 +607,84 @@ run_bootstrap() {
         echo ""
         info "You can select and start services later with: moav start"
     fi
+}
+
+# =============================================================================
+# DNS Setup (for dnstt)
+# =============================================================================
+
+check_dns_for_dnstt() {
+    # Check if dnstt is in selected profiles
+    local has_dnstt=false
+    for p in "${SELECTED_PROFILES[@]}"; do
+        if [[ "$p" == "dnstt" || "$p" == "all" ]]; then
+            has_dnstt=true
+            break
+        fi
+    done
+
+    if ! $has_dnstt; then
+        return 0
+    fi
+
+    # Check if port 53 is in use
+    if ss -ulnp 2>/dev/null | grep -q ':53 ' || netstat -ulnp 2>/dev/null | grep -q ':53 '; then
+        echo ""
+        warn "Port 53 is in use (likely by systemd-resolved)"
+        echo "  dnstt requires port 53 to be free."
+        echo ""
+
+        if confirm "Disable systemd-resolved and configure direct DNS?" "y"; then
+            setup_dns_for_dnstt
+        else
+            warn "dnstt may not work until port 53 is freed."
+            echo "  Run 'moav setup-dns' later to fix this."
+        fi
+    fi
+}
+
+setup_dns_for_dnstt() {
+    info "Setting up DNS for dnstt..."
+
+    # Check if systemd-resolved is running
+    if systemctl is-active systemd-resolved &>/dev/null; then
+        info "  Stopping systemd-resolved..."
+        sudo systemctl stop systemd-resolved 2>/dev/null || true
+        sudo systemctl disable systemd-resolved 2>/dev/null || true
+        success "    systemd-resolved stopped and disabled"
+    fi
+
+    # Check if /etc/resolv.conf is a symlink (common with systemd-resolved)
+    if [[ -L /etc/resolv.conf ]]; then
+        info "  Removing resolv.conf symlink..."
+        sudo rm -f /etc/resolv.conf
+    fi
+
+    # Set up direct DNS resolution
+    info "  Configuring direct DNS resolution..."
+    echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
+    success "    DNS configured (1.1.1.1, 8.8.8.8)"
+
+    echo ""
+    success "DNS setup complete. Port 53 is now available for dnstt."
+}
+
+cmd_setup_dns() {
+    print_section "Setup DNS for dnstt"
+
+    info "This will:"
+    echo "  • Stop and disable systemd-resolved"
+    echo "  • Configure direct DNS resolution (1.1.1.1, 8.8.8.8)"
+    echo "  • Free port 53 for dnstt"
+    echo ""
+
+    if ! confirm "Continue?" "y"; then
+        info "Cancelled."
+        exit 0
+    fi
+
+    echo ""
+    setup_dns_for_dnstt
 }
 
 # =============================================================================
@@ -1437,6 +1518,7 @@ show_usage() {
     echo "  import FILE           Import config backup from file"
     echo "  migrate-ip NEW_IP     Update SERVER_IP and regenerate all configs"
     echo "  regenerate-users      Regenerate all user bundles with current .env"
+    echo "  setup-dns             Free port 53 for dnstt (disables systemd-resolved)"
     echo ""
     echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, client, all"
     echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake"
@@ -1511,6 +1593,7 @@ cmd_profiles() {
 
 cmd_start() {
     local profiles=""
+    local valid_profiles="proxy wireguard dnstt admin conduit snowflake client all setup"
 
     if [[ $# -eq 0 ]]; then
         # No arguments - check for DEFAULT_PROFILES in .env
@@ -1527,8 +1610,19 @@ cmd_start() {
         fi
     else
         for p in "$@"; do
+            # Validate profile name
+            if ! echo "$valid_profiles" | grep -qw "$p"; then
+                error "Invalid profile: $p"
+                echo "Valid profiles: $valid_profiles"
+                exit 1
+            fi
             profiles+="--profile $p "
         done
+    fi
+
+    if [[ -z "$profiles" ]]; then
+        error "No service selected"
+        exit 1
     fi
 
     info "Starting services..."
@@ -1945,6 +2039,28 @@ cmd_export() {
         warn "  State volume not found (moav_moav_state)"
     fi
 
+    # 2b. Export conduit data (Psiphon key)
+    if docker volume inspect moav_moav_conduit &>/dev/null; then
+        info "  Exporting conduit data..."
+        mkdir -p "$export_dir/conduit"
+        docker run --rm \
+            -v moav_moav_conduit:/data:ro \
+            -v "$export_dir/conduit:/backup" \
+            alpine sh -c "cp -a /data/. /backup/ 2>/dev/null || true"
+        success "    Conduit data exported"
+    fi
+
+    # 2c. Export TLS certificates
+    if docker volume inspect moav_moav_certs &>/dev/null; then
+        info "  Exporting TLS certificates..."
+        mkdir -p "$export_dir/certs"
+        docker run --rm \
+            -v moav_moav_certs:/certs:ro \
+            -v "$export_dir/certs:/backup" \
+            alpine sh -c "cp -a /certs/. /backup/ 2>/dev/null || true"
+        success "    TLS certificates exported"
+    fi
+
     # 3. Export configs directory
     if [[ -d "configs" ]]; then
         info "  Exporting configs..."
@@ -2089,6 +2205,28 @@ cmd_import() {
             alpine sh -c "rm -rf /state/* && cp -a /backup/. /state/"
 
         success "    State imported to Docker volume"
+    fi
+
+    # 2b. Import conduit data (Psiphon key)
+    if [[ -d "$export_dir/conduit" ]]; then
+        info "  Importing conduit data..."
+        docker volume create moav_moav_conduit &>/dev/null || true
+        docker run --rm \
+            -v moav_moav_conduit:/data \
+            -v "$export_dir/conduit:/backup:ro" \
+            alpine sh -c "rm -rf /data/* && cp -a /backup/. /data/"
+        success "    Conduit data imported"
+    fi
+
+    # 2c. Import TLS certificates
+    if [[ -d "$export_dir/certs" ]]; then
+        info "  Importing TLS certificates..."
+        docker volume create moav_moav_certs &>/dev/null || true
+        docker run --rm \
+            -v moav_moav_certs:/certs \
+            -v "$export_dir/certs:/backup:ro" \
+            alpine sh -c "rm -rf /certs/* && cp -a /backup/. /certs/"
+        success "    TLS certificates imported"
     fi
 
     # 3. Import configs
@@ -2551,6 +2689,9 @@ main() {
             ;;
         regenerate-users|regenerate_users|regen-users)
             cmd_regenerate_users
+            ;;
+        setup-dns|setup_dns|dns-setup)
+            cmd_setup_dns
             ;;
         *)
             error "Unknown command: $cmd"
