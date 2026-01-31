@@ -326,16 +326,55 @@ check_prerequisites() {
             if confirm "Copy .env.example to .env?"; then
                 cp .env.example .env
                 success "Created .env from .env.example"
-                warn "Please edit .env with your settings before continuing"
                 echo ""
-                echo -e "${YELLOW}Required settings:${NC}"
-                echo "  - DOMAIN: Your domain name"
-                echo "  - ACME_EMAIL: Email for Let's Encrypt"
-                echo "  - ADMIN_PASSWORD: Password for admin dashboard"
+                echo -e "${CYAN}Configure your MoaV installation:${NC}"
                 echo ""
-                if confirm "Open .env in editor now?" "y"; then
-                    ${EDITOR:-nano} .env
+
+                # Ask for domain
+                echo -e "${WHITE}Domain name${NC} (for Trojan, Hysteria2, dnstt, admin dashboard)"
+                echo "  Example: vpn.example.com"
+                echo "  Note: Reality protocol works without a domain"
+                printf "  Domain: "
+                read -r input_domain
+                if [[ -n "$input_domain" ]]; then
+                    sed -i "s|^DOMAIN=.*|DOMAIN=\"$input_domain\"|" .env
+                    success "Domain set to: $input_domain"
+                else
+                    warn "No domain set - you can edit .env later"
                 fi
+                echo ""
+
+                # Ask for email
+                echo -e "${WHITE}Email address${NC} (for Let's Encrypt TLS certificate)"
+                printf "  Email: "
+                read -r input_email
+                if [[ -n "$input_email" ]]; then
+                    sed -i "s|^ACME_EMAIL=.*|ACME_EMAIL=\"$input_email\"|" .env
+                    success "Email set to: $input_email"
+                else
+                    warn "No email set - you can edit .env later"
+                fi
+                echo ""
+
+                # Generate or ask for admin password
+                echo -e "${WHITE}Admin dashboard password${NC}"
+                echo "  Press Enter to generate a random password, or type your own"
+                printf "  Password: "
+                read -r input_password
+                if [[ -z "$input_password" ]]; then
+                    input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+                fi
+                sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
+                success "Admin password configured"
+                echo ""
+
+                # Show password prominently
+                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
+                echo ""
+                echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
+                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                echo ""
             else
                 missing=1
             fi
