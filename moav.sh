@@ -142,30 +142,88 @@ run_command() {
 # Prerequisite Checks
 # =============================================================================
 
+detect_os() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macos"
+    elif [[ -f /etc/debian_version ]]; then
+        echo "debian"
+    elif [[ -f /etc/redhat-release ]] || [[ -f /etc/fedora-release ]]; then
+        echo "rhel"
+    elif [[ -f /etc/alpine-release ]]; then
+        echo "alpine"
+    else
+        echo "unknown"
+    fi
+}
+
+install_docker() {
+    local os_type=$(detect_os)
+
+    case "$os_type" in
+        debian|rhel)
+            info "Installing Docker using official install script..."
+            echo ""
+            curl -fsSL https://get.docker.com | sh
+
+            # Add current user to docker group
+            sudo usermod -aG docker "$(whoami)" 2>/dev/null || true
+
+            # Start and enable Docker
+            sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
+            sudo systemctl enable docker 2>/dev/null || true
+
+            success "Docker installed"
+            echo ""
+            warn "You may need to log out and back in for docker group permissions."
+            warn "Or run: newgrp docker"
+            return 0
+            ;;
+        macos)
+            error "Please install Docker Desktop from: https://www.docker.com/products/docker-desktop"
+            echo "After installing, run this script again."
+            return 1
+            ;;
+        alpine)
+            info "Installing Docker via apk..."
+            sudo apk add docker docker-compose
+            sudo rc-update add docker boot
+            sudo service docker start
+            success "Docker installed"
+            return 0
+            ;;
+        *)
+            error "Cannot auto-install Docker on this OS."
+            echo "Please install from: https://docs.docker.com/engine/install/"
+            return 1
+            ;;
+    esac
+}
+
 install_qrencode() {
-    local os_type=""
+    local os_type=$(detect_os)
     local pkg_manager=""
 
-    # Detect OS and package manager
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        os_type="macos"
-        if command -v brew &>/dev/null; then
-            pkg_manager="brew"
-        fi
-    elif [[ -f /etc/debian_version ]]; then
-        os_type="debian"
-        pkg_manager="apt"
-    elif [[ -f /etc/redhat-release ]] || [[ -f /etc/fedora-release ]]; then
-        os_type="rhel"
-        if command -v dnf &>/dev/null; then
-            pkg_manager="dnf"
-        elif command -v yum &>/dev/null; then
-            pkg_manager="yum"
-        fi
-    elif [[ -f /etc/alpine-release ]]; then
-        os_type="alpine"
-        pkg_manager="apk"
-    fi
+    # Detect package manager
+    case "$os_type" in
+        macos)
+            if command -v brew &>/dev/null; then
+                pkg_manager="brew"
+            fi
+            ;;
+        debian)
+            pkg_manager="apt"
+            ;;
+        rhel)
+            if command -v dnf &>/dev/null; then
+                pkg_manager="dnf"
+            elif command -v yum &>/dev/null; then
+                pkg_manager="yum"
+            fi
+            ;;
+        alpine)
+            pkg_manager="apk"
+            ;;
+    esac
 
     case "$pkg_manager" in
         brew)
@@ -215,18 +273,31 @@ check_prerequisites() {
     if command -v docker &> /dev/null; then
         success "Docker is installed"
     else
-        error "Docker is not installed"
-        echo "  Install from: https://docs.docker.com/get-docker/"
-        missing=1
+        warn "Docker is not installed"
+        if confirm "Install Docker now?"; then
+            if install_docker; then
+                success "Docker installed"
+            else
+                missing=1
+            fi
+        else
+            error "Docker is required"
+            echo "  Install from: https://docs.docker.com/get-docker/"
+            missing=1
+        fi
     fi
 
-    # Check Docker Compose
-    if docker compose version &> /dev/null; then
-        success "Docker Compose is installed"
-    else
-        error "Docker Compose is not installed"
-        echo "  Install from: https://docs.docker.com/compose/install/"
-        missing=1
+    # Check Docker Compose (only if Docker is installed)
+    if command -v docker &> /dev/null; then
+        if docker compose version &> /dev/null; then
+            success "Docker Compose is installed"
+        else
+            warn "Docker Compose is not installed"
+            echo "  Docker Compose plugin is usually included with Docker."
+            echo "  If you installed Docker manually, install Compose from:"
+            echo "  https://docs.docker.com/compose/install/"
+            missing=1
+        fi
     fi
 
     # Check .env file
@@ -258,12 +329,30 @@ check_prerequisites() {
     fi
 
     # Check if Docker is running
-    if docker info &> /dev/null; then
-        success "Docker daemon is running"
-    else
-        error "Docker daemon is not running"
-        echo "  Start Docker and try again"
-        missing=1
+    if command -v docker &> /dev/null; then
+        if docker info &> /dev/null; then
+            success "Docker daemon is running"
+        else
+            warn "Docker daemon is not running"
+            if confirm "Start Docker now?"; then
+                info "Starting Docker..."
+                sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
+                sleep 2
+                if docker info &> /dev/null; then
+                    success "Docker daemon started"
+                else
+                    error "Failed to start Docker daemon"
+                    echo "  You may need to:"
+                    echo "    1. Log out and back in (for group permissions)"
+                    echo "    2. Run: sudo systemctl start docker"
+                    missing=1
+                fi
+            else
+                error "Docker daemon is required"
+                echo "  Start with: sudo systemctl start docker"
+                missing=1
+            fi
+        fi
     fi
 
     # Check optional dependencies
