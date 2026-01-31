@@ -160,60 +160,6 @@ EOF
 fi
 
 # -----------------------------------------------------------------------------
-# Generate README
-# -----------------------------------------------------------------------------
-SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "YOUR_SERVER_IP")}"
-
-cat > "$OUTPUT_DIR/README.md" <<EOF
-# MoaV Connection Guide for ${USERNAME}
-
-This bundle contains your personal credentials for connecting to the MoaV server.
-**Do not share these files with anyone.**
-
-Server: \`${SERVER_IP}\` / \`${DOMAIN:-YOUR_DOMAIN}\`
-
----
-
-## Quick Start (Recommended Order)
-
-Try these methods in order. If one doesn't work, try the next.
-
-### 1. Reality (VLESS) - Primary, Most Reliable
-- Config: \`reality.txt\`
-- QR Code: \`reality-qr.png\`
-
-### 2. Hysteria2 - Fast Alternative (UDP)
-- Config: \`hysteria2.txt\`
-- QR Code: \`hysteria2-qr.png\`
-
-### 3. Trojan - Backup (Port 8443)
-- Config: \`trojan.txt\`
-- QR Code: \`trojan-qr.png\`
-
-### 4. WireGuard - Full VPN Mode
-- Config: \`wireguard.conf\`
-- QR Code: \`wireguard-qr.png\`
-
-### 5. DNS Tunnel - Last Resort
-- Instructions: \`dnstt-instructions.txt\`
-
----
-
-## Recommended Apps
-
-| Platform | App |
-|----------|-----|
-| iOS | Shadowrocket, Streisand, Hiddify |
-| Android | v2rayNG, NekoBox, Hiddify |
-| macOS | V2rayU, NekoRay |
-| Windows | v2rayN, NekoRay |
-
----
-
-Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-EOF
-
-# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 echo ""

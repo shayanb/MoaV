@@ -301,7 +301,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
 
     # Config values (need special handling for special characters)
     escape_for_awk() {
-        echo "$1" | sed 's/&/\\\\\\&/g'
+        echo "$1" | sed 's/&/\\&/g'
     }
 
     if [[ -n "$CONFIG_REALITY" ]]; then
@@ -327,7 +327,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
 
     # WireGuard config is multiline
     if [[ -n "$CONFIG_WIREGUARD" ]]; then
-        ESCAPED=$(echo "$CONFIG_WIREGUARD" | sed 's/&/\\\\\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+        ESCAPED=$(echo "$CONFIG_WIREGUARD" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
         awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
     else
         sed -i "s|{{CONFIG_WIREGUARD}}|No WireGuard config available|g" "$OUTPUT_HTML"
@@ -335,7 +335,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
 
     # WireGuard-wstunnel config is multiline
     if [[ -n "$CONFIG_WIREGUARD_WSTUNNEL" ]]; then
-        ESCAPED=$(echo "$CONFIG_WIREGUARD_WSTUNNEL" | sed 's/&/\\\\\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+        ESCAPED=$(echo "$CONFIG_WIREGUARD_WSTUNNEL" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
         awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD_WSTUNNEL\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
     else
         sed -i "s|{{CONFIG_WIREGUARD_WSTUNNEL}}|No WireGuard-wstunnel config available|g" "$OUTPUT_HTML"

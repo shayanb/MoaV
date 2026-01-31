@@ -397,8 +397,8 @@ function initDemoModal() {
     // Demo titles mapping
     const demoTitles = {
         'install': 'Quick Installation',
-        'bootstrap': 'Bootstrap & Setup',
-        'services': 'Services & Status',
+        'setup': 'Setup & Bootstrap',
+        'services': 'Service Management',
         'users': 'User Management'
     };
 
