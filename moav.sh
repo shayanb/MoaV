@@ -896,12 +896,15 @@ select_profiles() {
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
-    prompt "Enter choices (e.g., 1 2 4 or 'a' for all): "
+    prompt "Enter choices (e.g., 1 2 4 or 1,2,4 or 'a' for all): "
     read -r choices < /dev/tty 2>/dev/null || choices=""
 
     if [[ "$choices" == "0" || -z "$choices" ]]; then
         return 1
     fi
+
+    # Support both space and comma separators
+    choices="${choices//,/ }"
 
     if [[ "$choices" == "a" || "$choices" == "A" ]]; then
         SELECTED_PROFILES=("all")
@@ -1230,33 +1233,44 @@ show_log_help() {
 # =============================================================================
 
 user_management() {
-    print_section "User Management"
+    while true; do
+        print_section "User Management"
 
-    echo "User management options:"
-    echo ""
-    echo -e "  ${WHITE}1)${NC} List all users"
-    echo -e "  ${WHITE}2)${NC} Add new user"
-    echo -e "  ${WHITE}3)${NC} Revoke user"
-    echo -e "  ${WHITE}0)${NC} Back to main menu"
-    echo ""
+        echo "User management options:"
+        echo ""
+        echo -e "  ${WHITE}1)${NC} List all users"
+        echo -e "  ${WHITE}2)${NC} Add new user"
+        echo -e "  ${WHITE}3)${NC} Revoke user"
+        echo -e "  ${WHITE}4)${NC} Package user (create zip)"
+        echo -e "  ${WHITE}0)${NC} Back to main menu"
+        echo ""
 
-    prompt "Choice: "
-    read -r choice < /dev/tty 2>/dev/null || choice=""
+        prompt "Choice: "
+        read -r choice < /dev/tty 2>/dev/null || choice=""
 
-    case $choice in
-        1)
-            list_users
-            ;;
-        2)
-            add_user
-            ;;
-        3)
-            revoke_user
-            ;;
-        0|*)
-            return 0
-            ;;
-    esac
+        case $choice in
+            1)
+                list_users
+                ;;
+            2)
+                add_user
+                press_enter
+                ;;
+            3)
+                revoke_user
+                press_enter
+                ;;
+            4)
+                package_user
+                press_enter
+                ;;
+            0|q|Q)
+                return 0
+                ;;
+            *)
+                ;;
+        esac
+    done
 }
 
 migration_menu() {
@@ -1406,6 +1420,49 @@ revoke_user() {
         fi
     else
         error "User revoke script not found: ./scripts/user-revoke.sh"
+        return 1
+    fi
+}
+
+package_user() {
+    print_section "Package User"
+
+    echo "Current users:"
+    list_users
+    echo ""
+
+    prompt "Enter username to package: "
+    read -r username < /dev/tty 2>/dev/null || username=""
+
+    if [[ -z "$username" ]]; then
+        warn "Username cannot be empty"
+        return 1
+    fi
+
+    local bundle_dir="outputs/bundles/$username"
+    if [[ ! -d "$bundle_dir" ]]; then
+        error "User bundle not found: $bundle_dir"
+        return 1
+    fi
+
+    local zip_file="outputs/${username}-configs.zip"
+
+    # Check for zip command
+    if ! command -v zip &>/dev/null; then
+        error "zip command not found. Install with: apt install zip"
+        return 1
+    fi
+
+    info "Creating package for $username..."
+
+    # Create zip from bundle directory
+    (cd outputs/bundles && zip -r "../${username}-configs.zip" "$username" -x "*.DS_Store")
+
+    if [[ -f "$zip_file" ]]; then
+        local size=$(du -h "$zip_file" | cut -f1)
+        success "Package created: $zip_file ($size)"
+    else
+        error "Failed to create package"
         return 1
     fi
 }

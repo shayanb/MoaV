@@ -267,6 +267,7 @@ services:
       - ./configs:/configs
       - ./outputs:/outputs
       - ./scripts:/scripts:ro
+      - ./docs:/docs:ro
       - moav_state:/state
       - moav_certs:/certs
     environment:

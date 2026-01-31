@@ -176,7 +176,14 @@ TROJAN_USERS_JSON="["
 HYSTERIA2_USERS_JSON="["
 
 for i in $(seq -w 1 "$INITIAL_USERS"); do
-    USER_ID="user$i"
+    # Use "demouser" for single user, otherwise "user01", "user02", etc.
+    if [[ "$INITIAL_USERS" == "1" ]]; then
+        USER_ID="demouser"
+        export IS_DEMO_USER="true"
+    else
+        USER_ID="user$i"
+        export IS_DEMO_USER="false"
+    fi
     USER_UUID=$(sing-box generate uuid)
     USER_PASSWORD=$(pwgen -s 24 1)
 
