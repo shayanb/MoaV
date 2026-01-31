@@ -399,7 +399,8 @@ function initDemoModal() {
         'install': 'Quick Installation',
         'setup': 'Setup & Bootstrap',
         'services': 'Service Management',
-        'users': 'User Management'
+        'users': 'User Management',
+        'server': 'Server Management'
     };
 
     // Open modal when clicking on demo box

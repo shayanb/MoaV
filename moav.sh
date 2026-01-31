@@ -2153,13 +2153,25 @@ cmd_export() {
             success "    dnstt keys exported"
         fi
 
-        # Count users
-        local user_count=$(ls -1 "$export_dir/state/users" 2>/dev/null | wc -l | tr -d ' ')
-        if [[ "$user_count" -gt 0 ]]; then
-            success "    $user_count user(s) exported"
-        fi
     else
         warn "  State volume not found (moav_moav_state)"
+    fi
+
+    # Count actual users from bundles directory
+    local user_count=0
+    if [[ -d "outputs/bundles" ]]; then
+        for user_dir in outputs/bundles/*/; do
+            if [[ -d "$user_dir" ]]; then
+                local username=$(basename "$user_dir")
+                # Skip zip file extractions and temp directories
+                [[ "$username" == *-configs ]] && continue
+                [[ "$username" == *-moav-configs ]] && continue
+                ((user_count++)) || true
+            fi
+        done
+    fi
+    if [[ "$user_count" -gt 0 ]]; then
+        success "    $user_count user(s) found"
     fi
 
     # 2b. Export conduit data (Psiphon key)
@@ -2687,20 +2699,29 @@ cmd_regenerate_users() {
 
     echo ""
 
-    # Find existing users from state volume
+    # Find existing users from bundles directory
     info "Finding existing users..."
 
-    # Run regeneration in bootstrap container
     local user_count=0
     local users_found=""
 
-    # List users from the state volume
-    users_found=$(docker run --rm \
-        -v moav_moav_state:/state:ro \
-        alpine sh -c "ls /state/users 2>/dev/null" 2>/dev/null || echo "")
+    # List users from the outputs/bundles directory (the authoritative source)
+    if [[ -d "outputs/bundles" ]]; then
+        for user_dir in outputs/bundles/*/; do
+            if [[ -d "$user_dir" ]]; then
+                local username=$(basename "$user_dir")
+                # Skip zip file extractions and temp directories
+                [[ "$username" == *-configs ]] && continue
+                [[ "$username" == *-moav-configs ]] && continue
+                [[ "$username" == "." ]] && continue
+                users_found="$users_found $username"
+            fi
+        done
+        users_found=$(echo "$users_found" | xargs)  # Trim whitespace
+    fi
 
     if [[ -z "$users_found" ]]; then
-        warn "No users found in state volume."
+        warn "No users found in outputs/bundles/."
         echo "  Users are created during bootstrap or with 'moav user add'"
         exit 0
     fi

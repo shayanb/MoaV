@@ -1,0 +1,251 @@
+# The configurations that used for the recording, feel free to edit them
+config:
+
+  # Specify a command to be executed
+  # like `/bin/bash -l`, `ls`, or any other commands
+  # the default is bash for Linux
+  # or powershell.exe for Windows
+  command: bash -l
+  
+  # Specify the current working directory path
+  # the default is the current working directory path
+  cwd: /root
+  
+  # Export additional ENV variables
+  env:
+    recording: true
+  
+  # Explicitly set the number of columns
+  # or use `auto` to take the current
+  # number of columns of your shell
+  cols: 167
+  
+  # Explicitly set the number of rows
+  # or use `auto` to take the current
+  # number of rows of your shell
+  rows: 37
+  
+  # Amount of times to repeat GIF
+  # If value is -1, play once
+  # If value is 0, loop indefinitely
+  # If value is a positive number, loop n times
+  repeat: 0
+  
+  # Quality
+  # 1 - 100
+  quality: 100
+  
+  # Delay between frames in ms
+  # If the value is `auto` use the actual recording delays
+  frameDelay: auto
+  
+  # Maximum delay between frames in ms
+  # Ignored if the `frameDelay` isn't set to `auto`
+  # Set to `auto` to prevent limiting the max idle time
+  maxIdleTime: 2000
+  
+  # The surrounding frame box
+  # The `type` can be null, window, floating, or solid`
+  # To hide the title use the value null
+  # Don't forget to add a backgroundColor style with a null as type
+  frameBox:
+    type: floating
+    title: MoaV Server Management
+    style:
+      border: 0px black solid
+      # boxShadow: none
+      # margin: 0px
+  
+  # Add a watermark image to the rendered gif
+  # You need to specify an absolute path for
+  # the image on your machine or a URL, and you can also
+  # add your own CSS styles
+  watermark:
+    imagePath: null
+    style:
+      position: absolute
+      right: 15px
+      bottom: 15px
+      width: 100px
+      opacity: 0.9
+  
+  # Cursor style can be one of
+  # `block`, `underline`, or `bar`
+  cursorStyle: block
+  
+  # Font family
+  # You can use any font that is installed on your machine
+  # in CSS-like syntax
+  fontFamily: "Monaco, Lucida Console, Ubuntu Mono, Monospace"
+  
+  # The size of the font
+  fontSize: 16
+  
+  # The height of lines
+  lineHeight: 1
+  
+  # The spacing between letters
+  letterSpacing: 0
+  
+  # Theme
+  theme:
+    background: "transparent"
+    foreground: "#afafaf"
+    cursor: "#c7c7c7"
+    black: "#232628"
+    red: "#fc4384"
+    green: "#b3e33b"
+    yellow: "#ffa727"
+    blue: "#75dff2"
+    magenta: "#ae89fe"
+    cyan: "#708387"
+    white: "#d5d5d0"
+    brightBlack: "#626566"
+    brightRed: "#ff7fac"
+    brightGreen: "#c8ed71"
+    brightYellow: "#ebdf86"
+    brightBlue: "#75dff2"
+    brightMagenta: "#ae89fe"
+    brightCyan: "#b1c6ca"
+    brightWhite: "#f9f9f4"
+  
+# Records, feel free to edit them
+records:
+  - delay: 972
+    content: "\e[?2004h\e]0;root@ubuntu-vps: ~\aroot@ubuntu-vps:~# "
+  - delay: 1455
+    content: m
+  - delay: 126
+    content: o
+  - delay: 80
+    content: a
+  - delay: 165
+    content: v
+  - delay: 121
+    content: ' '
+  - delay: 163
+    content: u
+  - delay: 143
+    content: p
+  - delay: 101
+    content: d
+  - delay: 63
+    content: a
+  - delay: 183
+    content: t
+  - delay: 61
+    content: e
+  - delay: 529
+    content: "\r\n\e[?2004l\r"
+  - delay: 27
+    content: "\r\n\e[0;34mℹ\e[0m Updating MoaV...\r\n\r\n  Install directory: \e[0;36m/opt/moav\e[0m\r\n\r\n"
+  - delay: 5
+    content: "  Current commit: \e[1;33mbcb0ae7\e[0m\r\n\e[0;34mℹ\e[0m Running git pull...\r\n"
+  - delay: 844
+    content: "remote: Enumerating objects: 19, done.\e[K\r\nremote: Counting objects:   5% (1/19)\e[K\rremote: Counting objects:  10% (2/19)\e[K\rremote: Counting objects:  15% (3/19)\e[K\rremote: Counting objects:  21% (4/19)\e[K\rremote: Counting objects:  26% (5/19)\e[K\rremote: Counting objects:  31% (6/19)\e[K\rremote: Counting objects:  36% (7/19)\e[K\rremote: Counting objects:  42% (8/19)\e[K\rremote: Counting objects:  47% (9/19)\e[K\rremote: Counting objects:  52% (10/19)\e[K\rremote: Counting objects:  57% (11/19)\e[K\rremote: Counting objects:  63% (12/19)\e[K\rremote: Counting objects:  68% (13/19)\e[K\rremote: Counting objects:  73% (14/19)\e[K\rremote: Counting objects:  78% (15/19)\e[K\rremote: Counting objects:  84% (16/19)\e[K\rremote: Counting objects:  89% (17/19)\e[K\rremote: Counting objects:  94% (18/19)\e[K\rremote: Counting objects: 100% (19/19)\e[K\rremote: Counting objects: 100% (19/19), done.\e[K\r\nremote: Compressing objects:  10% (1/10)\e[K\rremote: Compressing objects:  20% (2/10)\e[K\rremote: Compressing objects:  30% (3/10)\e[K\rremote: Compressing objects:  40% (4/10)\e[K\rremote: Compressing objects:  50% (5/10)\e[K\rremote: Compressing objects:  60% (6/10)\e[K\rremote: Compressing objects:  70% (7/10)\e[K\rremote: Compressing objects:  80% (8/10)\e[K\rremote: Compressing objects:  90% (9/10)\e[K\rremote: Compressing objects: 100% (10/10)\e[K\rremote: Compressing objects: 100% (10/10), done.\e[K\r\n"
+  - delay: 5
+    content: "Unpacking objects:   6% (1/15)\rUnpacking objects:  13% (2/15)\rUnpacking objects:  20% (3/15)\rUnpacking objects:  26% (4/15)\rUnpacking objects:  33% (5/15)\rUnpacking objects:  40% (6/15)\r"
+  - delay: 128
+    content: "Unpacking objects:  46% (7/15)\rUnpacking objects:  53% (8/15)\r"
+  - delay: 48
+    content: "Unpacking objects:  60% (9/15)\rUnpacking objects:  66% (10/15)\rUnpacking objects:  73% (11/15)\r"
+  - delay: 64
+    content: "Unpacking objects:  80% (12/15)\r"
+  - delay: 7
+    content: "Unpacking objects:  86% (13/15)\r"
+  - delay: 10
+    content: "remote: Total 15 (delta 5), reused 15 (delta 5), pack-reused 0 (from 0)\e[K\r\n"
+  - delay: 35
+    content: "Unpacking objects:  93% (14/15)\rUnpacking objects: 100% (15/15)\rUnpacking objects: 100% (15/15), 3.15 MiB | 10.34 MiB/s, done.\r\n"
+  - delay: 7
+    content: "From https://github.com/shayanb/MoaV\r\n   bcb0ae7..6a15440  main       -> origin/main\r\n"
+  - delay: 9
+    content: "Updating bcb0ae7..6a15440\r\n"
+  - delay: 18
+    content: "Fast-forward\r\n"
+  - delay: 9
+    content: " moav.sh                  |   4 \e[32m+\e[m\e[31m-\e[m\r\n site/demos/install.webm  | Bin \e[31m0\e[m -> \e[32m895364\e[m bytes\r\n site/demos/install.yml   | 573 \e[32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\e[m\r\n site/demos/services.webm | Bin \e[31m0\e[m -> \e[32m780545\e[m bytes\r\n site/demos/services.yml  | 243 \e[32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++\e[m\r\n site/demos/setup.webm    | Bin \e[31m0\e[m -> \e[32m1039987\e[m bytes\r\n site/demos/setup.yml     | 397 \e[32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\e[m\r\n site/demos/users.webm    | Bin \e[31m0\e[m -> \e[32m648128\e[m bytes\r\n site/demos/users.yml     | 313 \e[32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\e[m\r\n 9 files changed, 1528 insertions(+), 2 deletions(-)\r\n create mode 100644 site/demos/install.webm\r\n create mode 100644 site/demos/install.yml\r\n create mode 100644 site/demos/services.webm\r\n create mode 100644 site/demos/services.yml\r\n create mode 100644 site/demos/setup.webm\r\n create mode 100644 site/demos/setup.yml\r\n create mode 100644 site/demos/users.webm\r\n create mode 100644 site/demos/users.yml\r\n\r\n"
+  - delay: 6
+    content: "\e[0;32m✓\e[0m Updated: bcb0ae7 → 6a15440\r\n\r\n\e[1;33mNote:\e[0m If containers have changed, run: \e[1;37mmoav build\e[0m\r\n\e[?2004h\e]0;root@ubuntu-vps: ~\aroot@ubuntu-vps:~# "
+  - delay: 2687
+    content: m
+  - delay: 134
+    content: o
+  - delay: 70
+    content: a
+  - delay: 957
+    content: v
+  - delay: 3420
+    content: ' '
+  - delay: 233
+    content: '-'
+  - delay: 180
+    content: '-'
+  - delay: 264
+    content: h
+  - delay: 160
+    content: e
+  - delay: 179
+    content: l
+  - delay: 70
+    content: p
+  - delay: 310
+    content: "\r\n\e[?2004l\r"
+  - delay: 30
+    content: "MoaV v1.0.1 - Multi-protocol Circumvention Stack\r\n\r\nUsage: moav [command] [options]\r\n\r\nCommands:\r\n  (no command)          Interactive menu\r\n  help, --help, -h      Show this help message\r\n  version, --version    Show version information\r\n  install               Install 'moav' command globally\r\n  uninstall             Remove global 'moav' command\r\n  update                Update MoaV (git pull)\r\n  check                 Run prerequisites check\r\n  bootstrap             Run first-time setup (includes service selection)\r\n  profiles              Change default services for 'moav start'\r\n  start [PROFILE...]    Start services (uses DEFAULT_PROFILES from .env)\r\n  stop [SERVICE...]     Stop services (default: all)\r\n  restart [SERVICE...]  Restart services (default: all)\r\n  status                Show service status\r\n  logs [SERVICE...] [-n] View logs (default: all, follow mode, -n for no-follow)\r\n  users                 List all users\r\n  user list             List all users\r\n  user add NAME [-p]    Add a new user (--package creates zip with HTML guide)\r\n  user revoke NAME      Revoke a user\r\n  user package NAME     Create distributable zip for existing user\r\n  build [SERVICE...]    Build services (default: all)\r\n  test USERNAME         Test connectivity for a user\r\n  client                Client mode (test/connect)\r\n\r\nMigration:\r\n  export [FILE]         Export full config backup (keys, users, .env)\r\n  import FILE           Import config backup from file\r\n  migrate-ip NEW_IP     Update SERVER_IP and regenerate all configs\r\n  regenerate-users      Regenerate all user bundles with current .env\r\n  setup-dns             Free port 53 for dnstt (disables systemd-resolved)\r\n\r\nProfiles: proxy, wireguard, dnstt, admin, conduit, snowflake, client, all\r\nServices: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake\r\nAliases:  conduit→psiphon-conduit, singbox→sing-box, wg→wireguard, dns→dnstt\r\n\r\nExamples:\r\n  moav                           # Interactive menu\r\n  moav install                   # Install globally (run from anywhere)\r\n  moav update                    # Update MoaV (git pull)\r\n  moav start                     # Start all services\r\n  moav start proxy admin         # Start proxy and admin profiles\r\n  moav stop conduit              # Stop specific service\r\n  moav logs sing-box             # Follow sing-box logs (Ctrl+C to exit)\r\n  moav logs -n                   # Show last 100 lines without following\r\n  moav build conduit             # Build specific service\r\n  moav profiles                  # Change default services\r\n  moav user add john             # Add user 'john'\r\n  moav user add john --package   # Add user and create zip bundle\r\n  moav test joe                  # Test connectivity for user joe\r\n  moav client connect joe        # Connect as user joe (exposes proxy)\r\n\r\nMigration:\r\n  moav export                    # Backup to moav-backup-TIMESTAMP.tar.gz\r\n  moav import backup.tar.gz     # Restore from backup\r\n  moav migrate-ip 1.2.3.4       # Update configs to new server IP\r\n\e[?2004h\e]0;root@ubuntu-vps: ~\aroot@ubuntu-vps:~# "
+  - delay: 891
+    content: m
+  - delay: 108
+    content: o
+  - delay: 42
+    content: a
+  - delay: 226
+    content: v
+  - delay: 135
+    content: ' '
+  - delay: 1366
+    content: e
+  - delay: 176
+    content: x
+  - delay: 139
+    content: p
+  - delay: 108
+    content: o
+  - delay: 89
+    content: r
+  - delay: 181
+    content: t
+  - delay: 1639
+    content: "\r\n\e[?2004l\r"
+  - delay: 28
+    content: "\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n\e[1;37m  Export MoaV Configuration\e[0m\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n\r\n"
+  - delay: 5
+    content: "\e[0;34mℹ\e[0m Creating backup: moav-backup-20260131_214531.tar.gz\r\n\r\n"
+  - delay: 5
+    content: "\e[0;34mℹ\e[0m   Exporting .env...\r\n\e[0;34mℹ\e[0m   Exporting state (keys, users)...\r\n"
+  - delay: 2824
+    content: "\e[0;32m✓\e[0m     Reality keys exported\r\n\e[0;32m✓\e[0m     WireGuard keys exported\r\n\e[0;32m✓\e[0m     dnstt keys exported\r\n"
+  - delay: 8
+    content: "\e[0;32m✓\e[0m     5 user(s) exported\r\n"
+  - delay: 24
+    content: "\e[0;34mℹ\e[0m   Exporting conduit data...\r\n"
+  - delay: 2110
+    content: "\e[0;32m✓\e[0m     Conduit data exported\r\n"
+  - delay: 39
+    content: "\e[0;34mℹ\e[0m   Exporting TLS certificates...\r\n"
+  - delay: 3210
+    content: "\e[0;32m✓\e[0m     TLS certificates exported\r\n\e[0;34mℹ\e[0m   Exporting configs...\r\n"
+  - delay: 13
+    content: "\e[0;34mℹ\e[0m   Exporting user bundles...\r\n"
+  - delay: 145
+    content: "\e[0;34mℹ\e[0m   Exporting dnstt outputs...\r\n"
+  - delay: 8
+    content: "\e[0;34mℹ\e[0m   Creating manifest...\r\n"
+  - delay: 39
+    content: "\e[0;34mℹ\e[0m   Creating archive...\r\n"
+  - delay: 181
+    content: "\r\n\e[0;32m✓\e[0m Backup created: moav-backup-20260131_214531.tar.gz (1.1M)\r\n\r\n\e[0;36mContents:\e[0m\r\n"
+  - delay: 10
+    content: "moav-export/\r\nmoav-export/manifest.json\r\nmoav-export/state/\r\nmoav-export/state/.bootstrapped\r\nmoav-export/state/sing-box-cache.db\r\nmoav-export/state/users/\r\nmoav-export/state/users/user1/\r\nmoav-export/state/users/user1/wireguard.env\r\nmoav-export/state/users/user1/credentials.env\r\nmoav-export/state/users/user2/\r\nmoav-export/state/users/user2/wireguard.env\r\nmoav-export/state/users/user2/credentials.env\r\nmoav-export/state/users/user3/\r\nmoav-export/state/users/user3/wireguard.env\r\nmoav-export/state/users/user3/credentials.env\r\nmoav-export/state/users/user4/\r\nmoav-export/state/users/user4/wireguard.env\r\nmoav-export/state/users/user4/credentials.env\r\nmoav-export/state/users/user5/\r\nmoav-export/state/users/user5/wireguard.env\r\nmoav-export/state/users/user5/credentials.env\r\nmoav-export/state/keys/\r\nmoav-export/state/keys/clash-api.env\r\nmoav-export/state/keys/reality.env\r\nmoav-export/state/keys/wg-server.pub\r\nmoav-export/state/keys/dnstt-server.pub.hex\r\nmoav-export/state/keys/wg-server.key\r\nmoav-export/state/keys/dnstt-server.key.hex\r\nmoav-export/.env\r\nmoav-export/conduit/\r\n"
+  - delay: 3193
+    content: "\e[?2004h\e]0;root@ubuntu-vps: ~\aroot@ubuntu-vps:~# "
