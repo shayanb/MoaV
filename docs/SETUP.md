@@ -8,6 +8,7 @@ Complete setup guide for deploying MoaV on a fresh VPS.
   - Debian 12, Ubuntu 22.04, or Ubuntu 24.04
   - At least 1 vCPU, 1GB RAM, 10GB disk
   - Public IPv4 address
+  - Public IPv6 address (optional, see [IPv6 Support](#ipv6-support))
   - Ports 443/tcp, 443/udp, and 53/udp open
 
 - A domain name (see [DNS.md](DNS.md) for configuration)
@@ -155,6 +156,10 @@ ADMIN_PASSWORD=your-secure-password-here
 
 # Your server's public IP (optional, auto-detected)
 SERVER_IP=YOUR_SERVER_IP
+
+# Your server's public IPv6 (optional, auto-detected if available)
+# Set to "disabled" to explicitly disable IPv6 support
+SERVER_IPV6=
 ```
 
 **Optional settings:**
@@ -573,6 +578,69 @@ This provides guided options for:
 - Export configuration backup
 - Import configuration backup
 - Migrate to new IP address
+
+## IPv6 Support
+
+MoaV supports IPv6 for all protocols. When enabled, user bundles will include both IPv4 and IPv6 connection options.
+
+### How It Works
+
+- **Auto-detection**: If `SERVER_IPV6` is empty in `.env`, MoaV automatically detects your server's public IPv6
+- **Dual-stack configs**: Users receive both IPv4 and IPv6 links/configs in their bundles
+- **Optional**: IPv6 is completely optional - everything works with IPv4 only
+
+### Enabling IPv6
+
+1. **Enable on your VPS**: Most providers (DigitalOcean, Hetzner, etc.) require enabling IPv6 in the control panel
+2. **Verify connectivity**:
+   ```bash
+   curl -6 -s https://api6.ipify.org
+   # Should return your public IPv6 address (e.g., 2400:xxxx:xxxx::xxxx)
+   ```
+3. **Regenerate user bundles** (if you enabled IPv6 after initial setup):
+   ```bash
+   moav regenerate-users
+   ```
+
+### Disabling IPv6
+
+To explicitly disable IPv6 even if your server has it:
+
+```bash
+# In .env
+SERVER_IPV6=disabled
+```
+
+### Is IPv6 Important for Censorship Bypass?
+
+**Short answer: No, it's a "nice to have" but not critical.**
+
+**When IPv6 might help:**
+- Some censors focus blocking efforts on IPv4 and have weaker IPv6 filtering
+- Provides a fallback if IPv4 gets specifically targeted
+
+**Why it's usually not critical:**
+- Most heavily censored countries (Iran, China, Russia) have low IPv6 adoption among end users
+- Many mobile networks and home ISPs in these regions don't support IPv6
+- Sophisticated censors that can block Reality/Trojan will likely block both IP versions
+- The **protocol matters more** than the IP version - Reality's camouflage defeats detection, not IPv4 vs IPv6
+
+**Recommendation:** Don't worry about IPv6 unless you have users specifically reporting that IPv4 is blocked but IPv6 works (which is rare).
+
+### Checking IPv6 Status
+
+```bash
+# Check if server has public IPv6
+ip -6 addr show scope global
+
+# Test IPv6 connectivity
+curl -6 -s https://api6.ipify.org
+
+# Check what's configured in MoaV
+grep SERVER_IPV6 /opt/moav/.env
+```
+
+**Note:** Link-local addresses (`fe80::`) don't count - you need a global IPv6 address for internet connectivity.
 
 ## Troubleshooting
 
