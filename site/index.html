@@ -208,32 +208,9 @@
                             <path d="M12 8v4M12 16h.01"/>
                         </svg>
                     </div>
-                    <h3>Reality (VLESS)</h3>
-                    <p>Impersonates legitimate TLS traffic. Virtually undetectable.</p>
-                    <span class="protocol-port">443/tcp</span>
-                </div>
-
-                <div class="protocol-card">
-                    <div class="protocol-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                        </svg>
-                    </div>
-                    <h3>Hysteria2</h3>
-                    <p>QUIC-based protocol. Fast, especially on lossy networks.</p>
-                    <span class="protocol-port">443/udp</span>
-                </div>
-
-                <div class="protocol-card">
-                    <div class="protocol-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </div>
-                    <h3>Trojan</h3>
-                    <p>Looks like normal HTTPS. Battle-tested reliability.</p>
-                    <span class="protocol-port">8443/tcp</span>
+                    <h3>Stealth Proxies</h3>
+                    <p>Reality (VLESS), Hysteria2, Trojan. Look like normal HTTPS traffic. V2Ray-compatible, powered by sing-box.</p>
+                    <span class="protocol-port">443/tcp · 443/udp · 8443/tcp</span>
                 </div>
 
                 <div class="protocol-card">
@@ -243,9 +220,9 @@
                             <path d="M20 12a8 8 0 0 0-8-8"/>
                         </svg>
                     </div>
-                    <h3>WireGuard</h3>
-                    <p>Full VPN mode. Direct or wrapped in WebSocket.</p>
-                    <span class="protocol-port">51820/udp</span>
+                    <h3>WireGuard VPN</h3>
+                    <p>Full VPN mode. Direct UDP or tunneled over WebSocket (wstunnel) when UDP is blocked.</p>
+                    <span class="protocol-port">51820/udp · 8080/tcp</span>
                 </div>
 
                 <div class="protocol-card">
@@ -256,9 +233,22 @@
                             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                         </svg>
                     </div>
-                    <h3>DNS Tunnel</h3>
-                    <p>Last resort. Works when only DNS is allowed.</p>
+                    <h3>DNS Tunnel (dnstt)</h3>
+                    <p>Last resort when everything else is blocked. Tunnels traffic over DNS queries. Slow but hard to block.</p>
                     <span class="protocol-port">53/udp</span>
+                </div>
+
+                <div class="protocol-card">
+                    <div class="protocol-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                    <h3>Psiphon Conduit</h3>
+                    <p>Donate bandwidth to help others bypass censorship. Support the global anti-censorship network.</p>
+                    <span class="protocol-port">Psiphon Network</span>
                 </div>
 
                 <div class="protocol-card">
@@ -268,11 +258,13 @@
                             <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/>
                         </svg>
                     </div>
-                    <h3>Tor/Snowflake</h3>
-                    <p>Standalone fallback via Tor network.</p>
-                    <span class="protocol-port">Various</span>
+                    <h3>Tor Snowflake</h3>
+                    <p>Donate bandwidth to the Tor network. Help Tor users bypass censorship worldwide.</p>
+                    <span class="protocol-port">Tor Network</span>
                 </div>
             </div>
+
+            <p class="protocols-link">See <a href="#clients">client apps</a> to connect with these protocols.</p>
         </div>
     </section>
 
@@ -542,7 +534,7 @@ nano .env  # Set DOMAIN, ACME_EMAIL</pre>
                     </div>
                 </div>
 
-                <div class="step">
+                <div class="step" id="clients">
                     <div class="step-number">3</div>
                     <div class="step-content">
                         <h3>Share Configs & Connect</h3>

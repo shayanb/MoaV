@@ -407,6 +407,24 @@ section {
     border-radius: 4px;
 }
 
+.protocols-link {
+    text-align: center;
+    margin-top: 32px;
+    color: var(--text-secondary);
+    font-size: 15px;
+}
+
+.protocols-link a {
+    color: var(--accent-cyan);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: var(--transition);
+}
+
+.protocols-link a:hover {
+    border-bottom-color: var(--accent-cyan);
+}
+
 /* =============================================================================
    Why Section
    ============================================================================= */
