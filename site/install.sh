@@ -430,152 +430,40 @@ echo -e "${GREEN}═════════════════════
 echo ""
 
 # =============================================================================
-# Next Steps
+# Global Installation
 # =============================================================================
 
-echo -e "${CYAN}What would you like to do next?${NC}"
-echo ""
-echo "  1) Run interactive setup (recommended for first-time)"
-echo "  2) Just show me the next steps"
-echo "  0) Exit"
+echo -e "${CYAN}Install 'moav' command globally?${NC}"
+echo "  This lets you run 'moav' from anywhere instead of './moav.sh'"
 echo ""
 
-printf "Choice [1]: "
-if ! read -n 1 -r choice < /dev/tty 2>/dev/null; then
-    choice="1"  # Default to running setup
+if confirm "Install globally?" "y"; then
+    echo ""
+    ./moav.sh install
+    echo ""
+    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${WHITE}  Installation complete!${NC}"
+    echo ""
+    echo -e "  Location:  ${CYAN}$INSTALL_DIR${NC}"
+    echo -e "  Command:   ${WHITE}moav${NC}"
+    echo ""
+    echo -e "  ${CYAN}Next step:${NC} Run ${WHITE}moav${NC} to configure and bootstrap your VPN"
+    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+else
+    echo ""
+    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${WHITE}  Installation complete!${NC}"
+    echo ""
+    echo -e "  Location:  ${CYAN}$INSTALL_DIR${NC}"
+    echo ""
+    echo -e "  ${CYAN}Next step:${NC} Run the following to configure and bootstrap your VPN:"
+    echo -e "             ${WHITE}cd $INSTALL_DIR && ./moav.sh${NC}"
+    echo ""
+    echo -e "  ${YELLOW}Tip:${NC} You can install globally later with: ${WHITE}./moav.sh install${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
 fi
+
 echo ""
-
-case "${choice:-1}" in
-    1)
-        echo ""
-        info "Starting MoaV setup..."
-        echo ""
-
-        # Check if .env exists and configure it
-        if [[ ! -f ".env" ]]; then
-            if [[ -f ".env.example" ]]; then
-                cp .env.example .env
-                success "Created .env from .env.example"
-            fi
-        fi
-
-        # Configure required settings interactively
-        if [[ -f ".env" ]]; then
-            echo ""
-            echo -e "${CYAN}Configure your MoaV installation:${NC}"
-            echo ""
-
-            # Get current values
-            current_domain=$(grep -E "^DOMAIN=" .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
-            current_email=$(grep -E "^ACME_EMAIL=" .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
-
-            # Ask for domain
-            echo -e "${WHITE}Domain name${NC} (for Trojan, Hysteria2, dnstt, admin dashboard)"
-            echo "  Example: vpn.example.com"
-            echo "  Note: Reality protocol works without a domain (impersonates microsoft.com)"
-            if [[ -n "$current_domain" && "$current_domain" != "your-domain.com" ]]; then
-                printf "  Domain [%s]: " "$current_domain"
-            else
-                printf "  Domain: "
-            fi
-            read -r input_domain < /dev/tty 2>/dev/null || input_domain=""
-            if [[ -n "$input_domain" ]]; then
-                sed -i "s|^DOMAIN=.*|DOMAIN=\"$input_domain\"|" .env
-                success "Domain set to: $input_domain"
-            elif [[ -n "$current_domain" && "$current_domain" != "your-domain.com" ]]; then
-                success "Using existing domain: $current_domain"
-            else
-                warn "No domain set - you'll need to edit .env manually"
-            fi
-            echo ""
-
-            # Ask for email
-            echo -e "${WHITE}Email address${NC} (for Let's Encrypt TLS certificate)"
-            if [[ -n "$current_email" && "$current_email" != "your-email@example.com" ]]; then
-                printf "  Email [%s]: " "$current_email"
-            else
-                printf "  Email: "
-            fi
-            read -r input_email < /dev/tty 2>/dev/null || input_email=""
-            if [[ -n "$input_email" ]]; then
-                sed -i "s|^ACME_EMAIL=.*|ACME_EMAIL=\"$input_email\"|" .env
-                success "Email set to: $input_email"
-            elif [[ -n "$current_email" && "$current_email" != "your-email@example.com" ]]; then
-                success "Using existing email: $current_email"
-            else
-                warn "No email set - you'll need to edit .env manually"
-            fi
-            echo ""
-
-            # Generate or ask for admin password
-            current_password=$(grep -E "^ADMIN_PASSWORD=" .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
-            echo -e "${WHITE}Admin dashboard password${NC}"
-            echo "  Press Enter to generate a random password, or type your own"
-            printf "  Password: "
-            read -r input_password < /dev/tty 2>/dev/null || input_password=""
-
-            if [[ -z "$input_password" ]]; then
-                # Generate random password
-                input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
-                echo ""
-            fi
-            sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
-            success "Admin password configured"
-            echo ""
-
-            # Show summary with password prominently displayed
-            echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-            echo -e "${WHITE}  Configuration saved to .env${NC}"
-            echo ""
-            echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
-            echo ""
-            echo -e "  ${YELLOW}⚠ IMPORTANT: Write down this password or find it in .env${NC}"
-            echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-            echo ""
-            printf "Press Enter to continue..."
-            read -r < /dev/tty 2>/dev/null || true
-            echo ""
-        fi
-
-        # Ask about global installation
-        echo ""
-        echo -e "${CYAN}Install 'moav' command globally?${NC}"
-        echo "  This lets you run 'moav' from anywhere instead of './moav.sh'"
-        echo ""
-        if confirm "Install globally?" "y"; then
-            ./moav.sh install
-        fi
-
-        echo ""
-        echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-        echo -e "${WHITE}  MoaV is ready!${NC}"
-        echo ""
-        echo -e "  Installed at: ${CYAN}$INSTALL_DIR${NC}"
-        echo -e "  Run:          ${WHITE}moav${NC} (if installed globally)"
-        echo -e "                ${WHITE}cd $INSTALL_DIR && ./moav.sh${NC}"
-        echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-        echo ""
-
-        exec ./moav.sh
-        ;;
-    2|*)
-        echo ""
-        echo -e "${CYAN}Next steps:${NC}"
-        echo ""
-        echo "  1. Configure your environment:"
-        echo -e "     ${WHITE}cd $INSTALL_DIR${NC}"
-        echo -e "     ${WHITE}cp .env.example .env${NC}"
-        echo -e "     ${WHITE}nano .env${NC}  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD"
-        echo ""
-        echo "  2. Run the interactive setup:"
-        echo -e "     ${WHITE}./moav.sh${NC}"
-        echo ""
-        echo "  3. (Optional) Install 'moav' command globally:"
-        echo -e "     ${WHITE}./moav.sh install${NC}"
-        echo ""
-        echo -e "${CYAN}Documentation:${NC} https://github.com/shayanb/MoaV"
-        echo -e "${CYAN}Website:${NC} https://moav.sh"
-        echo ""
-        ;;
-esac
+echo -e "${CYAN}Documentation:${NC} https://github.com/shayanb/MoaV"
+echo -e "${CYAN}Website:${NC} https://moav.sh"
+echo ""
