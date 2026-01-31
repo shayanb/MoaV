@@ -292,6 +292,9 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
         sed -i "s|{{DEMO_NOTICE_FA}}||g" "$OUTPUT_HTML"
     fi
 
+    # Clean up any .bak files
+    rm -f "$OUTPUT_HTML.bak"
+
     # QR codes (base64)
     sed -i "s|{{QR_REALITY}}|$QR_REALITY_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_HYSTERIA2}}|$QR_HYSTERIA2_B64|g" "$OUTPUT_HTML"

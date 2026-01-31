@@ -249,6 +249,10 @@ sed -i.bak "s|{{GENERATED_DATE}}|$GENERATED_DATE|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{DNSTT_DOMAIN}}|$DNSTT_DOMAIN|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{DNSTT_PUBKEY}}|$DNSTT_PUBKEY|g" "$OUTPUT_HTML"
 
+# Remove demo notice placeholders (not a demo user from package)
+sed -i.bak "s|{{DEMO_NOTICE_EN}}||g" "$OUTPUT_HTML"
+sed -i.bak "s|{{DEMO_NOTICE_FA}}||g" "$OUTPUT_HTML"
+
 # QR codes (base64)
 sed -i.bak "s|{{QR_REALITY}}|$QR_REALITY_B64|g" "$OUTPUT_HTML"
 sed -i.bak "s|{{QR_HYSTERIA2}}|$QR_HYSTERIA2_B64|g" "$OUTPUT_HTML"
