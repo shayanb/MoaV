@@ -2,6 +2,31 @@
 
 Complete setup guide for deploying MoaV on a fresh VPS.
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Quick Install (Recommended)](#quick-install-recommended)
+- [Manual Installation](#manual-installation)
+- [Using moav.sh](#using-moavsh)
+- [Step 3: Configure Environment](#step-3-configure-environment)
+- [Step 4: Configure DNS](#step-4-configure-dns)
+- [Step 5: Run Bootstrap](#step-5-run-bootstrap)
+- [Step 6: Prepare for DNS Tunnel (Optional)](#step-6-prepare-for-dns-tunnel-optional)
+- [Step 7: Start Services](#step-7-start-services)
+- [Step 8: Verify](#step-8-verify)
+- [Step 9: Distribute User Bundles](#step-9-distribute-user-bundles)
+- [Managing Users](#managing-users)
+- [Bandwidth Donation Services](#bandwidth-donation-services)
+- [Conduit Stats (Traffic by Country)](#conduit-stats-traffic-by-country)
+- [Re-bootstrapping](#re-bootstrapping)
+- [Updating](#updating)
+- [Server Migration](#server-migration)
+- [IPv6 Support](#ipv6-support)
+- [Troubleshooting](#troubleshooting)
+- [Security Notes](#security-notes)
+
+---
+
 ## Prerequisites
 
 - A VPS with:

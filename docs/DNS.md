@@ -2,6 +2,22 @@
 
 This guide explains how to configure DNS records for MoaV.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Minimum Setup (Without DNS Tunnel)](#minimum-setup-without-dns-tunnel)
+- [Full Setup (With DNS Tunnel)](#full-setup-with-dns-tunnel)
+- [Provider-Specific Instructions](#provider-specific-instructions)
+  - [Cloudflare](#cloudflare)
+  - [Namecheap](#namecheap)
+  - [Google Domains / Squarespace](#google-domains--squarespace)
+  - [Hetzner DNS](#hetzner-dns)
+- [Verification](#verification)
+- [Common Issues](#common-issues)
+- [Domain Acquisition Tips](#domain-acquisition-tips)
+
+---
+
 ## Overview
 
 MoaV uses these DNS records:

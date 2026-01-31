@@ -2,6 +2,25 @@
 
 Common issues and their solutions.
 
+## Table of Contents
+
+- [Server-Side Issues](#server-side-issues)
+  - [Services won't start](#services-wont-start)
+  - [Certificate issues](#certificate-issues)
+  - [Admin dashboard not accessible](#admin-dashboard-not-accessible)
+  - [sing-box crashes](#sing-box-crashes)
+  - [WireGuard connected but no traffic](#wireguard-connected-but-no-traffic)
+  - [DNS tunnel not working](#dns-tunnel-not-working)
+- [MoaV Test/Client Issues](#moav-testclient-issues)
+- [Client-Side Issues](#client-side-issues)
+- [Network-Specific Issues](#network-specific-issues)
+- [Highly Censored Environments](#highly-censored-environments-specific-issues)
+- [Reset and Re-bootstrap](#reset-and-re-bootstrap)
+- [Common Commands](#common-commands)
+- [Getting Help](#getting-help)
+
+---
+
 ## Server-Side Issues
 
 ### Services won't start

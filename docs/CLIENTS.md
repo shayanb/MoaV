@@ -2,6 +2,28 @@
 
 This guide explains how to connect to MoaV from various devices.
 
+## Table of Contents
+
+- [Quick Reference](#quick-reference)
+  - [Protocol Support by Port](#protocol-support-by-port)
+  - [Client Apps](#client-apps)
+- [Protocol Priority](#protocol-priority)
+- [MoaV Client Container (Linux/Docker)](#moav-client-container-linuxdocker)
+- [iOS Setup](#ios-setup)
+- [Android Setup](#android-setup)
+- [macOS Setup](#macos-setup)
+- [Windows Setup](#windows-setup)
+- [WireGuard Setup](#wireguard-setup)
+- [Hysteria2 Setup](#hysteria2-setup)
+- [DNS Tunnel Setup (Last Resort)](#dns-tunnel-setup-last-resort)
+- [Psiphon Setup](#psiphon-setup)
+- [About Psiphon Conduit (Server Feature)](#about-psiphon-conduit-server-feature)
+- [About Tor Snowflake (Server Feature)](#about-tor-snowflake-server-feature)
+- [Troubleshooting](#troubleshooting)
+- [Tips for Highly Censored Environments](#tips-for-highly-censored-environments)
+
+---
+
 ## Quick Reference
 
 ### Protocol Support by Port

@@ -2,6 +2,27 @@
 
 Security recommendations for running and using MoaV safely.
 
+## Table of Contents
+
+- [For Server Operators](#for-server-operators)
+  - [Server Security](#server-security)
+  - [Domain Security](#domain-security)
+  - [Credential Management](#credential-management)
+  - [Monitoring](#monitoring)
+  - [If Server is Blocked](#if-server-is-blocked)
+- [For Users](#for-users)
+  - [Device Security](#device-security)
+  - [Connection Security](#connection-security)
+  - [App Security](#app-security)
+  - [Behavior Security](#behavior-security)
+  - [If You Suspect Compromise](#if-you-suspect-compromise)
+- [Distribution Security](#distribution-security)
+- [Legal Considerations](#legal-considerations)
+- [Emergency Procedures](#emergency-procedures)
+- [Checklist](#checklist)
+
+---
+
 ## For Server Operators
 
 ### Server Security
