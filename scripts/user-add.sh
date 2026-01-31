@@ -160,6 +160,114 @@ EOF
 fi
 
 # -----------------------------------------------------------------------------
+# Generate README.html from template
+# -----------------------------------------------------------------------------
+TEMPLATE_FILE="docs/client-guide-template.html"
+OUTPUT_HTML="$OUTPUT_DIR/README.html"
+
+if [[ -f "$TEMPLATE_FILE" ]]; then
+    log_info "Generating HTML guide..."
+
+    # Get server info
+    SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "YOUR_SERVER_IP")}"
+    GENERATED_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    # Read config values
+    CONFIG_REALITY=$(cat "$OUTPUT_DIR/reality.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_HYSTERIA2=$(cat "$OUTPUT_DIR/hysteria2.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_TROJAN=$(cat "$OUTPUT_DIR/trojan.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_WIREGUARD=$(cat "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || echo "")
+    CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
+
+    # Get dnstt info
+    DNSTT_DOMAIN="${DNSTT_SUBDOMAIN:-t}.${DOMAIN}"
+    DNSTT_PUBKEY=$(cat "outputs/dnstt/server.pub" 2>/dev/null || echo "")
+
+    # Convert QR images to base64
+    qr_to_base64() {
+        local file="$1"
+        if [[ -f "$file" ]]; then
+            base64 < "$file" 2>/dev/null | tr -d '\n' || echo ""
+        else
+            echo ""
+        fi
+    }
+
+    QR_REALITY_B64=$(qr_to_base64 "$OUTPUT_DIR/reality-qr.png")
+    QR_HYSTERIA2_B64=$(qr_to_base64 "$OUTPUT_DIR/hysteria2-qr.png")
+    QR_TROJAN_B64=$(qr_to_base64 "$OUTPUT_DIR/trojan-qr.png")
+    QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
+    QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
+
+    # Copy template
+    cp "$TEMPLATE_FILE" "$OUTPUT_HTML"
+
+    # Simple replacements
+    sed -i "s|{{USERNAME}}|$USERNAME|g" "$OUTPUT_HTML"
+    sed -i "s|{{SERVER_IP}}|$SERVER_IP|g" "$OUTPUT_HTML"
+    sed -i "s|{{DOMAIN}}|${DOMAIN:-YOUR_DOMAIN}|g" "$OUTPUT_HTML"
+    sed -i "s|{{GENERATED_DATE}}|$GENERATED_DATE|g" "$OUTPUT_HTML"
+    sed -i "s|{{DNSTT_DOMAIN}}|$DNSTT_DOMAIN|g" "$OUTPUT_HTML"
+    sed -i "s|{{DNSTT_PUBKEY}}|$DNSTT_PUBKEY|g" "$OUTPUT_HTML"
+
+    # Remove demo notice placeholders (not a demo user)
+    sed -i "s|{{DEMO_NOTICE_EN}}||g" "$OUTPUT_HTML"
+    sed -i "s|{{DEMO_NOTICE_FA}}||g" "$OUTPUT_HTML"
+
+    # QR codes (base64)
+    sed -i "s|{{QR_REALITY}}|$QR_REALITY_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_HYSTERIA2}}|$QR_HYSTERIA2_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_TROJAN}}|$QR_TROJAN_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
+
+    # Config values (escape & for awk)
+    escape_for_awk() {
+        echo "$1" | sed 's/&/\\&/g'
+    }
+
+    if [[ -n "$CONFIG_REALITY" ]]; then
+        ESCAPED=$(escape_for_awk "$CONFIG_REALITY")
+        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_REALITY\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    else
+        sed -i "s|{{CONFIG_REALITY}}|No Reality config available|g" "$OUTPUT_HTML"
+    fi
+
+    if [[ -n "$CONFIG_HYSTERIA2" ]]; then
+        ESCAPED=$(escape_for_awk "$CONFIG_HYSTERIA2")
+        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_HYSTERIA2\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    else
+        sed -i "s|{{CONFIG_HYSTERIA2}}|No Hysteria2 config available|g" "$OUTPUT_HTML"
+    fi
+
+    if [[ -n "$CONFIG_TROJAN" ]]; then
+        ESCAPED=$(escape_for_awk "$CONFIG_TROJAN")
+        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_TROJAN\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    else
+        sed -i "s|{{CONFIG_TROJAN}}|No Trojan config available|g" "$OUTPUT_HTML"
+    fi
+
+    # WireGuard configs are multiline
+    if [[ -n "$CONFIG_WIREGUARD" ]]; then
+        ESCAPED=$(echo "$CONFIG_WIREGUARD" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+        awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    else
+        sed -i "s|{{CONFIG_WIREGUARD}}|No WireGuard config available|g" "$OUTPUT_HTML"
+    fi
+
+    if [[ -n "$CONFIG_WIREGUARD_WSTUNNEL" ]]; then
+        ESCAPED=$(echo "$CONFIG_WIREGUARD_WSTUNNEL" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+        awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD_WSTUNNEL\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    else
+        sed -i "s|{{CONFIG_WIREGUARD_WSTUNNEL}}|No WireGuard-wstunnel config available|g" "$OUTPUT_HTML"
+    fi
+
+    log_info "✓ README.html generated"
+else
+    log_warn "Template not found: $TEMPLATE_FILE - skipping HTML guide"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 echo ""

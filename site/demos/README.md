@@ -7,7 +7,7 @@ This directory contains terminalizer YAML files and rendered WebM videos for the
 | File | Description |
 |------|-------------|
 | `install.yml` | Quick installation demo |
-| `bootstrap.yml` | Bootstrap & setup demo |
+| `setup.yml` | Bootstrap & setup demo (domain config, docker build, services) |
 | `services.yml` | Running services and status demo |
 | `users.yml` | User management and packaging demo |
 
@@ -99,8 +99,12 @@ nano install.yml
 
 ## File Size Guidelines
 
-- Target: Under 2MB per WebM for fast loading
-- If too large:
-  - Reduce terminal dimensions
+- Target: Under 1.5MB per WebM for fast loading
+- The render script automatically:
+  - Scales video to 1280px width
+  - Reduces frame rate to 30fps
+  - Uses CRF 35 for good compression
+- If still too large:
+  - Reduce terminal dimensions in YAML
   - Shorten the demo
-  - Increase CRF value in render.sh (higher = more compression)
+  - Trim repetitive frames (e.g., docker build logs)

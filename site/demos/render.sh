@@ -89,10 +89,12 @@ render_file() {
     success "  GIF created ($gif_size)"
 
     # Step 2: Convert GIF to WebM
+    # Scale to 1280 width max, 30fps for reasonable file size while keeping text readable
     info "  Converting to WebM (this may take a moment)..."
     if ! ffmpeg -y -i "$gif_file" \
+        -vf "scale=1280:-2,fps=30" \
         -c:v libvpx-vp9 \
-        -b:v 0 -crf 32 \
+        -b:v 0 -crf 35 \
         -pix_fmt yuv420p \
         -an \
         -loglevel warning \
