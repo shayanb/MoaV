@@ -375,27 +375,85 @@ case "${choice:-1}" in
         info "Starting MoaV setup..."
         echo ""
 
-        # Check if .env exists
+        # Check if .env exists and configure it
         if [[ ! -f ".env" ]]; then
             if [[ -f ".env.example" ]]; then
                 cp .env.example .env
                 success "Created .env from .env.example"
-                echo ""
-                warn "Please edit .env with your settings before continuing."
-                echo ""
-                echo -e "${CYAN}Required settings:${NC}"
-                echo "  DOMAIN=your-domain.com"
-                echo "  ACME_EMAIL=your-email@example.com"
-                echo "  ADMIN_PASSWORD=your-secure-password"
-                echo ""
-
-                if confirm "Open .env in editor now?" "y"; then
-                    ${EDITOR:-nano} .env
-                fi
             fi
         fi
 
-        echo ""
+        # Configure required settings interactively
+        if [[ -f ".env" ]]; then
+            echo ""
+            echo -e "${CYAN}Configure your MoaV installation:${NC}"
+            echo ""
+
+            # Get current values
+            current_domain=$(grep -E "^DOMAIN=" .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
+            current_email=$(grep -E "^ACME_EMAIL=" .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
+
+            # Ask for domain
+            echo -e "${WHITE}Domain name${NC} (for Trojan, Hysteria2, dnstt, admin dashboard)"
+            echo "  Example: vpn.example.com"
+            echo "  Note: Reality protocol works without a domain (impersonates microsoft.com)"
+            if [[ -n "$current_domain" && "$current_domain" != "your-domain.com" ]]; then
+                printf "  Domain [%s]: " "$current_domain"
+            else
+                printf "  Domain: "
+            fi
+            read -r input_domain < /dev/tty 2>/dev/null || input_domain=""
+            if [[ -n "$input_domain" ]]; then
+                sed -i "s|^DOMAIN=.*|DOMAIN=\"$input_domain\"|" .env
+                success "Domain set to: $input_domain"
+            elif [[ -n "$current_domain" && "$current_domain" != "your-domain.com" ]]; then
+                success "Using existing domain: $current_domain"
+            else
+                warn "No domain set - you'll need to edit .env manually"
+            fi
+            echo ""
+
+            # Ask for email
+            echo -e "${WHITE}Email address${NC} (for Let's Encrypt TLS certificate)"
+            if [[ -n "$current_email" && "$current_email" != "your-email@example.com" ]]; then
+                printf "  Email [%s]: " "$current_email"
+            else
+                printf "  Email: "
+            fi
+            read -r input_email < /dev/tty 2>/dev/null || input_email=""
+            if [[ -n "$input_email" ]]; then
+                sed -i "s|^ACME_EMAIL=.*|ACME_EMAIL=\"$input_email\"|" .env
+                success "Email set to: $input_email"
+            elif [[ -n "$current_email" && "$current_email" != "your-email@example.com" ]]; then
+                success "Using existing email: $current_email"
+            else
+                warn "No email set - you'll need to edit .env manually"
+            fi
+            echo ""
+
+            # Generate or ask for admin password
+            current_password=$(grep -E "^ADMIN_PASSWORD=" .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
+            echo -e "${WHITE}Admin dashboard password${NC}"
+            echo "  Press Enter to generate a random password, or type your own"
+            printf "  Password: "
+            read -r input_password < /dev/tty 2>/dev/null || input_password=""
+
+            if [[ -z "$input_password" ]]; then
+                # Generate random password
+                input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+                echo ""
+                echo -e "  ${GREEN}Generated password:${NC} ${WHITE}$input_password${NC}"
+                echo -e "  ${YELLOW}Save this password! You'll need it for the admin dashboard.${NC}"
+            fi
+            sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
+            success "Admin password configured"
+            echo ""
+
+            # Show summary
+            echo -e "${CYAN}Configuration saved to .env${NC}"
+            echo ""
+        fi
+
         exec ./moav.sh
         ;;
     2|*)
