@@ -34,12 +34,28 @@ confirm() {
     local prompt="${1:-Continue?}"
     local default="${2:-n}"
 
-    if [[ "$default" == "y" ]]; then
-        read -p "$prompt [Y/n] " -n 1 -r
-    else
-        read -p "$prompt [y/N] " -n 1 -r
+    # Check if we have a TTY for interactive input
+    if [[ ! -t 0 ]] && [[ ! -e /dev/tty ]]; then
+        # Non-interactive: use default
+        [[ "$default" == "y" ]]
+        return
     fi
-    echo ""
+
+    # Read from /dev/tty to work with curl | bash
+    if [[ "$default" == "y" ]]; then
+        printf "%s [Y/n] " "$prompt"
+    else
+        printf "%s [y/N] " "$prompt"
+    fi
+
+    if read -n 1 -r REPLY < /dev/tty 2>/dev/null; then
+        echo ""
+    else
+        # Fallback if /dev/tty fails - use default
+        echo ""
+        [[ "$default" == "y" ]]
+        return
+    fi
 
     if [[ "$default" == "y" ]]; then
         [[ ! $REPLY =~ ^[Nn]$ ]]
@@ -347,7 +363,10 @@ echo "  2) Just show me the next steps"
 echo "  0) Exit"
 echo ""
 
-read -p "Choice [1]: " -n 1 -r choice
+printf "Choice [1]: "
+if ! read -n 1 -r choice < /dev/tty 2>/dev/null; then
+    choice="1"  # Default to running setup
+fi
 echo ""
 
 case "${choice:-1}" in

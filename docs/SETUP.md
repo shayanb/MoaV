@@ -39,7 +39,45 @@ For users in middle east, these providers/regions typically work well:
 
 **Avoid:** US regions (high latency, more scrutinized)
 
-## Step 1: Initial Server Setup
+---
+
+## Quick Install (Recommended)
+
+The fastest way to get started is the one-liner installer. SSH into your VPS and run:
+
+```bash
+curl -fsSL moav.sh/install.sh | bash
+```
+
+This will:
+1. **Check prerequisites** - Detect your OS and check for Docker, git, qrencode
+2. **Install missing packages** - Prompt to install Docker, git, qrencode if missing
+3. **Clone MoaV** - Download to `/opt/moav`
+4. **Launch setup** - Offer to run the interactive setup wizard
+
+The installer supports:
+- **Debian/Ubuntu** - Uses `apt` and official Docker install script
+- **RHEL/Fedora/CentOS** - Uses `dnf`/`yum` and official Docker install script
+- **Alpine** - Uses `apk`
+
+After installation, configure your environment and run the setup:
+
+```bash
+cd /opt/moav
+cp .env.example .env
+nano .env                    # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
+./moav.sh                    # Run interactive setup
+```
+
+**Skip to [Step 3: Configure Environment](#step-3-configure-environment)** if you used the quick installer.
+
+---
+
+## Manual Installation
+
+If you prefer manual installation or the quick installer doesn't work for your environment, follow these steps.
+
+### Step 1: Initial Server Setup
 
 SSH into your fresh VPS:
 
@@ -53,18 +91,21 @@ Update the system and install Docker:
 # Update system
 apt update && apt upgrade -y
 
-# Install Docker
+# Install Docker (includes Docker Compose plugin)
 curl -fsSL https://get.docker.com | sh
 
-# Install Docker Compose plugin
-apt install -y docker-compose-plugin
+# Add your user to docker group (optional, avoids needing sudo)
+usermod -aG docker $USER
+
+# Install qrencode for QR code generation
+apt install -y qrencode
 
 # Verify installation
 docker --version
 docker compose version
 ```
 
-## Step 2: Clone MoaV
+### Step 2: Clone MoaV
 
 ```bash
 # Clone the repository
@@ -80,16 +121,17 @@ cd /opt/moav
 # Upload or download your MoaV files here
 ```
 
-## Easy Mode: Using moav.sh
+## Using moav.sh
 
-MoaV includes a management script that can be used interactively or with commands:
+After installation (quick or manual), MoaV provides an interactive management script:
 
 ```bash
+cd /opt/moav
 ./moav.sh              # Interactive menu (guides you through setup)
 ./moav.sh install      # Install 'moav' command globally
 ```
 
-After installing, you can run `moav` from anywhere:
+Once installed globally, run `moav` from anywhere:
 
 ```bash
 moav                            # Interactive menu
