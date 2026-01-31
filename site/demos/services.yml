@@ -1,0 +1,243 @@
+# The configurations that used for the recording, feel free to edit them
+config:
+
+  # Specify a command to be executed
+  # like `/bin/bash -l`, `ls`, or any other commands
+  # the default is bash for Linux
+  # or powershell.exe for Windows
+  command: bash -l
+  
+  # Specify the current working directory path
+  # the default is the current working directory path
+  cwd: /root
+  
+  # Export additional ENV variables
+  env:
+    recording: true
+  
+  # Explicitly set the number of columns
+  # or use `auto` to take the current
+  # number of columns of your shell
+  cols: 167
+  
+  # Explicitly set the number of rows
+  # or use `auto` to take the current
+  # number of rows of your shell
+  rows: 37
+  
+  # Amount of times to repeat GIF
+  # If value is -1, play once
+  # If value is 0, loop indefinitely
+  # If value is a positive number, loop n times
+  repeat: 0
+  
+  # Quality
+  # 1 - 100
+  quality: 100
+  
+  # Delay between frames in ms
+  # If the value is `auto` use the actual recording delays
+  frameDelay: auto
+  
+  # Maximum delay between frames in ms
+  # Ignored if the `frameDelay` isn't set to `auto`
+  # Set to `auto` to prevent limiting the max idle time
+  maxIdleTime: 2000
+  
+  # The surrounding frame box
+  # The `type` can be null, window, floating, or solid`
+  # To hide the title use the value null
+  # Don't forget to add a backgroundColor style with a null as type
+  frameBox:
+    type: floating
+    title: MoaV Service Management
+    style:
+      border: 0px black solid
+      # boxShadow: none
+      # margin: 0px
+  
+  # Add a watermark image to the rendered gif
+  # You need to specify an absolute path for
+  # the image on your machine or a URL, and you can also
+  # add your own CSS styles
+  watermark:
+    imagePath: null
+    style:
+      position: absolute
+      right: 15px
+      bottom: 15px
+      width: 100px
+      opacity: 0.9
+  
+  # Cursor style can be one of
+  # `block`, `underline`, or `bar`
+  cursorStyle: block
+  
+  # Font family
+  # You can use any font that is installed on your machine
+  # in CSS-like syntax
+  fontFamily: "Monaco, Lucida Console, Ubuntu Mono, Monospace"
+  
+  # The size of the font
+  fontSize: 16
+  
+  # The height of lines
+  lineHeight: 1
+  
+  # The spacing between letters
+  letterSpacing: 0
+  
+  # Theme
+  theme:
+    background: "transparent"
+    foreground: "#afafaf"
+    cursor: "#c7c7c7"
+    black: "#232628"
+    red: "#fc4384"
+    green: "#b3e33b"
+    yellow: "#ffa727"
+    blue: "#75dff2"
+    magenta: "#ae89fe"
+    cyan: "#708387"
+    white: "#d5d5d0"
+    brightBlack: "#626566"
+    brightRed: "#ff7fac"
+    brightGreen: "#c8ed71"
+    brightYellow: "#ebdf86"
+    brightBlue: "#75dff2"
+    brightMagenta: "#ae89fe"
+    brightCyan: "#b1c6ca"
+    brightWhite: "#f9f9f4"
+  
+# Records, feel free to edit them
+records:
+  - delay: 1237
+    content: "\e[?2004h\e]0;root@ubuntu-vps: ~\aroot@ubuntu-vps:~# "
+  - delay: 1023
+    content: m
+  - delay: 93
+    content: o
+  - delay: 119
+    content: a
+  - delay: 210
+    content: v
+  - delay: 68
+    content: ' '
+  - delay: 190
+    content: s
+  - delay: 214
+    content: t
+  - delay: 64
+    content: a
+  - delay: 119
+    content: t
+  - delay: 203
+    content: u
+  - delay: 57
+    content: s
+  - delay: 470
+    content: "\r\n\e[?2004l\r"
+  - delay: 57
+    content: "\r\n\e[0;36mMoaV\e[0m v1.0.1  \e[2m│\e[0m  \e[2msing-box 1.12.17  wstunnel 10.5.1  conduit 1.2.0\e[0m\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n"
+  - delay: 400
+    content: "\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n\e[1;37m  Service Status\e[0m\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n\r\n\r\n  \e[0;36m┌────────────┬───────────┬─────────────────────┬──────────────┬───────────┐\e[0m\r\n  \e[0;36m│\e[0m \e[1;37mService\e[0m    \e[0;36m│\e[0m \e[1;37mStatus\e[0m    \e[0;36m│\e[0m \e[1;37mLast Run\e[0m            \e[0;36m│\e[0m \e[1;37mUptime\e[0m       \e[0;36m│\e[0m \e[1;37mPorts\e[0m     \e[0;36m│\e[0m\r\n  \e[0;36m├────────────┼───────────┼─────────────────────┼──────────────┼───────────┤\e[0m\r\n"
+  - delay: 97
+    content: "  \e[0;36m│\e[0m admin      \e[0;36m│\e[0m \e[0;32m● running\e[0m \e[0;36m│\e[0m 2026-01-31 19:23:44 \e[0;36m│\e[0m 48 seconds   \e[0;36m│\e[0m 9443      \e[0;36m│\e[0m\r\n"
+  - delay: 95
+    content: "  \e[0;36m│\e[0m certbot    \e[0;36m│\e[0m \e[2m○ exited\e[0m \e[0;36m│\e[0m 2026-01-31 19:24:07 \e[0;36m│\e[0m -            \e[0;36m│\e[0m -         \e[0;36m│\e[0m\r\n"
+  - delay: 74
+    content: "  \e[0;36m│\e[0m conduit    \e[0;36m│\e[0m \e[0;32m● running\e[0m \e[0;36m│\e[0m 2026-01-31 19:23:44 \e[0;36m│\e[0m 18 minutes   \e[0;36m│\e[0m -         \e[0;36m│\e[0m\r\n"
+  - delay: 70
+    content: "  \e[0;36m│\e[0m decoy      \e[0;36m│\e[0m \e[0;32m● running\e[0m \e[0;36m│\e[0m 2026-01-31 19:23:44 \e[0;36m│\e[0m 18 minutes   \e[0;36m│\e[0m -         \e[0;36m│\e[0m\r\n"
+  - delay: 60
+    content: "  \e[0;36m│\e[0m dnstt      \e[0;36m│\e[0m \e[0;32m● running\e[0m \e[0;36m│\e[0m 2026-01-31 19:23:44 \e[0;36m│\e[0m 18 minutes   \e[0;36m│\e[0m 53        \e[0;36m│\e[0m\r\n"
+  - delay: 69
+    content: "  \e[0;36m│\e[0m sing-box   \e[0;36m│\e[0m \e[0;32m● running\e[0m \e[0;36m│\e[0m 2026-01-31 19:23:45 \e[0;36m│\e[0m 18 minutes   \e[0;36m│\e[0m 443,8443  \e[0;36m│\e[0m\r\n"
+  - delay: 99
+    content: "  \e[0;36m│\e[0m snowflake  \e[0;36m│\e[0m \e[0;32m● running\e[0m \e[0;36m│\e[0m 2026-01-31 19:23:44 \e[0;36m│\e[0m 18 minutes   \e[0;36m│\e[0m -         \e[0;36m│\e[0m\r\n"
+  - delay: 94
+    content: "  \e[0;36m│\e[0m wireguard  \e[0;36m│\e[0m \e[0;32m● running\e[0m \e[0;36m│\e[0m 2026-01-31 19:23:44 \e[0;36m│\e[0m 18 minutes   \e[0;36m│\e[0m 51820     \e[0;36m│\e[0m\r\n"
+  - delay: 80
+    content: "  \e[0;36m│\e[0m wstunnel   \e[0;36m│\e[0m \e[0;32m● running\e[0m \e[0;36m│\e[0m 2026-01-31 19:23:44 \e[0;36m│\e[0m 18 minutes   \e[0;36m│\e[0m 8080      \e[0;36m│\e[0m\r\n  \e[0;36m│\e[0m psiphon-conduit \e[0;36m│\e[0m \e[2m- never  \e[0m \e[0;36m│\e[0m -                   \e[0;36m│\e[0m -            \e[0;36m│\e[0m -         \e[0;36m│\e[0m\r\n  \e[0;36m└────────────┴───────────┴─────────────────────┴──────────────┴───────────┘\e[0m\r\n\r\n"
+  - delay: 11
+    content: "\e[0;34mℹ\e[0m Default profiles: \e[1;37mall\e[0m\r\n\r\n  \e[0;36mCommands:\e[0m moav logs [service] | moav stop | moav restart | moav version\r\n\e[?2004h\e]0;root@ubuntu-vps: ~\aroot@ubuntu-vps:~# "
+  - delay: 1029
+    content: m
+  - delay: 91
+    content: o
+  - delay: 96
+    content: a
+  - delay: 161
+    content: v
+  - delay: 97
+    content: ' '
+  - delay: 606
+    content: "\r\n\e[?2004l\r"
+  - delay: 31
+    content: "\e[H\e[2J\e[3J\e[0;36m\r\n╔════════════════════════════════════════════════════╗\r\n║                                                    ║\r\n║  ███╗   ███╗ ██████╗  █████╗ ██╗   ██╗             ║\r\n║  ████╗ ████║██╔═══██╗██╔══██╗██║   ██║             ║\r\n║  ██╔████╔██║██║   ██║███████║██║   ██║             ║\r\n║  ██║╚██╔╝██║██║   ██║██╔══██║╚██╗ ██╔╝             ║\r\n║  ██║ ╚═╝ ██║╚██████╔╝██║  ██║ ╚████╔╝              ║\r\n║  ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝  ╚═══╝               ║\r\n║                                                    ║\r\n║           Mother of all VPNs                       ║\r\n║                                                    ║\r\n║  Multi-protocol Circumvention Stack                ║\r\n║  v1.0.1                                            ║\r\n╚════════════════════════════════════════════════════╝\r\n\e[0m\r\n"
+  - delay: 7
+    content: "\e[H\e[2J\e[3J\e[0;36m\r\n╔════════════════════════════════════════════════════╗\r\n║                                                    ║\r\n║  ███╗   ███╗ ██████╗  █████╗ ██╗   ██╗             ║\r\n║  ████╗ ████║██╔═══██╗██╔══██╗██║   ██║             ║\r\n║  ██╔████╔██║██║   ██║███████║██║   ██║             ║\r\n║  ██║╚██╔╝██║██║   ██║██╔══██║╚██╗ ██╔╝             ║\r\n║  ██║ ╚═╝ ██║╚██████╔╝██║  ██║ ╚████╔╝              ║\r\n║  ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝  ╚═══╝               ║\r\n║                                                    ║\r\n║           Mother of all VPNs                       ║\r\n║                                                    ║\r\n║  Multi-protocol Circumvention Stack                ║\r\n║  v1.0.1                                            ║\r\n╚════════════════════════════════════════════════════╝\r\n\e[0m\r\n"
+  - delay: 319
+    content: "  \e[0;32m●\e[0m Services running: 8\r\n\r\n  What would you like to do?\r\n\r\n  \e[1;37m1)\e[0m Start services\r\n  \e[1;37m2)\e[0m Stop services\r\n  \e[1;37m3)\e[0m Restart services\r\n  \e[1;37m4)\e[0m View status\r\n  \e[1;37m5)\e[0m View logs\r\n\r\n  \e[1;37m6)\e[0m User management\r\n  \e[1;37m7)\e[0m Build/rebuild services\r\n  \e[1;37m8)\e[0m Export/Import (migration)\r\n\r\n  \e[1;37m0)\e[0m Exit\r\n\r\n\e[0;36m?\e[0m Choice: \r\n"
+  - delay: 3290
+    content: '2'
+  - delay: 685
+    content: "\r\n\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n\e[1;37m  Stop Services\e[0m\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n\r\n"
+  - delay: 308
+    content: "Running services:\r\n\r\n"
+  - delay: 363
+    content: "NAME             IMAGE                  COMMAND                  SERVICE           CREATED          STATUS                    PORTS\r\nmoav-admin       moav-admin             \"/entrypoint.sh\"         admin             18 minutes ago   Up 55 seconds             0.0.0.0:9443->8443/tcp, [::]:9443->8443/tcp\r\nmoav-conduit     moav-psiphon-conduit   \"/entrypoint.sh\"         psiphon-conduit   18 minutes ago   Up 18 minutes             8080/tcp\r\nmoav-decoy       nginx:alpine           \"/docker-entrypoint.…\"   decoy             18 minutes ago   Up 18 minutes             80/tcp\r\nmoav-dnstt       moav-dnstt             \"/entrypoint.sh\"         dnstt             18 minutes ago   Up 18 minutes             0.0.0.0:53->5353/udp, [::]:53->5353/udp\r\nmoav-sing-box    moav-sing-box          \"/entrypoint.sh\"         sing-box          18 minutes ago   Up 18 minutes (healthy)   0.0.0.0:443->443/tcp, [::]:443->443/tcp, 0.0.0.0:8443->8443/tcp, 0.0.0.0:443->443/udp, [::]:8443->8443/tcp, [::]:443->443/udp\r\nmoav-snowflake   moav-snowflake         \"/entrypoint.sh\"         snowflake         18 minutes ago   Up 18 minutes             \r\nmoav-wireguard   moav-wireguard         \"/entrypoint.sh\"         wireguard         18 minutes ago   Up 18 minutes             0.0.0.0:51820->51820/udp, [::]:51820->51820/udp\r\nmoav-wstunnel    moav-wstunnel          \"/entrypoint.sh\"         wstunnel          18 minutes ago   Up 18 minutes             443/tcp, 0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp\r\n"
+  - delay: 6
+    content: "\r\nOptions:\r\n\r\n  \e[1;37ma)\e[0m Stop ALL services\r\n  \e[1;37m1)\e[0m Stop admin\r\n  \e[1;37m2)\e[0m Stop decoy\r\n  \e[1;37m3)\e[0m Stop dnstt\r\n  \e[1;37m4)\e[0m Stop psiphon-conduit\r\n  \e[1;37m5)\e[0m Stop sing-box\r\n  \e[1;37m6)\e[0m Stop snowflake\r\n  \e[1;37m7)\e[0m Stop wireguard\r\n  \e[1;37m8)\e[0m Stop wstunnel\r\n  \e[1;37m0)\e[0m Cancel\r\n\r\n\e[0;36m?\e[0m Choice: \r\n"
+  - delay: 2668
+    content: '2'
+  - delay: 375
+    content: "\b \b"
+  - delay: 212
+    content: '1'
+  - delay: 289
+    content: "\r\n\r\n\e[0;34mℹ\e[0m Stopping admin...\r\n"
+  - delay: 360
+    content: "\e[?25l\e[0G[+] stop 0/1\r\n \e[33m⠋\e[0m Container moav-admin Stopping                                                                                                                                   \e[34m0.1s\e[0m\r\n\e[?25h"
+  - delay: 100
+    content: "\e[?25l\e[2A\e[0G[+] stop 0/1\r\n \e[33m⠙\e[0m Container moav-admin Stopping                                                                                                                                   \e[34m0.2s\e[0m\r\n\e[?25h"
+  - delay: 100
+    content: "\e[?25l\e[2A\e[0G[+] stop 0/1\r\n \e[33m⠹\e[0m Container moav-admin Stopping                                                                                                                                   \e[34m0.3s\e[0m\r\n\e[?25h"
+  - delay: 100
+    content: "\e[?25l\e[2A\e[0G[+] stop 0/1\r\n \e[33m⠸\e[0m Container moav-admin Stopping                                                                                                                                   \e[34m0.4s\e[0m\r\n\e[?25h"
+  - delay: 98
+    content: "\e[?25l\e[2A\e[0G[+] stop 0/1\r\n \e[33m⠼\e[0m Container moav-admin Stopping                                                                                                                                   \e[34m0.5s\e[0m\r\n\e[?25h"
+  - delay: 102
+    content: "\e[?25l\e[2A\e[0G[+] stop 0/1\r\n \e[33m⠴\e[0m Container moav-admin Stopping                                                                                                                                   \e[34m0.6s\e[0m\r\n\e[?25h"
+  - delay: 31
+    content: "\e[?25l\e[2A\e[0G[+] stop 1/1\r\n \e[32m✔\e[0m Container moav-admin \e[32mStopped\e[0m                                                                                                                                    \e[34m0.6s\e[0m\r\n\e[?25h"
+  - delay: 6
+    content: "\e[0;32m✓\e[0m admin stopped!\r\n\r\n\e[2mPress Enter to continue...\e[0m\r\n"
+  - delay: 960
+    content: "\r\n"
+  - delay: 25
+    content: "\e[H\e[2J\e[3J\e[0;36m\r\n╔════════════════════════════════════════════════════╗\r\n║                                                    ║\r\n║  ███╗   ███╗ ██████╗  █████╗ ██╗   ██╗             ║\r\n║  ████╗ ████║██╔═══██╗██╔══██╗██║   ██║             ║\r\n║  ██╔████╔██║██║   ██║███████║██║   ██║             ║\r\n║  ██║╚██╔╝██║██║   ██║██╔══██║╚██╗ ██╔╝             ║\r\n║  ██║ ╚═╝ ██║╚██████╔╝██║  ██║ ╚████╔╝              ║\r\n║  ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝  ╚═══╝               ║\r\n║                                                    ║\r\n║           Mother of all VPNs                       ║\r\n║                                                    ║\r\n║  Multi-protocol Circumvention Stack                ║\r\n║  v1.0.1                                            ║\r\n╚════════════════════════════════════════════════════╝\r\n\e[0m\r\n"
+  - delay: 273
+    content: "  \e[0;32m●\e[0m Services running: 7\r\n\r\n  What would you like to do?\r\n\r\n  \e[1;37m1)\e[0m Start services\r\n  \e[1;37m2)\e[0m Stop services\r\n  \e[1;37m3)\e[0m Restart services\r\n  \e[1;37m4)\e[0m View status\r\n  \e[1;37m5)\e[0m View logs\r\n\r\n  \e[1;37m6)\e[0m User management\r\n  \e[1;37m7)\e[0m Build/rebuild services\r\n  \e[1;37m8)\e[0m Export/Import (migration)\r\n\r\n  \e[1;37m0)\e[0m Exit\r\n\r\n\e[0;36m?\e[0m Choice: \r\n"
+  - delay: 4364
+    content: '5'
+  - delay: 590
+    content: "\r\n\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n\e[1;37m  View Logs\e[0m\r\n\e[1;37m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m\r\n\r\n"
+  - delay: 283
+    content: "Options:\r\n\r\n  \e[1;37ma)\e[0m All services (follow)\r\n  \e[1;37mt)\e[0m Last 100 lines (all services)\r\n\r\n  \e[1;37m1)\e[0m admin\r\n  \e[1;37m2)\e[0m certbot\r\n  \e[1;37m3)\e[0m decoy\r\n  \e[1;37m4)\e[0m dnstt\r\n  \e[1;37m5)\e[0m psiphon-conduit\r\n  \e[1;37m6)\e[0m sing-box\r\n  \e[1;37m7)\e[0m snowflake\r\n  \e[1;37m8)\e[0m wireguard\r\n  \e[1;37m9)\e[0m wstunnel\r\n\r\n  \e[1;37m0)\e[0m Cancel\r\n\r\n\e[0;36m?\e[0m Choice: \r\n"
+  - delay: 2584
+    content: a
+  - delay: 364
+    content: "\r\n\r\n\e[0;34mℹ\e[0m Showing logs for all services. Press Ctrl+C to exit.\r\n\r\n"
+  - delay: 276
+    content: "\e[36mmoav-decoy  | \e[0m2026-01-31T19:23:48.850240528Z /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration\r\n\e[33mmoav-conduit  | \e[0m2026-01-31T19:23:48.537613920Z [conduit] Starting Psiphon Conduit\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:08.725543680Z [sing-box] Starting sing-box multi-protocol proxy\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:08.725722886Z [sing-box] Config: /etc/sing-box/config.json\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:08.727868496Z [sing-box] Validating configuration...\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.126800760Z [sing-box] Configuration valid\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.147505827Z [sing-box] Inbounds: mixed-in,vless-reality-in,trojan-tls-in,hysteria2-in,direct,block,cloudflare-doh,local\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.147836471Z [sing-box] Starting proxy server...\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.242692036Z +0000 2026-01-31 19:24:09 \e[36mINFO\e[0m network: updated default interface eth0, index 2\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.243549649Z +0000 2026-01-31 19:24:09 \e[36mINFO\e[0m inbound/mixed[mixed-in]: tcp server started at 127.0.0.1:8080\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.247267190Z +0000 2026-01-31 19:24:09 \e[36mINFO\e[0m inbound/vless[vless-reality-in]: tcp server started at [::]:443\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.247341769Z +0000 2026-01-31 19:24:09 \e[36mINFO\e[0m inbound/trojan[trojan-tls-in]: tcp server started at [::]:8443\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.247346536Z +0000 2026-01-31 19:24:09 \e[36mINFO\e[0m inbound/hysteria2[hysteria2-in]: udp server started at [::]:443\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.263490486Z +0000 2026-01-31 19:24:09 \e[36mINFO\e[0m clash-api: restful api listening at [::]:9090\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:09.263802528Z +0000 2026-01-31 19:24:09 \e[36mINFO\e[0m sing-box started (0.66s)\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:27.249837640Z +0000 2026-01-31 19:24:27 \e[36mINFO\e[0m [\e[38;5;227m4215745540\e[0m 0ms] inbound/trojan[trojan-tls-in]: inbound connection from 152.53.22.30:50692\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:27.253827960Z +0000 2026-01-31 19:24:27 \e[36mINFO\e[0m [\e[38;5;188m4258971691\e[0m 0ms] inbound/vless[vless-reality-in]: inbound connection from 152.53.22.30:21736\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:27.501127290Z +0000 2026-01-31 19:24:27 \e[31mERROR\e[0m [\e[38;5;227m4215745540\e[0m 251ms] inbound/trojan[trojan-tls-in]: process connection from 152.53.22.30:50692: EOF\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:24:27.698917717Z +0000 2026-01-31 19:24:27 \e[31mERROR\e[0m [\e[38;5;188m4258971691\e[0m 445ms] inbound/vless[vless-reality-in]: process connection from 152.53.22.30:21736: TLS handshake: REALITY: processed invalid connection\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:11.506682919Z +0000 2026-01-31 19:25:11 \e[36mINFO\e[0m [\e[38;5;158m3259842702\e[0m 0ms] inbound/vless[vless-reality-in]: inbound connection from 154.28.229.152:41412\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:16.124608449Z +0000 2026-01-31 19:25:16 \e[36mINFO\e[0m [\e[38;5;111m3518899807\e[0m 0ms] inbound/vless[vless-reality-in]: inbound connection from 104.164.126.238:38560\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:17.687150556Z +0000 2026-01-31 19:25:17 \e[31mERROR\e[0m [\e[38;5;158m3259842702\e[0m 6.18s] inbound/vless[vless-reality-in]: process connection from 154.28.229.152:41412: TLS handshake: REALITY: processed invalid connection\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:22.189411751Z +0000 2026-01-31 19:25:22 \e[31mERROR\e[0m [\e[38;5;111m3518899807\e[0m 6.6s] inbound/vless[vless-reality-in]: process connection from 104.164.126.238:38560: TLS handshake: REALITY: processed invalid connection\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:22.223299362Z +0000 2026-01-31 19:25:22 \e[36mINFO\e[0m [\e[38;5;155m2905581644\e[0m 0ms] inbound/vless[vless-reality-in]: inbound connection from 51.81.245.138:36152\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:22.736023281Z +0000 2026-01-31 19:25:22 \e[31mERROR\e[0m [\e[38;5;155m2905581644\e[0m 513ms] inbound/vless[vless-reality-in]: process connection from 51.81.245.138:36152: TLS handshake: REALITY: processed invalid connection\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:23.469265392Z +0000 2026-01-31 19:25:23 \e[36mINFO\e[0m [\e[38;5;228m1289394644\e[0m 0ms] inbound/vless[vless-reality-in]: inbound connection from 51.81.245.138:36162\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:23.973349482Z +0000 2026-01-31 19:25:23 \e[31mERROR\e[0m [\e[38;5;228m1289394644\e[0m 504ms] inbound/vless[vless-reality-in]: process connection from 51.81.245.138:36162: TLS handshake: REALITY: processed invalid connection\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:26.438366443Z +0000 2026-01-31 19:25:26 \e[36mINFO\e[0m [\e[38;5;171m1520370843\e[0m 0ms] inbound/vless[vless-reality-in]: inbound connection from 104.244.74.39:56506\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:26.914623603Z +0000 2026-01-31 19:25:26 \e[31mERROR\e[0m [\e[38;5;171m1520370843\e[0m 476ms] inbound/vless[vless-reality-in]: process connection from 104.244.74.39:56506: TLS handshake: REALITY: processed invalid connection\r\n\e[32mmoav-sing-box  | \e[0m2026-01-31T19:25:27.098052646Z +0000 2026-01-31 19:25:27 \e[36mINFO\e[0m [\e[38;5;138m3844414586\e[0m 0ms] inbound/vless[vless-reality-in]: inbound connection from 104.244.74.39:56520\r\n\e[32mmoav-sing-box \r\n"
+  - delay: 2649
+    content: "\r\n"
+  - delay: 536
+    content: "\r\n"
+  - delay: 936
+    content: "^C\r\n"
+  - delay: 6
+    content: "\e[?2004h\e]0;root@ubuntu-vps: ~\aroot@ubuntu-vps:~# "
+  - delay: 3446
+    content: "\e[?2004l\r\r\nlogout\r\n"
