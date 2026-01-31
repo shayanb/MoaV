@@ -1454,7 +1454,7 @@ package_user() {
         return 1
     fi
 
-    local zip_file="outputs/${username}-configs.zip"
+    local zip_file="outputs/bundles/${username}-configs.zip"
 
     # Check for zip command
     if ! command -v zip &>/dev/null; then
@@ -1465,7 +1465,7 @@ package_user() {
     info "Creating package for $username..."
 
     # Create zip from bundle directory
-    (cd outputs/bundles && zip -r "../${username}-configs.zip" "$username" -x "*.DS_Store")
+    (cd outputs/bundles && zip -r "${username}-configs.zip" "$username" -x "*.DS_Store")
 
     if [[ -f "$zip_file" ]]; then
         local size=$(du -h "$zip_file" | cut -f1)
