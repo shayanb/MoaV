@@ -154,6 +154,14 @@ else
     needs_install+=("qrencode")
 fi
 
+# Check jq (required for user management)
+if command -v jq &>/dev/null; then
+    success "jq is installed"
+else
+    warn "jq is not installed (needed for user management)"
+    needs_install+=("jq")
+fi
+
 echo ""
 
 # =============================================================================
@@ -267,6 +275,35 @@ if [[ ${#needs_install[@]} -gt 0 ]]; then
                             ;;
                     esac
                     success "qrencode installed"
+                    ;;
+
+                jq)
+                    info "Installing jq..."
+                    case "$OS_TYPE" in
+                        debian)
+                            sudo DEBIAN_FRONTEND=noninteractive apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y jq
+                            ;;
+                        rhel)
+                            sudo dnf install -y jq || sudo yum install -y jq
+                            ;;
+                        macos)
+                            if command -v brew &>/dev/null; then
+                                brew install jq
+                            else
+                                warn "Homebrew not installed. Skipping jq."
+                                warn "Install with: brew install jq"
+                                continue
+                            fi
+                            ;;
+                        alpine)
+                            sudo apk add jq
+                            ;;
+                        *)
+                            warn "Cannot auto-install jq on this OS. Skipping."
+                            continue
+                            ;;
+                    esac
+                    success "jq installed"
                     ;;
             esac
             echo ""

@@ -894,19 +894,19 @@ save_default_profiles() {
         return 1
     fi
 
-    # Update or add DEFAULT_PROFILES in .env
+    # Update or add DEFAULT_PROFILES in .env (with quotes to handle spaces)
     if grep -q "^DEFAULT_PROFILES=" "$env_file" 2>/dev/null; then
         # Update existing line
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES=$profiles_str/" "$env_file"
+            sed -i '' "s/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES=\"$profiles_str\"/" "$env_file"
         else
-            sed -i "s/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES=$profiles_str/" "$env_file"
+            sed -i "s/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES=\"$profiles_str\"/" "$env_file"
         fi
     else
         # Add new line
         echo "" >> "$env_file"
         echo "# Default profiles for 'moav start'" >> "$env_file"
-        echo "DEFAULT_PROFILES=$profiles_str" >> "$env_file"
+        echo "DEFAULT_PROFILES=\"$profiles_str\"" >> "$env_file"
     fi
 
     success "Saved default profiles: $profiles_str"
