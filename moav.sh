@@ -108,15 +108,20 @@ confirm() {
         prompt "$message [y/N]: "
     fi
 
-    read -r response
-    response=${response:-$default}
+    # Read from /dev/tty to work when stdin is piped
+    local response
+    if read -r response < /dev/tty 2>/dev/null; then
+        response=${response:-$default}
+    else
+        response="$default"
+    fi
     [[ "$response" =~ ^[Yy]$ ]]
 }
 
 press_enter() {
     echo ""
     echo -e "${DIM}Press Enter to continue...${NC}"
-    read -r
+    read -r < /dev/tty 2>/dev/null || true
 }
 
 run_command() {
@@ -710,7 +715,7 @@ select_profiles() {
     echo ""
 
     prompt "Enter choices (e.g., 1 2 4 or 'a' for all): "
-    read -r choices </dev/tty
+    read -r choice < /dev/tty 2>/dev/null || choice=""s </dev/tty
 
     if [[ "$choices" == "0" || -z "$choices" ]]; then
         return 1
@@ -797,7 +802,7 @@ start_services() {
     echo ""
 
     prompt "Choice: "
-    read -r choice
+    read -r choice < /dev/tty 2>/dev/null || choice=""
 
     local profiles=""
 
@@ -870,7 +875,7 @@ stop_services() {
     echo ""
 
     prompt "Choice: "
-    read -r choice
+    read -r choice < /dev/tty 2>/dev/null || choice=""
 
     case $choice in
         a|A)
@@ -934,7 +939,7 @@ restart_services() {
     echo ""
 
     prompt "Choice: "
-    read -r choice
+    read -r choice < /dev/tty 2>/dev/null || choice=""
 
     case $choice in
         a|A)
@@ -993,7 +998,7 @@ view_logs() {
     echo ""
 
     prompt "Choice: "
-    read -r choice
+    read -r choice < /dev/tty 2>/dev/null || choice=""
 
     case $choice in
         a|A)
@@ -1054,7 +1059,7 @@ user_management() {
     echo ""
 
     prompt "Choice: "
-    read -r choice
+    read -r choice < /dev/tty 2>/dev/null || choice=""
 
     case $choice in
         1)
@@ -1084,21 +1089,21 @@ migration_menu() {
     echo ""
 
     prompt "Choice: "
-    read -r choice
+    read -r choice < /dev/tty 2>/dev/null || choice=""
 
     case $choice in
         1)
             echo ""
             local default_file="moav-backup-$(date +%Y%m%d_%H%M%S).tar.gz"
             prompt "Output file [$default_file]: "
-            read -r output_file
+            read -r output_file < /dev/tty 2>/dev/null || output_file=""
             [[ -z "$output_file" ]] && output_file="$default_file"
             cmd_export "$output_file"
             ;;
         2)
             echo ""
             prompt "Backup file to import: "
-            read -r input_file
+            read -r input_file < /dev/tty 2>/dev/null || input_file=""
             if [[ -n "$input_file" ]]; then
                 cmd_import "$input_file"
             else
@@ -1113,7 +1118,7 @@ migration_menu() {
             [[ -n "$detected_ip" ]] && echo "Detected server IP: $detected_ip"
             echo ""
             prompt "New IP address: "
-            read -r new_ip
+            read -r new_ip < /dev/tty 2>/dev/null || new_ip=""
             if [[ -n "$new_ip" ]]; then
                 cmd_migrate_ip "$new_ip"
             else
@@ -1146,7 +1151,7 @@ add_user() {
     print_section "Add New User"
 
     prompt "Enter username for new user: "
-    read -r username
+    read -r username < /dev/tty 2>/dev/null || username=""
 
     if [[ -z "$username" ]]; then
         warn "Username cannot be empty"
@@ -1189,7 +1194,7 @@ revoke_user() {
     echo ""
 
     prompt "Enter username to revoke: "
-    read -r username
+    read -r username < /dev/tty 2>/dev/null || username=""
 
     if [[ -z "$username" ]]; then
         warn "Username cannot be empty"
@@ -1249,7 +1254,7 @@ build_services() {
     echo ""
 
     prompt "Choice: "
-    read -r choice
+    read -r choice < /dev/tty 2>/dev/null || choice=""
 
     case $choice in
         a|A)
@@ -1318,7 +1323,7 @@ main_menu() {
         echo ""
 
         prompt "Choice: "
-        read -r choice
+        read -r choice < /dev/tty 2>/dev/null || choice=""
 
         case $choice in
             1) start_services; press_enter ;;
@@ -1972,7 +1977,8 @@ cmd_import() {
         docker volume inspect moav_moav_state &>/dev/null 2>&1 && echo "  - State volume (keys, users)"
         [[ -d "configs" ]] && echo "  - configs directory"
         echo ""
-        read -p "Continue? [y/N] " confirm
+        printf "Continue? [y/N] "
+        read -r confirm < /dev/tty 2>/dev/null || confirm="n"
         if [[ ! "$confirm" =~ ^[Yy] ]]; then
             info "Import cancelled."
             exit 0

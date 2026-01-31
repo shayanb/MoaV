@@ -12,34 +12,6 @@ Complete setup guide for deploying MoaV on a fresh VPS.
 
 - A domain name (see [DNS.md](DNS.md) for configuration)
 
-- **Optional but recommended:** `qrencode` for generating QR codes
-  ```bash
-  # Debian/Ubuntu
-  sudo apt install qrencode
-
-  # RHEL/Fedora
-  sudo dnf install qrencode
-
-  # macOS
-  brew install qrencode
-  ```
-  The `moav check` command will offer to install this automatically.
-
-## Recommended VPS Providers
-
-For users in middle east, these providers/regions typically work well:
-
-| Provider | Region | Notes |
-|----------|--------|-------|
-| Hetzner | Germany (Falkenstein, Nuremberg) | Good price/performance |
-| Hetzner | Finland (Helsinki) | Less blocked |
-| DigitalOcean | Frankfurt | Reliable |
-| DigitalOcean | Amsterdam | Alternative |
-| Vultr | Frankfurt | Good alternative |
-
-**Avoid:** US regions (high latency, more scrutinized)
-
----
 
 ## Quick Install (Recommended)
 
