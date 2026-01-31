@@ -762,95 +762,109 @@ show_versions() {
 }
 
 show_status() {
-    # Get service status from docker compose
+    # Get all defined services from docker-compose
+    local all_services
+    all_services=$(docker compose --profile all config --services 2>/dev/null | sort)
+
+    # Get service status from docker compose (including stopped with -a)
     local raw_status json_lines
-    raw_status=$(docker compose --profile all ps --format json 2>/dev/null)
-
-    if [[ -z "$raw_status" ]] || [[ "$raw_status" == "[]" ]]; then
-        print_section "Service Status"
-        echo ""
-        warn "No services are running"
-        echo ""
-        return
-    fi
-
-    # Handle both JSON array format and NDJSON (one object per line)
-    # If it starts with '[', it's a JSON array - split into lines
-    if [[ "$raw_status" == "["* ]]; then
-        # Convert JSON array to one object per line (split on },{ )
-        json_lines=$(echo "$raw_status" | sed 's/^\[//;s/\]$//;s/},{/}\n{/g')
-    else
-        json_lines="$raw_status"
-    fi
+    raw_status=$(docker compose --profile all ps -a --format json 2>/dev/null)
 
     print_section "Service Status"
     echo ""
     echo -e "  ${CYAN}┌────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
-    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}    ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Created${NC}             ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}    ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
     echo -e "  ${CYAN}├────────────┼───────────┼─────────────────────┼──────────────┼───────────┤${NC}"
 
-    # Parse JSON and display each service (using here-string to avoid subshell)
-    while IFS= read -r line; do
-        [[ -z "$line" ]] && continue
+    # Track which services we've displayed
+    declare -A displayed_services
 
-        local name state ports health status_str created_at uptime created
-        name=$(echo "$line" | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)
-        state=$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
-        health=$(echo "$line" | grep -o '"Health":"[^"]*"' | head -1 | cut -d'"' -f4)
-        status_str=$(echo "$line" | grep -o '"Status":"[^"]*"' | head -1 | cut -d'"' -f4)
-        # CreatedAt is a datetime string like "2026-01-28 19:56:32 +0000 UTC"
-        created_at=$(echo "$line" | grep -o '"CreatedAt":"[^"]*"' | head -1 | cut -d'"' -f4)
-        # Extract ports - use || true to prevent exit on empty Publishers array
-        ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | grep -v '^0$' | tr '\n' ',' | sed 's/,$//' || true)
-
-        [[ -z "$name" ]] && continue
-        name="${name#moav-}"
-
-        # Format created datetime (extract just date and time, remove timezone)
-        created="-"
-        if [[ -n "$created_at" ]]; then
-            # Extract "YYYY-MM-DD HH:MM:SS" from "2026-01-28 19:56:32 +0000 UTC"
-            created=$(echo "$created_at" | cut -d' ' -f1,2)
+    # Handle both JSON array format and NDJSON (one object per line)
+    if [[ -n "$raw_status" ]] && [[ "$raw_status" != "[]" ]]; then
+        if [[ "$raw_status" == "["* ]]; then
+            # Convert JSON array to one object per line (split on },{ )
+            json_lines=$(echo "$raw_status" | sed 's/^\[//;s/\]$//;s/},{/}\n{/g')
+        else
+            json_lines="$raw_status"
         fi
 
-        # Parse uptime from Status field (e.g., "Up 29 hours", "Up 28 minutes")
-        uptime="-"
-        if [[ "$state" == "running" ]] && [[ "$status_str" =~ ^Up[[:space:]]+(.*) ]]; then
-            uptime="${BASH_REMATCH[1]}"
-            # Clean up health status suffix if present (e.g., "28 minutes (healthy)")
-            uptime="${uptime%% (*}"
-            # Shorten common long phrases to fit column
-            uptime="${uptime/About an /~1 }"
-            uptime="${uptime/About a /~1 }"
-            uptime="${uptime/Less than a /< 1 }"
-        fi
+        # Parse JSON and display each service (using here-string to avoid subshell)
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
 
-        local status_display status_color
-        if [[ "$state" == "running" ]]; then
-            if [[ "$health" == "healthy" ]] || [[ -z "$health" ]]; then
-                status_color="${GREEN}"
-                status_display="● running"
-            elif [[ "$health" == "unhealthy" ]]; then
-                status_color="${RED}"
-                status_display="○ unhealthy"
+            local name state ports health status_str created_at uptime last_run finished_at
+            name=$(echo "$line" | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)
+            state=$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
+            health=$(echo "$line" | grep -o '"Health":"[^"]*"' | head -1 | cut -d'"' -f4)
+            status_str=$(echo "$line" | grep -o '"Status":"[^"]*"' | head -1 | cut -d'"' -f4)
+            created_at=$(echo "$line" | grep -o '"CreatedAt":"[^"]*"' | head -1 | cut -d'"' -f4)
+            ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | grep -v '^0$' | tr '\n' ',' | sed 's/,$//' || true)
+
+            [[ -z "$name" ]] && continue
+            local short_name="${name#moav-}"
+            displayed_services["$short_name"]=1
+
+            # Format last run datetime
+            last_run="-"
+            if [[ -n "$created_at" ]]; then
+                last_run=$(echo "$created_at" | cut -d' ' -f1,2)
+            fi
+
+            # For stopped containers, try to get finished time
+            if [[ "$state" == "exited" ]]; then
+                # Try to get FinishedAt from docker inspect
+                finished_at=$(docker inspect --format '{{.State.FinishedAt}}' "$name" 2>/dev/null | cut -d'T' -f1,2 | tr 'T' ' ' | cut -d'.' -f1)
+                if [[ -n "$finished_at" ]] && [[ "$finished_at" != "0001-01-01" ]]; then
+                    last_run="$finished_at"
+                fi
+            fi
+
+            # Parse uptime from Status field
+            uptime="-"
+            if [[ "$state" == "running" ]] && [[ "$status_str" =~ ^Up[[:space:]]+(.*) ]]; then
+                uptime="${BASH_REMATCH[1]}"
+                uptime="${uptime%% (*}"
+                uptime="${uptime/About an /~1 }"
+                uptime="${uptime/About a /~1 }"
+                uptime="${uptime/Less than a /< 1 }"
+            fi
+
+            local status_display status_color
+            if [[ "$state" == "running" ]]; then
+                if [[ "$health" == "healthy" ]] || [[ -z "$health" ]]; then
+                    status_color="${GREEN}"
+                    status_display="● running"
+                elif [[ "$health" == "unhealthy" ]]; then
+                    status_color="${RED}"
+                    status_display="○ unhealthy"
+                else
+                    status_color="${YELLOW}"
+                    status_display="◐ starting"
+                fi
+            elif [[ "$state" == "exited" ]]; then
+                status_color="${DIM}"
+                status_display="○ exited"
+                uptime="-"
             else
                 status_color="${YELLOW}"
-                status_display="◐ starting"
+                status_display="◐ ${state}"
             fi
-        elif [[ "$state" == "exited" ]]; then
-            status_color="${RED}"
-            status_display="○ stopped"
-            uptime="-"
-        else
-            status_color="${YELLOW}"
-            status_display="◐ ${state}"
+
+            [[ -z "$ports" ]] && ports="-"
+
+            printf "  ${CYAN}│${NC} %-10s ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+                "$short_name" "$status_display" "$last_run" "$uptime" "$ports"
+        done <<< "$json_lines"
+    fi
+
+    # Show services that have never been started (not in docker ps -a)
+    while IFS= read -r service; do
+        [[ -z "$service" ]] && continue
+        if [[ -z "${displayed_services[$service]:-}" ]]; then
+            printf "  ${CYAN}│${NC} %-10s ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+                "$service" "- never" "-" "-" "-"
         fi
-
-        [[ -z "$ports" ]] && ports="-"
-
-        printf "  ${CYAN}│${NC} %-10s ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
-            "$name" "$status_display" "$created" "$uptime" "$ports"
-    done <<< "$json_lines"
+    done <<< "$all_services"
 
     echo -e "  ${CYAN}└────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
     echo ""
