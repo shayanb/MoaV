@@ -476,6 +476,48 @@ do_uninstall() {
     fi
 }
 
+cmd_update() {
+    echo ""
+    info "Updating MoaV..."
+    echo ""
+
+    # Get the installation directory
+    local install_dir="$SCRIPT_DIR"
+
+    # Check if it's a git repository
+    if [[ ! -d "$install_dir/.git" ]]; then
+        error "Not a git repository: $install_dir"
+        echo "  Cannot update - MoaV was not installed via git clone"
+        return 1
+    fi
+
+    echo -e "  Install directory: ${CYAN}$install_dir${NC}"
+    echo ""
+
+    # Show current version/commit
+    local current_commit
+    current_commit=$(git -C "$install_dir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    echo -e "  Current commit: ${YELLOW}$current_commit${NC}"
+
+    # Pull latest changes
+    info "Running git pull..."
+    if git -C "$install_dir" pull; then
+        echo ""
+        local new_commit
+        new_commit=$(git -C "$install_dir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        if [[ "$current_commit" == "$new_commit" ]]; then
+            success "Already up to date"
+        else
+            success "Updated: $current_commit → $new_commit"
+            echo ""
+            echo -e "${YELLOW}Note:${NC} If containers have changed, run: ${WHITE}moav build${NC}"
+        fi
+    else
+        error "Failed to update. Check your network connection or git status."
+        return 1
+    fi
+}
+
 check_bootstrap() {
     # Check if bootstrap has been run by looking for local outputs
     # This is faster than checking docker volumes
@@ -1362,6 +1404,7 @@ show_usage() {
     echo "  version, --version    Show version information"
     echo "  install               Install 'moav' command globally"
     echo "  uninstall             Remove global 'moav' command"
+    echo "  update                Update MoaV (git pull)"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
     echo "  profiles              Change default services for 'moav start'"
@@ -1391,6 +1434,7 @@ show_usage() {
     echo "Examples:"
     echo "  moav                           # Interactive menu"
     echo "  moav install                   # Install globally (run from anywhere)"
+    echo "  moav update                    # Update MoaV (git pull)"
     echo "  moav start                     # Start all services"
     echo "  moav start proxy admin         # Start proxy and admin profiles"
     echo "  moav stop conduit              # Stop specific service"
@@ -2303,6 +2347,9 @@ main() {
             ;;
         uninstall)
             do_uninstall
+            ;;
+        update)
+            cmd_update
             ;;
         check)
             cmd_check

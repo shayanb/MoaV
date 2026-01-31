@@ -20,24 +20,28 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ## Quick Start
 
+**One-liner install** (recommended):
+
 ```bash
-# Clone repository
-git clone https://github.com/shayanb/MoaV.git
-cd MoaV
-
-# Configure
-cp .env.example .env
-nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
-
-# Run interactive setup
-./moav.sh
+curl -fsSL moav.sh/install.sh | bash
 ```
 
-On first run, `moav.sh` will:
-- Check prerequisites (Docker, Docker Compose)
-- Offer to install globally (`moav` command)
-- Guide you through bootstrap (keys, TLS cert, users)
-- Show the main menu
+This will:
+- Install prerequisites (Docker, git, qrencode) if missing
+- Clone MoaV to `/opt/moav`
+- Prompt for domain, email, and admin password
+- Offer to install `moav` command globally
+- Launch the interactive setup
+
+**Manual install** (alternative):
+
+```bash
+git clone https://github.com/shayanb/MoaV.git
+cd MoaV
+cp .env.example .env
+nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
+./moav.sh
+```
 
 <img src="docs/assets/moav.sh.png" alt="MoaV Interactive Menu" width="350">
 
@@ -49,6 +53,7 @@ moav help                 # Show all commands
 moav start                # Start all services
 moav stop                 # Stop all services
 moav logs                 # View logs
+moav update               # Update MoaV (git pull)
 moav user add joe         # Add user
 ```
 

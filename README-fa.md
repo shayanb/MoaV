@@ -19,28 +19,36 @@
 
 ## شروع سریع
 
+**نصب با یک دستور** (پیشنهادی):
+
 <div dir="ltr">
 
 ```bash
-# کلون کردن مخزن
-git clone https://github.com/shayanb/MoaV.git
-cd MoaV
-
-# پیکربندی
-cp .env.example .env
-nano .env  # تنظیم DOMAIN، ACME_EMAIL، ADMIN_PASSWORD
-
-# اجرای نصب تعاملی
-./moav.sh
+curl -fsSL moav.sh/install.sh | bash
 ```
 
 </div>
 
-در اولین اجرا، `moav.sh`:
-- پیش‌نیازها را بررسی می‌کند (Docker، Docker Compose)
-- پیشنهاد نصب سراسری می‌دهد (دستور `moav`)
-- شما را در فرآیند راه‌اندازی اولیه راهنمایی می‌کند (کلیدها، گواهی TLS، کاربران)
-- منوی اصلی را نمایش می‌دهد
+این کار:
+- پیش‌نیازها را نصب می‌کند (Docker، git، qrencode) در صورت نیاز
+- MoaV را در `/opt/moav` کلون می‌کند
+- دامنه، ایمیل و رمز عبور ادمین را درخواست می‌کند
+- پیشنهاد نصب سراسری دستور `moav` را می‌دهد
+- نصب تعاملی را راه‌اندازی می‌کند
+
+**نصب دستی** (جایگزین):
+
+<div dir="ltr">
+
+```bash
+git clone https://github.com/shayanb/MoaV.git
+cd MoaV
+cp .env.example .env
+nano .env  # تنظیم DOMAIN، ACME_EMAIL، ADMIN_PASSWORD
+./moav.sh
+```
+
+</div>
 
 <img src="docs/assets/moav.sh.png" alt="منوی تعاملی MoaV" width="400">
 
@@ -54,6 +62,7 @@ moav help                 # نمایش تمام دستورات
 moav start                # شروع تمام سرویس‌ها
 moav stop                 # توقف تمام سرویس‌ها
 moav logs                 # مشاهده لاگ‌ها
+moav update               # به‌روزرسانی MoaV (git pull)
 moav user add joe         # افزودن کاربر
 ```
 

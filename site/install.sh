@@ -442,17 +442,43 @@ case "${choice:-1}" in
                 # Generate random password
                 input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
                 echo ""
-                echo -e "  ${GREEN}Generated password:${NC} ${WHITE}$input_password${NC}"
-                echo -e "  ${YELLOW}Save this password! You'll need it for the admin dashboard.${NC}"
             fi
             sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
             success "Admin password configured"
             echo ""
 
-            # Show summary
-            echo -e "${CYAN}Configuration saved to .env${NC}"
+            # Show summary with password prominently displayed
+            echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+            echo -e "${WHITE}  Configuration saved to .env${NC}"
+            echo ""
+            echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
+            echo ""
+            echo -e "  ${YELLOW}⚠ IMPORTANT: Write down this password or find it in .env${NC}"
+            echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+            echo ""
+            printf "Press Enter to continue..."
+            read -r < /dev/tty 2>/dev/null || true
             echo ""
         fi
+
+        # Ask about global installation
+        echo ""
+        echo -e "${CYAN}Install 'moav' command globally?${NC}"
+        echo "  This lets you run 'moav' from anywhere instead of './moav.sh'"
+        echo ""
+        if confirm "Install globally?" "y"; then
+            ./moav.sh install
+        fi
+
+        echo ""
+        echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+        echo -e "${WHITE}  MoaV is ready!${NC}"
+        echo ""
+        echo -e "  Installed at: ${CYAN}$INSTALL_DIR${NC}"
+        echo -e "  Run:          ${WHITE}moav${NC} (if installed globally)"
+        echo -e "                ${WHITE}cd $INSTALL_DIR && ./moav.sh${NC}"
+        echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+        echo ""
 
         exec ./moav.sh
         ;;
