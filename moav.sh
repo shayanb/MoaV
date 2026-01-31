@@ -781,9 +781,9 @@ show_status() {
 
     print_section "Service Status"
     echo ""
-    echo -e "  ${CYAN}┌────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
-    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}    ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
-    echo -e "  ${CYAN}├────────────┼───────────┼─────────────────────┼──────────────┼───────────┤${NC}"
+    echo -e "  ${CYAN}┌─────────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
+    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}         ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├─────────────────┼───────────┼─────────────────────┼──────────────┼───────────┤${NC}"
 
     # Track which services we've displayed
     declare -A displayed_services
@@ -861,7 +861,7 @@ show_status() {
 
             [[ -z "$ports" ]] && ports="-"
 
-            printf "  ${CYAN}│${NC} %-10s ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+            printf "  ${CYAN}│${NC} %-15s ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
                 "$short_name" "$status_display" "$last_run" "$uptime" "$ports"
         done <<< "$json_lines"
     fi
@@ -870,12 +870,12 @@ show_status() {
     while IFS= read -r service; do
         [[ -z "$service" ]] && continue
         if [[ -z "${displayed_services[$service]:-}" ]]; then
-            printf "  ${CYAN}│${NC} %-10s ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+            printf "  ${CYAN}│${NC} %-15s ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
                 "$service" "- never" "-" "-" "-"
         fi
     done <<< "$all_services"
 
-    echo -e "  ${CYAN}└────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
+    echo -e "  ${CYAN}└─────────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
     echo ""
 }
 

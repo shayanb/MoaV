@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2025-01-31
+
+### Added
+- Ctrl+C handler with friendly goodbye message
+- README.html generation in user bundles using client-guide-template
+- Demo user notice (bilingual EN/FA) for bootstrap demouser
+- Server Management demo on website
+- Support for comma separator in multi-option selection (e.g., `1,2,4`)
+
+### Changed
+- Bootstrap now creates "demouser" when INITIAL_USERS=1 (instead of user01)
+- User management menu now loops back after listing users
+- Package command now places zip files in `outputs/bundles/` consistently
+- Status table widened to accommodate longer service names (psiphon-conduit)
+- Removed README.md from user bundles (HTML-only now)
+
+### Fixed
+- Export and regenerate-users now correctly find users from bundles directory
+- Demo notice placeholders properly removed from non-demo user HTML
+- Awk escape sequence warnings in HTML generation
+- Package user menu option creating zip in wrong directory
+
+## [1.0.1] - 2025-01-30
+
+### Fixed
+- Minor bug fixes and improvements
+
 ## [1.0.0] - 2025-01-28
 
 ### Added
@@ -48,5 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/shayanb/MoaV/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/shayanb/MoaV/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/shayanb/MoaV/releases/tag/v1.0.0

@@ -234,7 +234,7 @@ moav logs conduit             # View conduit logs
 | macOS | NekoRay, WireGuard, Psiphon |
 | Windows | v2rayN, NekoRay, WireGuard, Psiphon |
 
-See [docs/CLIENTS.md](docs/CLIENTS.md) for setup instructions.
+See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 
 ## Documentation
 
