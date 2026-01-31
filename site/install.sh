@@ -162,6 +162,14 @@ else
     needs_install+=("jq")
 fi
 
+# Check zip (required for user packages)
+if command -v zip &>/dev/null; then
+    success "zip is installed"
+else
+    warn "zip is not installed (needed for user packages)"
+    needs_install+=("zip")
+fi
+
 echo ""
 
 # =============================================================================
@@ -304,6 +312,37 @@ if [[ ${#needs_install[@]} -gt 0 ]]; then
                             ;;
                     esac
                     success "jq installed"
+                    ;;
+
+                zip)
+                    info "Installing zip..."
+                    case "$OS_TYPE" in
+                        debian)
+                            sudo DEBIAN_FRONTEND=noninteractive apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y zip
+                            ;;
+                        rhel)
+                            sudo dnf install -y zip || sudo yum install -y zip
+                            ;;
+                        macos)
+                            # zip is typically pre-installed on macOS
+                            if ! command -v zip &>/dev/null; then
+                                if command -v brew &>/dev/null; then
+                                    brew install zip
+                                else
+                                    warn "zip not found and Homebrew not installed. Skipping."
+                                    continue
+                                fi
+                            fi
+                            ;;
+                        alpine)
+                            sudo apk add zip
+                            ;;
+                        *)
+                            warn "Cannot auto-install zip on this OS. Skipping."
+                            continue
+                            ;;
+                    esac
+                    success "zip installed"
                     ;;
             esac
             echo ""
