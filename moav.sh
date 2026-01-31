@@ -49,6 +49,15 @@ get_component_version() {
 # State file for persistent checks
 PREREQS_FILE="$SCRIPT_DIR/.moav_prereqs_ok"
 
+# Handle Ctrl+C gracefully
+goodbye() {
+    echo ""
+    echo -e "${CYAN}Goodbye! Stay safe out there.${NC}"
+    echo ""
+    exit 0
+}
+trap goodbye SIGINT
+
 # =============================================================================
 # Helper Functions
 # =============================================================================

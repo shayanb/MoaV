@@ -221,151 +221,6 @@ if [[ "${ENABLE_DNSTT:-true}" == "true" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Generate README for user
-# -----------------------------------------------------------------------------
-
-# Check for demo user mode
-DEMO_NOTE=""
-if [[ "${IS_DEMO_USER:-false}" == "true" ]]; then
-    # Build list of disabled services
-    DISABLED_SERVICES=""
-    [[ "${ENABLE_WIREGUARD:-true}" != "true" ]] && DISABLED_SERVICES+="WireGuard, "
-    [[ "${ENABLE_DNSTT:-true}" != "true" ]] && DISABLED_SERVICES+="DNS Tunnel, "
-    [[ "${ENABLE_TROJAN:-true}" != "true" ]] && DISABLED_SERVICES+="Trojan, "
-    [[ "${ENABLE_HYSTERIA2:-true}" != "true" ]] && DISABLED_SERVICES+="Hysteria2, "
-    [[ "${ENABLE_REALITY:-true}" != "true" ]] && DISABLED_SERVICES+="Reality, "
-    DISABLED_SERVICES="${DISABLED_SERVICES%, }"  # Remove trailing comma
-
-    DEMO_NOTE="
-> ⚠️ **Demo User Notice**
->
-> This is a demo user account created during initial setup. Some configuration
-> files may be missing if their corresponding services were not enabled:
-> ${DISABLED_SERVICES:-All services are enabled.}
->
-> To enable additional services, update your \`.env\` file and run:
-> \`\`\`bash
-> moav bootstrap   # Regenerate configs
-> moav start       # Start additional services
-> \`\`\`
->
-> For full documentation, see: https://github.com/moav-project/moav/tree/main/docs
-
----
-"
-fi
-
-cat > "$OUTPUT_DIR/README.md" <<EOF
-# MoaV Connection Guide for ${USER_ID}
-
-This bundle contains your personal credentials for connecting to the MoaV server.
-**Do not share these files with anyone.**
-${DEMO_NOTE}
-Server: \`${SERVER_IP}\` / \`${DOMAIN}\`$(if [[ -n "${SERVER_IPV6:-}" ]]; then echo "
-IPv6: \`${SERVER_IPV6}\`"; fi)
-
----
-
-## Quick Start (Recommended Order)
-
-Try these methods in order. If one doesn't work, try the next.
-
-### 1. Reality (VLESS) - Primary, Most Reliable
-
-**Why:** Impersonates legitimate TLS traffic to ${REALITY_TARGET_HOST}. Very hard to detect.
-
-| Platform | App | How to Import |
-|----------|-----|---------------|
-| iOS | Shadowrocket (\$2.99) | Scan \`reality-qr.png\` or import \`reality.txt\` |
-| iOS | Streisand (free) | Scan QR or paste link |
-| Android | v2rayNG (free) | Scan QR or import link |
-| Android | NekoBox (free) | Import \`reality-singbox.json\` |
-| macOS | V2rayU | Import link from \`reality.txt\` |
-
-**Your Reality Link:**
-\`\`\`
-$(cat "$OUTPUT_DIR/reality.txt")
-\`\`\`
-
----
-
-### 2. Hysteria2 - Fast Alternative
-
-**Why:** Uses QUIC protocol (like Google). Fast and often works when TCP is throttled.
-
-| Platform | App | How to Import |
-|----------|-----|---------------|
-| iOS | Shadowrocket | Scan \`hysteria2-qr.png\` |
-| Android | v2rayNG | Scan QR or import link |
-| Any | Hysteria2 CLI | Use \`hysteria2.yaml\` |
-
-**Your Hysteria2 Link:**
-\`\`\`
-$(cat "$OUTPUT_DIR/hysteria2.txt")
-\`\`\`
-
----
-
-### 3. Trojan - Backup (Port 8443)
-
-**Why:** Looks like normal HTTPS. Uses your dedicated domain on port 8443.
-
-**Your Trojan Link:**
-\`\`\`
-$(cat "$OUTPUT_DIR/trojan.txt")
-\`\`\`
-
----
-
-### 4. WireGuard - Full VPN Mode
-
-**Why:** Full system VPN with all traffic routed through the tunnel.
-
-**Direct Connection (if WireGuard is not blocked):**
-1. Install WireGuard app (iOS/Android/Mac/Windows)
-2. Import \`wireguard.conf\` or scan \`wireguard-qr.png\`
-3. Connect
-
-**Via WebSocket (for censored networks like Iran/China/Russia):**
-If direct WireGuard is blocked, use wstunnel to wrap traffic in WebSocket:
-1. Download wstunnel from https://github.com/erebe/wstunnel/releases
-2. Run: \`wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 wss://${SERVER_IP}:8080\`
-3. Import \`wireguard-wstunnel.conf\` (points to localhost)
-4. Connect WireGuard while wstunnel is running
-
----
-
-### 5. DNS Tunnel - Last Resort
-
-**Why:** Works when ONLY DNS traffic is allowed. Very slow but reliable.
-
-See \`dnstt-instructions.txt\` for setup steps.
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| Can't connect | Try a different protocol (Reality → Hysteria2 → Trojan) |
-| Very slow | Your ISP may be throttling. Try Hysteria2 (uses UDP) |
-| Disconnects often | Enable "Persistent Connection" in your app settings |
-| IPv4 blocked | Try the \`-ipv6\` config files if available |
-| Nothing works | Try DNS tunnel as last resort |
-
----
-
-## Security Notes
-
-- These credentials are unique to you
-- If compromised, contact the admin to revoke and get new ones
-- Don't share screenshots of QR codes
-- Delete this file after importing configs to your devices
-
-Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-EOF
-
-# -----------------------------------------------------------------------------
 # Generate README.html from template
 # -----------------------------------------------------------------------------
 TEMPLATE_FILE="/docs/client-guide-template.html"
@@ -411,6 +266,31 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{GENERATED_DATE}}|$GENERATED_DATE|g" "$OUTPUT_HTML"
     sed -i "s|{{DNSTT_DOMAIN}}|$DNSTT_DOMAIN|g" "$OUTPUT_HTML"
     sed -i "s|{{DNSTT_PUBKEY}}|$DNSTT_PUBKEY|g" "$OUTPUT_HTML"
+
+    # Demo user notice (only for bootstrap demouser)
+    if [[ "${IS_DEMO_USER:-false}" == "true" ]]; then
+        # Build list of disabled services
+        DISABLED_SERVICES=""
+        [[ "${ENABLE_WIREGUARD:-true}" != "true" ]] && DISABLED_SERVICES+="WireGuard, "
+        [[ "${ENABLE_DNSTT:-true}" != "true" ]] && DISABLED_SERVICES+="DNS Tunnel, "
+        [[ "${ENABLE_TROJAN:-true}" != "true" ]] && DISABLED_SERVICES+="Trojan, "
+        [[ "${ENABLE_HYSTERIA2:-true}" != "true" ]] && DISABLED_SERVICES+="Hysteria2, "
+        [[ "${ENABLE_REALITY:-true}" != "true" ]] && DISABLED_SERVICES+="Reality, "
+        DISABLED_SERVICES="${DISABLED_SERVICES%, }"  # Remove trailing comma
+
+        # English notice
+        DEMO_NOTICE_EN='<div class="warning" style="background: rgba(210, 153, 34, 0.1); border-color: var(--accent-orange); color: var(--accent-orange); margin-top: 12px;"><strong>Demo User Notice:</strong> This is a demo account created during initial setup. Some config files may be missing if services were not enabled'"${DISABLED_SERVICES:+ ($DISABLED_SERVICES)}"'. See <a href="https://github.com/moav-project/moav/tree/main/docs" style="color: var(--accent-orange);">documentation</a> for setup.</div>'
+
+        # Farsi notice
+        DEMO_NOTICE_FA='<div class="warning" style="background: rgba(210, 153, 34, 0.1); border-color: var(--accent-orange); color: var(--accent-orange); margin-top: 12px;"><strong>توجه:</strong> این یک حساب کاربری آزمایشی است. برخی فایل‌های پیکربندی ممکن است وجود نداشته باشند. برای راهنمایی به <a href="https://github.com/moav-project/moav/tree/main/docs" style="color: var(--accent-orange);">مستندات</a> مراجعه کنید.</div>'
+
+        sed -i "s|{{DEMO_NOTICE_EN}}|$DEMO_NOTICE_EN|g" "$OUTPUT_HTML"
+        sed -i "s|{{DEMO_NOTICE_FA}}|$DEMO_NOTICE_FA|g" "$OUTPUT_HTML"
+    else
+        # Remove placeholders for non-demo users
+        sed -i "s|{{DEMO_NOTICE_EN}}||g" "$OUTPUT_HTML"
+        sed -i "s|{{DEMO_NOTICE_FA}}||g" "$OUTPUT_HTML"
+    fi
 
     # QR codes (base64)
     sed -i "s|{{QR_REALITY}}|$QR_REALITY_B64|g" "$OUTPUT_HTML"
