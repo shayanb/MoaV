@@ -5,6 +5,9 @@ WG_CONFIG_DIR="/configs/wireguard"
 WG_PORT=51820
 WG_NETWORK="10.66.66.0/24"
 WG_SERVER_IP="10.66.66.1"
+# IPv6 ULA (Unique Local Address) range for WireGuard
+WG_NETWORK_V6="fd00:moav:wg::/64"
+WG_SERVER_IP_V6="fd00:moav:wg::1"
 
 generate_wireguard_config() {
     ensure_dir "$WG_CONFIG_DIR"
@@ -28,14 +31,26 @@ generate_wireguard_config() {
     log_info "WireGuard server private key: $STATE_DIR/keys/wg-server.key"
     log_info "WireGuard server public key: $server_public_key"
 
-    # Create server config
+    # Create server config with IPv6 support if available
+    local server_addresses="$WG_SERVER_IP/24"
+    local postup_rules="iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth+ -j MASQUERADE"
+    local postdown_rules="iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth+ -j MASQUERADE"
+
+    # Add IPv6 if server has public IPv6
+    if [[ -n "${SERVER_IPV6:-}" ]]; then
+        server_addresses="$WG_SERVER_IP/24, $WG_SERVER_IP_V6/64"
+        postup_rules="$postup_rules; ip6tables -A FORWARD -i %i -j ACCEPT; ip6tables -t nat -A POSTROUTING -o eth+ -j MASQUERADE"
+        postdown_rules="$postdown_rules; ip6tables -D FORWARD -i %i -j ACCEPT; ip6tables -t nat -D POSTROUTING -o eth+ -j MASQUERADE"
+        log_info "WireGuard IPv6 enabled: $WG_SERVER_IP_V6"
+    fi
+
     cat > "$WG_CONFIG_DIR/wg0.conf" <<EOF
 [Interface]
-Address = $WG_SERVER_IP/24
+Address = $server_addresses
 ListenPort = $WG_PORT
 PrivateKey = $server_private_key
-PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth+ -j MASQUERADE
-PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth+ -j MASQUERADE
+PostUp = $postup_rules
+PostDown = $postdown_rules
 
 # Peers are added dynamically
 EOF
@@ -58,26 +73,39 @@ wireguard_add_peer() {
     client_private_key=$(wg genkey)
     client_public_key=$(echo "$client_private_key" | wg pubkey)
 
-    # Calculate client IP
+    # Calculate client IP (IPv4)
     local client_ip="10.66.66.$((peer_num + 1))"
+
+    # Calculate client IPv6 if server has IPv6
+    local client_ip_v6=""
+    if [[ -n "${SERVER_IPV6:-}" ]]; then
+        # Use peer number as the last segment of IPv6 address
+        client_ip_v6="fd00:moav:wg::$((peer_num + 1))"
+    fi
 
     # Save client credentials
     cat > "$STATE_DIR/users/$user_id/wireguard.env" <<EOF
 WG_PRIVATE_KEY=$client_private_key
 WG_PUBLIC_KEY=$client_public_key
 WG_CLIENT_IP=$client_ip
+WG_CLIENT_IP_V6=$client_ip_v6
 EOF
 
     # Add peer to server config
+    local allowed_ips="$client_ip/32"
+    if [[ -n "$client_ip_v6" ]]; then
+        allowed_ips="$client_ip/32, $client_ip_v6/128"
+    fi
+
     cat >> "$WG_CONFIG_DIR/wg0.conf" <<EOF
 
 [Peer]
 # $user_id
 PublicKey = $client_public_key
-AllowedIPs = $client_ip/32
+AllowedIPs = $allowed_ips
 EOF
 
-    log_info "Added WireGuard peer for $user_id"
+    log_info "Added WireGuard peer for $user_id (IP: $client_ip${client_ip_v6:+, IPv6: $client_ip_v6})"
 }
 
 # Generate WireGuard client config
@@ -89,11 +117,17 @@ wireguard_generate_client_config() {
     local server_public_key
     server_public_key=$(cat "$WG_CONFIG_DIR/server.pub")
 
-    # Direct WireGuard config
+    # Build address string (IPv4 + optional IPv6)
+    local client_addresses="$WG_CLIENT_IP/32"
+    if [[ -n "${WG_CLIENT_IP_V6:-}" ]]; then
+        client_addresses="$WG_CLIENT_IP/32, $WG_CLIENT_IP_V6/128"
+    fi
+
+    # Direct WireGuard config (IPv4 endpoint)
     cat > "$output_dir/wireguard.conf" <<EOF
 [Interface]
 PrivateKey = $WG_PRIVATE_KEY
-Address = $WG_CLIENT_IP/32
+Address = $client_addresses
 DNS = 1.1.1.1, 8.8.8.8
 
 [Peer]
@@ -103,12 +137,29 @@ Endpoint = ${SERVER_IP}:${PORT_WIREGUARD:-51820}
 PersistentKeepalive = 25
 EOF
 
+    # Generate IPv6 endpoint config if available
+    if [[ -n "${SERVER_IPV6:-}" ]]; then
+        cat > "$output_dir/wireguard-ipv6.conf" <<EOF
+[Interface]
+PrivateKey = $WG_PRIVATE_KEY
+Address = $client_addresses
+DNS = 1.1.1.1, 2606:4700:4700::1111
+
+[Peer]
+PublicKey = $server_public_key
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = [${SERVER_IPV6}]:${PORT_WIREGUARD:-51820}
+PersistentKeepalive = 25
+EOF
+        log_info "Generated WireGuard IPv6 endpoint config"
+    fi
+
     # WireGuard-wstunnel config (for censored networks)
     # Points to localhost - user must run wstunnel client first
     cat > "$output_dir/wireguard-wstunnel.conf" <<EOF
 [Interface]
 PrivateKey = $WG_PRIVATE_KEY
-Address = $WG_CLIENT_IP/32
+Address = $client_addresses
 DNS = 1.1.1.1, 8.8.8.8
 
 [Peer]

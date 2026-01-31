@@ -44,6 +44,24 @@ fi
 export SERVER_IP
 
 # -----------------------------------------------------------------------------
+# Detect server IPv6 if not provided or disabled
+# -----------------------------------------------------------------------------
+if [[ "${SERVER_IPV6:-}" == "disabled" ]]; then
+    log_info "IPv6 explicitly disabled"
+    SERVER_IPV6=""
+elif [[ -z "${SERVER_IPV6:-}" ]]; then
+    log_info "SERVER_IPV6 not set, detecting..."
+    SERVER_IPV6=$(curl -6 -s --max-time 5 https://api6.ipify.org 2>/dev/null || curl -6 -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "")
+    if [[ -n "$SERVER_IPV6" ]]; then
+        log_info "Detected server IPv6: $SERVER_IPV6"
+    else
+        log_info "No IPv6 detected (this is normal, IPv6 is optional)"
+    fi
+fi
+
+export SERVER_IPV6
+
+# -----------------------------------------------------------------------------
 # Initialize state directory
 # -----------------------------------------------------------------------------
 export STATE_DIR="/state"

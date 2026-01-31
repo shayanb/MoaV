@@ -36,6 +36,7 @@ WG_CONFIG_DIR="configs/wireguard"
 STATE_DIR="${STATE_DIR:-./state}"
 OUTPUT_DIR="outputs/bundles/$USERNAME"
 WG_NETWORK="10.66.66.0/24"
+WG_NETWORK_V6="fd00:moav:wg::/64"
 
 # Check if WireGuard config exists
 if [[ ! -f "$WG_CONFIG_DIR/wg0.conf" ]]; then
@@ -74,6 +75,18 @@ fi
 CLIENT_IP="10.66.66.$NEXT_IP"
 log_info "Assigned IP: $CLIENT_IP"
 
+# Assign IPv6 if server has IPv6
+CLIENT_IP_V6=""
+if [[ -z "${SERVER_IPV6:-}" ]] && [[ "${SERVER_IPV6:-}" != "disabled" ]]; then
+    SERVER_IPV6=$(curl -6 -s --max-time 3 https://api6.ipify.org 2>/dev/null || echo "")
+fi
+[[ "${SERVER_IPV6:-}" == "disabled" ]] && SERVER_IPV6=""
+
+if [[ -n "$SERVER_IPV6" ]]; then
+    CLIENT_IP_V6="fd00:moav:wg::$NEXT_IP"
+    log_info "Assigned IPv6: $CLIENT_IP_V6"
+fi
+
 # Generate client keys using wg command in wireguard container or locally
 if docker compose ps wireguard --status running &>/dev/null; then
     # Use running WireGuard container
@@ -94,6 +107,7 @@ cat > "$STATE_DIR/users/$USERNAME/wireguard.env" <<EOF
 WG_PRIVATE_KEY=$CLIENT_PRIVATE_KEY
 WG_PUBLIC_KEY=$CLIENT_PUBLIC_KEY
 WG_CLIENT_IP=$CLIENT_IP
+WG_CLIENT_IP_V6=$CLIENT_IP_V6
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
@@ -125,13 +139,19 @@ log_info "Using server public key: $SERVER_PUBLIC_KEY"
 # Get server IP
 SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org || echo "YOUR_SERVER_IP")}"
 
+# Build AllowedIPs (IPv4 + optional IPv6)
+ALLOWED_IPS="$CLIENT_IP/32"
+if [[ -n "$CLIENT_IP_V6" ]]; then
+    ALLOWED_IPS="$CLIENT_IP/32, $CLIENT_IP_V6/128"
+fi
+
 # Add peer to server config file
 cat >> "$WG_CONFIG_DIR/wg0.conf" <<EOF
 
 [Peer]
 # $USERNAME
 PublicKey = $CLIENT_PUBLIC_KEY
-AllowedIPs = $CLIENT_IP/32
+AllowedIPs = $ALLOWED_IPS
 EOF
 
 log_info "Added peer to wg0.conf"
@@ -139,11 +159,17 @@ log_info "Added peer to wg0.conf"
 # Get WireGuard port from env or default
 WG_PORT="${PORT_WIREGUARD:-51820}"
 
-# Generate DIRECT client config (simple, for mobile)
+# Build client address (IPv4 + optional IPv6)
+CLIENT_ADDRESSES="$CLIENT_IP/32"
+if [[ -n "$CLIENT_IP_V6" ]]; then
+    CLIENT_ADDRESSES="$CLIENT_IP/32, $CLIENT_IP_V6/128"
+fi
+
+# Generate DIRECT client config (simple, for mobile) - IPv4 endpoint
 cat > "$OUTPUT_DIR/wireguard.conf" <<EOF
 [Interface]
 PrivateKey = $CLIENT_PRIVATE_KEY
-Address = $CLIENT_IP/32
+Address = $CLIENT_ADDRESSES
 DNS = 1.1.1.1, 8.8.8.8
 
 [Peer]
@@ -155,11 +181,28 @@ EOF
 
 log_info "Generated direct WireGuard config"
 
+# Generate IPv6 endpoint config if server has IPv6
+if [[ -n "$SERVER_IPV6" ]]; then
+    cat > "$OUTPUT_DIR/wireguard-ipv6.conf" <<EOF
+[Interface]
+PrivateKey = $CLIENT_PRIVATE_KEY
+Address = $CLIENT_ADDRESSES
+DNS = 1.1.1.1, 2606:4700:4700::1111
+
+[Peer]
+PublicKey = $SERVER_PUBLIC_KEY
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = [${SERVER_IPV6}]:${WG_PORT}
+PersistentKeepalive = 25
+EOF
+    log_info "Generated IPv6 endpoint WireGuard config"
+fi
+
 # Generate wstunnel config (for restrictive networks)
 cat > "$OUTPUT_DIR/wireguard-wstunnel.conf" <<EOF
 [Interface]
 PrivateKey = $CLIENT_PRIVATE_KEY
-Address = $CLIENT_IP/32
+Address = $CLIENT_ADDRESSES
 DNS = 1.1.1.1, 8.8.8.8
 
 [Peer]
@@ -219,7 +262,7 @@ if docker compose ps wireguard --status running &>/dev/null; then
     log_info "Adding peer to running WireGuard..."
 
     # Use wg set to add peer dynamically
-    if docker compose exec -T wireguard wg set wg0 peer "$CLIENT_PUBLIC_KEY" allowed-ips "$CLIENT_IP/32" 2>/dev/null; then
+    if docker compose exec -T wireguard wg set wg0 peer "$CLIENT_PUBLIC_KEY" allowed-ips "$ALLOWED_IPS" 2>/dev/null; then
         log_info "Peer added to running WireGuard (hot reload)"
     else
         log_info "Hot reload failed, you may need to restart WireGuard"
@@ -234,9 +277,15 @@ echo ""
 log_info "=== WireGuard peer '$USERNAME' created ==="
 echo ""
 echo "Client IP: $CLIENT_IP"
+if [[ -n "$CLIENT_IP_V6" ]]; then
+    echo "Client IPv6: $CLIENT_IP_V6"
+fi
 echo ""
 echo "Configs generated:"
-echo "  - wireguard.conf          (direct mode - simple, for mobile)"
+echo "  - wireguard.conf          (direct mode - IPv4 endpoint)"
+if [[ -n "$SERVER_IPV6" ]]; then
+    echo "  - wireguard-ipv6.conf     (direct mode - IPv6 endpoint)"
+fi
 echo "  - wireguard-wstunnel.conf (wstunnel mode - for restrictive networks)"
 echo "  - wireguard-instructions.txt (setup guide)"
 echo ""
@@ -249,6 +298,12 @@ if command -v qrencode &>/dev/null; then
     # Also save QR as image
     qrencode -o "$OUTPUT_DIR/wireguard-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null && \
         log_info "QR image saved to: $OUTPUT_DIR/wireguard-qr.png"
+
+    # IPv6 QR code
+    if [[ -n "$SERVER_IPV6" ]]; then
+        qrencode -o "$OUTPUT_DIR/wireguard-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-ipv6.conf" 2>/dev/null && \
+            log_info "IPv6 QR image saved to: $OUTPUT_DIR/wireguard-ipv6-qr.png"
+    fi
 fi
 
 echo ""

@@ -1243,9 +1243,13 @@ migration_menu() {
         3)
             echo ""
             local current_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+            local current_ipv6=$(grep -E '^SERVER_IPV6=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
             local detected_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || echo "")
+            local detected_ipv6=$(curl -6 -s --max-time 3 https://api6.ipify.org 2>/dev/null || echo "")
             [[ -n "$current_ip" ]] && echo "Current IP in .env: $current_ip"
+            [[ -n "$current_ipv6" ]] && echo "Current IPv6 in .env: $current_ipv6"
             [[ -n "$detected_ip" ]] && echo "Detected server IP: $detected_ip"
+            [[ -n "$detected_ipv6" ]] && echo "Detected server IPv6: $detected_ipv6"
             echo ""
             prompt "New IP address: "
             read -r new_ip < /dev/tty 2>/dev/null || new_ip=""
@@ -2332,11 +2336,32 @@ cmd_migrate_ip() {
     fi
     echo ""
 
+    # Detect IPv6 if available
+    local new_ipv6=""
+    local old_ipv6=$(grep -E '^SERVER_IPV6=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ "$old_ipv6" != "disabled" ]]; then
+        new_ipv6=$(curl -6 -s --max-time 3 https://api6.ipify.org 2>/dev/null || echo "")
+        if [[ -n "$new_ipv6" ]]; then
+            info "Detected IPv6: $new_ipv6"
+        fi
+    fi
+
     # 1. Update .env
     info "  Updating .env..."
     sed -i.bak "s/^SERVER_IP=.*/SERVER_IP=\"$new_ip\"/" .env
     rm -f .env.bak
     success "    SERVER_IP updated"
+
+    # Update IPv6 if detected
+    if [[ -n "$new_ipv6" ]]; then
+        if grep -q "^SERVER_IPV6=" .env; then
+            sed -i.bak "s/^SERVER_IPV6=.*/SERVER_IPV6=\"$new_ipv6\"/" .env
+        else
+            echo "SERVER_IPV6=\"$new_ipv6\"" >> .env
+        fi
+        rm -f .env.bak
+        success "    SERVER_IPV6 updated"
+    fi
 
     # 2. Update WireGuard server config (if exists)
     if [[ -f "configs/wireguard/wg0.conf" ]]; then
@@ -2396,6 +2421,27 @@ cmd_migrate_ip() {
                     sed -i.bak "s/Endpoint = $old_ip:/Endpoint = $new_ip:/g" "$user_dir/wireguard.conf"
                     rm -f "$user_dir/wireguard.conf.bak"
                 fi
+
+                # Update WireGuard IPv6 config if exists
+                if [[ -f "$user_dir/wireguard-ipv6.conf" ]] && [[ -n "$new_ipv6" ]]; then
+                    # Update IPv6 endpoint (format: [ipv6]:port)
+                    if [[ -n "$old_ipv6" ]]; then
+                        sed -i.bak "s/Endpoint = \[$old_ipv6\]:/Endpoint = [$new_ipv6]:/g" "$user_dir/wireguard-ipv6.conf"
+                    else
+                        sed -i.bak "s/Endpoint = \[[^]]*\]:/Endpoint = [$new_ipv6]:/g" "$user_dir/wireguard-ipv6.conf"
+                    fi
+                    rm -f "$user_dir/wireguard-ipv6.conf.bak"
+                fi
+
+                # Update IPv6 link files if they exist
+                for ipv6_file in "$user_dir"/*-ipv6.txt; do
+                    if [[ -f "$ipv6_file" ]] && [[ -n "$new_ipv6" ]]; then
+                        if [[ -n "$old_ipv6" ]]; then
+                            sed -i.bak "s/@\[$old_ipv6\]:/@[$new_ipv6]:/g" "$ipv6_file"
+                        fi
+                        rm -f "$ipv6_file.bak"
+                    fi
+                done
 
                 # Update dnstt instructions
                 if [[ -f "$user_dir/dnstt-instructions.txt" ]]; then
@@ -2488,6 +2534,7 @@ cmd_regenerate_users() {
 
     # Load current settings
     local server_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local server_ipv6=$(grep -E '^SERVER_IPV6=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
 
     # Auto-detect IP if not set
@@ -2501,8 +2548,17 @@ cmd_regenerate_users() {
         fi
     fi
 
-    echo -e "  Server IP: ${CYAN}$server_ip${NC}"
-    echo -e "  Domain:    ${CYAN}${domain:-not set}${NC}"
+    # Auto-detect IPv6 if not set or disabled
+    if [[ -z "$server_ipv6" ]] && [[ "$server_ipv6" != "disabled" ]]; then
+        server_ipv6=$(curl -6 -s --max-time 3 https://api6.ipify.org 2>/dev/null || echo "")
+    fi
+    [[ "$server_ipv6" == "disabled" ]] && server_ipv6=""
+
+    echo -e "  Server IP:   ${CYAN}$server_ip${NC}"
+    if [[ -n "$server_ipv6" ]]; then
+        echo -e "  Server IPv6: ${CYAN}$server_ipv6${NC}"
+    fi
+    echo -e "  Domain:      ${CYAN}${domain:-not set}${NC}"
     echo ""
 
     if ! confirm "Regenerate all user bundles?" "y"; then
@@ -2542,6 +2598,7 @@ cmd_regenerate_users() {
 
         if docker compose run --rm -T \
             -e "SERVER_IP=$server_ip" \
+            -e "SERVER_IPV6=$server_ipv6" \
             -e "DOMAIN=$domain" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"

@@ -78,12 +78,19 @@ cat > "$OUTPUT_DIR/reality-singbox.json" <<EOF
 }
 EOF
 
-# Generate v2rayN/NekoBox compatible link
+# Generate v2rayN/NekoBox compatible link (IPv4)
 REALITY_LINK="vless://${USER_UUID}@${SERVER_IP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USER_ID}"
 echo "$REALITY_LINK" > "$OUTPUT_DIR/reality.txt"
 
 # Generate QR code
 qrencode -o "$OUTPUT_DIR/reality-qr.png" -s 6 "$REALITY_LINK" 2>/dev/null || true
+
+# Generate IPv6 link if available
+if [[ -n "${SERVER_IPV6:-}" ]]; then
+    REALITY_LINK_V6="vless://${USER_UUID}@[${SERVER_IPV6}]:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USER_ID}-IPv6"
+    echo "$REALITY_LINK_V6" > "$OUTPUT_DIR/reality-ipv6.txt"
+    qrencode -o "$OUTPUT_DIR/reality-ipv6-qr.png" -s 6 "$REALITY_LINK_V6" 2>/dev/null || true
+fi
 
 log_info "  - Reality config generated"
 
@@ -117,10 +124,17 @@ cat > "$OUTPUT_DIR/trojan-singbox.json" <<EOF
 }
 EOF
 
-# Generate Trojan URI
+# Generate Trojan URI (IPv4)
 TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USER_ID}"
 echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
 qrencode -o "$OUTPUT_DIR/trojan-qr.png" -s 6 "$TROJAN_LINK" 2>/dev/null || true
+
+# Generate IPv6 link if available
+if [[ -n "${SERVER_IPV6:-}" ]]; then
+    TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USER_ID}-IPv6"
+    echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
+    qrencode -o "$OUTPUT_DIR/trojan-ipv6-qr.png" -s 6 "$TROJAN_LINK_V6" 2>/dev/null || true
+fi
 
 log_info "  - Trojan config generated"
 
@@ -167,10 +181,17 @@ cat > "$OUTPUT_DIR/hysteria2-singbox.json" <<EOF
 }
 EOF
 
-# Hysteria2 URI
+# Hysteria2 URI (IPv4)
 HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}#MoaV-Hysteria2-${USER_ID}"
 echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
 qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
+
+# Generate IPv6 link if available
+if [[ -n "${SERVER_IPV6:-}" ]]; then
+    HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}#MoaV-Hysteria2-${USER_ID}-IPv6"
+    echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
+    qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
+fi
 
 log_info "  - Hysteria2 config generated"
 
@@ -184,7 +205,11 @@ if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then
     wireguard_generate_client_config "$USER_ID" "$OUTPUT_DIR"
     qrencode -o "$OUTPUT_DIR/wireguard-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || true
     qrencode -o "$OUTPUT_DIR/wireguard-wstunnel-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || true
-    log_info "  - WireGuard config generated (direct + wstunnel)"
+    # IPv6 QR code if available
+    if [[ -n "${SERVER_IPV6:-}" ]] && [[ -f "$OUTPUT_DIR/wireguard-ipv6.conf" ]]; then
+        qrencode -o "$OUTPUT_DIR/wireguard-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-ipv6.conf" 2>/dev/null || true
+    fi
+    log_info "  - WireGuard config generated (direct + wstunnel${SERVER_IPV6:+ + ipv6})"
 fi
 
 # -----------------------------------------------------------------------------
@@ -204,7 +229,8 @@ cat > "$OUTPUT_DIR/README.md" <<EOF
 This bundle contains your personal credentials for connecting to the MoaV server.
 **Do not share these files with anyone.**
 
-Server: \`${SERVER_IP}\` / \`${DOMAIN}\`
+Server: \`${SERVER_IP}\` / \`${DOMAIN}\`$(if [[ -n "${SERVER_IPV6:-}" ]]; then echo "
+IPv6: \`${SERVER_IPV6}\`"; fi)
 
 ---
 
@@ -292,6 +318,7 @@ See \`dnstt-instructions.txt\` for setup steps.
 | Can't connect | Try a different protocol (Reality → Hysteria2 → Trojan) |
 | Very slow | Your ISP may be throttling. Try Hysteria2 (uses UDP) |
 | Disconnects often | Enable "Persistent Connection" in your app settings |
+| IPv4 blocked | Try the \`-ipv6\` config files if available |
 | Nothing works | Try DNS tunnel as last resort |
 
 ---

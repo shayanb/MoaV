@@ -113,6 +113,12 @@ fi
 # Get server IP
 SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org || echo "YOUR_SERVER_IP")}"
 
+# Get server IPv6 if available
+if [[ -z "${SERVER_IPV6:-}" ]] && [[ "${SERVER_IPV6:-}" != "disabled" ]]; then
+    SERVER_IPV6=$(curl -6 -s --max-time 3 https://api6.ipify.org 2>/dev/null || echo "")
+fi
+[[ "${SERVER_IPV6:-}" == "disabled" ]] && SERVER_IPV6=""
+
 # Parse Reality target
 REALITY_TARGET="${REALITY_TARGET:-www.microsoft.com:443}"
 REALITY_TARGET_HOST=$(echo "$REALITY_TARGET" | cut -d: -f1)
@@ -121,23 +127,44 @@ REALITY_TARGET_HOST=$(echo "$REALITY_TARGET" | cut -d: -f1)
 # Generate client configs
 # -----------------------------------------------------------------------------
 
-# Reality link
+# Reality link (IPv4)
 REALITY_LINK="vless://${USER_UUID}@${SERVER_IP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USERNAME}"
 echo "$REALITY_LINK" > "$OUTPUT_DIR/reality.txt"
 
-# Trojan link
+# Trojan link (IPv4)
 TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}"
 echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
 
-# Hysteria2 link
+# Hysteria2 link (IPv4)
 HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}#MoaV-Hysteria2-${USERNAME}"
 echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
+
+# Generate IPv6 links if available
+if [[ -n "$SERVER_IPV6" ]]; then
+    REALITY_LINK_V6="vless://${USER_UUID}@[${SERVER_IPV6}]:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USERNAME}-IPv6"
+    echo "$REALITY_LINK_V6" > "$OUTPUT_DIR/reality-ipv6.txt"
+
+    TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}-IPv6"
+    echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
+
+    HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}#MoaV-Hysteria2-${USERNAME}-IPv6"
+    echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
+
+    log_info "Generated IPv6 links (server: $SERVER_IPV6)"
+fi
 
 # Generate QR codes
 if command -v qrencode &>/dev/null; then
     qrencode -o "$OUTPUT_DIR/reality-qr.png" -s 6 "$REALITY_LINK" 2>/dev/null || true
     qrencode -o "$OUTPUT_DIR/trojan-qr.png" -s 6 "$TROJAN_LINK" 2>/dev/null || true
     qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
+
+    # IPv6 QR codes
+    if [[ -n "$SERVER_IPV6" ]]; then
+        qrencode -o "$OUTPUT_DIR/reality-ipv6-qr.png" -s 6 "$REALITY_LINK_V6" 2>/dev/null || true
+        qrencode -o "$OUTPUT_DIR/trojan-ipv6-qr.png" -s 6 "$TROJAN_LINK_V6" 2>/dev/null || true
+        qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
+    fi
 fi
 
 # Try to reload sing-box (hot reload)
@@ -165,4 +192,19 @@ echo ""
 echo "Hysteria2 Link:"
 echo "$HY2_LINK"
 echo ""
+
+if [[ -n "${SERVER_IPV6:-}" ]]; then
+    echo "=== IPv6 Links ==="
+    echo ""
+    echo "Reality (IPv6):"
+    echo "$REALITY_LINK_V6"
+    echo ""
+    echo "Trojan (IPv6):"
+    echo "$TROJAN_LINK_V6"
+    echo ""
+    echo "Hysteria2 (IPv6):"
+    echo "$HY2_LINK_V6"
+    echo ""
+fi
+
 log_info "Config files saved to: $OUTPUT_DIR/"
