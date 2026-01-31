@@ -5,8 +5,9 @@ This guide explains how to connect to MoaV from various devices.
 ## Table of Contents
 
 - [Quick Reference](#quick-reference)
-  - [Protocol Support by Port](#protocol-support-by-port)
+  - [Protocol Support](#protocol-support-by-port)
   - [Client Apps](#client-apps)
+
 - [Protocol Priority](#protocol-priority)
 - [MoaV Client Container (Linux/Docker)](#moav-client-container-linuxdocker)
 - [iOS Setup](#ios-setup)
