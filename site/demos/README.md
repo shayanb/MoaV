@@ -108,3 +108,29 @@ nano install.yml
   - Reduce terminal dimensions in YAML
   - Shorten the demo
   - Trim repetitive frames (e.g., docker build logs)
+
+
+## Fresh Ubuntu Setup
+
+To set up terminalizer on a fresh Ubuntu system:
+
+```bash
+# Install nvm (Node Version Manager)
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+source ~/.bashrc
+
+# Install and use Node.js 22
+nvm install 22
+nvm use 22
+node -v
+
+# Install yarn
+npm install -g yarn
+yarn -v
+
+# Install terminalizer globally
+yarn global add terminalizer
+
+# Install ffmpeg for rendering
+sudo apt install -y ffmpeg
+```
