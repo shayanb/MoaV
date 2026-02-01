@@ -14,6 +14,7 @@
 - **نصب آسان** - مبتنی بر Docker Compose، راه‌اندازی با یک دستور
 - **سازگار با موبایل** - کدهای QR و لینک‌ها برای وارد کردن آسان در کلاینت
 - **وب‌سایت پوششی** - ارائه محتوای بی‌خطر به بازدیدکنندگان احراز هویت نشده
+- **قابل نصب در خانه** - اجرا روی Raspberry Pi یا هر سیستم لینوکس ARM64/x64 به عنوان VPN شخصی
 - **[Psiphon Conduit](https://github.com/Psiphon-Inc/conduit)** - اهدای پهنای باند اختیاری برای کمک به دیگران در عبور از سانسور
 - **[Tor Snowflake](https://snowflake.torproject.org/)** - اهدای پهنای باند اختیاری برای کمک به کاربران Tor در عبور از سانسور
 
@@ -81,6 +82,14 @@ docker compose --profile all up -d                 # شروع تمام سروی�
 </div>
 
 برای دستورالعمل‌های کامل نصب به [docs/SETUP.md](docs/SETUP.md) مراجعه کنید.
+
+### راه‌اندازی سرور خود
+
+[![Deploy on Hetzner](https://img.shields.io/badge/نصب%20روی-Hetzner-d50c2d?style=for-the-badge&logo=hetzner&logoColor=white)](docs/DEPLOY.md#hetzner)
+[![Deploy on Linode](https://img.shields.io/badge/نصب%20روی-Linode-00a95c?style=for-the-badge&logo=linode&logoColor=white)](docs/DEPLOY.md#linode)
+[![Deploy on Vultr](https://img.shields.io/badge/نصب%20روی-Vultr-007bfc?style=for-the-badge&logo=vultr&logoColor=white)](docs/DEPLOY.md#vultr)
+[![Deploy on DigitalOcean](https://img.shields.io/badge/نصب%20روی-DigitalOcean-0080ff?style=for-the-badge&logo=digitalocean&logoColor=white)](docs/DEPLOY.md#digitalocean)
+
 
 ## معماری
 

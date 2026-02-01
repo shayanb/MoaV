@@ -1,9 +1,10 @@
 # MoaV Setup Guide
 
-Complete setup guide for deploying MoaV on a fresh VPS.
+Complete setup guide for deploying MoaV on a VPS or home server.
 
 ## Table of Contents
 
+- [Use Cases](#use-cases)
 - [Prerequisites](#prerequisites)
 - [Quick Install (Recommended)](#quick-install-recommended)
   - [Manual Installation](#manual-installation)
@@ -28,16 +29,55 @@ Complete setup guide for deploying MoaV on a fresh VPS.
 
 ---
 
+## Use Cases
+
+MoaV can be deployed in several configurations:
+
+### VPS in a Free Country
+The most common setup - deploy on a VPS in a country with unrestricted internet to help users bypass censorship.
+
+**Benefits:**
+- Dedicated public IP with all ports open
+- High bandwidth and reliability
+- Easy DNS setup with your domain
+- Can serve multiple users remotely
+
+### Home VPN Server
+Run MoaV on a Raspberry Pi or home server to create a personal VPN for yourself and family.
+
+**Benefits:**
+- No monthly VPS costs
+- Full control over your hardware
+- Share with trusted family and friends
+- Great for travelers needing access to home network
+- Can donate bandwidth via Conduit/Snowflake to help others
+
+**Considerations:**
+- Requires port forwarding on your router
+- Dynamic IP needs DDNS setup (see [DNS.md](DNS.md#dynamic-dns-for-home-servers))
+- Some ISPs use CGNAT which blocks incoming connections
+- Lower upload bandwidth than VPS
+
+**Hardware:** Raspberry Pi 4 (2GB+ RAM) or any ARM64/x64 Linux system works great.
+
+### Hybrid Setup
+Run a home server for personal use AND a VPS for distributing to users in censored regions.
+
+---
+
 ## Prerequisites
 
-- A VPS with:
-  - Debian 12, Ubuntu 22.04, or Ubuntu 24.04
+- A VPS or home server with:
+  - Debian 12, Ubuntu 22.04, or Ubuntu 24.04 (also works on Raspberry Pi OS)
+  - **Architecture:** x64 (AMD64) or ARM64 (Raspberry Pi 4, Apple Silicon, etc.)
   - At least 1 vCPU, 1GB RAM, 10GB disk
-  - Public IPv4 address
+  - Public IPv4 address (or dynamic IP with DDNS for home servers)
   - Public IPv6 address (optional, see [IPv6 Support](#ipv6-support))
-  - Ports 443/tcp, 443/udp, and 53/udp open
+  - Ports 443/tcp, 443/udp, and 53/udp open (port forwarding required for home servers)
 
 - A domain name (see [DNS.md](DNS.md) for configuration)
+  - **VPS:** Point domain to your server's static IP
+  - **Home server:** Use DDNS service (see [Dynamic DNS for Home Servers](DNS.md#dynamic-dns-for-home-servers))
 
 
 ## Quick Install (Recommended)

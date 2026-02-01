@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- One-click VPS deployment buttons for Hetzner, Linode, Vultr, DigitalOcean
+- Cloud-init script for automated VPS provisioning
+- First-login welcome prompt for cloud-deployed servers
+- Home VPN server documentation (Raspberry Pi, ARM64 support)
+- Dynamic DNS (DDNS) guide for home servers (DuckDNS, Cloudflare)
+- VPS deployment guide (docs/DEPLOY.md)
+- Bootstrap confirmation prompt before running
+
+### Changed
+- WireGuard entrypoint bypasses wg-quick to avoid Docker 29 compatibility issues
+- WireGuard peer IP assignment now based on peer count (fixes demouser getting server IP)
+
+### Fixed
+- WireGuard "Permission denied" error on Docker 29 with Alpine
+- WireGuard config parsing stripping trailing "=" from base64 keys
+
 ## [1.1.1] - 2025-01-31
 
 ### Added

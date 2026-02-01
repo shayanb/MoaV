@@ -1,10 +1,8 @@
 # MoaV
 
-[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](CHANGELOG.md)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)
+[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) 
 
-English | **[فارسی](README-fa.md)** | **[Website](https://moav.sh)**
+English | **[فارسی](README-fa.md)** 
 
 Multi-protocol censorship circumvention stack optimized for hostile network environments.
 
@@ -16,6 +14,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 - **Easy deployment** - Docker Compose based, single command setup
 - **Mobile-friendly** - QR codes and links for easy client import
 - **Decoy website** - Serves innocent content to unauthenticated visitors
+- **Home server ready** - Run on Raspberry Pi or any ARM64/x64 Linux as a personal VPN
 - **[Psiphon Conduit](https://github.com/Psiphon-Inc/conduit)** - Optional bandwidth donation to help others bypass censorship
 - **[Tor Snowflake](https://snowflake.torproject.org/)** - Optional bandwidth donation to help Tor users bypass censorship
 
@@ -68,10 +67,15 @@ docker compose --profile all up -d                 # Start all services
 
 See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 
+### Deploy Your Own
+
+[![Deploy on Hetzner](https://img.shields.io/badge/Deploy%20on-Hetzner-d50c2d?style=for-the-badge&logo=hetzner&logoColor=white)](docs/DEPLOY.md#hetzner)  [![Deploy on Linode](https://img.shields.io/badge/Deploy%20on-Linode-00a95c?style=for-the-badge&logo=linode&logoColor=white)](docs/DEPLOY.md#linode)  [![Deploy on Vultr](https://img.shields.io/badge/Deploy%20on-Vultr-007bfc?style=for-the-badge&logo=vultr&logoColor=white)](docs/DEPLOY.md#vultr)  [![Deploy on DigitalOcean](https://img.shields.io/badge/Deploy%20on-DigitalOcean-0080ff?style=for-the-badge&logo=digitalocean&logoColor=white)](docs/DEPLOY.md#digitalocean)
+
+
+
 ## Architecture
 
 ```
-
 
        ┌───────────────┐           ┌───────────────┐           ┌───────────────┐
        │  Your Clients │           │ Psiphon Users │           │   Tor Users   │
