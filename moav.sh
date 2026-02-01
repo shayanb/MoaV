@@ -1678,6 +1678,36 @@ cmd_bootstrap() {
     print_header
     check_prerequisites
     echo ""
+
+    # Check if already bootstrapped
+    if check_bootstrap; then
+        warn "Bootstrap has already been run!"
+        echo ""
+        info "Running bootstrap again will:"
+        echo "  • Regenerate all encryption keys"
+        echo "  • Obtain new TLS certificates"
+        echo "  • Recreate all user configurations"
+        echo ""
+        warn "This may invalidate existing client configurations!"
+        echo ""
+        if ! confirm "Are you sure you want to re-run bootstrap?" "n"; then
+            info "Bootstrap cancelled."
+            return 0
+        fi
+    else
+        info "Bootstrap will perform first-time setup:"
+        echo "  • Generate encryption keys"
+        echo "  • Obtain TLS certificate from Let's Encrypt"
+        echo "  • Create initial users"
+        echo "  • Generate client configuration bundles"
+        echo ""
+        if ! confirm "Continue with bootstrap?" "y"; then
+            info "Bootstrap cancelled."
+            return 0
+        fi
+    fi
+
+    echo ""
     run_bootstrap
 }
 
