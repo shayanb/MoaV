@@ -25,7 +25,8 @@ COPY --from=builder /bin/proxy /bin/proxy
 COPY scripts/snowflake-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Create nobody user if it doesn't exist
-RUN adduser -D -u 65534 nobody 2>/dev/null || true
+# Note: Runs as root due to tc bandwidth limiting requirement
+# Uses host network mode so isolation is already reduced
+# Hardening applied via docker-compose (no-new-privileges, resource limits)
 
 ENTRYPOINT ["/entrypoint.sh"]

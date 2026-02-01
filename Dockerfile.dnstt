@@ -22,4 +22,7 @@ EXPOSE 5353/udp
 COPY scripts/dnstt-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Note: Runs as root to read keys from shared state volume
+# Hardening applied via docker-compose (no-new-privileges, read_only, resource limits)
+
 ENTRYPOINT ["/entrypoint.sh"]

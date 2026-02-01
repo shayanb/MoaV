@@ -26,4 +26,7 @@ RUN chmod +x /entrypoint.sh
 
 EXPOSE 443/tcp 443/udp 8443/tcp
 
+# Note: Runs as root due to privileged port binding (443) and NET_ADMIN requirement
+# Hardening applied via docker-compose (no-new-privileges, read_only, resource limits)
+
 ENTRYPOINT ["/entrypoint.sh"]

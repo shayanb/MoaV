@@ -40,6 +40,15 @@ services:
       - TZ=${TZ:-UTC}
     cap_add:
       - NET_ADMIN
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     healthcheck:
       test: ["CMD", "sing-box", "check", "-c", "/etc/sing-box/config.json"]
       interval: 30s
@@ -75,6 +84,18 @@ services:
       - TZ=${TZ:-UTC}
       - WSTUNNEL_LISTEN=0.0.0.0:8080
       - WSTUNNEL_RESTRICT=127.0.0.1:51820
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     profiles:
       - wireguard
       - all
@@ -100,7 +121,14 @@ services:
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
       - net.ipv4.ip_forward=1
+    # Note: privileged required for kernel module management
+    # Other hardening not possible with privileged mode
     privileged: true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     profiles:
       - wireguard
       - all
@@ -120,11 +148,20 @@ services:
       - "${PORT_DNS:-53}:5353/udp"
     volumes:
       - ./configs/dnstt:/etc/dnstt:ro
-      - moav_state:/state
-      - ./outputs:/outputs
+      - moav_state:/state:ro
     environment:
       - DNSTT_DOMAIN=${DNSTT_SUBDOMAIN:-t}.${DOMAIN}
       - TZ=${TZ:-UTC}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
     profiles:
       - dnstt
       - all
@@ -157,6 +194,13 @@ services:
           echo "Certificate already exists, skipping..."
         fi
       '
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
     profiles:
       - proxy
       - wireguard
@@ -176,6 +220,25 @@ services:
       - ./web:/usr/share/nginx/html:ro
     expose:
       - "80"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.25'
     profiles:
       - proxy
       - all
@@ -189,21 +252,30 @@ services:
       context: .
       dockerfile: Dockerfile.psiphon
       args:
-        CONDUIT_VERSION: ${CONDUIT_VERSION:-1.2.0}
+        CONDUIT_VERSION: ${CONDUIT_VERSION:-1.3.0}
     container_name: moav-conduit
     restart: unless-stopped
     networks:
       - moav_net
     volumes:
       - moav_conduit:/data
-      - moav_state:/state
+      - moav_state:/state:ro
     environment:
       - TZ=${TZ:-UTC}
       - CONDUIT_BANDWIDTH=${CONDUIT_BANDWIDTH:-200}
       - CONDUIT_MAX_CLIENTS=${CONDUIT_MAX_CLIENTS:-100}
       - CONDUIT_STATS_ENABLED=${CONDUIT_STATS_ENABLED:-false}
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     profiles:
       - conduit
       - all
@@ -223,8 +295,20 @@ services:
       - TZ=${TZ:-UTC}
       - SNOWFLAKE_BANDWIDTH=${SNOWFLAKE_BANDWIDTH:-50}
       - SNOWFLAKE_CAPACITY=${SNOWFLAKE_CAPACITY:-20}
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     profiles:
       - snowflake
       - all
@@ -251,6 +335,19 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_IP_WHITELIST=${ADMIN_IP_WHITELIST:-}
       - TZ=${TZ:-UTC}
+      - PYTHONDONTWRITEBYTECODE=1
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
     profiles:
       - admin
       - all
@@ -282,6 +379,14 @@ services:
       - ENABLE_HYSTERIA2=${ENABLE_HYSTERIA2:-true}
       - ENABLE_WIREGUARD=${ENABLE_WIREGUARD:-true}
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
+    # Note: Bootstrap needs write access to configs/outputs, runs once
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     profiles:
       - setup
 
@@ -301,5 +406,16 @@ services:
     ports:
       - "${CLIENT_SOCKS_PORT:-1080}:1080"
       - "${CLIENT_HTTP_PORT:-8080}:8080"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     profiles:
       - client

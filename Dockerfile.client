@@ -116,5 +116,9 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
     CMD curl -sf --socks5 127.0.0.1:1080 https://www.google.com/generate_204 || exit 1
 
 WORKDIR /app
+
+# Note: Requires NET_ADMIN capability for some protocols (e.g., WireGuard tun)
+# Testing/development container - hardening via docker-compose
+
 ENTRYPOINT ["/app/client-entrypoint.sh"]
 CMD ["--help"]
