@@ -10,7 +10,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     geoip-bin \
     geoip-database \
-    tcpdump \
     iproute2 \
     procps \
     && rm -rf /var/lib/apt/lists/*
@@ -31,5 +30,8 @@ EXPOSE 8080
 COPY scripts/conduit-entrypoint.sh /entrypoint.sh
 COPY scripts/conduit-stats-collector.sh /usr/local/bin/conduit-stats
 RUN chmod +x /entrypoint.sh /usr/local/bin/conduit-stats
+
+# Note: Runs as root due to NET_ADMIN requirement for bandwidth limiting
+# Hardening applied via docker-compose (cap_drop, no-new-privileges, resource limits)
 
 ENTRYPOINT ["/entrypoint.sh"]
