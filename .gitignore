@@ -48,3 +48,4 @@ configs/wireguard/wg0.conf
 configs/dnstt/server.conf
 spec.yaml
 .claude/settings.local.json
+*.mp4
