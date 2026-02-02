@@ -340,50 +340,86 @@ check_prerequisites() {
                 echo ""
 
                 # Ask for domain
-                echo -e "${WHITE}Domain name${NC} (for Trojan, Hysteria2, dnstt, admin dashboard)"
+                echo -e "${WHITE}Domain name${NC} (required for TLS-based protocols)"
                 echo "  Example: vpn.example.com"
-                echo "  Note: Reality protocol works without a domain"
+                echo "  Leave empty to run only domain-less services"
                 printf "  Domain: "
                 read -r input_domain
+
+                local domainless_mode=false
                 if [[ -n "$input_domain" ]]; then
                     sed -i "s|^DOMAIN=.*|DOMAIN=\"$input_domain\"|" .env
                     success "Domain set to: $input_domain"
+                    echo ""
+
+                    # Ask for email (only if domain is set)
+                    echo -e "${WHITE}Email address${NC} (for Let's Encrypt TLS certificate)"
+                    printf "  Email: "
+                    read -r input_email
+                    if [[ -n "$input_email" ]]; then
+                        sed -i "s|^ACME_EMAIL=.*|ACME_EMAIL=\"$input_email\"|" .env
+                        success "Email set to: $input_email"
+                    else
+                        warn "No email set - you can edit .env later"
+                    fi
                 else
-                    warn "No domain set - you can edit .env later"
+                    # No domain - warn about disabled services
+                    echo ""
+                    warn "No domain provided!"
+                    echo ""
+                    echo -e "  ${YELLOW}Services that require a domain (will be disabled):${NC}"
+                    echo "    • Reality, Trojan, Hysteria2 (sing-box proxy)"
+                    echo "    • DNS tunnel (dnstt)"
+                    echo "    • Admin dashboard with HTTPS"
+                    echo ""
+                    echo -e "  ${GREEN}Services that work without a domain:${NC}"
+                    echo "    • WireGuard (direct UDP)"
+                    echo "    • Psiphon Conduit (bandwidth donation)"
+                    echo "    • Tor Snowflake (bandwidth donation)"
+                    echo ""
+
+                    if confirm "Continue with domain-less mode?" "n"; then
+                        domainless_mode=true
+                        # Set default profiles to only include domain-less services
+                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard conduit snowflake\"|" .env
+                        # Disable protocols that need domain
+                        sed -i "s|^ENABLE_REALITY=.*|ENABLE_REALITY=false|" .env
+                        sed -i "s|^ENABLE_TROJAN=.*|ENABLE_TROJAN=false|" .env
+                        sed -i "s|^ENABLE_HYSTERIA2=.*|ENABLE_HYSTERIA2=false|" .env
+                        sed -i "s|^ENABLE_DNSTT=.*|ENABLE_DNSTT=false|" .env
+                        sed -i "s|^ENABLE_ADMIN_UI=.*|ENABLE_ADMIN_UI=false|" .env
+                        success "Domain-less mode enabled"
+                        info "Only WireGuard, Conduit, and Snowflake will be available"
+                    else
+                        echo ""
+                        info "Please enter a domain to use all services."
+                        echo "  You can edit .env later and run 'moav bootstrap' again."
+                        return 0
+                    fi
                 fi
                 echo ""
 
-                # Ask for email
-                echo -e "${WHITE}Email address${NC} (for Let's Encrypt TLS certificate)"
-                printf "  Email: "
-                read -r input_email
-                if [[ -n "$input_email" ]]; then
-                    sed -i "s|^ACME_EMAIL=.*|ACME_EMAIL=\"$input_email\"|" .env
-                    success "Email set to: $input_email"
-                else
-                    warn "No email set - you can edit .env later"
-                fi
-                echo ""
+                # Generate or ask for admin password (skip in domain-less mode)
+                if [[ "$domainless_mode" == "false" ]]; then
+                    echo -e "${WHITE}Admin dashboard password${NC}"
+                    echo "  Press Enter to generate a random password, or type your own"
+                    printf "  Password: "
+                    read -r input_password
+                    if [[ -z "$input_password" ]]; then
+                        input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+                    fi
+                    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
+                    success "Admin password configured"
+                    echo ""
 
-                # Generate or ask for admin password
-                echo -e "${WHITE}Admin dashboard password${NC}"
-                echo "  Press Enter to generate a random password, or type your own"
-                printf "  Password: "
-                read -r input_password
-                if [[ -z "$input_password" ]]; then
-                    input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+                    # Show password prominently
+                    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                    echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
+                    echo ""
+                    echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
+                    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                    echo ""
                 fi
-                sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
-                success "Admin password configured"
-                echo ""
-
-                # Show password prominently
-                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
-                echo ""
-                echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
-                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                echo ""
             else
                 missing=1
             fi
@@ -801,17 +837,36 @@ show_status() {
         while IFS= read -r line; do
             [[ -z "$line" ]] && continue
 
-            local name state ports health status_str created_at uptime last_run finished_at
-            name=$(echo "$line" | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)
-            state=$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
-            health=$(echo "$line" | grep -o '"Health":"[^"]*"' | head -1 | cut -d'"' -f4)
-            status_str=$(echo "$line" | grep -o '"Status":"[^"]*"' | head -1 | cut -d'"' -f4)
-            created_at=$(echo "$line" | grep -o '"CreatedAt":"[^"]*"' | head -1 | cut -d'"' -f4)
+            local name service state ports health status_str created_at uptime last_run finished_at
+            # Parse JSON fields (handle both "Key":"value" and "Key": "value" formats)
+            name=$(echo "$line" | grep -oE '"Name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            service=$(echo "$line" | grep -oE '"Service"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            state=$(echo "$line" | grep -oE '"State"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            health=$(echo "$line" | grep -oE '"Health"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            status_str=$(echo "$line" | grep -oE '"Status"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            created_at=$(echo "$line" | grep -oE '"CreatedAt"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
             ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | grep -v '^0$' | tr '\n' ',' | sed 's/,$//' || true)
 
             [[ -z "$name" ]] && continue
-            local short_name="${name#moav-}"
-            displayed_services["$short_name"]=1
+
+            # If Service field is missing, try to find matching service from all_services
+            if [[ -z "$service" ]]; then
+                local stripped="${name#moav-}"
+                # Check if any service name contains or matches the stripped container name
+                while IFS= read -r candidate; do
+                    [[ -z "$candidate" ]] && continue
+                    # Match: "psiphon-conduit" contains "conduit", or "sing-box" == "sing-box"
+                    if [[ "$candidate" == *"$stripped"* ]] || [[ "$stripped" == "$candidate" ]]; then
+                        service="$candidate"
+                        break
+                    fi
+                done <<< "$all_services"
+            fi
+
+            # Use service name for display (fall back to stripped container name if still unknown)
+            local short_name="${service:-${name#moav-}}"
+            # Track by service name to avoid duplicates
+            [[ -n "$service" ]] && displayed_services["$service"]=1
 
             # Format last run datetime
             last_run="-"
