@@ -492,7 +492,8 @@ check_prerequisites() {
 }
 
 prereqs_already_checked() {
-    [[ -f "$PREREQS_FILE" ]]
+    # Prerequisites must be re-checked if .env is missing
+    [[ -f "$PREREQS_FILE" ]] && [[ -f ".env" ]]
 }
 
 # =============================================================================
@@ -3031,7 +3032,12 @@ main_interactive() {
     print_header
 
     # Check prerequisites only if not already verified
+    # Also re-check if .env is missing (user may have deleted it)
     if ! prereqs_already_checked; then
+        # Clear stale prereqs flag if .env is missing
+        if [[ -f "$PREREQS_FILE" ]] && [[ ! -f ".env" ]]; then
+            rm -f "$PREREQS_FILE"
+        fi
         check_prerequisites
         echo ""
         sleep 1
