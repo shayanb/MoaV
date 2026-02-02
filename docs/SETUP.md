@@ -22,6 +22,7 @@ Complete setup guide for deploying MoaV on a VPS or home server.
   - [Conduit Stats (Traffic by Country)](#conduit-stats-traffic-by-country)
 - [Re-bootstrapping](#re-bootstrapping)
 - [Updating](#updating)
+- [Testing New Features / Bug Fixes](#testing-new-features--bug-fixes)
 - [Server Migration](#server-migration)
 - [IPv6 Support](#ipv6-support)
 - [Troubleshooting](#troubleshooting)
@@ -539,6 +540,64 @@ docker compose --profile all up -d
 ```
 
 **Note:** Use `--profile all` to build/run everything, or specify individual profiles like `--profile proxy --profile admin`.
+
+## Testing New Features / Bug Fixes
+
+If you want to test a development branch or a specific bug fix before it's released:
+
+### Fresh Install from a Branch
+
+Install directly from a specific branch using the raw GitHub URL:
+
+```bash
+# Install from 'dev' branch
+curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/dev/site/install.sh | bash -s -- -b dev
+
+# Install from a feature branch
+curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/feature-xyz/site/install.sh | bash -s -- -b feature-xyz
+
+# Install from a pull request branch (replace with actual branch name)
+curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/fix-conduit-status/site/install.sh | bash -s -- -b fix-conduit-status
+```
+
+### Switch Existing Installation to a Branch
+
+If you already have MoaV installed:
+
+```bash
+cd /opt/moav
+
+# Fetch and switch to a branch
+git fetch origin
+git checkout dev
+git pull origin dev
+
+# Rebuild and restart
+docker compose --profile all build
+moav restart
+```
+
+### Switch Back to Main (Stable)
+
+```bash
+cd /opt/moav
+git checkout main
+git pull origin main
+
+# Rebuild and restart
+docker compose --profile all build
+moav restart
+```
+
+### Using Environment Variable
+
+You can also specify the branch via environment variable:
+
+```bash
+MOAV_BRANCH=dev curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/dev/site/install.sh | bash
+```
+
+**Note:** When testing development branches, back up your configuration first with `moav export` in case you need to rollback.
 
 ## Server Migration
 
