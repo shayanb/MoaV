@@ -8,12 +8,14 @@ import os
 import json
 import asyncio
 import socket
+import zipfile
+import io
 from datetime import datetime
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 import secrets
@@ -257,6 +259,7 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
 
     # Count active connections by user
     user_stats = {}
+    active_usernames = set()
     for conn in stats.get("connections", []):
         metadata = conn.get("metadata", {})
         user = metadata.get("user", "unknown")
@@ -265,6 +268,10 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
         user_stats[user]["connections"] += 1
         user_stats[user]["upload"] += conn.get("upload", 0)
         user_stats[user]["download"] += conn.get("download", 0)
+        active_usernames.add(user)
+
+    # Get all users with their bundle info
+    all_users = list_users(active_usernames)
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
@@ -272,6 +279,7 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
         "conduit_stats": conduit_stats,
         "services": services,
         "user_stats": user_stats,
+        "all_users": all_users,
         "format_bytes": format_bytes,
         "total_connections": len(stats.get("connections", [])),
         "memory_usage": format_bytes(stats.get("memory", 0)),
@@ -299,6 +307,107 @@ async def api_stats(username: str = Depends(verify_auth)):
 async def health():
     """Health check endpoint (no auth required)"""
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+
+# User bundle paths - check multiple possible locations
+BUNDLE_PATHS = [
+    Path("/outputs/bundles"),
+    Path("/app/outputs/bundles"),
+]
+
+
+def get_bundle_path():
+    """Find the bundles directory"""
+    for path in BUNDLE_PATHS:
+        if path.exists():
+            return path
+    return BUNDLE_PATHS[0]  # Default
+
+
+def list_users(active_users: set = None):
+    """List all users from bundles directory"""
+    users = []
+    bundle_path = get_bundle_path()
+
+    if not bundle_path.exists():
+        return users
+
+    for user_dir in sorted(bundle_path.iterdir()):
+        # Skip non-directories and zip files
+        if not user_dir.is_dir():
+            continue
+        # Skip special directories
+        if user_dir.name.startswith('.') or user_dir.name.endswith('-configs'):
+            continue
+
+        username = user_dir.name
+
+        # Check what files exist in the bundle
+        has_reality = (user_dir / "reality.txt").exists()
+        has_wireguard = (user_dir / "wireguard.conf").exists()
+        has_hysteria2 = (user_dir / "hysteria2.yaml").exists() or (user_dir / "hysteria2.txt").exists()
+        has_trojan = (user_dir / "trojan.txt").exists()
+
+        # Check if zip already exists
+        zip_exists = (bundle_path / f"{username}.zip").exists()
+
+        # Check if user is currently active
+        is_active = active_users and username in active_users
+
+        users.append({
+            "username": username,
+            "has_reality": has_reality,
+            "has_wireguard": has_wireguard,
+            "has_hysteria2": has_hysteria2,
+            "has_trojan": has_trojan,
+            "zip_exists": zip_exists,
+            "is_active": is_active,
+        })
+
+    return users
+
+
+@app.get("/download/{username}")
+async def download_bundle(username: str, _: str = Depends(verify_auth)):
+    """Download user bundle as zip file"""
+    bundle_path = get_bundle_path()
+    user_dir = bundle_path / username
+
+    # Security: validate username (no path traversal)
+    if ".." in username or "/" in username or "\\" in username:
+        raise HTTPException(status_code=400, detail="Invalid username")
+
+    if not user_dir.exists() or not user_dir.is_dir():
+        raise HTTPException(status_code=404, detail="User bundle not found")
+
+    # Check if pre-packaged zip exists
+    zip_path = bundle_path / f"{username}.zip"
+    if zip_path.exists():
+        # Serve existing zip
+        def iter_file():
+            with open(zip_path, "rb") as f:
+                yield from f
+        return StreamingResponse(
+            iter_file(),
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename={username}.zip"}
+        )
+
+    # Create zip on-the-fly
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file_path in user_dir.rglob("*"):
+            if file_path.is_file():
+                arcname = file_path.relative_to(user_dir)
+                zf.write(file_path, arcname)
+
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        iter([zip_buffer.getvalue()]),
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={username}.zip"}
+    )
 
 
 if __name__ == "__main__":

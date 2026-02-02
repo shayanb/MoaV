@@ -168,6 +168,28 @@
             gap: 1rem;
             margin-bottom: 2rem;
         }
+        .protocol-tag {
+            font-size: 0.65rem;
+            background: var(--border);
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.2rem;
+            margin-right: 0.25rem;
+            color: var(--text-muted);
+            display: inline-block;
+        }
+        .download-btn {
+            background: var(--accent);
+            color: white;
+            padding: 0.4rem 0.75rem;
+            border-radius: 0.25rem;
+            text-decoration: none;
+            font-size: 0.8rem;
+            display: inline-block;
+            transition: opacity 0.2s;
+        }
+        .download-btn:hover {
+            opacity: 0.85;
+        }
         @media (max-width: 640px) {
             body { padding: 1rem; }
             .card-value { font-size: 1.5rem; }
@@ -341,6 +363,53 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- User Bundles Section -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>User Bundles</h2>
+            {% if all_users %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Status</th>
+                        <th>Protocols</th>
+                        <th>Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in all_users %}
+                    <tr>
+                        <td>
+                            <span class="status-dot {% if user.is_active %}running{% else %}stopped{% endif %}"></span>
+                            {{ user.username }}
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="status-text running">Online</span>
+                            {% else %}
+                            <span class="status-text stopped">Offline</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.has_reality %}<span class="protocol-tag">Reality</span>{% endif %}
+                            {% if user.has_trojan %}<span class="protocol-tag">Trojan</span>{% endif %}
+                            {% if user.has_hysteria2 %}<span class="protocol-tag">Hy2</span>{% endif %}
+                            {% if user.has_wireguard %}<span class="protocol-tag">WG</span>{% endif %}
+                        </td>
+                        <td>
+                            <a href="/download/{{ user.username }}" class="download-btn">
+                                ⬇ Download .zip
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: var(--text-muted);">No user bundles found. Run bootstrap or add users with <code>moav user add</code></p>
+            {% endif %}
+        </div>
 
         <div class="info-box">
             <strong>Tip:</strong> Start services with:
