@@ -596,6 +596,20 @@ cmd_update() {
     current_commit=$(git -C "$install_dir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
     echo -e "  Current commit: ${YELLOW}$current_commit${NC}"
 
+    # Check current branch
+    local current_branch
+    current_branch=$(git -C "$install_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    echo -e "  Current branch: ${CYAN}$current_branch${NC}"
+
+    # Warn if not on main branch
+    if [[ "$current_branch" != "main" && "$current_branch" != "master" ]]; then
+        echo ""
+        echo -e "  ${YELLOW}⚠ Warning:${NC} You are on branch '${YELLOW}$current_branch${NC}' (not main)"
+        echo -e "    This may be a development or feature branch."
+        echo -e "    To switch to stable: ${WHITE}cd $install_dir && git checkout main${NC}"
+    fi
+    echo ""
+
     # Pull latest changes
     info "Running git pull..."
     if git -C "$install_dir" pull; then
