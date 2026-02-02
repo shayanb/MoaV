@@ -410,34 +410,74 @@ async def download_bundle(username: str, _: str = Depends(verify_auth)):
     )
 
 
-if __name__ == "__main__":
-    import uvicorn
+def find_certificates(wait_for_letsencrypt=True, max_wait=60):
+    """
+    Find SSL certificates with priority: Let's Encrypt > Self-signed
+
+    Args:
+        wait_for_letsencrypt: If True, wait for Let's Encrypt certs to appear
+        max_wait: Maximum seconds to wait for Let's Encrypt certs
+
+    Returns:
+        Tuple of (ssl_keyfile, ssl_certfile) or (None, None)
+    """
     import glob
+    import time
 
-    # Find certificate files dynamically
-    # Priority: Let's Encrypt > Self-signed
-    ssl_keyfile = None
-    ssl_certfile = None
+    # Check for self-signed first to determine if we're in domain-less mode
+    selfsigned_key = "/certs/selfsigned/privkey.pem"
+    selfsigned_cert = "/certs/selfsigned/fullchain.pem"
+    has_selfsigned = Path(selfsigned_key).exists() and Path(selfsigned_cert).exists()
 
-    # Check for Let's Encrypt certificates first
+    # Wait for Let's Encrypt certs if requested
+    if wait_for_letsencrypt:
+        waited = 0
+        check_interval = 5
+        print(f"Waiting for Let's Encrypt certificate (up to {max_wait}s)...")
+
+        while waited < max_wait:
+            cert_dirs = glob.glob("/certs/live/*/")
+            for cert_dir in cert_dirs:
+                # Skip README-only directories
+                key_path = f"{cert_dir}privkey.pem"
+                cert_path = f"{cert_dir}fullchain.pem"
+                if Path(key_path).exists() and Path(cert_path).exists():
+                    print(f"Found Let's Encrypt certificate from {cert_dir}")
+                    return key_path, cert_path
+
+            # If we have self-signed, we might be in domain-less mode
+            # Don't wait too long in that case
+            if has_selfsigned and waited >= 15:
+                print("Self-signed cert exists, assuming domain-less mode")
+                break
+
+            time.sleep(check_interval)
+            waited += check_interval
+            if waited < max_wait:
+                print(f"  Still waiting... ({waited}s)")
+
+    # Check one more time without waiting
     cert_dirs = glob.glob("/certs/live/*/")
-    if cert_dirs:
-        cert_dir = cert_dirs[0]
+    for cert_dir in cert_dirs:
         key_path = f"{cert_dir}privkey.pem"
         cert_path = f"{cert_dir}fullchain.pem"
         if Path(key_path).exists() and Path(cert_path).exists():
-            ssl_keyfile = key_path
-            ssl_certfile = cert_path
             print(f"Using Let's Encrypt certificate from {cert_dir}")
+            return key_path, cert_path
 
     # Fallback to self-signed certificate (domain-less mode)
-    if not ssl_keyfile:
-        selfsigned_key = "/certs/selfsigned/privkey.pem"
-        selfsigned_cert = "/certs/selfsigned/fullchain.pem"
-        if Path(selfsigned_key).exists() and Path(selfsigned_cert).exists():
-            ssl_keyfile = selfsigned_key
-            ssl_certfile = selfsigned_cert
-            print("Using self-signed certificate (domain-less mode)")
+    if has_selfsigned:
+        print("Using self-signed certificate (domain-less mode)")
+        return selfsigned_key, selfsigned_cert
+
+    return None, None
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    # Find certificate files (waits for Let's Encrypt if needed)
+    ssl_keyfile, ssl_certfile = find_certificates(wait_for_letsencrypt=True, max_wait=60)
 
     if not ssl_keyfile:
         print("WARNING: No SSL certificates found, running without HTTPS")

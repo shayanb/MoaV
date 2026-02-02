@@ -1,6 +1,6 @@
 # MoaV
 
-[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) 
+[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Version](https://img.shields.io/badge/version-1.1.2-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) 
 
 English | **[فارسی](README-fa.md)** 
 
@@ -150,6 +150,10 @@ User bundles are generated in `outputs/bundles/<username>/` containing:
 - QR codes for mobile import
 - README with connection instructions
 
+**Download bundles:**
+- **Admin dashboard** - Visit `https://your-server:9443`, login, and download from "User Bundles" section
+- **SCP** - `scp root@SERVER:/opt/moav/outputs/bundles/username.zip ./`
+
 ## Service Management
 
 ```bash
@@ -255,16 +259,29 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 - Debian 12, Ubuntu 22.04/24.04
 - 1 vCPU, 1GB RAM minimum
 - Public IPv4
-- Domain name
+- Domain name (optional - see Domain-less Mode below)
 
 **Ports (open as needed):**
-- 80/tcp - Certbot (TLS certificate issuance)
-- 443/tcp - Reality (VLESS)
-- 443/udp - Hysteria2
-- 8443/tcp - Trojan
-- 51820/udp - WireGuard (direct)
-- 8080/tcp - wstunnel (WireGuard over WebSocket)
-- 53/udp - DNS tunnel
+| Port | Protocol | Service | Requires Domain |
+|------|----------|---------|-----------------|
+| 443/tcp | TCP | Reality (VLESS) | Yes |
+| 443/udp | UDP | Hysteria2 | Yes |
+| 8443/tcp | TCP | Trojan | Yes |
+| 80/tcp | TCP | Certbot | Yes |
+| 51820/udp | UDP | WireGuard | No |
+| 8080/tcp | TCP | wstunnel | No |
+| 9443/tcp | TCP | Admin dashboard | No |
+| 53/udp | UDP | DNS tunnel | Yes |
+
+### Domain-less Mode
+
+Don't have a domain? MoaV can run in **domain-less mode** with:
+- **WireGuard** (direct UDP + WebSocket tunnel)
+- **Admin dashboard** (uses self-signed certificate)
+- **Conduit** (Psiphon bandwidth donation)
+- **Snowflake** (Tor bandwidth donation)
+
+Run `moav` and select "No domain" when prompted, or use `moav domainless` to configure.
 
 **Recommended VPS:**
 - Hetzner (Germany/Finland)

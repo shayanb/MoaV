@@ -6,6 +6,7 @@ Complete setup guide for deploying MoaV on a VPS or home server.
 
 - [Use Cases](#use-cases)
 - [Prerequisites](#prerequisites)
+- [Domain-less Mode](#domain-less-mode)
 - [Quick Install (Recommended)](#quick-install-recommended)
   - [Manual Installation](#manual-installation)
     - [Using moav.sh](#using-moavsh)
@@ -74,12 +75,50 @@ Run a home server for personal use AND a VPS for distributing to users in censor
   - At least 1 vCPU, 1GB RAM, 10GB disk
   - Public IPv4 address (or dynamic IP with DDNS for home servers)
   - Public IPv6 address (optional, see [IPv6 Support](#ipv6-support))
-  - Ports 443/tcp, 443/udp, and 53/udp open (port forwarding required for home servers)
+  - Ports open based on services you want (see table below)
 
-- A domain name (see [DNS.md](DNS.md) for configuration)
+- A domain name (optional - see [Domain-less Mode](#domain-less-mode))
+  - **Required for:** Reality, Trojan, Hysteria2, DNS tunnel
+  - **Not required for:** WireGuard, Admin dashboard, Conduit, Snowflake
   - **VPS:** Point domain to your server's static IP
   - **Home server:** Use DDNS service (see [Dynamic DNS for Home Servers](DNS.md#dynamic-dns-for-home-servers))
 
+
+## Domain-less Mode
+
+Don't have a domain? MoaV can run in **domain-less mode** with limited but useful services:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| WireGuard | 51820/udp | Full VPN, works on most networks |
+| wstunnel | 8080/tcp | WireGuard over WebSocket (when UDP blocked) |
+| Admin | 9443/tcp | Dashboard with self-signed certificate |
+| Conduit | dynamic | Psiphon bandwidth donation |
+| Snowflake | dynamic | Tor bandwidth donation |
+
+**What's NOT available without a domain:**
+- Reality, Trojan, Hysteria2 (require TLS certificates)
+- DNS tunnel (requires DNS delegation)
+
+### Setup Domain-less Mode
+
+```bash
+# Option 1: Interactive setup
+moav
+# When prompted for domain, leave empty and confirm domain-less mode
+
+# Option 2: Direct command
+moav domainless
+```
+
+The admin dashboard will use a **self-signed certificate** - your browser will show a security warning which is expected. Click "Advanced" → "Proceed" to access.
+
+**Tip:** Domain-less mode is great for:
+- Quick testing before setting up DNS
+- Home servers where you just need WireGuard VPN
+- Running Conduit/Snowflake to donate bandwidth
+
+---
 
 ## Quick Install (Recommended)
 
@@ -321,7 +360,7 @@ docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon 
 #   proxy     - sing-box + decoy (main proxy services)
 #   wireguard - WireGuard VPN via wstunnel
 #   dnstt     - DNS tunnel (last resort)
-#   admin     - Stats dashboard (accessible at https://domain:9443)
+#   admin     - Stats dashboard (https://domain:9443 or https://ip:9443 in domain-less mode)
 #   conduit   - Psiphon bandwidth donation (includes traffic stats by country)
 #   snowflake - Tor Snowflake proxy (bandwidth donation for Tor users)
 #   all       - Everything
@@ -382,6 +421,17 @@ Each bundle contains:
 - `wireguard-wstunnel.conf` - WireGuard config (WebSocket mode)
 - `dnstt-instructions.txt` - DNS tunnel instructions
 
+### Download via Admin Dashboard (Easiest)
+
+The admin dashboard provides a simple web interface to download user bundles:
+
+1. Open `https://your-server:9443` in your browser
+2. Login with username `admin` and your `ADMIN_PASSWORD`
+3. Scroll to the **User Bundles** section
+4. Click **Download** next to any user
+
+This works in both domain mode (Let's Encrypt cert) and domain-less mode (self-signed cert - accept the browser warning).
+
 ### Create a Distributable Package
 
 Package a user's bundle into a single zip file:
@@ -395,7 +445,7 @@ moav user package joe
 
 Or via the interactive menu: **Users** → **Package user bundle**
 
-### Download Bundles to Your Computer
+### Download via SCP
 
 Use SCP to securely download bundles from your server:
 
@@ -539,7 +589,12 @@ This shows:
 
 ### Admin Dashboard
 
-The admin dashboard (https://your-domain:9443) also shows conduit traffic breakdown by country when conduit is running.
+The admin dashboard (`https://your-domain:9443` or `https://your-ip:9443` in domain-less mode) shows:
+- Service status and stats
+- Conduit traffic breakdown by country
+- User bundles with download links
+
+**Note:** In domain-less mode, the dashboard uses a self-signed certificate. Your browser will show a security warning - click "Advanced" → "Proceed" to access.
 
 ### Get Ryve Deep Link
 

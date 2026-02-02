@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Certbot exits gracefully when no domain configured (domain-less mode)
 
 ### Fixed
+- Admin dashboard using self-signed cert instead of Let's Encrypt (now waits for certbot)
 - WireGuard traffic not flowing (missing iptables FORWARD rule for return traffic)
 - WireGuard "Permission denied" error on Docker 29 with Alpine
 - WireGuard config parsing stripping trailing "=" from base64 keys
