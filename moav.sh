@@ -954,19 +954,70 @@ select_profiles() {
 
     print_section "Select Services"
 
+    # Read ENABLE_* settings to show disabled status
+    local env_file="$SCRIPT_DIR/.env"
+    local proxy_enabled=true
+    local wg_enabled=true
+    local dnstt_enabled=true
+    local admin_enabled=true
+
+    if [[ -f "$env_file" ]]; then
+        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+
+        # proxy is disabled if all three protocols are disabled
+        if [[ "$enable_reality" != "true" ]] && [[ "$enable_trojan" != "true" ]] && [[ "$enable_hysteria2" != "true" ]]; then
+            proxy_enabled=false
+        fi
+        [[ "$enable_wireguard" != "true" ]] && wg_enabled=false
+        [[ "$enable_dnstt" != "true" ]] && dnstt_enabled=false
+        [[ "$enable_admin" != "true" ]] && admin_enabled=false
+    fi
+
+    # Build menu lines with disabled indicators
+    local proxy_line wg_line dnstt_line admin_line
+
+    if [[ "$proxy_enabled" == "true" ]]; then
+        proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site       ${CYAN}│${NC}"
+    else
+        proxy_line="  ${CYAN}│${NC}  ${DIM}1   proxy        Reality, Trojan, Hysteria2 (disabled)${NC}        ${CYAN}│${NC}"
+    fi
+
+    if [[ "$wg_enabled" == "true" ]]; then
+        wg_line="  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel            ${CYAN}│${NC}"
+    else
+        wg_line="  ${CYAN}│${NC}  ${DIM}2   wireguard    WireGuard VPN (disabled)${NC}                      ${CYAN}│${NC}"
+    fi
+
+    if [[ "$dnstt_enabled" == "true" ]]; then
+        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}                ${CYAN}│${NC}"
+    else
+        dnstt_line="  ${CYAN}│${NC}  ${DIM}3   dnstt        DNS tunnel (disabled)${NC}                       ${CYAN}│${NC}"
+    fi
+
+    if [[ "$admin_enabled" == "true" ]]; then
+        admin_line="  ${CYAN}│${NC}  ${GREEN}4${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
+    else
+        admin_line="  ${CYAN}│${NC}  ${DIM}4   admin        Stats dashboard (disabled)${NC}                   ${CYAN}│${NC}"
+    fi
+
     echo ""
     echo -e "  ${CYAN}┌─────────────────────────────────────────────────────────────────┐${NC}"
     echo -e "  ${CYAN}│${NC}  ${WHITE}#${NC}   ${WHITE}Profile${NC}      ${WHITE}Description${NC}                                   ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site       ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel            ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}                ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}4${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
+    echo -e "$proxy_line"
+    echo -e "$wg_line"
+    echo -e "$dnstt_line"
+    echo -e "$admin_line"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}5${NC}   conduit      Psiphon bandwidth donation$       ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   snowflake    Tor Snowflake donation           ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}5${NC}   conduit      Psiphon bandwidth donation                    ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   snowflake    Tor Snowflake donation                        ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          Start all services                            ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          All enabled services                          ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${RED}0${NC}   Cancel       Exit without selecting                        ${CYAN}│${NC}"
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
@@ -982,7 +1033,49 @@ select_profiles() {
     choices="${choices//,/ }"
 
     if [[ "$choices" == "a" || "$choices" == "A" ]]; then
-        SELECTED_PROFILES=("all")
+        # Build profile list based on ENABLE_* settings in .env
+        # This way "all" means "all enabled services", not literally everything
+        local env_file="$SCRIPT_DIR/.env"
+
+        # Check which protocols are enabled
+        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+
+        # Build profiles list based on enabled services
+        SELECTED_PROFILES=()
+
+        # proxy profile (Reality, Trojan, Hysteria2)
+        if [[ "$enable_reality" == "true" ]] || [[ "$enable_trojan" == "true" ]] || [[ "$enable_hysteria2" == "true" ]]; then
+            SELECTED_PROFILES+=("proxy")
+        fi
+
+        # wireguard profile
+        if [[ "$enable_wireguard" == "true" ]]; then
+            SELECTED_PROFILES+=("wireguard")
+        fi
+
+        # dnstt profile
+        if [[ "$enable_dnstt" == "true" ]]; then
+            SELECTED_PROFILES+=("dnstt")
+        fi
+
+        # admin profile
+        if [[ "$enable_admin" == "true" ]]; then
+            SELECTED_PROFILES+=("admin")
+        fi
+
+        # Always include donation services when selecting "all"
+        SELECTED_PROFILES+=("conduit")
+        SELECTED_PROFILES+=("snowflake")
+
+        # If nothing enabled (shouldn't happen), fall back to donation-only
+        if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
+            SELECTED_PROFILES=("conduit" "snowflake")
+        fi
     else
         for choice in $choices; do
             case $choice in
@@ -3038,6 +3131,8 @@ main_interactive() {
         if [[ -f "$PREREQS_FILE" ]] && [[ ! -f ".env" ]]; then
             rm -f "$PREREQS_FILE"
         fi
+        echo -e "${DIM}First run - checking prerequisites...${NC}"
+        echo ""
         check_prerequisites
         echo ""
         sleep 1
