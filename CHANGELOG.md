@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disabled service indicators in service selection menu (`(disabled)` text)
 - Install script `-b BRANCH` flag for testing feature branches
 - Admin dashboard: User Bundles section with download functionality
+- `moav update` now shows current branch and warns if not on main/master
 
 ### Changed
 - WireGuard entrypoint bypasses wg-quick to avoid Docker 29 compatibility issues
@@ -34,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - WireGuard "Permission denied" error on Docker 29 with Alpine
 - WireGuard config parsing stripping trailing "=" from base64 keys
-- WireGuard invalid IPv6 ULA address causing QR code scan failures (`fd00:moav:wg::` → `fd00:cafe:beef::`)
+- WireGuard QR code showing "Invalid QR Code" in app due to non-hex IPv6 address (`fd00:moav:wg::` → `fd00:cafe:beef::`)
 - WireGuard-wstunnel QR code not being generated in wg-user-add.sh (missing in README.html)
 - Conduit status showing "never" even when running ([#7](https://github.com/shayanb/MoaV/issues/7))
 - Reality URL `&` characters replaced with placeholder in README.html ([#8](https://github.com/shayanb/MoaV/issues/8))
