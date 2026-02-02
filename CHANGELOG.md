@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Install script `-b BRANCH` flag for testing feature branches
 - Admin dashboard: User Bundles section with download functionality
 - `moav update` now shows current branch and warns if not on main/master
+- Admin dashboard URL shown in menu, status, and after starting services
+- Admin dashboard now works in domain-less mode using self-signed certificates
 
 ### Changed
 - WireGuard entrypoint bypasses wg-quick to avoid Docker 29 compatibility issues

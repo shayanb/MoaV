@@ -1269,6 +1269,13 @@ start_services() {
         echo ""
         success "Services started!"
         echo ""
+        # Show admin URL if admin was started
+        if echo "$profiles" | grep -qE "admin|all"; then
+            local admin_port="${PORT_ADMIN:-9443}"
+            local admin_host="${DOMAIN:-${SERVER_IP:-localhost}}"
+            echo -e "  ${CYAN}Admin Dashboard:${NC} https://${admin_host}:${admin_port}"
+            echo ""
+        fi
         show_log_help
     fi
 }
@@ -1799,6 +1806,12 @@ main_menu() {
         local running=$(get_running_services)
         if [[ -n "$running" ]]; then
             echo -e "  ${GREEN}●${NC} Services running: $(echo $running | wc -w)"
+            # Show admin URL if admin is running
+            if echo "$running" | grep -q "admin"; then
+                local admin_port="${PORT_ADMIN:-9443}"
+                local admin_host="${DOMAIN:-${SERVER_IP:-localhost}}"
+                echo -e "  ${CYAN}↳${NC} Admin: ${CYAN}https://${admin_host}:${admin_port}${NC}"
+            fi
         else
             echo -e "  ${DIM}○ No services running${NC}"
         fi
@@ -2140,6 +2153,13 @@ cmd_start() {
     docker compose $profiles up -d
     success "Services started!"
     echo ""
+    # Show admin URL if admin was started
+    if echo "$profiles" | grep -qE "admin|all"; then
+        local admin_port="${PORT_ADMIN:-9443}"
+        local admin_host="${DOMAIN:-${SERVER_IP:-localhost}}"
+        echo -e "  ${CYAN}Admin Dashboard:${NC} https://${admin_host}:${admin_port}"
+        echo ""
+    fi
     docker compose $profiles ps
 }
 
@@ -2234,6 +2254,15 @@ cmd_status() {
     echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     show_status
+
+    # Show admin URL if admin is running
+    local running=$(get_running_services)
+    if echo "$running" | grep -q "admin"; then
+        local admin_port="${PORT_ADMIN:-9443}"
+        local admin_host="${DOMAIN:-${SERVER_IP:-localhost}}"
+        echo ""
+        echo -e "  ${CYAN}Admin Dashboard:${NC} https://${admin_host}:${admin_port}"
+    fi
 
     # Show default profiles
     local defaults

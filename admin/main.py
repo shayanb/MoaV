@@ -415,10 +415,12 @@ if __name__ == "__main__":
     import glob
 
     # Find certificate files dynamically
-    cert_dirs = glob.glob("/certs/live/*/")
+    # Priority: Let's Encrypt > Self-signed
     ssl_keyfile = None
     ssl_certfile = None
 
+    # Check for Let's Encrypt certificates first
+    cert_dirs = glob.glob("/certs/live/*/")
     if cert_dirs:
         cert_dir = cert_dirs[0]
         key_path = f"{cert_dir}privkey.pem"
@@ -426,6 +428,19 @@ if __name__ == "__main__":
         if Path(key_path).exists() and Path(cert_path).exists():
             ssl_keyfile = key_path
             ssl_certfile = cert_path
+            print(f"Using Let's Encrypt certificate from {cert_dir}")
+
+    # Fallback to self-signed certificate (domain-less mode)
+    if not ssl_keyfile:
+        selfsigned_key = "/certs/selfsigned/privkey.pem"
+        selfsigned_cert = "/certs/selfsigned/fullchain.pem"
+        if Path(selfsigned_key).exists() and Path(selfsigned_cert).exists():
+            ssl_keyfile = selfsigned_key
+            ssl_certfile = selfsigned_cert
+            print("Using self-signed certificate (domain-less mode)")
+
+    if not ssl_keyfile:
+        print("WARNING: No SSL certificates found, running without HTTPS")
 
     # Run with SSL if certs found
     uvicorn.run(
