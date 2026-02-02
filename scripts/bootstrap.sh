@@ -163,6 +163,9 @@ export REALITY_TARGET="${REALITY_TARGET:-www.microsoft.com:443}"
 # In domain-less mode, DOMAIN stays empty; otherwise use as-is
 export DOMAIN="${DOMAIN:-}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
+export ENABLE_REALITY="${ENABLE_REALITY:-true}"
+export ENABLE_TROJAN="${ENABLE_TROJAN:-true}"
+export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 

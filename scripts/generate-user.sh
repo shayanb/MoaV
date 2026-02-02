@@ -29,23 +29,28 @@ fi
 
 source "$USER_CREDS_FILE"
 
-# Load Reality keys
-source "$STATE_DIR/keys/reality.env"
+# Load Reality keys (only if Reality is enabled)
+if [[ "${ENABLE_REALITY:-true}" == "true" ]] && [[ -f "$STATE_DIR/keys/reality.env" ]]; then
+    source "$STATE_DIR/keys/reality.env"
+fi
 
 # Create output directory
 OUTPUT_DIR="/outputs/bundles/$USER_ID"
 ensure_dir "$OUTPUT_DIR"
 
-# Parse Reality target
-REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f1)
-REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f2)
+# Parse Reality target (only if Reality is enabled)
+if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
+    REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f1)
+    REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f2)
+fi
 
 log_info "Generating bundle for $USER_ID..."
 
 # -----------------------------------------------------------------------------
 # Generate Reality (VLESS) client config (sing-box 1.12+ format)
 # -----------------------------------------------------------------------------
-cat > "$OUTPUT_DIR/reality-singbox.json" <<EOF
+if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
+    cat > "$OUTPUT_DIR/reality-singbox.json" <<EOF
 {
   "log": {"level": "info"},
   "inbounds": [
@@ -78,26 +83,28 @@ cat > "$OUTPUT_DIR/reality-singbox.json" <<EOF
 }
 EOF
 
-# Generate v2rayN/NekoBox compatible link (IPv4)
-REALITY_LINK="vless://${USER_UUID}@${SERVER_IP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USER_ID}"
-echo "$REALITY_LINK" > "$OUTPUT_DIR/reality.txt"
+    # Generate v2rayN/NekoBox compatible link (IPv4)
+    REALITY_LINK="vless://${USER_UUID}@${SERVER_IP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USER_ID}"
+    echo "$REALITY_LINK" > "$OUTPUT_DIR/reality.txt"
 
-# Generate QR code
-qrencode -o "$OUTPUT_DIR/reality-qr.png" -s 6 "$REALITY_LINK" 2>/dev/null || true
+    # Generate QR code
+    qrencode -o "$OUTPUT_DIR/reality-qr.png" -s 6 "$REALITY_LINK" 2>/dev/null || true
 
-# Generate IPv6 link if available
-if [[ -n "${SERVER_IPV6:-}" ]]; then
-    REALITY_LINK_V6="vless://${USER_UUID}@[${SERVER_IPV6}]:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USER_ID}-IPv6"
-    echo "$REALITY_LINK_V6" > "$OUTPUT_DIR/reality-ipv6.txt"
-    qrencode -o "$OUTPUT_DIR/reality-ipv6-qr.png" -s 6 "$REALITY_LINK_V6" 2>/dev/null || true
+    # Generate IPv6 link if available
+    if [[ -n "${SERVER_IPV6:-}" ]]; then
+        REALITY_LINK_V6="vless://${USER_UUID}@[${SERVER_IPV6}]:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USER_ID}-IPv6"
+        echo "$REALITY_LINK_V6" > "$OUTPUT_DIR/reality-ipv6.txt"
+        qrencode -o "$OUTPUT_DIR/reality-ipv6-qr.png" -s 6 "$REALITY_LINK_V6" 2>/dev/null || true
+    fi
+
+    log_info "  - Reality config generated"
 fi
-
-log_info "  - Reality config generated"
 
 # -----------------------------------------------------------------------------
 # Generate Trojan client config (sing-box 1.12+ format)
 # -----------------------------------------------------------------------------
-cat > "$OUTPUT_DIR/trojan-singbox.json" <<EOF
+if [[ "${ENABLE_TROJAN:-true}" == "true" ]]; then
+    cat > "$OUTPUT_DIR/trojan-singbox.json" <<EOF
 {
   "log": {"level": "info"},
   "inbounds": [
@@ -124,24 +131,26 @@ cat > "$OUTPUT_DIR/trojan-singbox.json" <<EOF
 }
 EOF
 
-# Generate Trojan URI (IPv4)
-TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USER_ID}"
-echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
-qrencode -o "$OUTPUT_DIR/trojan-qr.png" -s 6 "$TROJAN_LINK" 2>/dev/null || true
+    # Generate Trojan URI (IPv4)
+    TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USER_ID}"
+    echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
+    qrencode -o "$OUTPUT_DIR/trojan-qr.png" -s 6 "$TROJAN_LINK" 2>/dev/null || true
 
-# Generate IPv6 link if available
-if [[ -n "${SERVER_IPV6:-}" ]]; then
-    TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USER_ID}-IPv6"
-    echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
-    qrencode -o "$OUTPUT_DIR/trojan-ipv6-qr.png" -s 6 "$TROJAN_LINK_V6" 2>/dev/null || true
+    # Generate IPv6 link if available
+    if [[ -n "${SERVER_IPV6:-}" ]]; then
+        TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USER_ID}-IPv6"
+        echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
+        qrencode -o "$OUTPUT_DIR/trojan-ipv6-qr.png" -s 6 "$TROJAN_LINK_V6" 2>/dev/null || true
+    fi
+
+    log_info "  - Trojan config generated"
 fi
-
-log_info "  - Trojan config generated"
 
 # -----------------------------------------------------------------------------
 # Generate Hysteria2 client config
 # -----------------------------------------------------------------------------
-cat > "$OUTPUT_DIR/hysteria2.yaml" <<EOF
+if [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]]; then
+    cat > "$OUTPUT_DIR/hysteria2.yaml" <<EOF
 server: ${SERVER_IP}:443
 auth: ${USER_PASSWORD}
 
@@ -155,7 +164,7 @@ http:
   listen: 127.0.0.1:8080
 EOF
 
-cat > "$OUTPUT_DIR/hysteria2-singbox.json" <<EOF
+    cat > "$OUTPUT_DIR/hysteria2-singbox.json" <<EOF
 {
   "log": {"level": "info"},
   "inbounds": [
@@ -181,19 +190,20 @@ cat > "$OUTPUT_DIR/hysteria2-singbox.json" <<EOF
 }
 EOF
 
-# Hysteria2 URI (IPv4)
-HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}#MoaV-Hysteria2-${USER_ID}"
-echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
-qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
+    # Hysteria2 URI (IPv4)
+    HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}#MoaV-Hysteria2-${USER_ID}"
+    echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
+    qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
 
-# Generate IPv6 link if available
-if [[ -n "${SERVER_IPV6:-}" ]]; then
-    HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}#MoaV-Hysteria2-${USER_ID}-IPv6"
-    echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
-    qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
+    # Generate IPv6 link if available
+    if [[ -n "${SERVER_IPV6:-}" ]]; then
+        HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}#MoaV-Hysteria2-${USER_ID}-IPv6"
+        echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
+        qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
+    fi
+
+    log_info "  - Hysteria2 config generated"
 fi
-
-log_info "  - Hysteria2 config generated"
 
 # -----------------------------------------------------------------------------
 # Generate WireGuard config (if enabled)

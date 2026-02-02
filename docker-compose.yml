@@ -282,6 +282,7 @@ services:
       - ENABLE_HYSTERIA2=${ENABLE_HYSTERIA2:-true}
       - ENABLE_WIREGUARD=${ENABLE_WIREGUARD:-true}
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
+      - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
     profiles:
       - setup
 
