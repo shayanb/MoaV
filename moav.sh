@@ -1945,6 +1945,7 @@ show_usage() {
     echo "  moav user add john             # Add user 'john'"
     echo "  moav user add john --package   # Add user and create zip bundle"
     echo "  moav test joe                  # Test connectivity for user joe"
+    echo "  moav test joe -v               # Test with verbose output for debugging"
     echo "  moav client connect joe        # Connect as user joe (exposes proxy)"
     echo ""
     echo "Migration:"
@@ -2428,17 +2429,22 @@ cmd_build() {
 # =============================================================================
 
 cmd_test() {
-    local user="${1:-}"
+    local user=""
     local json_flag=""
+    local verbose_flag=""
 
-    # Check for --json flag
+    # Parse flags
     for arg in "$@"; do
-        [[ "$arg" == "--json" ]] && json_flag="--json"
-        [[ "$arg" != "--json" ]] && [[ -z "$user" ]] && user="$arg"
+        case "$arg" in
+            --json) json_flag="--json" ;;
+            -v|--verbose) verbose_flag="--verbose" ;;
+            -*) error "Unknown flag: $arg"; exit 1 ;;
+            *) [[ -z "$user" ]] && user="$arg" ;;
+        esac
     done
 
     if [[ -z "$user" ]]; then
-        error "Usage: moav test USERNAME [--json]"
+        error "Usage: moav test USERNAME [--json] [-v|--verbose]"
         echo ""
         echo "Available users:"
         ls -1 outputs/bundles/ 2>/dev/null || echo "  No users found"
@@ -2464,7 +2470,7 @@ cmd_test() {
         -v "$(pwd)/$bundle_path:/config:ro" \
         -v "$(pwd)/outputs/dnstt:/dnstt:ro" \
         -e ENABLE_DEPRECATED_WIREGUARD_OUTBOUND=true \
-        moav-client --test $json_flag
+        moav-client --test $json_flag $verbose_flag
 }
 
 cmd_client() {

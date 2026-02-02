@@ -118,7 +118,22 @@ test_reality() {
         [[ -z "$fp" ]] && fp="chrome"
         [[ -z "$port" ]] && port="443"
 
+        # Ensure port is numeric
+        port=$(echo "$port" | tr -cd '0-9')
+        [[ -z "$port" ]] && port="443"
+
         log_debug "Parsed: server=$server port=$port uuid=$uuid sni=$sni"
+        log_debug "Reality params: pbk=$pbk sid=$sid fp=$fp"
+
+        # Validate required fields
+        if [[ -z "$server" ]] || [[ -z "$uuid" ]] || [[ -z "$sni" ]] || [[ -z "$pbk" ]]; then
+            detail="Failed to parse Reality URI (missing required fields). Run with -v for details."
+            log_error "$detail"
+            log_error "server='$server' uuid='${uuid:0:8}...' sni='$sni' pbk='${pbk:0:10}...'"
+            RESULTS[reality]="fail"
+            DETAILS[reality]="$detail"
+            return
+        fi
 
         # Generate sing-box 1.12+ compatible config
         cat > "$client_config" << EOF
@@ -169,13 +184,28 @@ EOF
 
     log_debug "Generated config: $(cat "$client_config")"
 
-    # Start sing-box
-    sing-box run -c "$client_config" &
+    # Validate JSON before running
+    if ! jq empty "$client_config" 2>/dev/null; then
+        detail="Generated invalid JSON config"
+        log_error "$detail"
+        log_debug "Config content: $(cat "$client_config")"
+        RESULTS[reality]="fail"
+        DETAILS[reality]="$detail"
+        return
+    fi
+
+    # Start sing-box and capture errors
+    local error_log="$TEMP_DIR/reality-error.log"
+    sing-box run -c "$client_config" 2>"$error_log" &
     local pid=$!
     sleep 3
 
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" | tr '\n' ' ')
+            detail="sing-box error: $error_msg"
+        fi
         log_error "$detail"
         RESULTS[reality]="fail"
         DETAILS[reality]="$detail"
@@ -188,7 +218,12 @@ EOF
         RESULTS[reality]="pass"
         DETAILS[reality]="Connected via VLESS/Reality"
     else
-        detail="Connection test failed (timeout or rejected)"
+        detail="Connection test failed"
+        # Check for sing-box errors during operation
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail" "$error_log" | tail -1 | tr '\n' ' ')
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
         log_error "$detail"
         RESULTS[reality]="fail"
         DETAILS[reality]="$detail"
@@ -232,6 +267,22 @@ test_trojan() {
         [[ -z "$sni" ]] && sni="$server"
         [[ -z "$port" ]] && port="8443"
 
+        # Ensure port is numeric
+        port=$(echo "$port" | tr -cd '0-9')
+        [[ -z "$port" ]] && port="8443"
+
+        log_debug "Parsed: server=$server port=$port sni=$sni"
+
+        # Validate required fields
+        if [[ -z "$server" ]] || [[ -z "$password" ]]; then
+            detail="Failed to parse Trojan URI (missing required fields). Run with -v for details."
+            log_error "$detail"
+            log_error "server='$server' password='${password:0:8}...'"
+            RESULTS[trojan]="fail"
+            DETAILS[trojan]="$detail"
+            return
+        fi
+
         cat > "$client_config" << EOF
 {
   "log": {"level": "error"},
@@ -270,12 +321,27 @@ EOF
         }
     fi
 
-    sing-box run -c "$client_config" &
+    # Validate JSON before running
+    if ! jq empty "$client_config" 2>/dev/null; then
+        detail="Generated invalid JSON config"
+        log_error "$detail"
+        RESULTS[trojan]="fail"
+        DETAILS[trojan]="$detail"
+        return
+    fi
+
+    # Start sing-box and capture errors
+    local error_log="$TEMP_DIR/trojan-error.log"
+    sing-box run -c "$client_config" 2>"$error_log" &
     local pid=$!
     sleep 3
 
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" | tr '\n' ' ')
+            detail="sing-box error: $error_msg"
+        fi
         log_error "$detail"
         RESULTS[trojan]="fail"
         DETAILS[trojan]="$detail"
@@ -288,6 +354,11 @@ EOF
         DETAILS[trojan]="Connected via Trojan"
     else
         detail="Connection test failed"
+        # Check for sing-box errors during operation
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail" "$error_log" | tail -1 | tr '\n' ' ')
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
         log_error "$detail"
         RESULTS[trojan]="fail"
         DETAILS[trojan]="$detail"
@@ -342,12 +413,16 @@ test_hysteria2() {
         port="443"
     fi
 
+    # Ensure port is numeric
+    port=$(echo "$port" | tr -cd '0-9')
+    [[ -z "$port" ]] && port="443"
+
     [[ -z "$sni" ]] && sni="$host"
 
     log_debug "Parsed: host=$host port=$port auth=$auth sni=$sni"
 
     if [[ -z "$host" ]] || [[ -z "$auth" ]]; then
-        detail="Could not parse Hysteria2 config"
+        detail="Could not parse Hysteria2 config. Run with -v for details."
         log_error "$detail"
         RESULTS[hysteria2]="fail"
         DETAILS[hysteria2]="$detail"
@@ -381,12 +456,27 @@ EOF
 
     log_debug "Generated config: $(cat "$client_config")"
 
-    sing-box run -c "$client_config" &
+    # Validate JSON before running
+    if ! jq empty "$client_config" 2>/dev/null; then
+        detail="Generated invalid JSON config"
+        log_error "$detail"
+        RESULTS[hysteria2]="fail"
+        DETAILS[hysteria2]="$detail"
+        return
+    fi
+
+    # Start sing-box and capture errors
+    local error_log="$TEMP_DIR/hysteria2-error.log"
+    sing-box run -c "$client_config" 2>"$error_log" &
     local pid=$!
     sleep 3
 
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" | tr '\n' ' ')
+            detail="sing-box error: $error_msg"
+        fi
         log_error "$detail"
         RESULTS[hysteria2]="fail"
         DETAILS[hysteria2]="$detail"
@@ -399,6 +489,11 @@ EOF
         DETAILS[hysteria2]="Connected via Hysteria2"
     else
         detail="Connection test failed"
+        # Check for sing-box errors during operation
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail" "$error_log" | tail -1 | tr '\n' ' ')
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
         log_error "$detail"
         RESULTS[hysteria2]="fail"
         DETAILS[hysteria2]="$detail"

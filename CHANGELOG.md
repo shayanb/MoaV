@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `moav test` verbose flag (`-v` or `--verbose`) for debugging connection issues
+
+### Fixed
+- `moav test` now validates parsed URI fields before generating config
+- `moav test` now shows actual sing-box error messages instead of generic "failed to start"
+- `moav test` now validates generated JSON config before running sing-box
+
 ## [1.1.2] - 2026-02-02
 
 ### Added
