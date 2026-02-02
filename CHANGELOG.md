@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `moav test` verbose flag (`-v` or `--verbose`) for debugging connection issues
+
+### Changed
+- `moav test` now prefers IPv4 configs over IPv6 (tests `reality.txt` before `reality-ipv6.txt`)
+- `moav test` treats IPv6 network failures as warnings instead of errors (IPv6 may not be available in container)
+
+### Fixed
+- `moav test` now correctly parses IPv6 addresses in URIs (e.g., `[2400:6180::1]:443`)
+- `moav test` now validates parsed URI fields before generating config
+- `moav test` now shows actual sing-box error messages instead of generic "failed to start"
+- `moav test` now validates generated JSON config before running sing-box
+
 ## [1.1.2] - 2026-02-02
 
 ### Added
@@ -24,8 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Install script `-b BRANCH` flag for testing feature branches
 - Admin dashboard: User Bundles section with download functionality
 - `moav update` now shows current branch and warns if not on main/master
+- Admin dashboard URL shown in menu, status, and after starting services
+- Admin dashboard now works in domain-less mode using self-signed certificates
+- Certbot status explanation in `moav status` (clarifies "Exited (0)" is expected)
+- Admin URL now shows server public IP instead of localhost
+- Bootstrap now auto-detects and saves SERVER_IP to .env if not set
 
 ### Changed
+- Improved sing-box performance: disabled `sniff_override_destination`, disabled multiplex padding, enabled TCP Fast Open, use local DNS by default
 - WireGuard entrypoint bypasses wg-quick to avoid Docker 29 compatibility issues
 - WireGuard peer IP assignment now based on peer count (fixes demouser getting server IP)
 - Service selection "ALL" now respects ENABLE_* settings (only starts enabled services)
@@ -33,6 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Certbot exits gracefully when no domain configured (domain-less mode)
 
 ### Fixed
+- Admin dashboard using self-signed cert instead of Let's Encrypt (now waits for certbot)
+- Admin dashboard "sing-box API timeout" error (memory endpoint is streaming, now reads first line only)
+- WireGuard traffic not flowing (missing iptables FORWARD rule for return traffic)
 - WireGuard "Permission denied" error on Docker 29 with Alpine
 - WireGuard config parsing stripping trailing "=" from base64 keys
 - WireGuard QR code showing "Invalid QR Code" in app due to non-hex IPv6 address (`fd00:moav:wg::` → `fd00:cafe:beef::`)
@@ -42,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture mismatch in Dockerfile.client - now uses TARGETARCH for multi-arch support ([#4](https://github.com/shayanb/MoaV/issues/4))
 - Bootstrap failing in domain-less mode (missing ENABLE_* exports, conditional config generation)
 - generate-user.sh unconditionally sourcing reality.env (now conditional on ENABLE_REALITY)
+- generate-user.sh peer count calculation failing when grep returns no matches
 
 ## [1.1.1] - 2025-01-31
 

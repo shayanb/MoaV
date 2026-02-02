@@ -153,7 +153,17 @@ ufw allow 9443/tcp
 iptables -A INPUT -p tcp --dport 9443 -j ACCEPT
 ```
 
-**Admin runs on port 9443 by default** (not 8443). The internal container port is 8443, but it's mapped to 9443 externally. Access at `https://yourdomain.com:9443/`
+**Browser shows security warning (domain-less mode):**
+
+In domain-less mode, admin uses a self-signed certificate. This is expected:
+1. Click "Advanced" or "Show Details"
+2. Click "Proceed to site" or "Accept the Risk"
+
+**Access URLs:**
+- With domain: `https://yourdomain.com:9443/`
+- Domain-less mode: `https://YOUR_SERVER_IP:9443/`
+
+**Admin runs on port 9443 by default** (not 8443). The internal container port is 8443, but it's mapped to 9443 externally.
 
 ### sing-box crashes
 
@@ -219,6 +229,16 @@ docker compose exec wireguard cat /proc/sys/net/ipv4/ip_forward
 **Check firewall allows WireGuard port:**
 ```bash
 ufw allow 51820/udp
+```
+
+**Update MoaV if issue persists:**
+
+Older versions had missing iptables rules for return traffic. Update and rebuild:
+```bash
+cd /opt/moav
+moav update
+docker compose --profile wireguard build --no-cache wireguard
+moav restart wireguard
 ```
 
 ### DNS tunnel not working

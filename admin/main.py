@@ -120,11 +120,11 @@ async def fetch_singbox_stats():
         headers["Authorization"] = f"Bearer {CLASH_SECRET}"
 
     # Use explicit timeout config to prevent hanging
-    timeout = httpx.Timeout(connect=1.0, read=2.0, write=1.0, pool=1.0)
+    timeout = httpx.Timeout(connect=2.0, read=3.0, write=2.0, pool=2.0)
 
     try:
         # Wrap entire operation in asyncio timeout as backup
-        async with asyncio.timeout(5.0):
+        async with asyncio.timeout(10.0):
             async with httpx.AsyncClient(timeout=timeout) as client:
                 try:
                     # Get connections (includes upload/download per connection)
@@ -135,11 +135,17 @@ async def fetch_singbox_stats():
                         stats["traffic"]["upload"] = data.get("uploadTotal", 0)
                         stats["traffic"]["download"] = data.get("downloadTotal", 0)
 
-                    # Get memory
-                    resp = await client.get(f"{SINGBOX_API}/memory", headers=headers)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        stats["memory"] = data.get("inuse", 0)
+                    # Get memory - this is a streaming endpoint, read first line only
+                    async with client.stream("GET", f"{SINGBOX_API}/memory", headers=headers) as resp:
+                        if resp.status_code == 200:
+                            async for line in resp.aiter_lines():
+                                if line.strip():
+                                    try:
+                                        data = json.loads(line)
+                                        stats["memory"] = data.get("inuse", 0)
+                                    except json.JSONDecodeError:
+                                        pass
+                                    break  # Only need first line
 
                 except httpx.ConnectError:
                     stats["error"] = "sing-box API not reachable"
@@ -151,7 +157,7 @@ async def fetch_singbox_stats():
                     stats["error"] = "sing-box API timeout"
 
     except asyncio.TimeoutError:
-        stats["error"] = "sing-box API timeout (5s)"
+        stats["error"] = "sing-box API timeout (10s)"
     except Exception as e:
         stats["error"] = f"Error: {type(e).__name__}: {str(e)}"
 
@@ -410,22 +416,77 @@ async def download_bundle(username: str, _: str = Depends(verify_auth)):
     )
 
 
-if __name__ == "__main__":
-    import uvicorn
+def find_certificates(wait_for_letsencrypt=True, max_wait=60):
+    """
+    Find SSL certificates with priority: Let's Encrypt > Self-signed
+
+    Args:
+        wait_for_letsencrypt: If True, wait for Let's Encrypt certs to appear
+        max_wait: Maximum seconds to wait for Let's Encrypt certs
+
+    Returns:
+        Tuple of (ssl_keyfile, ssl_certfile) or (None, None)
+    """
     import glob
+    import time
 
-    # Find certificate files dynamically
+    # Check for self-signed first to determine if we're in domain-less mode
+    selfsigned_key = "/certs/selfsigned/privkey.pem"
+    selfsigned_cert = "/certs/selfsigned/fullchain.pem"
+    has_selfsigned = Path(selfsigned_key).exists() and Path(selfsigned_cert).exists()
+
+    # Wait for Let's Encrypt certs if requested
+    if wait_for_letsencrypt:
+        waited = 0
+        check_interval = 5
+        print(f"Waiting for Let's Encrypt certificate (up to {max_wait}s)...")
+
+        while waited < max_wait:
+            cert_dirs = glob.glob("/certs/live/*/")
+            for cert_dir in cert_dirs:
+                # Skip README-only directories
+                key_path = f"{cert_dir}privkey.pem"
+                cert_path = f"{cert_dir}fullchain.pem"
+                if Path(key_path).exists() and Path(cert_path).exists():
+                    print(f"Found Let's Encrypt certificate from {cert_dir}")
+                    return key_path, cert_path
+
+            # If we have self-signed, we might be in domain-less mode
+            # Don't wait too long in that case
+            if has_selfsigned and waited >= 15:
+                print("Self-signed cert exists, assuming domain-less mode")
+                break
+
+            time.sleep(check_interval)
+            waited += check_interval
+            if waited < max_wait:
+                print(f"  Still waiting... ({waited}s)")
+
+    # Check one more time without waiting
     cert_dirs = glob.glob("/certs/live/*/")
-    ssl_keyfile = None
-    ssl_certfile = None
-
-    if cert_dirs:
-        cert_dir = cert_dirs[0]
+    for cert_dir in cert_dirs:
         key_path = f"{cert_dir}privkey.pem"
         cert_path = f"{cert_dir}fullchain.pem"
         if Path(key_path).exists() and Path(cert_path).exists():
-            ssl_keyfile = key_path
-            ssl_certfile = cert_path
+            print(f"Using Let's Encrypt certificate from {cert_dir}")
+            return key_path, cert_path
+
+    # Fallback to self-signed certificate (domain-less mode)
+    if has_selfsigned:
+        print("Using self-signed certificate (domain-less mode)")
+        return selfsigned_key, selfsigned_cert
+
+    return None, None
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    # Find certificate files (waits for Let's Encrypt if needed)
+    ssl_keyfile, ssl_certfile = find_certificates(wait_for_letsencrypt=True, max_wait=60)
+
+    if not ssl_keyfile:
+        print("WARNING: No SSL certificates found, running without HTTPS")
 
     # Run with SSL if certs found
     uvicorn.run(

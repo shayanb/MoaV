@@ -145,6 +145,15 @@ press_enter() {
     read -r < /dev/tty 2>/dev/null || true
 }
 
+get_admin_url() {
+    # Get admin URL using DOMAIN or SERVER_IP from .env
+    local admin_port="${PORT_ADMIN:-9443}"
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local server_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local admin_host="${domain:-${server_ip:-localhost}}"
+    echo "https://${admin_host}:${admin_port}"
+}
+
 run_command() {
     local cmd="$1"
     local description="${2:-Running command}"
@@ -380,16 +389,15 @@ check_prerequisites() {
 
                     if confirm "Continue with domain-less mode?" "n"; then
                         domainless_mode=true
-                        # Set default profiles to only include domain-less services
-                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard conduit snowflake\"|" .env
-                        # Disable protocols that need domain
+                        # Set default profiles to only include domain-less services (admin uses self-signed cert)
+                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard admin conduit snowflake\"|" .env
+                        # Disable protocols that need domain (admin works with self-signed cert)
                         sed -i "s|^ENABLE_REALITY=.*|ENABLE_REALITY=false|" .env
                         sed -i "s|^ENABLE_TROJAN=.*|ENABLE_TROJAN=false|" .env
                         sed -i "s|^ENABLE_HYSTERIA2=.*|ENABLE_HYSTERIA2=false|" .env
                         sed -i "s|^ENABLE_DNSTT=.*|ENABLE_DNSTT=false|" .env
-                        sed -i "s|^ENABLE_ADMIN_UI=.*|ENABLE_ADMIN_UI=false|" .env
                         success "Domain-less mode enabled"
-                        info "Only WireGuard, Conduit, and Snowflake will be available"
+                        info "WireGuard, Admin (self-signed cert), Conduit, and Snowflake will be available"
                     else
                         echo ""
                         info "Please enter a domain to use all services."
@@ -399,27 +407,28 @@ check_prerequisites() {
                 fi
                 echo ""
 
-                # Generate or ask for admin password (skip in domain-less mode)
-                if [[ "$domainless_mode" == "false" ]]; then
-                    echo -e "${WHITE}Admin dashboard password${NC}"
-                    echo "  Press Enter to generate a random password, or type your own"
-                    printf "  Password: "
-                    read -r input_password
-                    if [[ -z "$input_password" ]]; then
-                        input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
-                    fi
-                    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
-                    success "Admin password configured"
-                    echo ""
-
-                    # Show password prominently
-                    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                    echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
-                    echo ""
-                    echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
-                    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                    echo ""
+                # Generate or ask for admin password
+                echo -e "${WHITE}Admin dashboard password${NC}"
+                if [[ "$domainless_mode" == "true" ]]; then
+                    echo "  (Admin will use self-signed certificate in domain-less mode)"
                 fi
+                echo "  Press Enter to generate a random password, or type your own"
+                printf "  Password: "
+                read -r input_password
+                if [[ -z "$input_password" ]]; then
+                    input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+                fi
+                sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
+                success "Admin password configured"
+                echo ""
+
+                # Show password prominently
+                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
+                echo ""
+                echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
+                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                echo ""
             else
                 missing=1
             fi
@@ -662,6 +671,25 @@ run_bootstrap() {
     warn "Make sure your domain DNS is configured correctly!"
     echo "  Your domain should point to this server's IP address."
     echo ""
+
+    # Detect and save SERVER_IP to .env if not already set
+    local current_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -z "$current_ip" ]]; then
+        info "Detecting server public IP..."
+        local detected_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "")
+        if [[ -n "$detected_ip" ]]; then
+            success "Detected IP: $detected_ip"
+            # Save to .env for future use
+            if grep -q "^SERVER_IP=" .env 2>/dev/null; then
+                sed -i "s|^SERVER_IP=.*|SERVER_IP=\"$detected_ip\"|" .env
+            else
+                echo "SERVER_IP=\"$detected_ip\"" >> .env
+            fi
+            info "SERVER_IP saved to .env"
+        else
+            warn "Could not detect server IP - admin URL may show 'localhost'"
+        fi
+    fi
 
     info "Building bootstrap container..."
     docker compose --profile setup build bootstrap
@@ -1004,6 +1032,11 @@ show_status() {
     if [[ "$has_disabled" == "true" ]]; then
         echo -e "  ${DIM}* = disabled in .env (won't start with 'moav start')${NC}"
     fi
+
+    # Explain certbot status (often confusing to users)
+    echo ""
+    echo -e "  ${DIM}Note: certbot is a one-time service that obtains SSL certificates.${NC}"
+    echo -e "  ${DIM}      Status 'Exited (0)' means it completed successfully.${NC}"
     echo ""
 }
 
@@ -1269,6 +1302,11 @@ start_services() {
         echo ""
         success "Services started!"
         echo ""
+        # Show admin URL if admin was started
+        if echo "$profiles" | grep -qE "admin|all"; then
+            echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+            echo ""
+        fi
         show_log_help
     fi
 }
@@ -1799,6 +1837,10 @@ main_menu() {
         local running=$(get_running_services)
         if [[ -n "$running" ]]; then
             echo -e "  ${GREEN}●${NC} Services running: $(echo $running | wc -w)"
+            # Show admin URL if admin is running
+            if echo "$running" | grep -q "admin"; then
+                echo -e "  ${CYAN}↳${NC} Admin: ${CYAN}$(get_admin_url)${NC}"
+            fi
         else
             echo -e "  ${DIM}○ No services running${NC}"
         fi
@@ -1903,6 +1945,7 @@ show_usage() {
     echo "  moav user add john             # Add user 'john'"
     echo "  moav user add john --package   # Add user and create zip bundle"
     echo "  moav test joe                  # Test connectivity for user joe"
+    echo "  moav test joe -v               # Test with verbose output for debugging"
     echo "  moav client connect joe        # Connect as user joe (exposes proxy)"
     echo ""
     echo "Migration:"
@@ -2140,6 +2183,11 @@ cmd_start() {
     docker compose $profiles up -d
     success "Services started!"
     echo ""
+    # Show admin URL if admin was started
+    if echo "$profiles" | grep -qE "admin|all"; then
+        echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+        echo ""
+    fi
     docker compose $profiles ps
 }
 
@@ -2234,6 +2282,13 @@ cmd_status() {
     echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     show_status
+
+    # Show admin URL if admin is running
+    local running=$(get_running_services)
+    if echo "$running" | grep -q "admin"; then
+        echo ""
+        echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+    fi
 
     # Show default profiles
     local defaults
@@ -2374,17 +2429,22 @@ cmd_build() {
 # =============================================================================
 
 cmd_test() {
-    local user="${1:-}"
+    local user=""
     local json_flag=""
+    local verbose_flag=""
 
-    # Check for --json flag
+    # Parse flags
     for arg in "$@"; do
-        [[ "$arg" == "--json" ]] && json_flag="--json"
-        [[ "$arg" != "--json" ]] && [[ -z "$user" ]] && user="$arg"
+        case "$arg" in
+            --json) json_flag="--json" ;;
+            -v|--verbose) verbose_flag="--verbose" ;;
+            -*) error "Unknown flag: $arg"; exit 1 ;;
+            *) [[ -z "$user" ]] && user="$arg" ;;
+        esac
     done
 
     if [[ -z "$user" ]]; then
-        error "Usage: moav test USERNAME [--json]"
+        error "Usage: moav test USERNAME [--json] [-v|--verbose]"
         echo ""
         echo "Available users:"
         ls -1 outputs/bundles/ 2>/dev/null || echo "  No users found"
@@ -2410,7 +2470,7 @@ cmd_test() {
         -v "$(pwd)/$bundle_path:/config:ro" \
         -v "$(pwd)/outputs/dnstt:/dnstt:ro" \
         -e ENABLE_DEPRECATED_WIREGUARD_OUTBOUND=true \
-        moav-client --test $json_flag
+        moav-client --test $json_flag $verbose_flag
 }
 
 cmd_client() {
