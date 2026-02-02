@@ -146,6 +146,10 @@ services:
     entrypoint: /bin/sh
     command: >
       -c '
+        if [ -z "${DOMAIN}" ]; then
+          echo "No domain configured, skipping certificate generation (domain-less mode)"
+          exit 0
+        fi
         if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then
           certbot certonly --standalone \
             --non-interactive \

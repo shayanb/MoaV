@@ -826,6 +826,29 @@ show_status() {
     local raw_status json_lines
     raw_status=$(docker compose --profile all ps -a --format json 2>/dev/null)
 
+    # Read ENABLE_* settings to determine which services are disabled
+    local env_file="$SCRIPT_DIR/.env"
+    declare -A disabled_services
+
+    if [[ -f "$env_file" ]]; then
+        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+
+        # Mark services as disabled based on ENABLE_* settings
+        # sing-box handles Reality, Trojan, Hysteria2
+        if [[ "$enable_reality" != "true" ]] && [[ "$enable_trojan" != "true" ]] && [[ "$enable_hysteria2" != "true" ]]; then
+            disabled_services["sing-box"]=1
+            disabled_services["decoy"]=1
+        fi
+        [[ "$enable_wireguard" != "true" ]] && disabled_services["wireguard"]=1 && disabled_services["wstunnel"]=1
+        [[ "$enable_dnstt" != "true" ]] && disabled_services["dnstt"]=1
+        [[ "$enable_admin" != "true" ]] && disabled_services["admin"]=1
+    fi
+
     print_section "Service Status"
     echo ""
     echo -e "  ${CYAN}┌─────────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
@@ -927,8 +950,16 @@ show_status() {
 
             [[ -z "$ports" ]] && ports="-"
 
-            printf "  ${CYAN}│${NC} %-15s ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
-                "$short_name" "$status_display" "$last_run" "$uptime" "$ports"
+            # Check if service is disabled and add indicator
+            local display_name="$short_name"
+            local name_color=""
+            if [[ -n "${disabled_services[$short_name]:-}" ]]; then
+                display_name="${short_name}*"
+                name_color="${DIM}"
+            fi
+
+            printf "  ${CYAN}│${NC} ${name_color}%-15s${NC} ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+                "$display_name" "$status_display" "$last_run" "$uptime" "$ports"
         done <<< "$json_lines"
     fi
 
@@ -936,12 +967,29 @@ show_status() {
     while IFS= read -r service; do
         [[ -z "$service" ]] && continue
         if [[ -z "${displayed_services[$service]:-}" ]]; then
-            printf "  ${CYAN}│${NC} %-15s ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
-                "$service" "- never" "-" "-" "-"
+            # Check if service is disabled
+            local display_name="$service"
+            local name_color="${DIM}"
+            if [[ -n "${disabled_services[$service]:-}" ]]; then
+                display_name="${service}*"
+            fi
+
+            printf "  ${CYAN}│${NC} ${name_color}%-15s${NC} ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+                "$display_name" "- never" "-" "-" "-"
         fi
     done <<< "$all_services"
 
     echo -e "  ${CYAN}└─────────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
+
+    # Show legend if there are disabled services
+    local has_disabled=false
+    for key in "${!disabled_services[@]}"; do
+        has_disabled=true
+        break
+    done
+    if [[ "$has_disabled" == "true" ]]; then
+        echo -e "  ${DIM}* = disabled in .env (won't start with 'moav start')${NC}"
+    fi
     echo ""
 }
 
@@ -1076,6 +1124,10 @@ select_profiles() {
         if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
             SELECTED_PROFILES=("conduit" "snowflake")
         fi
+
+        # Show what "all enabled" actually means
+        echo ""
+        info "Selected profiles based on your configuration: ${SELECTED_PROFILES[*]}"
     else
         for choice in $choices; do
             case $choice in
