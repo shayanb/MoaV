@@ -1130,7 +1130,7 @@ stop_services() {
         a|A)
             echo ""
             info "Stopping all services..."
-            docker compose --profile all down
+            docker compose --profile all stop
             success "All services stopped!"
             ;;
         0|"")
@@ -1288,7 +1288,7 @@ show_log_help() {
     echo ""
     echo -e "${CYAN}Useful Commands:${NC}"
     echo "  • Check status:       docker compose ps"
-    echo "  • Stop all:           docker compose --profile all down"
+    echo "  • Stop all:           docker compose --profile all stop"
     echo "  • Restart service:    docker compose restart sing-box"
 }
 
@@ -1678,7 +1678,7 @@ show_usage() {
     echo "  bootstrap             Run first-time setup (includes service selection)"
     echo "  profiles              Change default services for 'moav start'"
     echo "  start [PROFILE...]    Start services (uses DEFAULT_PROFILES from .env)"
-    echo "  stop [SERVICE...]     Stop services (default: all)"
+    echo "  stop [SERVICE...] [-r] Stop services (default: all, -r removes containers)"
     echo "  restart [SERVICE...]  Restart services (default: all)"
     echo "  status                Show service status"
     echo "  logs [SERVICE...] [-n] View logs (default: all, follow mode, -n for no-follow)"
@@ -1864,15 +1864,43 @@ resolve_services() {
 }
 
 cmd_stop() {
-    if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
-        info "Stopping all services..."
-        docker compose --profile all down
-        success "All services stopped!"
+    local remove_containers=false
+    local args=()
+
+    # Parse flags
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --remove|-r)
+                remove_containers=true
+                shift
+                ;;
+            *)
+                args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    if [[ ${#args[@]} -eq 0 ]] || [[ "${args[0]}" == "all" ]]; then
+        if [[ "$remove_containers" == "true" ]]; then
+            info "Stopping and removing all containers..."
+            docker compose --profile all down
+            success "All services stopped and removed!"
+        else
+            info "Stopping all services..."
+            docker compose --profile all stop
+            success "All services stopped!"
+        fi
     else
         local services
-        services=$(resolve_services "$@")
-        info "Stopping: $services"
-        docker compose stop $services
+        services=$(resolve_services "${args[@]}")
+        if [[ "$remove_containers" == "true" ]]; then
+            info "Stopping and removing: $services"
+            docker compose rm -sf $services
+        else
+            info "Stopping: $services"
+            docker compose stop $services
+        fi
         success "Services stopped!"
     fi
 }
