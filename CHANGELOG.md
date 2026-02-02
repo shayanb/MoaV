@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Admin dashboard using self-signed cert instead of Let's Encrypt (now waits for certbot)
+- Admin dashboard "sing-box API timeout" error (memory endpoint is streaming, now reads first line only)
 - WireGuard traffic not flowing (missing iptables FORWARD rule for return traffic)
 - WireGuard "Permission denied" error on Docker 29 with Alpine
 - WireGuard config parsing stripping trailing "=" from base64 keys

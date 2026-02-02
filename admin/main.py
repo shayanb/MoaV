@@ -120,11 +120,11 @@ async def fetch_singbox_stats():
         headers["Authorization"] = f"Bearer {CLASH_SECRET}"
 
     # Use explicit timeout config to prevent hanging
-    timeout = httpx.Timeout(connect=1.0, read=2.0, write=1.0, pool=1.0)
+    timeout = httpx.Timeout(connect=2.0, read=3.0, write=2.0, pool=2.0)
 
     try:
         # Wrap entire operation in asyncio timeout as backup
-        async with asyncio.timeout(5.0):
+        async with asyncio.timeout(10.0):
             async with httpx.AsyncClient(timeout=timeout) as client:
                 try:
                     # Get connections (includes upload/download per connection)
@@ -135,11 +135,17 @@ async def fetch_singbox_stats():
                         stats["traffic"]["upload"] = data.get("uploadTotal", 0)
                         stats["traffic"]["download"] = data.get("downloadTotal", 0)
 
-                    # Get memory
-                    resp = await client.get(f"{SINGBOX_API}/memory", headers=headers)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        stats["memory"] = data.get("inuse", 0)
+                    # Get memory - this is a streaming endpoint, read first line only
+                    async with client.stream("GET", f"{SINGBOX_API}/memory", headers=headers) as resp:
+                        if resp.status_code == 200:
+                            async for line in resp.aiter_lines():
+                                if line.strip():
+                                    try:
+                                        data = json.loads(line)
+                                        stats["memory"] = data.get("inuse", 0)
+                                    except json.JSONDecodeError:
+                                        pass
+                                    break  # Only need first line
 
                 except httpx.ConnectError:
                     stats["error"] = "sing-box API not reachable"
@@ -151,7 +157,7 @@ async def fetch_singbox_stats():
                     stats["error"] = "sing-box API timeout"
 
     except asyncio.TimeoutError:
-        stats["error"] = "sing-box API timeout (5s)"
+        stats["error"] = "sing-box API timeout (10s)"
     except Exception as e:
         stats["error"] = f"Error: {type(e).__name__}: {str(e)}"
 
