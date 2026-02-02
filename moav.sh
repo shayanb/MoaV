@@ -1790,26 +1790,51 @@ cmd_domainless() {
         fi
     fi
 
-    # Disable TLS-based protocols
-    sed -i 's/^ENABLE_REALITY=.*/ENABLE_REALITY=false/' .env
-    sed -i 's/^ENABLE_TROJAN=.*/ENABLE_TROJAN=false/' .env
-    sed -i 's/^ENABLE_HYSTERIA2=.*/ENABLE_HYSTERIA2=false/' .env
-    sed -i 's/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/' .env
-    sed -i 's/^ENABLE_ADMIN_UI=.*/ENABLE_ADMIN_UI=false/' .env
+    # Disable TLS-based protocols (add if not present, update if present)
+    for var in ENABLE_REALITY ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_ADMIN_UI; do
+        if grep -q "^${var}=" .env; then
+            sed -i "s/^${var}=.*/${var}=false/" .env
+        else
+            echo "${var}=false" >> .env
+        fi
+    done
 
-    # Clear DOMAIN
-    sed -i 's/^DOMAIN=.*/DOMAIN=/' .env
+    # Clear DOMAIN (add if not present)
+    if grep -q "^DOMAIN=" .env; then
+        sed -i 's/^DOMAIN=.*/DOMAIN=/' .env
+    else
+        echo "DOMAIN=" >> .env
+    fi
 
-    # Set default profiles
-    sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="wireguard conduit snowflake"/' .env
+    # Set default profiles (add if not present)
+    if grep -q "^DEFAULT_PROFILES=" .env; then
+        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="wireguard conduit snowflake"/' .env
+    else
+        echo 'DEFAULT_PROFILES="wireguard conduit snowflake"' >> .env
+    fi
 
     echo ""
     success "Domain-less mode enabled!"
     echo ""
 
-    # Verify changes
-    info "Current settings:"
+    # Verify changes in .env
+    info "Settings in .env:"
     grep -E "^(DOMAIN|ENABLE_|DEFAULT_PROFILES)=" .env | head -15
+    echo ""
+
+    # Verify docker-compose sees them correctly
+    info "Verifying docker-compose reads these values..."
+    local compose_check
+    compose_check=$(docker compose --profile setup config 2>/dev/null | grep -E "ENABLE_REALITY|ENABLE_TROJAN" | head -2)
+    if echo "$compose_check" | grep -q "false"; then
+        success "Docker compose sees the correct values"
+    else
+        warn "Docker compose may not be reading .env correctly!"
+        echo "  Docker compose sees:"
+        echo "$compose_check"
+        echo ""
+        echo "  Try running: docker compose --profile setup config | grep ENABLE"
+    fi
     echo ""
 
     # Clear bootstrap flag if exists
