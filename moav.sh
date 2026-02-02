@@ -653,7 +653,17 @@ run_bootstrap() {
 
     echo ""
     info "Running bootstrap..."
-    docker compose --profile setup run --rm bootstrap
+    if ! docker compose --profile setup run --rm bootstrap; then
+        echo ""
+        error "Bootstrap failed!"
+        echo ""
+        echo "Check the error messages above and fix the issues."
+        echo "Common fixes:"
+        echo "  • Set DOMAIN in .env, or disable TLS protocols"
+        echo "  • Ensure DNS is configured correctly"
+        echo "  • Check that required ports are available"
+        return 1
+    fi
 
     echo ""
     success "Bootstrap completed!"
@@ -1692,6 +1702,7 @@ show_usage() {
     echo "  update                Update MoaV (git pull)"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
+    echo "  domainless            Enable domain-less mode (WireGuard, Conduit, Snowflake only)"
     echo "  profiles              Change default services for 'moav start'"
     echo "  start [PROFILE...]    Start services (uses DEFAULT_PROFILES from .env)"
     echo "  stop [SERVICE...] [-r] Stop services (default: all, -r removes containers)"
@@ -1743,6 +1754,76 @@ show_usage() {
 cmd_check() {
     print_header
     check_prerequisites
+}
+
+cmd_domainless() {
+    print_header
+    print_section "Enable Domain-less Mode"
+
+    echo ""
+    info "Domain-less mode disables TLS-based protocols that require a domain."
+    echo ""
+    echo -e "  ${YELLOW}Will be disabled:${NC}"
+    echo "    • Reality, Trojan, Hysteria2 (sing-box proxy)"
+    echo "    • DNS tunnel (dnstt)"
+    echo "    • Admin dashboard with HTTPS"
+    echo ""
+    echo -e "  ${GREEN}Will remain available:${NC}"
+    echo "    • WireGuard (direct UDP)"
+    echo "    • Psiphon Conduit (bandwidth donation)"
+    echo "    • Tor Snowflake (bandwidth donation)"
+    echo ""
+
+    if ! confirm "Enable domain-less mode?" "y"; then
+        info "Cancelled."
+        return 0
+    fi
+
+    # Check if .env exists
+    if [[ ! -f ".env" ]]; then
+        if [[ -f ".env.example" ]]; then
+            cp .env.example .env
+            success "Created .env from .env.example"
+        else
+            error ".env file not found"
+            return 1
+        fi
+    fi
+
+    # Disable TLS-based protocols
+    sed -i 's/^ENABLE_REALITY=.*/ENABLE_REALITY=false/' .env
+    sed -i 's/^ENABLE_TROJAN=.*/ENABLE_TROJAN=false/' .env
+    sed -i 's/^ENABLE_HYSTERIA2=.*/ENABLE_HYSTERIA2=false/' .env
+    sed -i 's/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/' .env
+    sed -i 's/^ENABLE_ADMIN_UI=.*/ENABLE_ADMIN_UI=false/' .env
+
+    # Clear DOMAIN
+    sed -i 's/^DOMAIN=.*/DOMAIN=/' .env
+
+    # Set default profiles
+    sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="wireguard conduit snowflake"/' .env
+
+    echo ""
+    success "Domain-less mode enabled!"
+    echo ""
+
+    # Verify changes
+    info "Current settings:"
+    grep -E "^(DOMAIN|ENABLE_|DEFAULT_PROFILES)=" .env | head -15
+    echo ""
+
+    # Clear bootstrap flag if exists
+    if check_bootstrap; then
+        info "Clearing previous bootstrap to regenerate configs..."
+        docker run --rm -v moav_moav_state:/state alpine rm -f /state/.bootstrapped 2>/dev/null || true
+    fi
+
+    echo ""
+    if confirm "Run bootstrap now to generate WireGuard configs?" "y"; then
+        run_bootstrap
+    else
+        info "Run 'moav bootstrap' when ready."
+    fi
 }
 
 cmd_bootstrap() {
@@ -2980,6 +3061,9 @@ main() {
             ;;
         bootstrap)
             cmd_bootstrap
+            ;;
+        domainless|domain-less|no-domain)
+            cmd_domainless
             ;;
         profiles)
             cmd_profiles

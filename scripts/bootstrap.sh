@@ -51,7 +51,7 @@ if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     log_error "    ENABLE_ADMIN_UI=false"
     log_error ""
     log_error "  Or run this command to disable them:"
-    log_error "    sed -i 's/ENABLE_REALITY=true/ENABLE_REALITY=false/; s/ENABLE_TROJAN=true/ENABLE_TROJAN=false/; s/ENABLE_HYSTERIA2=true/ENABLE_HYSTERIA2=false/; s/ENABLE_DNSTT=true/ENABLE_DNSTT=false/; s/ENABLE_ADMIN_UI=true/ENABLE_ADMIN_UI=false/' .env"
+    log_error "    sed -i 's/^ENABLE_REALITY=.*/ENABLE_REALITY=false/; s/^ENABLE_TROJAN=.*/ENABLE_TROJAN=false/; s/^ENABLE_HYSTERIA2=.*/ENABLE_HYSTERIA2=false/; s/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/; s/^ENABLE_ADMIN_UI=.*/ENABLE_ADMIN_UI=false/' .env"
     exit 1
 fi
 
