@@ -38,12 +38,20 @@ domain_required=false
 
 if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     log_error "DOMAIN is required when TLS-based protocols are enabled"
-    log_error "Either set DOMAIN in .env, or disable these protocols:"
-    log_error "  ENABLE_REALITY=false"
-    log_error "  ENABLE_TROJAN=false"
-    log_error "  ENABLE_HYSTERIA2=false"
-    log_error "  ENABLE_DNSTT=false"
-    log_error "  ENABLE_ADMIN_UI=false"
+    log_error ""
+    log_error "Option 1: Set a domain in .env"
+    log_error "  DOMAIN=your-domain.com"
+    log_error ""
+    log_error "Option 2: Run in domain-less mode (WireGuard, Conduit, Snowflake only)"
+    log_error "  Add these lines to your .env file:"
+    log_error "    ENABLE_REALITY=false"
+    log_error "    ENABLE_TROJAN=false"
+    log_error "    ENABLE_HYSTERIA2=false"
+    log_error "    ENABLE_DNSTT=false"
+    log_error "    ENABLE_ADMIN_UI=false"
+    log_error ""
+    log_error "  Or run this command to disable them:"
+    log_error "    sed -i 's/ENABLE_REALITY=true/ENABLE_REALITY=false/; s/ENABLE_TROJAN=true/ENABLE_TROJAN=false/; s/ENABLE_HYSTERIA2=true/ENABLE_HYSTERIA2=false/; s/ENABLE_DNSTT=true/ENABLE_DNSTT=false/; s/ENABLE_ADMIN_UI=true/ENABLE_ADMIN_UI=false/' .env"
     exit 1
 fi
 

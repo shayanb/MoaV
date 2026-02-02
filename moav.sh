@@ -1074,6 +1074,22 @@ start_services() {
         return 1
     fi
 
+    # Check if bootstrap has been run
+    if ! check_bootstrap; then
+        warn "Bootstrap has not been run yet!"
+        echo ""
+        info "Bootstrap is required for first-time setup."
+        echo ""
+
+        if confirm "Run bootstrap now?" "y"; then
+            run_bootstrap || return 1
+            echo ""
+        else
+            warn "Cannot start services without bootstrap."
+            return 1
+        fi
+    fi
+
     echo ""
     info "Building containers (if needed)..."
 
@@ -1749,6 +1765,9 @@ cmd_bootstrap() {
             info "Bootstrap cancelled."
             return 0
         fi
+        # Clear the bootstrapped flag so bootstrap.sh doesn't exit early
+        info "Clearing bootstrap flag..."
+        docker run --rm -v moav_moav_state:/state alpine rm -f /state/.bootstrapped
     else
         info "Bootstrap will perform first-time setup:"
         echo "  • Generate encryption keys"
@@ -1831,6 +1850,24 @@ cmd_start() {
     if [[ -z "$profiles" ]]; then
         error "No service selected"
         exit 1
+    fi
+
+    # Check if bootstrap has been run (skip for setup profile)
+    if [[ ! "$profiles" =~ "setup" ]] && ! check_bootstrap; then
+        warn "Bootstrap has not been run yet!"
+        echo ""
+        info "Bootstrap is required for first-time setup."
+        echo "  It generates keys, obtains TLS certificates, and creates users."
+        echo ""
+
+        if confirm "Run bootstrap now?" "y"; then
+            run_bootstrap || exit 1
+            echo ""
+        else
+            error "Cannot start services without bootstrap."
+            echo "  Run 'moav bootstrap' first, or use 'moav' for interactive setup."
+            exit 1
+        fi
     fi
 
     info "Starting services..."
