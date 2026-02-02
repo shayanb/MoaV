@@ -36,7 +36,7 @@ WG_CONFIG_DIR="configs/wireguard"
 STATE_DIR="${STATE_DIR:-./state}"
 OUTPUT_DIR="outputs/bundles/$USERNAME"
 WG_NETWORK="10.66.66.0/24"
-WG_NETWORK_V6="fd00:moav:wg::/64"
+WG_NETWORK_V6="fd00:cafe:beef::/64"
 
 # Check if WireGuard config exists
 if [[ ! -f "$WG_CONFIG_DIR/wg0.conf" ]]; then
@@ -83,7 +83,7 @@ fi
 [[ "${SERVER_IPV6:-}" == "disabled" ]] && SERVER_IPV6=""
 
 if [[ -n "$SERVER_IPV6" ]]; then
-    CLIENT_IP_V6="fd00:moav:wg::$NEXT_IP"
+    CLIENT_IP_V6="fd00:cafe:beef::$NEXT_IP"
     log_info "Assigned IPv6: $CLIENT_IP_V6"
 fi
 
@@ -304,6 +304,10 @@ if command -v qrencode &>/dev/null; then
         qrencode -o "$OUTPUT_DIR/wireguard-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-ipv6.conf" 2>/dev/null && \
             log_info "IPv6 QR image saved to: $OUTPUT_DIR/wireguard-ipv6-qr.png"
     fi
+
+    # wstunnel QR code
+    qrencode -o "$OUTPUT_DIR/wireguard-wstunnel-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null && \
+        log_info "wstunnel QR image saved to: $OUTPUT_DIR/wireguard-wstunnel-qr.png"
 fi
 
 echo ""
