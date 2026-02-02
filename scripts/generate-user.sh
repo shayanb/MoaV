@@ -314,43 +314,50 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
 
     # Config values (need special handling for special characters)
-    escape_for_awk() {
-        echo "$1" | sed 's/&/\\&/g'
+    # Use ENVIRON + index/substr instead of gsub to avoid & being treated as matched pattern
+    replace_placeholder() {
+        local placeholder="$1"
+        local value="$2"
+        local placeholder_len=${#placeholder}
+        export REPLACE_VALUE="$value"
+        awk -v placeholder="$placeholder" -v plen="$placeholder_len" '{
+            val = ENVIRON["REPLACE_VALUE"]
+            while ((i = index($0, placeholder)) > 0) {
+                $0 = substr($0, 1, i-1) val substr($0, i+plen)
+            }
+            print
+        }' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        unset REPLACE_VALUE
     }
 
     if [[ -n "$CONFIG_REALITY" ]]; then
-        ESCAPED=$(escape_for_awk "$CONFIG_REALITY")
-        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_REALITY\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_REALITY}}" "$CONFIG_REALITY"
     else
         sed -i "s|{{CONFIG_REALITY}}|No Reality config available|g" "$OUTPUT_HTML"
     fi
 
     if [[ -n "$CONFIG_HYSTERIA2" ]]; then
-        ESCAPED=$(escape_for_awk "$CONFIG_HYSTERIA2")
-        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_HYSTERIA2\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_HYSTERIA2}}" "$CONFIG_HYSTERIA2"
     else
         sed -i "s|{{CONFIG_HYSTERIA2}}|No Hysteria2 config available|g" "$OUTPUT_HTML"
     fi
 
     if [[ -n "$CONFIG_TROJAN" ]]; then
-        ESCAPED=$(escape_for_awk "$CONFIG_TROJAN")
-        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_TROJAN\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_TROJAN}}" "$CONFIG_TROJAN"
     else
         sed -i "s|{{CONFIG_TROJAN}}|No Trojan config available|g" "$OUTPUT_HTML"
     fi
 
-    # WireGuard config is multiline
+    # WireGuard config is multiline - use same safe replacement
     if [[ -n "$CONFIG_WIREGUARD" ]]; then
-        ESCAPED=$(echo "$CONFIG_WIREGUARD" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-        awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_WIREGUARD}}" "$CONFIG_WIREGUARD"
     else
         sed -i "s|{{CONFIG_WIREGUARD}}|No WireGuard config available|g" "$OUTPUT_HTML"
     fi
 
     # WireGuard-wstunnel config is multiline
     if [[ -n "$CONFIG_WIREGUARD_WSTUNNEL" ]]; then
-        ESCAPED=$(echo "$CONFIG_WIREGUARD_WSTUNNEL" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-        awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD_WSTUNNEL\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_WIREGUARD_WSTUNNEL}}" "$CONFIG_WIREGUARD_WSTUNNEL"
     else
         sed -i "s|{{CONFIG_WIREGUARD_WSTUNNEL}}|No WireGuard-wstunnel config available|g" "$OUTPUT_HTML"
     fi
