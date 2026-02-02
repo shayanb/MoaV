@@ -10,7 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `moav test` verbose flag (`-v` or `--verbose`) for debugging connection issues
 
+### Changed
+- `moav test` now prefers IPv4 configs over IPv6 (tests `reality.txt` before `reality-ipv6.txt`)
+- `moav test` treats IPv6 network failures as warnings instead of errors (IPv6 may not be available in container)
+
 ### Fixed
+- `moav test` now correctly parses IPv6 addresses in URIs (e.g., `[2400:6180::1]:443`)
 - `moav test` now validates parsed URI fields before generating config
 - `moav test` now shows actual sing-box error messages instead of generic "failed to start"
 - `moav test` now validates generated JSON config before running sing-box

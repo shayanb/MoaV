@@ -63,15 +63,30 @@ extract_auth() {
 }
 
 # Extract host from URI (between @ and :port or ?)
+# Handles both IPv4 (server:port) and IPv6 ([addr]:port)
 extract_host() {
     local uri="$1"
-    echo "$uri" | sed -n 's|.*@\([^:]*\):.*|\1|p' | head -1
+    # Check for IPv6 (brackets after @)
+    if echo "$uri" | grep -q '@\['; then
+        # IPv6: extract [address] including brackets, then remove brackets for sing-box
+        echo "$uri" | sed -n 's|.*@\(\[[^]]*\]\):.*|\1|p' | head -1 | tr -d '[]'
+    else
+        # IPv4: extract until colon
+        echo "$uri" | sed -n 's|.*@\([^:]*\):.*|\1|p' | head -1
+    fi
 }
 
 # Extract port from URI
+# Handles both IPv4 (server:port) and IPv6 ([addr]:port)
 extract_port() {
     local uri="$1"
-    echo "$uri" | sed -n 's|.*:\([0-9]*\)[?#].*|\1|p' | head -1
+    # Check for IPv6 (brackets) - port comes after ]:
+    if echo "$uri" | grep -q '@\['; then
+        echo "$uri" | sed -n 's|.*\]:\([0-9]*\)[?#].*|\1|p' | head -1
+    else
+        # IPv4 - port comes after host:
+        echo "$uri" | sed -n 's|.*:\([0-9]*\)[?#].*|\1|p' | head -1
+    fi
 }
 
 # =============================================================================
@@ -85,11 +100,21 @@ test_reality() {
     local config_file=""
     local result="skip"
     local detail=""
+    local is_ipv6=false
 
-    # Find Reality config
-    for f in "$CONFIG_DIR"/reality*.txt "$CONFIG_DIR"/reality*.json; do
+    # Find Reality config - prefer IPv4 over IPv6
+    # First try non-ipv6 configs
+    for f in "$CONFIG_DIR"/reality.txt "$CONFIG_DIR"/reality.json; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
+    # Fall back to any reality config (including ipv6)
+    if [[ -z "$config_file" ]]; then
+        for f in "$CONFIG_DIR"/reality*.txt "$CONFIG_DIR"/reality*.json; do
+            [[ -f "$f" ]] && config_file="$f" && break
+        done
+    fi
+    # Check if this is an IPv6 config
+    [[ "$config_file" == *ipv6* ]] && is_ipv6=true
 
     if [[ -z "$config_file" ]]; then
         detail="No Reality config found in bundle"
@@ -221,12 +246,19 @@ EOF
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail" "$error_log" | tail -1 | tr '\n' ' ')
+            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" | tail -1 | tr '\n' ' ')
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
-        log_error "$detail"
-        RESULTS[reality]="fail"
-        DETAILS[reality]="$detail"
+        # If IPv6 config and network unreachable, warn instead of fail
+        if [[ "$is_ipv6" == "true" ]] && echo "$detail" | grep -qi "unreachable\|network"; then
+            log_warn "IPv6 config - $detail"
+            RESULTS[reality]="warn"
+            DETAILS[reality]="IPv6 network may not be available: $detail"
+        else
+            log_error "$detail"
+            RESULTS[reality]="fail"
+            DETAILS[reality]="$detail"
+        fi
     fi
 
     kill $pid 2>/dev/null || true
@@ -239,10 +271,18 @@ test_trojan() {
 
     local config_file=""
     local detail=""
+    local is_ipv6=false
 
-    for f in "$CONFIG_DIR"/trojan*.txt "$CONFIG_DIR"/trojan*.json; do
+    # Find Trojan config - prefer IPv4 over IPv6
+    for f in "$CONFIG_DIR"/trojan.txt "$CONFIG_DIR"/trojan.json; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
+    if [[ -z "$config_file" ]]; then
+        for f in "$CONFIG_DIR"/trojan*.txt "$CONFIG_DIR"/trojan*.json; do
+            [[ -f "$f" ]] && config_file="$f" && break
+        done
+    fi
+    [[ "$config_file" == *ipv6* ]] && is_ipv6=true
 
     if [[ -z "$config_file" ]]; then
         detail="No Trojan config found in bundle"
@@ -356,12 +396,19 @@ EOF
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail" "$error_log" | tail -1 | tr '\n' ' ')
+            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" | tail -1 | tr '\n' ' ')
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
-        log_error "$detail"
-        RESULTS[trojan]="fail"
-        DETAILS[trojan]="$detail"
+        # If IPv6 config and network unreachable, warn instead of fail
+        if [[ "$is_ipv6" == "true" ]] && echo "$detail" | grep -qi "unreachable\|network"; then
+            log_warn "IPv6 config - $detail"
+            RESULTS[trojan]="warn"
+            DETAILS[trojan]="IPv6 network may not be available: $detail"
+        else
+            log_error "$detail"
+            RESULTS[trojan]="fail"
+            DETAILS[trojan]="$detail"
+        fi
     fi
 
     kill $pid 2>/dev/null || true
@@ -374,10 +421,18 @@ test_hysteria2() {
 
     local config_file=""
     local detail=""
+    local is_ipv6=false
 
-    for f in "$CONFIG_DIR"/hysteria2*.txt "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml; do
+    # Find Hysteria2 config - prefer IPv4 over IPv6
+    for f in "$CONFIG_DIR"/hysteria2.txt "$CONFIG_DIR"/hysteria2.yaml "$CONFIG_DIR"/hysteria2.yml; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
+    if [[ -z "$config_file" ]]; then
+        for f in "$CONFIG_DIR"/hysteria2*.txt "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml; do
+            [[ -f "$f" ]] && config_file="$f" && break
+        done
+    fi
+    [[ "$config_file" == *ipv6* ]] && is_ipv6=true
 
     if [[ -z "$config_file" ]]; then
         detail="No Hysteria2 config found in bundle"
@@ -404,8 +459,14 @@ test_hysteria2() {
         sni=$(grep -E "^[[:space:]]*sni:" "$config_file" | sed 's/.*sni:[[:space:]]*//' | tr -d '"' | head -1)
     fi
 
-    # Parse host:port
-    if echo "$server" | grep -q ':'; then
+    # Parse host:port - handle both IPv4 and IPv6
+    if echo "$server" | grep -q '^\['; then
+        # IPv6: [addr]:port format
+        host=$(echo "$server" | sed 's/^\[\([^]]*\)\].*/\1/')
+        port=$(echo "$server" | sed -n 's/.*\]:\([0-9]*\).*/\1/p')
+        [[ -z "$port" ]] && port="443"
+    elif echo "$server" | grep -q ':'; then
+        # IPv4: host:port format
         host="${server%:*}"
         port="${server##*:}"
     else
@@ -417,6 +478,7 @@ test_hysteria2() {
     port=$(echo "$port" | tr -cd '0-9')
     [[ -z "$port" ]] && port="443"
 
+    # For sni, use host without brackets
     [[ -z "$sni" ]] && sni="$host"
 
     log_debug "Parsed: host=$host port=$port auth=$auth sni=$sni"
@@ -491,12 +553,19 @@ EOF
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail" "$error_log" | tail -1 | tr '\n' ' ')
+            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" | tail -1 | tr '\n' ' ')
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
-        log_error "$detail"
-        RESULTS[hysteria2]="fail"
-        DETAILS[hysteria2]="$detail"
+        # If IPv6 config and network unreachable, warn instead of fail
+        if [[ "$is_ipv6" == "true" ]] && echo "$detail" | grep -qi "unreachable\|network"; then
+            log_warn "IPv6 config - $detail"
+            RESULTS[hysteria2]="warn"
+            DETAILS[hysteria2]="IPv6 network may not be available: $detail"
+        else
+            log_error "$detail"
+            RESULTS[hysteria2]="fail"
+            DETAILS[hysteria2]="$detail"
+        fi
     fi
 
     kill $pid 2>/dev/null || true
@@ -509,10 +578,18 @@ test_wireguard() {
 
     local config_file=""
     local detail=""
+    local is_ipv6=false
 
-    for f in "$CONFIG_DIR"/wireguard*.conf "$CONFIG_DIR"/wg*.conf; do
+    # Find WireGuard config - prefer IPv4 over IPv6
+    for f in "$CONFIG_DIR"/wireguard.conf "$CONFIG_DIR"/wg.conf; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
+    if [[ -z "$config_file" ]]; then
+        for f in "$CONFIG_DIR"/wireguard*.conf "$CONFIG_DIR"/wg*.conf; do
+            [[ -f "$f" ]] && config_file="$f" && break
+        done
+    fi
+    [[ "$config_file" == *ipv6* ]] && is_ipv6=true
 
     if [[ -z "$config_file" ]]; then
         detail="No WireGuard config found in bundle"
@@ -558,14 +635,33 @@ test_wireguard() {
         return
     fi
 
-    # Parse endpoint
-    local server="${endpoint%:*}"
-    local port="${endpoint#*:}"
+    # Parse endpoint - handle both IPv4 and IPv6
+    local server="" port=""
+    if echo "$endpoint" | grep -q '^\['; then
+        # IPv6: [addr]:port format
+        server=$(echo "$endpoint" | sed 's/^\[\([^]]*\)\].*/\1/')
+        port=$(echo "$endpoint" | sed -n 's/.*\]:\([0-9]*\).*/\1/p')
+    else
+        # IPv4: host:port format
+        server="${endpoint%:*}"
+        port="${endpoint##*:}"
+    fi
 
     log_debug "Parsed: server=$server port=$port"
 
     # Test endpoint reachability (UDP is hard to test, try TCP or just DNS resolve)
-    if host "$server" >/dev/null 2>&1 || ping -c 1 -W 2 "$server" >/dev/null 2>&1; then
+    # For IPv6, ping6 or ping -6 might be needed
+    local ping_result=false
+    if echo "$server" | grep -q ':'; then
+        # IPv6 address
+        ping -6 -c 1 -W 2 "$server" >/dev/null 2>&1 && ping_result=true
+    else
+        # IPv4 or hostname
+        host "$server" >/dev/null 2>&1 && ping_result=true
+        ping -c 1 -W 2 "$server" >/dev/null 2>&1 && ping_result=true
+    fi
+
+    if [[ "$ping_result" == "true" ]]; then
         log_success "WireGuard config valid, endpoint reachable: $endpoint"
         RESULTS[wireguard]="pass"
         DETAILS[wireguard]="Config valid, endpoint $server reachable"
@@ -573,7 +669,12 @@ test_wireguard() {
         # Can't reach server, but config is valid
         log_warn "WireGuard config valid, but endpoint not reachable: $endpoint"
         RESULTS[wireguard]="warn"
-        DETAILS[wireguard]="Config valid, endpoint $server not reachable (may be blocked)"
+        # For IPv6, note that it might be a network issue
+        if [[ "$is_ipv6" == "true" ]] || echo "$server" | grep -q ':'; then
+            DETAILS[wireguard]="Config valid, IPv6 endpoint not reachable (IPv6 may not be available)"
+        else
+            DETAILS[wireguard]="Config valid, endpoint $server not reachable (may be blocked)"
+        fi
     fi
 }
 
