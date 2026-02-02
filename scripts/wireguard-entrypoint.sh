@@ -100,6 +100,7 @@ ip link set "$INTERFACE" up
 # Run PostUp iptables rules
 echo "[wireguard] Setting up NAT and forwarding..."
 iptables -A FORWARD -i "$INTERFACE" -j ACCEPT
+iptables -A FORWARD -o "$INTERFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -t nat -A POSTROUTING -o eth+ -j MASQUERADE
 
 # Show interface status
@@ -114,6 +115,7 @@ echo "[wireguard] WireGuard is running. Monitoring..."
 cleanup() {
     echo "[wireguard] Shutting down..."
     iptables -D FORWARD -i "$INTERFACE" -j ACCEPT 2>/dev/null || true
+    iptables -D FORWARD -o "$INTERFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
     iptables -t nat -D POSTROUTING -o eth+ -j MASQUERADE 2>/dev/null || true
     ip link del "$INTERFACE" 2>/dev/null || true
     exit 0

@@ -145,6 +145,15 @@ press_enter() {
     read -r < /dev/tty 2>/dev/null || true
 }
 
+get_admin_url() {
+    # Get admin URL using DOMAIN or SERVER_IP from .env
+    local admin_port="${PORT_ADMIN:-9443}"
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local server_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local admin_host="${domain:-${server_ip:-localhost}}"
+    echo "https://${admin_host}:${admin_port}"
+}
+
 run_command() {
     local cmd="$1"
     local description="${2:-Running command}"
@@ -662,6 +671,25 @@ run_bootstrap() {
     warn "Make sure your domain DNS is configured correctly!"
     echo "  Your domain should point to this server's IP address."
     echo ""
+
+    # Detect and save SERVER_IP to .env if not already set
+    local current_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -z "$current_ip" ]]; then
+        info "Detecting server public IP..."
+        local detected_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "")
+        if [[ -n "$detected_ip" ]]; then
+            success "Detected IP: $detected_ip"
+            # Save to .env for future use
+            if grep -q "^SERVER_IP=" .env 2>/dev/null; then
+                sed -i "s|^SERVER_IP=.*|SERVER_IP=\"$detected_ip\"|" .env
+            else
+                echo "SERVER_IP=\"$detected_ip\"" >> .env
+            fi
+            info "SERVER_IP saved to .env"
+        else
+            warn "Could not detect server IP - admin URL may show 'localhost'"
+        fi
+    fi
 
     info "Building bootstrap container..."
     docker compose --profile setup build bootstrap
@@ -1276,9 +1304,7 @@ start_services() {
         echo ""
         # Show admin URL if admin was started
         if echo "$profiles" | grep -qE "admin|all"; then
-            local admin_port="${PORT_ADMIN:-9443}"
-            local admin_host="${DOMAIN:-${SERVER_IP:-localhost}}"
-            echo -e "  ${CYAN}Admin Dashboard:${NC} https://${admin_host}:${admin_port}"
+            echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
             echo ""
         fi
         show_log_help
@@ -1813,9 +1839,7 @@ main_menu() {
             echo -e "  ${GREEN}●${NC} Services running: $(echo $running | wc -w)"
             # Show admin URL if admin is running
             if echo "$running" | grep -q "admin"; then
-                local admin_port="${PORT_ADMIN:-9443}"
-                local admin_host="${DOMAIN:-${SERVER_IP:-localhost}}"
-                echo -e "  ${CYAN}↳${NC} Admin: ${CYAN}https://${admin_host}:${admin_port}${NC}"
+                echo -e "  ${CYAN}↳${NC} Admin: ${CYAN}$(get_admin_url)${NC}"
             fi
         else
             echo -e "  ${DIM}○ No services running${NC}"
@@ -2160,9 +2184,7 @@ cmd_start() {
     echo ""
     # Show admin URL if admin was started
     if echo "$profiles" | grep -qE "admin|all"; then
-        local admin_port="${PORT_ADMIN:-9443}"
-        local admin_host="${DOMAIN:-${SERVER_IP:-localhost}}"
-        echo -e "  ${CYAN}Admin Dashboard:${NC} https://${admin_host}:${admin_port}"
+        echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
         echo ""
     fi
     docker compose $profiles ps
@@ -2263,10 +2285,8 @@ cmd_status() {
     # Show admin URL if admin is running
     local running=$(get_running_services)
     if echo "$running" | grep -q "admin"; then
-        local admin_port="${PORT_ADMIN:-9443}"
-        local admin_host="${DOMAIN:-${SERVER_IP:-localhost}}"
         echo ""
-        echo -e "  ${CYAN}Admin Dashboard:${NC} https://${admin_host}:${admin_port}"
+        echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
     fi
 
     # Show default profiles

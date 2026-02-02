@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Admin dashboard URL shown in menu, status, and after starting services
 - Admin dashboard now works in domain-less mode using self-signed certificates
 - Certbot status explanation in `moav status` (clarifies "Exited (0)" is expected)
+- Admin URL now shows server public IP instead of localhost
+- Bootstrap now auto-detects and saves SERVER_IP to .env if not set
 
 ### Changed
 - WireGuard entrypoint bypasses wg-quick to avoid Docker 29 compatibility issues
@@ -36,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Certbot exits gracefully when no domain configured (domain-less mode)
 
 ### Fixed
+- WireGuard traffic not flowing (missing iptables FORWARD rule for return traffic)
 - WireGuard "Permission denied" error on Docker 29 with Alpine
 - WireGuard config parsing stripping trailing "=" from base64 keys
 - WireGuard QR code showing "Invalid QR Code" in app due to non-hex IPv6 address (`fd00:moav:wg::` → `fd00:cafe:beef::`)
