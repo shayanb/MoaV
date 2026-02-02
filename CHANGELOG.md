@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `moav update` now shows current branch and warns if not on main/master
 - Admin dashboard URL shown in menu, status, and after starting services
 - Admin dashboard now works in domain-less mode using self-signed certificates
+- Certbot status explanation in `moav status` (clarifies "Exited (0)" is expected)
 
 ### Changed
 - WireGuard entrypoint bypasses wg-quick to avoid Docker 29 compatibility issues
@@ -44,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture mismatch in Dockerfile.client - now uses TARGETARCH for multi-arch support ([#4](https://github.com/shayanb/MoaV/issues/4))
 - Bootstrap failing in domain-less mode (missing ENABLE_* exports, conditional config generation)
 - generate-user.sh unconditionally sourcing reality.env (now conditional on ENABLE_REALITY)
+- generate-user.sh peer count calculation failing when grep returns no matches
 
 ## [1.1.1] - 2025-01-31
 

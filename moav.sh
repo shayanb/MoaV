@@ -380,16 +380,15 @@ check_prerequisites() {
 
                     if confirm "Continue with domain-less mode?" "n"; then
                         domainless_mode=true
-                        # Set default profiles to only include domain-less services
-                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard conduit snowflake\"|" .env
-                        # Disable protocols that need domain
+                        # Set default profiles to only include domain-less services (admin uses self-signed cert)
+                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard admin conduit snowflake\"|" .env
+                        # Disable protocols that need domain (admin works with self-signed cert)
                         sed -i "s|^ENABLE_REALITY=.*|ENABLE_REALITY=false|" .env
                         sed -i "s|^ENABLE_TROJAN=.*|ENABLE_TROJAN=false|" .env
                         sed -i "s|^ENABLE_HYSTERIA2=.*|ENABLE_HYSTERIA2=false|" .env
                         sed -i "s|^ENABLE_DNSTT=.*|ENABLE_DNSTT=false|" .env
-                        sed -i "s|^ENABLE_ADMIN_UI=.*|ENABLE_ADMIN_UI=false|" .env
                         success "Domain-less mode enabled"
-                        info "Only WireGuard, Conduit, and Snowflake will be available"
+                        info "WireGuard, Admin (self-signed cert), Conduit, and Snowflake will be available"
                     else
                         echo ""
                         info "Please enter a domain to use all services."
@@ -399,27 +398,28 @@ check_prerequisites() {
                 fi
                 echo ""
 
-                # Generate or ask for admin password (skip in domain-less mode)
-                if [[ "$domainless_mode" == "false" ]]; then
-                    echo -e "${WHITE}Admin dashboard password${NC}"
-                    echo "  Press Enter to generate a random password, or type your own"
-                    printf "  Password: "
-                    read -r input_password
-                    if [[ -z "$input_password" ]]; then
-                        input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
-                    fi
-                    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
-                    success "Admin password configured"
-                    echo ""
-
-                    # Show password prominently
-                    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                    echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
-                    echo ""
-                    echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
-                    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                    echo ""
+                # Generate or ask for admin password
+                echo -e "${WHITE}Admin dashboard password${NC}"
+                if [[ "$domainless_mode" == "true" ]]; then
+                    echo "  (Admin will use self-signed certificate in domain-less mode)"
                 fi
+                echo "  Press Enter to generate a random password, or type your own"
+                printf "  Password: "
+                read -r input_password
+                if [[ -z "$input_password" ]]; then
+                    input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+                fi
+                sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
+                success "Admin password configured"
+                echo ""
+
+                # Show password prominently
+                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
+                echo ""
+                echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
+                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                echo ""
             else
                 missing=1
             fi
@@ -1004,6 +1004,11 @@ show_status() {
     if [[ "$has_disabled" == "true" ]]; then
         echo -e "  ${DIM}* = disabled in .env (won't start with 'moav start')${NC}"
     fi
+
+    # Explain certbot status (often confusing to users)
+    echo ""
+    echo -e "  ${DIM}Note: certbot is a one-time service that obtains SSL certificates.${NC}"
+    echo -e "  ${DIM}      Status 'Exited (0)' means it completed successfully.${NC}"
     echo ""
 }
 

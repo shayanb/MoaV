@@ -210,7 +210,8 @@ fi
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then
     # Count existing peers to determine next IP (peer 1 = 10.66.66.2, peer 2 = 10.66.66.3, etc.)
-    PEER_COUNT=$(grep -c '^\[Peer\]' "$WG_CONFIG_DIR/wg0.conf" 2>/dev/null || echo "0")
+    PEER_COUNT=$(grep -c '^\[Peer\]' "$WG_CONFIG_DIR/wg0.conf" 2>/dev/null) || true
+    PEER_COUNT=${PEER_COUNT:-0}
     PEER_NUM=$((PEER_COUNT + 1))
     wireguard_add_peer "$USER_ID" "$PEER_NUM"
     wireguard_generate_client_config "$USER_ID" "$OUTPUT_DIR"
