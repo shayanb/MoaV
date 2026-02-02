@@ -373,15 +373,59 @@ ls outputs/bundles/
 ```
 
 Each bundle contains:
-- `README.md` - User instructions
+- `README.html` - User instructions (bilingual EN/FA)
 - `reality.txt` - Reality protocol link (primary)
 - `reality-qr.png` - QR code for mobile import
 - `trojan.txt` - Trojan link (backup)
 - `hysteria2.yaml` - Hysteria2 config
-- `wireguard.conf` - WireGuard config
+- `wireguard.conf` - WireGuard config (direct mode)
+- `wireguard-wstunnel.conf` - WireGuard config (WebSocket mode)
 - `dnstt-instructions.txt` - DNS tunnel instructions
 
-**Distribute these securely** (encrypted message, in-person, etc.)
+### Create a Distributable Package
+
+Package a user's bundle into a single zip file:
+
+```bash
+# Via moav command
+moav user package joe
+
+# Creates: outputs/bundles/joe.zip
+```
+
+Or via the interactive menu: **Users** → **Package user bundle**
+
+### Download Bundles to Your Computer
+
+Use SCP to securely download bundles from your server:
+
+```bash
+# Download a single user's bundle folder
+scp -r root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/joe ./joe-bundle/
+
+# Download a packaged zip file
+scp root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/joe.zip ./
+
+# Download all bundles
+scp -r root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/ ./all-bundles/
+```
+
+**Windows users** can use:
+- PowerShell: `scp -r root@SERVER:/opt/moav/outputs/bundles/joe ./joe-bundle/`
+- WinSCP (GUI): Connect to server, navigate to `/opt/moav/outputs/bundles/`
+- FileZilla (SFTP mode): Same as above
+
+### Distribute Securely
+
+**Recommended methods:**
+- **In-person** - USB drive, AirDrop, or show QR code directly
+- **Encrypted messaging** - Signal, WhatsApp (disappearing messages)
+- **Password-protected zip** - `zip -e joe-secure.zip joe/*`
+
+**Avoid:**
+- Unencrypted email
+- Public file sharing (Google Drive, Dropbox without encryption)
+- SMS/Telegram without encryption
 
 ## Managing Users
 

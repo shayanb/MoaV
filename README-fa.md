@@ -155,6 +155,23 @@ docker compose --profile all up -d                 # شروع تمام سروی�
 moav user list            # لیست تمام کاربران (یا: moav users)
 moav user add joe         # افزودن کاربر به تمام سرویس‌ها
 moav user revoke joe      # لغو دسترسی کاربر از تمام سرویس‌ها
+moav user package joe     # ایجاد فایل zip قابل توزیع
+```
+
+</div>
+
+### دانلود بسته‌ها به کامپیوتر شخصی
+
+از SCP برای دانلود امن بسته‌ها استفاده کنید:
+
+<div dir="ltr">
+
+```bash
+# دانلود فایل zip
+scp root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/joe.zip ./
+
+# دانلود پوشه کاربر
+scp -r root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/joe ./joe-bundle/
 ```
 
 </div>
