@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bootstrap now auto-detects and saves SERVER_IP to .env if not set
 
 ### Changed
+- Improved sing-box performance: disabled `sniff_override_destination`, disabled multiplex padding, enabled TCP Fast Open, use local DNS by default
 - WireGuard entrypoint bypasses wg-quick to avoid Docker 29 compatibility issues
 - WireGuard peer IP assignment now based on peer count (fixes demouser getting server IP)
 - Service selection "ALL" now respects ENABLE_* settings (only starts enabled services)
