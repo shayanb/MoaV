@@ -22,6 +22,7 @@ Complete setup guide for deploying MoaV on a VPS or home server.
   - [Conduit Stats (Traffic by Country)](#conduit-stats-traffic-by-country)
 - [Re-bootstrapping](#re-bootstrapping)
 - [Updating](#updating)
+- [Testing New Features / Bug Fixes](#testing-new-features--bug-fixes)
 - [Server Migration](#server-migration)
 - [IPv6 Support](#ipv6-support)
 - [Troubleshooting](#troubleshooting)
@@ -372,15 +373,59 @@ ls outputs/bundles/
 ```
 
 Each bundle contains:
-- `README.md` - User instructions
+- `README.html` - User instructions (bilingual EN/FA)
 - `reality.txt` - Reality protocol link (primary)
 - `reality-qr.png` - QR code for mobile import
 - `trojan.txt` - Trojan link (backup)
 - `hysteria2.yaml` - Hysteria2 config
-- `wireguard.conf` - WireGuard config
+- `wireguard.conf` - WireGuard config (direct mode)
+- `wireguard-wstunnel.conf` - WireGuard config (WebSocket mode)
 - `dnstt-instructions.txt` - DNS tunnel instructions
 
-**Distribute these securely** (encrypted message, in-person, etc.)
+### Create a Distributable Package
+
+Package a user's bundle into a single zip file:
+
+```bash
+# Via moav command
+moav user package joe
+
+# Creates: outputs/bundles/joe.zip
+```
+
+Or via the interactive menu: **Users** → **Package user bundle**
+
+### Download Bundles to Your Computer
+
+Use SCP to securely download bundles from your server:
+
+```bash
+# Download a single user's bundle folder
+scp -r root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/joe ./joe-bundle/
+
+# Download a packaged zip file
+scp root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/joe.zip ./
+
+# Download all bundles
+scp -r root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/ ./all-bundles/
+```
+
+**Windows users** can use:
+- PowerShell: `scp -r root@SERVER:/opt/moav/outputs/bundles/joe ./joe-bundle/`
+- WinSCP (GUI): Connect to server, navigate to `/opt/moav/outputs/bundles/`
+- FileZilla (SFTP mode): Same as above
+
+### Distribute Securely
+
+**Recommended methods:**
+- **In-person** - USB drive, AirDrop, or show QR code directly
+- **Encrypted messaging** - Signal, WhatsApp (disappearing messages)
+- **Password-protected zip** - `zip -e joe-secure.zip joe/*`
+
+**Avoid:**
+- Unencrypted email
+- Public file sharing (Google Drive, Dropbox without encryption)
+- SMS/Telegram without encryption
 
 ## Managing Users
 
@@ -539,6 +584,64 @@ docker compose --profile all up -d
 ```
 
 **Note:** Use `--profile all` to build/run everything, or specify individual profiles like `--profile proxy --profile admin`.
+
+## Testing New Features / Bug Fixes
+
+If you want to test a development branch or a specific bug fix before it's released:
+
+### Fresh Install from a Branch
+
+Install directly from a specific branch using the raw GitHub URL:
+
+```bash
+# Install from 'dev' branch
+curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/dev/site/install.sh | bash -s -- -b dev
+
+# Install from a feature branch
+curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/feature-xyz/site/install.sh | bash -s -- -b feature-xyz
+
+# Install from a pull request branch (replace with actual branch name)
+curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/fix-conduit-status/site/install.sh | bash -s -- -b fix-conduit-status
+```
+
+### Switch Existing Installation to a Branch
+
+If you already have MoaV installed:
+
+```bash
+cd /opt/moav
+
+# Fetch and switch to a branch
+git fetch origin
+git checkout dev
+git pull origin dev
+
+# Rebuild and restart
+docker compose --profile all build
+moav restart
+```
+
+### Switch Back to Main (Stable)
+
+```bash
+cd /opt/moav
+git checkout main
+git pull origin main
+
+# Rebuild and restart
+docker compose --profile all build
+moav restart
+```
+
+### Using Environment Variable
+
+You can also specify the branch via environment variable:
+
+```bash
+MOAV_BRANCH=dev curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/dev/site/install.sh | bash
+```
+
+**Note:** When testing development branches, back up your configuration first with `moav export` in case you need to rollback.
 
 ## Server Migration
 

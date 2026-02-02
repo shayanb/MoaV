@@ -17,7 +17,6 @@ log_info "Starting MoaV bootstrap..."
 # Validate required environment variables
 # -----------------------------------------------------------------------------
 required_vars=(
-    "DOMAIN"
     "INITIAL_USERS"
 )
 
@@ -27,6 +26,39 @@ for var in "${required_vars[@]}"; do
         exit 1
     fi
 done
+
+# Check if DOMAIN is required (needed for TLS-based protocols)
+# Domain is required if ANY of: Reality, Trojan, Hysteria2, dnstt, or admin UI is enabled
+domain_required=false
+[[ "${ENABLE_REALITY:-true}" == "true" ]] && domain_required=true
+[[ "${ENABLE_TROJAN:-true}" == "true" ]] && domain_required=true
+[[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && domain_required=true
+[[ "${ENABLE_DNSTT:-true}" == "true" ]] && domain_required=true
+[[ "${ENABLE_ADMIN_UI:-true}" == "true" ]] && domain_required=true
+
+if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
+    log_error "DOMAIN is required when TLS-based protocols are enabled"
+    log_error ""
+    log_error "Option 1: Set a domain in .env"
+    log_error "  DOMAIN=your-domain.com"
+    log_error ""
+    log_error "Option 2: Run in domain-less mode (WireGuard, Conduit, Snowflake only)"
+    log_error "  Add these lines to your .env file:"
+    log_error "    ENABLE_REALITY=false"
+    log_error "    ENABLE_TROJAN=false"
+    log_error "    ENABLE_HYSTERIA2=false"
+    log_error "    ENABLE_DNSTT=false"
+    log_error "    ENABLE_ADMIN_UI=false"
+    log_error ""
+    log_error "  Or run this command to disable them:"
+    log_error "    sed -i 's/^ENABLE_REALITY=.*/ENABLE_REALITY=false/; s/^ENABLE_TROJAN=.*/ENABLE_TROJAN=false/; s/^ENABLE_HYSTERIA2=.*/ENABLE_HYSTERIA2=false/; s/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/; s/^ENABLE_ADMIN_UI=.*/ENABLE_ADMIN_UI=false/' .env"
+    exit 1
+fi
+
+# Domain-less mode notice
+if [[ -z "${DOMAIN:-}" ]]; then
+    log_info "Running in domain-less mode (WireGuard, Conduit, Snowflake only)"
+fi
 
 # -----------------------------------------------------------------------------
 # Detect server IP if not provided
@@ -76,41 +108,51 @@ if [[ -f "$STATE_DIR/.bootstrapped" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Generate Reality keys if not provided
+# Generate Reality keys if not provided (only if Reality is enabled)
 # -----------------------------------------------------------------------------
-if [[ -z "${REALITY_PRIVATE_KEY:-}" ]]; then
-    log_info "Generating Reality keypair..."
-    REALITY_KEYS=$(sing-box generate reality-keypair)
-    REALITY_PRIVATE_KEY=$(echo "$REALITY_KEYS" | grep "PrivateKey" | awk '{print $2}')
-    REALITY_PUBLIC_KEY=$(echo "$REALITY_KEYS" | grep "PublicKey" | awk '{print $2}')
-else
-    REALITY_PUBLIC_KEY=$(sing-box generate reality-keypair --private-key "$REALITY_PRIVATE_KEY" 2>/dev/null | grep "PublicKey" | awk '{print $2}' || echo "")
-fi
+if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
+    if [[ -z "${REALITY_PRIVATE_KEY:-}" ]]; then
+        log_info "Generating Reality keypair..."
+        REALITY_KEYS=$(sing-box generate reality-keypair)
+        REALITY_PRIVATE_KEY=$(echo "$REALITY_KEYS" | grep "PrivateKey" | awk '{print $2}')
+        REALITY_PUBLIC_KEY=$(echo "$REALITY_KEYS" | grep "PublicKey" | awk '{print $2}')
+    else
+        REALITY_PUBLIC_KEY=$(sing-box generate reality-keypair --private-key "$REALITY_PRIVATE_KEY" 2>/dev/null | grep "PublicKey" | awk '{print $2}' || echo "")
+    fi
 
-if [[ -z "${REALITY_SHORT_ID:-}" ]]; then
-    REALITY_SHORT_ID=$(openssl rand -hex 4)
-fi
+    if [[ -z "${REALITY_SHORT_ID:-}" ]]; then
+        REALITY_SHORT_ID=$(openssl rand -hex 4)
+    fi
 
-# Save keys to state
-cat > "$STATE_DIR/keys/reality.env" <<EOF
+    # Save keys to state
+    cat > "$STATE_DIR/keys/reality.env" <<EOF
 REALITY_PRIVATE_KEY=$REALITY_PRIVATE_KEY
 REALITY_PUBLIC_KEY=$REALITY_PUBLIC_KEY
 REALITY_SHORT_ID=$REALITY_SHORT_ID
 EOF
 
-log_info "Reality keys saved to $STATE_DIR/keys/reality.env"
+    log_info "Reality keys saved to $STATE_DIR/keys/reality.env"
+else
+    log_info "Reality is disabled, skipping key generation"
+    REALITY_PUBLIC_KEY=""
+    REALITY_SHORT_ID=""
+fi
 
 # -----------------------------------------------------------------------------
-# Generate Clash API secret
+# Generate Clash API secret (only if sing-box protocols are enabled)
 # -----------------------------------------------------------------------------
-CLASH_API_SECRET=$(pwgen -s 32 1)
-echo "CLASH_API_SECRET=$CLASH_API_SECRET" > "$STATE_DIR/keys/clash-api.env"
+if [[ "${ENABLE_REALITY:-true}" == "true" ]] || [[ "${ENABLE_TROJAN:-true}" == "true" ]] || [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]]; then
+    CLASH_API_SECRET=$(pwgen -s 32 1)
+    echo "CLASH_API_SECRET=$CLASH_API_SECRET" > "$STATE_DIR/keys/clash-api.env"
 
-# -----------------------------------------------------------------------------
-# Parse Reality target
-# -----------------------------------------------------------------------------
-REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f1)
-REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f2)
+    # Parse Reality target
+    REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f1)
+    REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f2)
+else
+    CLASH_API_SECRET=""
+    REALITY_TARGET_HOST=""
+    REALITY_TARGET_PORT=""
+fi
 
 # -----------------------------------------------------------------------------
 # Export variables needed by generate-user.sh
@@ -118,8 +160,12 @@ REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: 
 export REALITY_PUBLIC_KEY
 export REALITY_SHORT_ID
 export REALITY_TARGET="${REALITY_TARGET:-www.microsoft.com:443}"
-export DOMAIN="${DOMAIN:-example.com}"
+# In domain-less mode, DOMAIN stays empty; otherwise use as-is
+export DOMAIN="${DOMAIN:-}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
+export ENABLE_REALITY="${ENABLE_REALITY:-true}"
+export ENABLE_TROJAN="${ENABLE_TROJAN:-true}"
+export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 
@@ -216,24 +262,33 @@ TROJAN_USERS_JSON+="]"
 HYSTERIA2_USERS_JSON+="]"
 
 # -----------------------------------------------------------------------------
-# Generate sing-box config
+# Generate sing-box config (only if TLS protocols are enabled)
 # -----------------------------------------------------------------------------
-log_info "Generating sing-box configuration..."
+singbox_needed=false
+[[ "${ENABLE_REALITY:-true}" == "true" ]] && singbox_needed=true
+[[ "${ENABLE_TROJAN:-true}" == "true" ]] && singbox_needed=true
+[[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && singbox_needed=true
 
-export REALITY_USERS_JSON
-export TROJAN_USERS_JSON
-export HYSTERIA2_USERS_JSON
-export REALITY_PRIVATE_KEY
-export REALITY_SHORT_ID
-export REALITY_TARGET_HOST
-export REALITY_TARGET_PORT
-export REALITY_SERVER_NAME="$REALITY_TARGET_HOST"
-export CLASH_API_SECRET
-export LOG_LEVEL="${LOG_LEVEL:-info}"
+if [[ "$singbox_needed" == "true" ]]; then
+    log_info "Generating sing-box configuration..."
 
-envsubst < /configs/sing-box/config.json.template > /configs/sing-box/config.json
+    export REALITY_USERS_JSON
+    export TROJAN_USERS_JSON
+    export HYSTERIA2_USERS_JSON
+    export REALITY_PRIVATE_KEY
+    export REALITY_SHORT_ID
+    export REALITY_TARGET_HOST
+    export REALITY_TARGET_PORT
+    export REALITY_SERVER_NAME="$REALITY_TARGET_HOST"
+    export CLASH_API_SECRET
+    export LOG_LEVEL="${LOG_LEVEL:-info}"
 
-log_info "sing-box configuration written to /configs/sing-box/config.json"
+    envsubst < /configs/sing-box/config.json.template > /configs/sing-box/config.json
+
+    log_info "sing-box configuration written to /configs/sing-box/config.json"
+else
+    log_info "sing-box not needed (no TLS protocols enabled)"
+fi
 
 # -----------------------------------------------------------------------------
 # Mark as bootstrapped

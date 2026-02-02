@@ -340,50 +340,86 @@ check_prerequisites() {
                 echo ""
 
                 # Ask for domain
-                echo -e "${WHITE}Domain name${NC} (for Trojan, Hysteria2, dnstt, admin dashboard)"
+                echo -e "${WHITE}Domain name${NC} (required for TLS-based protocols)"
                 echo "  Example: vpn.example.com"
-                echo "  Note: Reality protocol works without a domain"
+                echo "  Leave empty to run only domain-less services"
                 printf "  Domain: "
                 read -r input_domain
+
+                local domainless_mode=false
                 if [[ -n "$input_domain" ]]; then
                     sed -i "s|^DOMAIN=.*|DOMAIN=\"$input_domain\"|" .env
                     success "Domain set to: $input_domain"
+                    echo ""
+
+                    # Ask for email (only if domain is set)
+                    echo -e "${WHITE}Email address${NC} (for Let's Encrypt TLS certificate)"
+                    printf "  Email: "
+                    read -r input_email
+                    if [[ -n "$input_email" ]]; then
+                        sed -i "s|^ACME_EMAIL=.*|ACME_EMAIL=\"$input_email\"|" .env
+                        success "Email set to: $input_email"
+                    else
+                        warn "No email set - you can edit .env later"
+                    fi
                 else
-                    warn "No domain set - you can edit .env later"
+                    # No domain - warn about disabled services
+                    echo ""
+                    warn "No domain provided!"
+                    echo ""
+                    echo -e "  ${YELLOW}Services that require a domain (will be disabled):${NC}"
+                    echo "    • Reality, Trojan, Hysteria2 (sing-box proxy)"
+                    echo "    • DNS tunnel (dnstt)"
+                    echo "    • Admin dashboard with HTTPS"
+                    echo ""
+                    echo -e "  ${GREEN}Services that work without a domain:${NC}"
+                    echo "    • WireGuard (direct UDP)"
+                    echo "    • Psiphon Conduit (bandwidth donation)"
+                    echo "    • Tor Snowflake (bandwidth donation)"
+                    echo ""
+
+                    if confirm "Continue with domain-less mode?" "n"; then
+                        domainless_mode=true
+                        # Set default profiles to only include domain-less services
+                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard conduit snowflake\"|" .env
+                        # Disable protocols that need domain
+                        sed -i "s|^ENABLE_REALITY=.*|ENABLE_REALITY=false|" .env
+                        sed -i "s|^ENABLE_TROJAN=.*|ENABLE_TROJAN=false|" .env
+                        sed -i "s|^ENABLE_HYSTERIA2=.*|ENABLE_HYSTERIA2=false|" .env
+                        sed -i "s|^ENABLE_DNSTT=.*|ENABLE_DNSTT=false|" .env
+                        sed -i "s|^ENABLE_ADMIN_UI=.*|ENABLE_ADMIN_UI=false|" .env
+                        success "Domain-less mode enabled"
+                        info "Only WireGuard, Conduit, and Snowflake will be available"
+                    else
+                        echo ""
+                        info "Please enter a domain to use all services."
+                        echo "  You can edit .env later and run 'moav bootstrap' again."
+                        return 0
+                    fi
                 fi
                 echo ""
 
-                # Ask for email
-                echo -e "${WHITE}Email address${NC} (for Let's Encrypt TLS certificate)"
-                printf "  Email: "
-                read -r input_email
-                if [[ -n "$input_email" ]]; then
-                    sed -i "s|^ACME_EMAIL=.*|ACME_EMAIL=\"$input_email\"|" .env
-                    success "Email set to: $input_email"
-                else
-                    warn "No email set - you can edit .env later"
-                fi
-                echo ""
+                # Generate or ask for admin password (skip in domain-less mode)
+                if [[ "$domainless_mode" == "false" ]]; then
+                    echo -e "${WHITE}Admin dashboard password${NC}"
+                    echo "  Press Enter to generate a random password, or type your own"
+                    printf "  Password: "
+                    read -r input_password
+                    if [[ -z "$input_password" ]]; then
+                        input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+                    fi
+                    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
+                    success "Admin password configured"
+                    echo ""
 
-                # Generate or ask for admin password
-                echo -e "${WHITE}Admin dashboard password${NC}"
-                echo "  Press Enter to generate a random password, or type your own"
-                printf "  Password: "
-                read -r input_password
-                if [[ -z "$input_password" ]]; then
-                    input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+                    # Show password prominently
+                    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                    echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
+                    echo ""
+                    echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
+                    echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+                    echo ""
                 fi
-                sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
-                success "Admin password configured"
-                echo ""
-
-                # Show password prominently
-                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
-                echo ""
-                echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
-                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                echo ""
             else
                 missing=1
             fi
@@ -456,7 +492,8 @@ check_prerequisites() {
 }
 
 prereqs_already_checked() {
-    [[ -f "$PREREQS_FILE" ]]
+    # Prerequisites must be re-checked if .env is missing
+    [[ -f "$PREREQS_FILE" ]] && [[ -f ".env" ]]
 }
 
 # =============================================================================
@@ -559,6 +596,20 @@ cmd_update() {
     current_commit=$(git -C "$install_dir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
     echo -e "  Current commit: ${YELLOW}$current_commit${NC}"
 
+    # Check current branch
+    local current_branch
+    current_branch=$(git -C "$install_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    echo -e "  Current branch: ${CYAN}$current_branch${NC}"
+
+    # Warn if not on main branch
+    if [[ "$current_branch" != "main" && "$current_branch" != "master" ]]; then
+        echo ""
+        echo -e "  ${YELLOW}⚠ Warning:${NC} You are on branch '${YELLOW}$current_branch${NC}' (not main)"
+        echo -e "    This may be a development or feature branch."
+        echo -e "    To switch to stable: ${WHITE}cd $install_dir && git checkout main${NC}"
+    fi
+    echo ""
+
     # Pull latest changes
     info "Running git pull..."
     if git -C "$install_dir" pull; then
@@ -617,7 +668,17 @@ run_bootstrap() {
 
     echo ""
     info "Running bootstrap..."
-    docker compose --profile setup run --rm bootstrap
+    if ! docker compose --profile setup run --rm bootstrap; then
+        echo ""
+        error "Bootstrap failed!"
+        echo ""
+        echo "Check the error messages above and fix the issues."
+        echo "Common fixes:"
+        echo "  • Set DOMAIN in .env, or disable TLS protocols"
+        echo "  • Ensure DNS is configured correctly"
+        echo "  • Check that required ports are available"
+        return 1
+    fi
 
     echo ""
     success "Bootstrap completed!"
@@ -779,6 +840,29 @@ show_status() {
     local raw_status json_lines
     raw_status=$(docker compose --profile all ps -a --format json 2>/dev/null)
 
+    # Read ENABLE_* settings to determine which services are disabled
+    local env_file="$SCRIPT_DIR/.env"
+    declare -A disabled_services
+
+    if [[ -f "$env_file" ]]; then
+        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+
+        # Mark services as disabled based on ENABLE_* settings
+        # sing-box handles Reality, Trojan, Hysteria2
+        if [[ "$enable_reality" != "true" ]] && [[ "$enable_trojan" != "true" ]] && [[ "$enable_hysteria2" != "true" ]]; then
+            disabled_services["sing-box"]=1
+            disabled_services["decoy"]=1
+        fi
+        [[ "$enable_wireguard" != "true" ]] && disabled_services["wireguard"]=1 && disabled_services["wstunnel"]=1
+        [[ "$enable_dnstt" != "true" ]] && disabled_services["dnstt"]=1
+        [[ "$enable_admin" != "true" ]] && disabled_services["admin"]=1
+    fi
+
     print_section "Service Status"
     echo ""
     echo -e "  ${CYAN}┌─────────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
@@ -801,17 +885,36 @@ show_status() {
         while IFS= read -r line; do
             [[ -z "$line" ]] && continue
 
-            local name state ports health status_str created_at uptime last_run finished_at
-            name=$(echo "$line" | grep -o '"Name":"[^"]*"' | head -1 | cut -d'"' -f4)
-            state=$(echo "$line" | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
-            health=$(echo "$line" | grep -o '"Health":"[^"]*"' | head -1 | cut -d'"' -f4)
-            status_str=$(echo "$line" | grep -o '"Status":"[^"]*"' | head -1 | cut -d'"' -f4)
-            created_at=$(echo "$line" | grep -o '"CreatedAt":"[^"]*"' | head -1 | cut -d'"' -f4)
+            local name service state ports health status_str created_at uptime last_run finished_at
+            # Parse JSON fields (handle both "Key":"value" and "Key": "value" formats)
+            name=$(echo "$line" | grep -oE '"Name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            service=$(echo "$line" | grep -oE '"Service"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            state=$(echo "$line" | grep -oE '"State"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            health=$(echo "$line" | grep -oE '"Health"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            status_str=$(echo "$line" | grep -oE '"Status"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            created_at=$(echo "$line" | grep -oE '"CreatedAt"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
             ports=$(echo "$line" | grep -o '"Publishers":\[[^]]*\]' | grep -o '"PublishedPort":[0-9]*' | cut -d':' -f2 | sort -u | grep -v '^0$' | tr '\n' ',' | sed 's/,$//' || true)
 
             [[ -z "$name" ]] && continue
-            local short_name="${name#moav-}"
-            displayed_services["$short_name"]=1
+
+            # If Service field is missing, try to find matching service from all_services
+            if [[ -z "$service" ]]; then
+                local stripped="${name#moav-}"
+                # Check if any service name contains or matches the stripped container name
+                while IFS= read -r candidate; do
+                    [[ -z "$candidate" ]] && continue
+                    # Match: "psiphon-conduit" contains "conduit", or "sing-box" == "sing-box"
+                    if [[ "$candidate" == *"$stripped"* ]] || [[ "$stripped" == "$candidate" ]]; then
+                        service="$candidate"
+                        break
+                    fi
+                done <<< "$all_services"
+            fi
+
+            # Use service name for display (fall back to stripped container name if still unknown)
+            local short_name="${service:-${name#moav-}}"
+            # Track by service name to avoid duplicates
+            [[ -n "$service" ]] && displayed_services["$service"]=1
 
             # Format last run datetime
             last_run="-"
@@ -861,8 +964,16 @@ show_status() {
 
             [[ -z "$ports" ]] && ports="-"
 
-            printf "  ${CYAN}│${NC} %-15s ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
-                "$short_name" "$status_display" "$last_run" "$uptime" "$ports"
+            # Check if service is disabled and add indicator
+            local display_name="$short_name"
+            local name_color=""
+            if [[ -n "${disabled_services[$short_name]:-}" ]]; then
+                display_name="${short_name}*"
+                name_color="${DIM}"
+            fi
+
+            printf "  ${CYAN}│${NC} ${name_color}%-15s${NC} ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+                "$display_name" "$status_display" "$last_run" "$uptime" "$ports"
         done <<< "$json_lines"
     fi
 
@@ -870,12 +981,29 @@ show_status() {
     while IFS= read -r service; do
         [[ -z "$service" ]] && continue
         if [[ -z "${displayed_services[$service]:-}" ]]; then
-            printf "  ${CYAN}│${NC} %-15s ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
-                "$service" "- never" "-" "-" "-"
+            # Check if service is disabled
+            local display_name="$service"
+            local name_color="${DIM}"
+            if [[ -n "${disabled_services[$service]:-}" ]]; then
+                display_name="${service}*"
+            fi
+
+            printf "  ${CYAN}│${NC} ${name_color}%-15s${NC} ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+                "$display_name" "- never" "-" "-" "-"
         fi
     done <<< "$all_services"
 
     echo -e "  ${CYAN}└─────────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
+
+    # Show legend if there are disabled services
+    local has_disabled=false
+    for key in "${!disabled_services[@]}"; do
+        has_disabled=true
+        break
+    done
+    if [[ "$has_disabled" == "true" ]]; then
+        echo -e "  ${DIM}* = disabled in .env (won't start with 'moav start')${NC}"
+    fi
     echo ""
 }
 
@@ -888,19 +1016,70 @@ select_profiles() {
 
     print_section "Select Services"
 
+    # Read ENABLE_* settings to show disabled status
+    local env_file="$SCRIPT_DIR/.env"
+    local proxy_enabled=true
+    local wg_enabled=true
+    local dnstt_enabled=true
+    local admin_enabled=true
+
+    if [[ -f "$env_file" ]]; then
+        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+
+        # proxy is disabled if all three protocols are disabled
+        if [[ "$enable_reality" != "true" ]] && [[ "$enable_trojan" != "true" ]] && [[ "$enable_hysteria2" != "true" ]]; then
+            proxy_enabled=false
+        fi
+        [[ "$enable_wireguard" != "true" ]] && wg_enabled=false
+        [[ "$enable_dnstt" != "true" ]] && dnstt_enabled=false
+        [[ "$enable_admin" != "true" ]] && admin_enabled=false
+    fi
+
+    # Build menu lines with disabled indicators
+    local proxy_line wg_line dnstt_line admin_line
+
+    if [[ "$proxy_enabled" == "true" ]]; then
+        proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site       ${CYAN}│${NC}"
+    else
+        proxy_line="  ${CYAN}│${NC}  ${DIM}1   proxy        Reality, Trojan, Hysteria2 (disabled)${NC}        ${CYAN}│${NC}"
+    fi
+
+    if [[ "$wg_enabled" == "true" ]]; then
+        wg_line="  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel            ${CYAN}│${NC}"
+    else
+        wg_line="  ${CYAN}│${NC}  ${DIM}2   wireguard    WireGuard VPN (disabled)${NC}                      ${CYAN}│${NC}"
+    fi
+
+    if [[ "$dnstt_enabled" == "true" ]]; then
+        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}                ${CYAN}│${NC}"
+    else
+        dnstt_line="  ${CYAN}│${NC}  ${DIM}3   dnstt        DNS tunnel (disabled)${NC}                       ${CYAN}│${NC}"
+    fi
+
+    if [[ "$admin_enabled" == "true" ]]; then
+        admin_line="  ${CYAN}│${NC}  ${GREEN}4${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
+    else
+        admin_line="  ${CYAN}│${NC}  ${DIM}4   admin        Stats dashboard (disabled)${NC}                   ${CYAN}│${NC}"
+    fi
+
     echo ""
     echo -e "  ${CYAN}┌─────────────────────────────────────────────────────────────────┐${NC}"
     echo -e "  ${CYAN}│${NC}  ${WHITE}#${NC}   ${WHITE}Profile${NC}      ${WHITE}Description${NC}                                   ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site       ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel            ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}                ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}4${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
+    echo -e "$proxy_line"
+    echo -e "$wg_line"
+    echo -e "$dnstt_line"
+    echo -e "$admin_line"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}5${NC}   conduit      Psiphon bandwidth donation$       ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   snowflake    Tor Snowflake donation           ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}5${NC}   conduit      Psiphon bandwidth donation                    ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   snowflake    Tor Snowflake donation                        ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          Start all services                            ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          All enabled services                          ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${RED}0${NC}   Cancel       Exit without selecting                        ${CYAN}│${NC}"
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
@@ -916,7 +1095,53 @@ select_profiles() {
     choices="${choices//,/ }"
 
     if [[ "$choices" == "a" || "$choices" == "A" ]]; then
-        SELECTED_PROFILES=("all")
+        # Build profile list based on ENABLE_* settings in .env
+        # This way "all" means "all enabled services", not literally everything
+        local env_file="$SCRIPT_DIR/.env"
+
+        # Check which protocols are enabled
+        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+
+        # Build profiles list based on enabled services
+        SELECTED_PROFILES=()
+
+        # proxy profile (Reality, Trojan, Hysteria2)
+        if [[ "$enable_reality" == "true" ]] || [[ "$enable_trojan" == "true" ]] || [[ "$enable_hysteria2" == "true" ]]; then
+            SELECTED_PROFILES+=("proxy")
+        fi
+
+        # wireguard profile
+        if [[ "$enable_wireguard" == "true" ]]; then
+            SELECTED_PROFILES+=("wireguard")
+        fi
+
+        # dnstt profile
+        if [[ "$enable_dnstt" == "true" ]]; then
+            SELECTED_PROFILES+=("dnstt")
+        fi
+
+        # admin profile
+        if [[ "$enable_admin" == "true" ]]; then
+            SELECTED_PROFILES+=("admin")
+        fi
+
+        # Always include donation services when selecting "all"
+        SELECTED_PROFILES+=("conduit")
+        SELECTED_PROFILES+=("snowflake")
+
+        # If nothing enabled (shouldn't happen), fall back to donation-only
+        if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
+            SELECTED_PROFILES=("conduit" "snowflake")
+        fi
+
+        # Show what "all enabled" actually means
+        echo ""
+        info "Selected profiles based on your configuration: ${SELECTED_PROFILES[*]}"
     else
         for choice in $choices; do
             case $choice in
@@ -1019,6 +1244,22 @@ start_services() {
         return 1
     fi
 
+    # Check if bootstrap has been run
+    if ! check_bootstrap; then
+        warn "Bootstrap has not been run yet!"
+        echo ""
+        info "Bootstrap is required for first-time setup."
+        echo ""
+
+        if confirm "Run bootstrap now?" "y"; then
+            run_bootstrap || return 1
+            echo ""
+        else
+            warn "Cannot start services without bootstrap."
+            return 1
+        fi
+    fi
+
     echo ""
     info "Building containers (if needed)..."
 
@@ -1075,7 +1316,7 @@ stop_services() {
         a|A)
             echo ""
             info "Stopping all services..."
-            docker compose --profile all down
+            docker compose --profile all stop
             success "All services stopped!"
             ;;
         0|"")
@@ -1233,7 +1474,7 @@ show_log_help() {
     echo ""
     echo -e "${CYAN}Useful Commands:${NC}"
     echo "  • Check status:       docker compose ps"
-    echo "  • Stop all:           docker compose --profile all down"
+    echo "  • Stop all:           docker compose --profile all stop"
     echo "  • Restart service:    docker compose restart sing-box"
 }
 
@@ -1621,9 +1862,10 @@ show_usage() {
     echo "  update                Update MoaV (git pull)"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
+    echo "  domainless            Enable domain-less mode (WireGuard, Conduit, Snowflake only)"
     echo "  profiles              Change default services for 'moav start'"
     echo "  start [PROFILE...]    Start services (uses DEFAULT_PROFILES from .env)"
-    echo "  stop [SERVICE...]     Stop services (default: all)"
+    echo "  stop [SERVICE...] [-r] Stop services (default: all, -r removes containers)"
     echo "  restart [SERVICE...]  Restart services (default: all)"
     echo "  status                Show service status"
     echo "  logs [SERVICE...] [-n] View logs (default: all, follow mode, -n for no-follow)"
@@ -1674,6 +1916,101 @@ cmd_check() {
     check_prerequisites
 }
 
+cmd_domainless() {
+    print_header
+    print_section "Enable Domain-less Mode"
+
+    echo ""
+    info "Domain-less mode disables TLS-based protocols that require a domain."
+    echo ""
+    echo -e "  ${YELLOW}Will be disabled:${NC}"
+    echo "    • Reality, Trojan, Hysteria2 (sing-box proxy)"
+    echo "    • DNS tunnel (dnstt)"
+    echo "    • Admin dashboard with HTTPS"
+    echo ""
+    echo -e "  ${GREEN}Will remain available:${NC}"
+    echo "    • WireGuard (direct UDP)"
+    echo "    • Psiphon Conduit (bandwidth donation)"
+    echo "    • Tor Snowflake (bandwidth donation)"
+    echo ""
+
+    if ! confirm "Enable domain-less mode?" "y"; then
+        info "Cancelled."
+        return 0
+    fi
+
+    # Check if .env exists
+    if [[ ! -f ".env" ]]; then
+        if [[ -f ".env.example" ]]; then
+            cp .env.example .env
+            success "Created .env from .env.example"
+        else
+            error ".env file not found"
+            return 1
+        fi
+    fi
+
+    # Disable TLS-based protocols (add if not present, update if present)
+    for var in ENABLE_REALITY ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_ADMIN_UI; do
+        if grep -q "^${var}=" .env; then
+            sed -i "s/^${var}=.*/${var}=false/" .env
+        else
+            echo "${var}=false" >> .env
+        fi
+    done
+
+    # Clear DOMAIN (add if not present)
+    if grep -q "^DOMAIN=" .env; then
+        sed -i 's/^DOMAIN=.*/DOMAIN=/' .env
+    else
+        echo "DOMAIN=" >> .env
+    fi
+
+    # Set default profiles (add if not present)
+    if grep -q "^DEFAULT_PROFILES=" .env; then
+        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="wireguard conduit snowflake"/' .env
+    else
+        echo 'DEFAULT_PROFILES="wireguard conduit snowflake"' >> .env
+    fi
+
+    echo ""
+    success "Domain-less mode enabled!"
+    echo ""
+
+    # Verify changes in .env
+    info "Settings in .env:"
+    grep -E "^(DOMAIN|ENABLE_|DEFAULT_PROFILES)=" .env | head -15
+    echo ""
+
+    # Verify docker-compose sees them correctly
+    info "Verifying docker-compose reads these values..."
+    local compose_check
+    compose_check=$(docker compose --profile setup config 2>/dev/null | grep -E "ENABLE_REALITY|ENABLE_TROJAN" | head -2)
+    if echo "$compose_check" | grep -q "false"; then
+        success "Docker compose sees the correct values"
+    else
+        warn "Docker compose may not be reading .env correctly!"
+        echo "  Docker compose sees:"
+        echo "$compose_check"
+        echo ""
+        echo "  Try running: docker compose --profile setup config | grep ENABLE"
+    fi
+    echo ""
+
+    # Clear bootstrap flag if exists
+    if check_bootstrap; then
+        info "Clearing previous bootstrap to regenerate configs..."
+        docker run --rm -v moav_moav_state:/state alpine rm -f /state/.bootstrapped 2>/dev/null || true
+    fi
+
+    echo ""
+    if confirm "Run bootstrap now to generate WireGuard configs?" "y"; then
+        run_bootstrap
+    else
+        info "Run 'moav bootstrap' when ready."
+    fi
+}
+
 cmd_bootstrap() {
     print_header
     check_prerequisites
@@ -1694,6 +2031,9 @@ cmd_bootstrap() {
             info "Bootstrap cancelled."
             return 0
         fi
+        # Clear the bootstrapped flag so bootstrap.sh doesn't exit early
+        info "Clearing bootstrap flag..."
+        docker run --rm -v moav_moav_state:/state alpine rm -f /state/.bootstrapped
     else
         info "Bootstrap will perform first-time setup:"
         echo "  • Generate encryption keys"
@@ -1778,6 +2118,24 @@ cmd_start() {
         exit 1
     fi
 
+    # Check if bootstrap has been run (skip for setup profile)
+    if [[ ! "$profiles" =~ "setup" ]] && ! check_bootstrap; then
+        warn "Bootstrap has not been run yet!"
+        echo ""
+        info "Bootstrap is required for first-time setup."
+        echo "  It generates keys, obtains TLS certificates, and creates users."
+        echo ""
+
+        if confirm "Run bootstrap now?" "y"; then
+            run_bootstrap || exit 1
+            echo ""
+        else
+            error "Cannot start services without bootstrap."
+            echo "  Run 'moav bootstrap' first, or use 'moav' for interactive setup."
+            exit 1
+        fi
+    fi
+
     info "Starting services..."
     docker compose $profiles up -d
     success "Services started!"
@@ -1809,15 +2167,43 @@ resolve_services() {
 }
 
 cmd_stop() {
-    if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
-        info "Stopping all services..."
-        docker compose --profile all down
-        success "All services stopped!"
+    local remove_containers=false
+    local args=()
+
+    # Parse flags
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --remove|-r)
+                remove_containers=true
+                shift
+                ;;
+            *)
+                args+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    if [[ ${#args[@]} -eq 0 ]] || [[ "${args[0]}" == "all" ]]; then
+        if [[ "$remove_containers" == "true" ]]; then
+            info "Stopping and removing all containers..."
+            docker compose --profile all down
+            success "All services stopped and removed!"
+        else
+            info "Stopping all services..."
+            docker compose --profile all stop
+            success "All services stopped!"
+        fi
     else
         local services
-        services=$(resolve_services "$@")
-        info "Stopping: $services"
-        docker compose stop $services
+        services=$(resolve_services "${args[@]}")
+        if [[ "$remove_containers" == "true" ]]; then
+            info "Stopping and removing: $services"
+            docker compose rm -sf $services
+        else
+            info "Stopping: $services"
+            docker compose stop $services
+        fi
         success "Services stopped!"
     fi
 }
@@ -2805,7 +3191,14 @@ main_interactive() {
     print_header
 
     # Check prerequisites only if not already verified
+    # Also re-check if .env is missing (user may have deleted it)
     if ! prereqs_already_checked; then
+        # Clear stale prereqs flag if .env is missing
+        if [[ -f "$PREREQS_FILE" ]] && [[ ! -f ".env" ]]; then
+            rm -f "$PREREQS_FILE"
+        fi
+        echo -e "${DIM}First run - checking prerequisites...${NC}"
+        echo ""
         check_prerequisites
         echo ""
         sleep 1
@@ -2860,6 +3253,9 @@ main() {
             ;;
         bootstrap)
             cmd_bootstrap
+            ;;
+        domainless|domain-less|no-domain)
+            cmd_domainless
             ;;
         profiles)
             cmd_profiles

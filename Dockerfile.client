@@ -40,6 +40,9 @@ RUN cp /go/bin/client /snowflake-client 2>/dev/null || touch /snowflake-client
 # =============================================================================
 FROM alpine:3.20
 
+# Architecture detection for multi-arch support
+ARG TARGETARCH
+
 # Versions (keep in sync with builder stages)
 ARG SINGBOX_VERSION=1.12.17
 ARG WSTUNNEL_VERSION=10.5.1
@@ -65,25 +68,27 @@ COPY --from=dnstt-builder /dnstt-client /tmp/dnstt-client-built
 COPY --from=snowflake-builder /snowflake-client /tmp/snowflake-client-built
 
 # sing-box: try pre-built, fallback to built
-RUN wget -qO- "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" | \
+# TARGETARCH is amd64 or arm64
+RUN wget -qO- "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz" | \
     tar xz -C /tmp && \
-    mv /tmp/sing-box-${SINGBOX_VERSION}-linux-amd64/sing-box /usr/local/bin/ && \
+    mv /tmp/sing-box-${SINGBOX_VERSION}-linux-${TARGETARCH:-amd64}/sing-box /usr/local/bin/ && \
     rm -rf /tmp/sing-box-* && \
-    echo "sing-box: using pre-built binary" || \
+    echo "sing-box: using pre-built binary (${TARGETARCH:-amd64})" || \
     (cp /tmp/sing-box-built /usr/local/bin/sing-box && echo "sing-box: using locally built binary")
 RUN chmod +x /usr/local/bin/sing-box && rm -f /tmp/sing-box-built
 
 # wstunnel: try pre-built (no fallback build, optional)
-RUN wget -qO- "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_amd64.tar.gz" | \
+# wstunnel uses underscore in filename: linux_amd64, linux_arm64
+RUN wget -qO- "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_${TARGETARCH:-amd64}.tar.gz" | \
     tar xz -C /usr/local/bin/ && \
     chmod +x /usr/local/bin/wstunnel && \
-    echo "wstunnel: using pre-built binary" || \
+    echo "wstunnel: using pre-built binary (${TARGETARCH:-amd64})" || \
     echo "wstunnel: not available (optional)"
 
 # snowflake-client: try pre-built, fallback to built
 RUN wget -qO /usr/local/bin/snowflake-client \
-    "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/releases/v${SNOWFLAKE_VERSION}/downloads/client/snowflake-client-linux-amd64" && \
-    echo "snowflake: using pre-built binary" || \
+    "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/releases/v${SNOWFLAKE_VERSION}/downloads/client/snowflake-client-linux-${TARGETARCH:-amd64}" && \
+    echo "snowflake: using pre-built binary (${TARGETARCH:-amd64})" || \
     (cp /tmp/snowflake-client-built /usr/local/bin/snowflake-client && echo "snowflake: using locally built binary")
 RUN chmod +x /usr/local/bin/snowflake-client 2>/dev/null || true
 RUN rm -f /tmp/snowflake-client-built

@@ -68,7 +68,7 @@ export STATE_DIR
 export USER_ID USER_UUID USER_PASSWORD
 export REALITY_PUBLIC_KEY REALITY_SHORT_ID
 export SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org)}"
-export DOMAIN="${DOMAIN:-example.com}"
+export DOMAIN="${DOMAIN:-}"
 export REALITY_TARGET="${REALITY_TARGET:-www.microsoft.com:443}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"

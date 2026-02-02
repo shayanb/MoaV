@@ -11,8 +11,12 @@ if [ -f /etc/dnstt/server.conf ]; then
     . /etc/dnstt/server.conf
 fi
 
-# Environment variables override config file, with fallbacks
-DNSTT_DOMAIN="${DNSTT_DOMAIN:-t.example.com}"
+# Environment variables override config file
+if [[ -z "${DNSTT_DOMAIN:-}" ]]; then
+    echo "[dnstt] ERROR: DNSTT_DOMAIN is not set!"
+    echo "[dnstt] Set DOMAIN in .env or provide DNSTT_DOMAIN directly"
+    exit 1
+fi
 DNSTT_LISTEN="${DNSTT_LISTEN:-:5353}"
 DNSTT_UPSTREAM="${DNSTT_UPSTREAM:-127.0.0.1:8080}"
 

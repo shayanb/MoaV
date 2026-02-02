@@ -6,8 +6,8 @@ WG_PORT=51820
 WG_NETWORK="10.66.66.0/24"
 WG_SERVER_IP="10.66.66.1"
 # IPv6 ULA (Unique Local Address) range for WireGuard
-WG_NETWORK_V6="fd00:moav:wg::/64"
-WG_SERVER_IP_V6="fd00:moav:wg::1"
+WG_NETWORK_V6="fd00:cafe:beef::/64"
+WG_SERVER_IP_V6="fd00:cafe:beef::1"
 
 generate_wireguard_config() {
     ensure_dir "$WG_CONFIG_DIR"
@@ -80,7 +80,7 @@ wireguard_add_peer() {
     local client_ip_v6=""
     if [[ -n "${SERVER_IPV6:-}" ]]; then
         # Use peer number as the last segment of IPv6 address
-        client_ip_v6="fd00:moav:wg::$((peer_num + 1))"
+        client_ip_v6="fd00:cafe:beef::$((peer_num + 1))"
     fi
 
     # Save client credentials
