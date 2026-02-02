@@ -2,6 +2,7 @@
 # =============================================================================
 # MoaV Quick Installer
 # Usage: curl -fsSL moav.sh/install.sh | bash
+#        curl -fsSL moav.sh/install.sh | bash -s -- -b dev    # use 'dev' branch
 #
 # This script will:
 # 1. Install missing prerequisites (Docker, git, qrencode) with user confirmation
@@ -23,6 +24,36 @@ NC='\033[0m'
 # Configuration
 REPO_URL="https://github.com/shayanb/MoaV.git"
 INSTALL_DIR="${MOAV_INSTALL_DIR:-/opt/moav}"
+BRANCH="${MOAV_BRANCH:-main}"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -b|--branch)
+            BRANCH="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "MoaV Installer"
+            echo ""
+            echo "Usage: curl -fsSL moav.sh/install.sh | bash -s -- [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  -b, --branch BRANCH   Use specified git branch (default: main)"
+            echo "  -h, --help            Show this help"
+            echo ""
+            echo "Environment variables:"
+            echo "  MOAV_INSTALL_DIR      Installation directory (default: /opt/moav)"
+            echo "  MOAV_BRANCH           Git branch to use (default: main)"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use -h or --help for usage"
+            exit 1
+            ;;
+    esac
+done
 
 # Helper functions
 info() { echo -e "${BLUE}$*${NC}"; }
@@ -94,6 +125,9 @@ EOF
 echo -e "${NC}"
 
 info "MoaV Installer"
+if [[ "$BRANCH" != "main" ]]; then
+    echo -e "${YELLOW}Using branch: $BRANCH${NC}"
+fi
 echo ""
 
 OS_TYPE=$(detect_os)
@@ -393,28 +427,30 @@ if [ -d "$INSTALL_DIR" ]; then
     warn "MoaV directory exists at $INSTALL_DIR"
 
     if confirm "Update existing installation?"; then
-        info "Updating MoaV..."
+        info "Updating MoaV (branch: $BRANCH)..."
         cd "$INSTALL_DIR"
-        git pull origin main || git pull
+        git fetch origin
+        git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
+        git pull origin "$BRANCH" || git pull
         success "MoaV updated"
     else
         info "Using existing installation."
     fi
 else
-    info "Installing MoaV to $INSTALL_DIR..."
+    info "Installing MoaV to $INSTALL_DIR (branch: $BRANCH)..."
 
     # Check if we need sudo
     parent_dir=$(dirname "$INSTALL_DIR")
     if [ -w "$parent_dir" ] 2>/dev/null; then
-        git clone "$REPO_URL" "$INSTALL_DIR"
+        git clone -b "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
     else
         info "Need sudo to create $INSTALL_DIR"
         sudo mkdir -p "$INSTALL_DIR"
         sudo chown "$(whoami)" "$INSTALL_DIR"
-        git clone "$REPO_URL" "$INSTALL_DIR"
+        git clone -b "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
     fi
 
-    success "MoaV cloned"
+    success "MoaV cloned (branch: $BRANCH)"
 fi
 
 cd "$INSTALL_DIR"
