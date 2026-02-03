@@ -36,8 +36,9 @@ RUN go install gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/sn
 RUN cp /go/bin/client /snowflake-client 2>/dev/null || touch /snowflake-client
 
 # Build paqet from source
-FROM golang:1.22-alpine AS paqet-builder
+FROM golang:1.23-alpine AS paqet-builder
 RUN apk add --no-cache git libpcap-dev gcc musl-dev
+ENV GOTOOLCHAIN=auto
 RUN git clone --depth 1 https://github.com/hanselime/paqet.git /src/paqet && \
     cd /src/paqet && \
     go build -o /paqet ./cmd/paqet || touch /paqet

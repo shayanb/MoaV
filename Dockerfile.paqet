@@ -5,10 +5,13 @@
 # Requires: --network host --privileged (or NET_RAW + NET_ADMIN capabilities)
 # =============================================================================
 
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git libpcap-dev gcc musl-dev
+
+# Enable toolchain auto-download for newer Go versions
+ENV GOTOOLCHAIN=auto
 
 # Clone and build paqet
 ARG PAQET_VERSION=master
