@@ -759,6 +759,64 @@ test_dnstt() {
     fi
 }
 
+# Test paqet (raw packet proxy - config validation only)
+test_paqet() {
+    log_info "Testing paqet (config validation)..."
+
+    local config_file=""
+    local detail=""
+
+    for f in "$CONFIG_DIR"/paqet*.yaml "$CONFIG_DIR"/paqet*.yml; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+
+    if [[ -z "$config_file" ]]; then
+        detail="No paqet config found in bundle"
+        log_warn "$detail"
+        RESULTS[paqet]="skip"
+        DETAILS[paqet]="$detail"
+        return
+    fi
+
+    log_debug "Using config: $config_file"
+
+    # Extract server address
+    local server=$(grep -E "^\s*addr:" "$config_file" | grep -v "YOUR_LOCAL" | sed 's/.*addr:[[:space:]]*//' | tr -d '"' | head -1)
+    local key=$(grep -E "^\s*key:" "$config_file" | sed 's/.*key:[[:space:]]*//' | tr -d '"' | head -1)
+
+    log_debug "Parsed: server=$server key=${key:0:10}..."
+
+    if [[ -z "$server" ]] || [[ -z "$key" ]]; then
+        detail="Could not parse paqet config (missing server or key)"
+        log_error "$detail"
+        RESULTS[paqet]="fail"
+        DETAILS[paqet]="$detail"
+        return
+    fi
+
+    # Check if config needs user customization
+    if grep -q "CHANGE_ME" "$config_file"; then
+        log_warn "Paqet config needs customization (network details required)"
+        RESULTS[paqet]="warn"
+        DETAILS[paqet]="Config valid, but needs network details (interface, router_mac)"
+        return
+    fi
+
+    # Validate paqet binary exists
+    if ! command -v paqet >/dev/null 2>&1; then
+        log_warn "paqet binary not available"
+        RESULTS[paqet]="warn"
+        DETAILS[paqet]="Config found, but paqet client not installed"
+        return
+    fi
+
+    # Note: We can't fully test paqet without raw socket access
+    # which requires host network mode and privileges
+    log_success "Paqet config valid, server: $server"
+    RESULTS[paqet]="warn"
+    DETAILS[paqet]="Config valid for $server (requires privileged mode to test)"
+}
+
 # =============================================================================
 # Output Functions
 # =============================================================================
@@ -794,7 +852,7 @@ output_json() {
 EOF
 
     local first=true
-    for protocol in reality trojan hysteria2 wireguard dnstt; do
+    for protocol in reality trojan hysteria2 wireguard dnstt paqet; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             [[ "$first" != "true" ]] && echo ","
             first=false
@@ -825,7 +883,7 @@ output_human() {
     echo ""
     echo "───────────────────────────────────────────────────────────────"
 
-    for protocol in reality trojan hysteria2 wireguard dnstt; do
+    for protocol in reality trojan hysteria2 wireguard dnstt paqet; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             local status="${RESULTS[$protocol]}"
             local detail="${DETAILS[$protocol]:-}"
@@ -864,6 +922,7 @@ main() {
     test_hysteria2
     test_wireguard
     test_dnstt
+    test_paqet
 
     # Output results
     if [[ "${JSON_OUTPUT:-false}" == "true" ]]; then

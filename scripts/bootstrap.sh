@@ -173,6 +173,25 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# Generate Paqet encryption key (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_PAQET:-false}" == "true" ]]; then
+    if [[ ! -f "$STATE_DIR/keys/paqet.key" ]]; then
+        log_info "Generating Paqet encryption key..."
+        # Generate a strong random key (32 chars, alphanumeric + special)
+        PAQET_KEY=$(pwgen -s 32 1)
+        echo "$PAQET_KEY" > "$STATE_DIR/keys/paqet.key"
+        chmod 600 "$STATE_DIR/keys/paqet.key"
+    else
+        PAQET_KEY=$(cat "$STATE_DIR/keys/paqet.key")
+        log_info "Using existing Paqet encryption key"
+    fi
+    export PAQET_KEY
+else
+    PAQET_KEY=""
+fi
+
+# -----------------------------------------------------------------------------
 # Export variables needed by generate-user.sh
 # -----------------------------------------------------------------------------
 export REALITY_PUBLIC_KEY
@@ -186,6 +205,8 @@ export ENABLE_TROJAN="${ENABLE_TROJAN:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
+export ENABLE_PAQET="${ENABLE_PAQET:-false}"
+export PORT_PAQET="${PORT_PAQET:-9999}"
 
 # -----------------------------------------------------------------------------
 # Generate WireGuard server config (before creating users)

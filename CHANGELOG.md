@@ -9,10 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `moav test` verbose flag (`-v` or `--verbose`) for debugging connection issues
+- **Paqet protocol support** - Raw packet-level proxy that bypasses OS TCP/IP stack
+  - New `--profile paqet` for starting paqet service
+  - Auto-detection of network interface, server IP, and gateway MAC
+  - Automatic iptables NOTRACK rules to prevent kernel RST packets
+  - Client config generation in user bundles (`paqet-client.yaml`, `paqet-instructions.txt`)
+  - VPS compatibility check (OpenVZ/LXC not supported - requires KVM or bare metal)
+  - Documentation for setup, troubleshooting, and iptables persistence
 
 ### Changed
 - `moav test` now prefers IPv4 configs over IPv6 (tests `reality.txt` before `reality-ipv6.txt`)
 - `moav test` treats IPv6 network failures as warnings instead of errors (IPv6 may not be available in container)
+- Client container now includes paqet binary and libpcap for raw packet proxy support
 
 ### Fixed
 - **WireGuard-wstunnel not forwarding traffic** - wstunnel was trying to forward to localhost instead of wireguard container (changed `127.0.0.1:51820` to `moav-wireguard:51820`)

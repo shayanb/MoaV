@@ -133,6 +133,31 @@ services:
       - all
 
   # ===========================================================================
+  # PAQET: Raw packet-level proxy (last resort, bypasses OS firewall)
+  # ===========================================================================
+  paqet:
+    build:
+      context: .
+      dockerfile: Dockerfile.paqet
+    container_name: moav-paqet
+    restart: unless-stopped
+    # REQUIRED: Host network mode for raw packet access
+    network_mode: host
+    # REQUIRED: Privileged mode for pcap/raw sockets
+    privileged: true
+    volumes:
+      - moav_state:/state
+      - ./configs/paqet:/etc/paqet
+    environment:
+      - TZ=${TZ:-UTC}
+      - PAQET_PORT=${PORT_PAQET:-9999}
+      - PAQET_LOG_LEVEL=${PAQET_LOG_LEVEL:-info}
+      - PAQET_KCP_MODE=${PAQET_KCP_MODE:-fast}
+      - PAQET_ENCRYPTION=${PAQET_ENCRYPTION:-aes}
+    profiles:
+      - paqet
+
+  # ===========================================================================
   # CERTBOT: TLS certificate management
   # ===========================================================================
   certbot:
@@ -290,7 +315,9 @@ services:
       - ENABLE_HYSTERIA2=${ENABLE_HYSTERIA2:-true}
       - ENABLE_WIREGUARD=${ENABLE_WIREGUARD:-true}
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
+      - ENABLE_PAQET=${ENABLE_PAQET:-false}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
+      - PORT_PAQET=${PORT_PAQET:-9999}
     profiles:
       - setup
 

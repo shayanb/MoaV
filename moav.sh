@@ -2005,8 +2005,8 @@ show_usage() {
     echo "  regenerate-users      Regenerate all user bundles with current .env"
     echo "  setup-dns             Free port 53 for dnstt (disables systemd-resolved)"
     echo ""
-    echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, client, all"
-    echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake"
+    echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, paqet, client, all"
+    echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake, paqet"
     echo "Aliases:  conduit→psiphon-conduit, singbox→sing-box, wg→wireguard, dns→dnstt"
     echo ""
     echo "Examples:"
@@ -2207,7 +2207,7 @@ cmd_profiles() {
 
 cmd_start() {
     local profiles=""
-    local valid_profiles="proxy wireguard dnstt admin conduit snowflake client all setup"
+    local valid_profiles="proxy wireguard dnstt admin conduit snowflake paqet client all setup"
 
     if [[ $# -eq 0 ]]; then
         # No arguments - check for DEFAULT_PROFILES in .env
@@ -2584,7 +2584,7 @@ cmd_client() {
             if [[ -z "$user" ]]; then
                 error "Usage: moav client connect USERNAME [--protocol PROTOCOL]"
                 echo ""
-                echo "Protocols: auto, reality, trojan, hysteria2, wireguard, psiphon, tor, dnstt"
+                echo "Protocols: auto, reality, trojan, hysteria2, wireguard, psiphon, tor, dnstt, paqet"
                 echo ""
                 echo "Available users:"
                 ls -1 outputs/bundles/ 2>/dev/null || echo "  No users found"
