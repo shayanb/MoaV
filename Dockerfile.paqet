@@ -18,7 +18,7 @@ ARG PAQET_VERSION=master
 RUN git clone --depth 1 --branch ${PAQET_VERSION} https://github.com/hanselime/paqet.git /src/paqet
 
 WORKDIR /src/paqet
-RUN go build -o /paqet ./cmd/paqet
+RUN go build -o /paqet ./cmd
 
 # =============================================================================
 # Final image
