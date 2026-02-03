@@ -42,6 +42,11 @@ venv/
 *.temp
 *.bak
 
+# Backup files
+*.tar.gz
+*.backup
+backup/
+
 # Generated configs (keep templates)
 configs/sing-box/config.json
 configs/dnstt/server.conf
