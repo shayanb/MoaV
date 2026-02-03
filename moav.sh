@@ -2224,13 +2224,18 @@ cmd_start() {
         fi
     else
         for p in "$@"; do
+            # Resolve profile aliases (e.g., sing-box -> proxy)
+            local resolved
+            resolved=$(resolve_profile "$p")
+
             # Validate profile name
-            if ! echo "$valid_profiles" | grep -qw "$p"; then
+            if ! echo "$valid_profiles" | grep -qw "$resolved"; then
                 error "Invalid profile: $p"
                 echo "Valid profiles: $valid_profiles"
+                echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, dns→dnstt"
                 exit 1
             fi
-            profiles+="--profile $p "
+            profiles+="--profile $resolved "
         done
     fi
 
@@ -2267,6 +2272,23 @@ cmd_start() {
         echo ""
     fi
     docker compose $profiles ps
+}
+
+# Resolve profile name aliases to actual docker-compose profile names
+resolve_profile() {
+    local profile="$1"
+    case "$profile" in
+        sing-box|singbox|sing|reality|trojan|hysteria|hysteria2|hy2)
+            echo "proxy" ;;
+        wg)
+            echo "wireguard" ;;
+        dns)
+            echo "dnstt" ;;
+        psiphon)
+            echo "conduit" ;;
+        *)
+            echo "$profile" ;;
+    esac
 }
 
 # Resolve service name aliases to actual docker-compose service names
