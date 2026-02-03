@@ -64,6 +64,14 @@ trap goodbye SIGINT
 
 print_header() {
     clear
+    # Get current branch
+    local branch
+    branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    local version_line="v${VERSION}"
+    if [[ -n "$branch" && "$branch" != "main" ]]; then
+        version_line="v${VERSION} (${branch})"
+    fi
+
     echo -e "${CYAN}"
     echo "╔════════════════════════════════════════════════════╗"
     echo "║                                                    ║"
@@ -77,7 +85,7 @@ print_header() {
     echo "║           Mother of all VPNs                       ║"
     echo "║                                                    ║"
     echo "║  Multi-protocol Circumvention Stack                ║"
-    printf "║  %-49s ║\n" "v${VERSION}"
+    printf "║  %-49s ║\n" "$version_line"
     echo "╚════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -739,18 +747,19 @@ cmd_update() {
     if [[ -n "$target_branch" && "$target_branch" != "$current_branch" ]]; then
         info "Switching to branch: $target_branch"
 
-        # Check if branch exists locally or remotely
-        if git -C "$install_dir" show-ref --verify --quiet "refs/heads/$target_branch" 2>/dev/null; then
-            # Branch exists locally
-            git -C "$install_dir" checkout "$target_branch"
-        elif git -C "$install_dir" show-ref --verify --quiet "refs/remotes/origin/$target_branch" 2>/dev/null; then
-            # Branch exists on remote, create local tracking branch
-            git -C "$install_dir" checkout -b "$target_branch" "origin/$target_branch"
-        else
-            error "Branch '$target_branch' not found locally or on remote"
+        # Check if branch exists (locally or on remote)
+        if ! git -C "$install_dir" show-ref --verify --quiet "refs/heads/$target_branch" 2>/dev/null && \
+           ! git -C "$install_dir" show-ref --verify --quiet "refs/remotes/origin/$target_branch" 2>/dev/null; then
+            error "Branch '$target_branch' does not exist"
             echo ""
             echo "Available branches:"
-            git -C "$install_dir" branch -a | head -15
+            git -C "$install_dir" branch -a | sed 's/^/  /' | head -15
+            return 1
+        fi
+
+        # Checkout the branch
+        if ! git -C "$install_dir" checkout "$target_branch" 2>/dev/null; then
+            error "Failed to checkout branch '$target_branch'"
             return 1
         fi
         success "Switched to branch: $target_branch"
@@ -2419,13 +2428,19 @@ cmd_restart() {
 
 cmd_status() {
     # Simple header without clearing terminal
-    local singbox_ver wstunnel_ver conduit_ver
+    local singbox_ver wstunnel_ver conduit_ver branch
     singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
     wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
     conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
+    branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+    local version_str="v${VERSION}"
+    if [[ -n "$branch" && "$branch" != "main" ]]; then
+        version_str="v${VERSION} (${branch})"
+    fi
 
     echo ""
-    echo -e "${CYAN}MoaV${NC} v${VERSION}  ${DIM}│${NC}  ${DIM}sing-box ${singbox_ver}  wstunnel ${wstunnel_ver}  conduit ${conduit_ver}${NC}"
+    echo -e "${CYAN}MoaV${NC} ${version_str}  ${DIM}│${NC}  ${DIM}sing-box ${singbox_ver}  wstunnel ${wstunnel_ver}  conduit ${conduit_ver}${NC}"
     echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     show_status
