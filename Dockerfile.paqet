@@ -11,7 +11,7 @@ FROM golang:1.22-alpine AS builder
 RUN apk add --no-cache git libpcap-dev gcc musl-dev
 
 # Clone and build paqet
-ARG PAQET_VERSION=main
+ARG PAQET_VERSION=master
 RUN git clone --depth 1 --branch ${PAQET_VERSION} https://github.com/hanselime/paqet.git /src/paqet
 
 WORKDIR /src/paqet
