@@ -280,12 +280,12 @@
             </div>
 
             <div class="card">
-                <h2>Active Users</h2>
+                <h2>Active Connections</h2>
                 {% if user_stats %}
                 <table>
                     <thead>
                         <tr>
-                            <th>User</th>
+                            <th>Source IP</th>
                             <th>Conn</th>
                             <th>Upload</th>
                             <th>Download</th>
@@ -372,7 +372,6 @@
                 <thead>
                     <tr>
                         <th>User</th>
-                        <th>Status</th>
                         <th>Protocols</th>
                         <th>Download</th>
                     </tr>
@@ -380,17 +379,7 @@
                 <tbody>
                     {% for user in all_users %}
                     <tr>
-                        <td>
-                            <span class="status-dot {% if user.is_active %}running{% else %}stopped{% endif %}"></span>
-                            {{ user.username }}
-                        </td>
-                        <td>
-                            {% if user.is_active %}
-                            <span class="status-text running">Online</span>
-                            {% else %}
-                            <span class="status-text stopped">Offline</span>
-                            {% endif %}
-                        </td>
+                        <td>{{ user.username }}</td>
                         <td>
                             {% if user.has_reality %}<span class="protocol-tag">Reality</span>{% endif %}
                             {% if user.has_trojan %}<span class="protocol-tag">Trojan</span>{% endif %}

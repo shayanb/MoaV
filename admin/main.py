@@ -263,21 +263,19 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
     conduit_stats = await fetch_conduit_stats()
     services = get_services_status()
 
-    # Count active connections by user
+    # Count active connections by source IP
     user_stats = {}
-    active_usernames = set()
     for conn in stats.get("connections", []):
         metadata = conn.get("metadata", {})
-        user = metadata.get("user", "unknown")
-        if user not in user_stats:
-            user_stats[user] = {"connections": 0, "upload": 0, "download": 0}
-        user_stats[user]["connections"] += 1
-        user_stats[user]["upload"] += conn.get("upload", 0)
-        user_stats[user]["download"] += conn.get("download", 0)
-        active_usernames.add(user)
+        source_ip = metadata.get("sourceIP", "unknown")
+        if source_ip not in user_stats:
+            user_stats[source_ip] = {"connections": 0, "upload": 0, "download": 0}
+        user_stats[source_ip]["connections"] += 1
+        user_stats[source_ip]["upload"] += conn.get("upload", 0)
+        user_stats[source_ip]["download"] += conn.get("download", 0)
 
-    # Get all users with their bundle info
-    all_users = list_users(active_usernames)
+    # Get all users with their bundle info (no active status tracking)
+    all_users = list_users()
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
@@ -330,7 +328,7 @@ def get_bundle_path():
     return BUNDLE_PATHS[0]  # Default
 
 
-def list_users(active_users: set = None):
+def list_users():
     """List all users from bundles directory"""
     users = []
     bundle_path = get_bundle_path()
@@ -357,9 +355,6 @@ def list_users(active_users: set = None):
         # Check if zip already exists
         zip_exists = (bundle_path / f"{username}.zip").exists()
 
-        # Check if user is currently active
-        is_active = active_users and username in active_users
-
         users.append({
             "username": username,
             "has_reality": has_reality,
@@ -367,7 +362,6 @@ def list_users(active_users: set = None):
             "has_hysteria2": has_hysteria2,
             "has_trojan": has_trojan,
             "zip_exists": zip_exists,
-            "is_active": is_active,
         })
 
     return users
