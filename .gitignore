@@ -42,10 +42,41 @@ venv/
 *.temp
 *.bak
 
+# Backup files
+*.tar.gz
+*.backup
+backup/
+
 # Generated configs (keep templates)
 configs/sing-box/config.json
-configs/wireguard/wg0.conf
 configs/dnstt/server.conf
+configs/dnstt/server.pub
+configs/dnstt/*.key
+configs/dnstt/*.key.hex
+
+# WireGuard generated files
+configs/wireguard/wg0.conf
+configs/wireguard/wg0.conf.*
+configs/wireguard/server.pub
+configs/wireguard/server.key
+configs/wireguard/wg_confs/
+configs/wireguard/coredns/
+configs/wireguard/templates/
+configs/wireguard/peer*/
+
+# Generic patterns for generated secrets
+*.key
+*.key.hex
+*.priv
+*.private
+*.secret
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Misc
 spec.yaml
 .claude/settings.local.json
 *.mp4
