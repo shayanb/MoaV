@@ -429,10 +429,86 @@ if [ -d "$INSTALL_DIR" ]; then
     if confirm "Update existing installation?"; then
         info "Updating MoaV (branch: $BRANCH)..."
         cd "$INSTALL_DIR"
+
+        # Check for local changes that would block git pull
+        changes=$(git status --porcelain 2>/dev/null)
+
+        if [ -n "$changes" ]; then
+            echo ""
+            echo -e "${YELLOW}⚠ Local changes detected:${NC}"
+            echo ""
+            # Show modified files (limit to 10 for readability)
+            echo "$changes" | head -10 | while read -r line; do
+                echo -e "    ${CYAN}$line${NC}"
+            done
+            change_count=$(echo "$changes" | wc -l | tr -d ' ')
+            if [ "$change_count" -gt 10 ]; then
+                echo "    ... and $((change_count - 10)) more files"
+            fi
+            echo ""
+            echo "These changes will conflict with the update."
+            echo ""
+            echo "Options:"
+            echo -e "  ${WHITE}1)${NC} Stash changes (save temporarily, can restore later)"
+            echo -e "  ${WHITE}2)${NC} Discard changes (reset to clean state - ${RED}LOSES YOUR CHANGES${NC})"
+            echo -e "  ${WHITE}3)${NC} Abort (handle manually)"
+            echo ""
+            printf "Choice [1/2/3]: "
+            read -r choice
+
+            case "$choice" in
+                1|"")
+                    info "Stashing local changes..."
+                    stash_msg="moav-update-$(date +%Y%m%d-%H%M%S)"
+                    if git stash push -m "$stash_msg" --include-untracked; then
+                        success "Changes stashed"
+                        echo ""
+                        echo -e "${CYAN}To restore your changes later:${NC}"
+                        echo -e "  ${WHITE}cd $INSTALL_DIR && git stash pop${NC}"
+                        echo ""
+                    else
+                        error "Failed to stash changes"
+                        echo "  Try manually: cd $INSTALL_DIR && git stash"
+                        exit 1
+                    fi
+                    ;;
+                2)
+                    echo ""
+                    echo -e "${RED}WARNING: This will permanently discard all local changes!${NC}"
+                    printf "Are you sure? [y/N]: "
+                    read -r confirm_discard
+                    if [ "$confirm_discard" = "y" ] || [ "$confirm_discard" = "Y" ]; then
+                        info "Discarding local changes..."
+                        git checkout -- . 2>/dev/null
+                        git clean -fd 2>/dev/null
+                        success "Local changes discarded"
+                        echo ""
+                    else
+                        info "Aborted"
+                        exit 0
+                    fi
+                    ;;
+                3|*)
+                    info "Aborted. Handle changes manually:"
+                    echo ""
+                    echo -e "  ${WHITE}cd $INSTALL_DIR${NC}"
+                    echo -e "  ${WHITE}git status${NC}           # View changes"
+                    echo -e "  ${WHITE}git stash${NC}            # Save changes temporarily"
+                    echo -e "  ${WHITE}git checkout -- .${NC}    # Discard changes"
+                    echo ""
+                    exit 0
+                    ;;
+            esac
+        fi
+
         git fetch origin
         git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH"
-        git pull origin "$BRANCH" || git pull
-        success "MoaV updated"
+        if git pull origin "$BRANCH" || git pull; then
+            success "MoaV updated"
+        else
+            error "Failed to update. Check git status."
+            exit 1
+        fi
     else
         info "Using existing installation."
     fi
