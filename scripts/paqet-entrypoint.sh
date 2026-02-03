@@ -64,7 +64,7 @@ detect_interface() {
 
 detect_server_ip() {
     local iface="$1"
-    ip -4 addr show "$iface" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1
+    ip -4 addr show "$iface" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1
 }
 
 detect_gateway_ip() {
