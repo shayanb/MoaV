@@ -74,7 +74,10 @@ services:
     environment:
       - TZ=${TZ:-UTC}
       - WSTUNNEL_LISTEN=0.0.0.0:8080
-      - WSTUNNEL_RESTRICT=127.0.0.1:51820
+      # Forward to wireguard container via Docker internal DNS
+      - WSTUNNEL_RESTRICT=moav-wireguard:51820
+    depends_on:
+      - wireguard
     profiles:
       - wireguard
       - all

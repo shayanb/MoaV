@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `moav test` treats IPv6 network failures as warnings instead of errors (IPv6 may not be available in container)
 
 ### Fixed
+- **WireGuard-wstunnel not forwarding traffic** - wstunnel was trying to forward to localhost instead of wireguard container (changed `127.0.0.1:51820` to `moav-wireguard:51820`)
 - `moav test` now correctly parses IPv6 addresses in URIs (e.g., `[2400:6180::1]:443`)
 - `moav test` now validates parsed URI fields before generating config
 - `moav test` now shows actual sing-box error messages instead of generic "failed to start"

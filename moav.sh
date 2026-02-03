@@ -983,7 +983,7 @@ show_status() {
                 fi
             elif [[ "$state" == "exited" ]]; then
                 status_color="${DIM}"
-                status_display="○ exited"
+                status_display="○ exited "
                 uptime="-"
             else
                 status_color="${YELLOW}"
