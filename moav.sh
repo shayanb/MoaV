@@ -583,6 +583,38 @@ do_uninstall() {
 }
 
 cmd_update() {
+    local target_branch=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -b|--branch)
+                target_branch="$2"
+                shift 2
+                ;;
+            -h|--help)
+                echo "Usage: moav update [-b BRANCH]"
+                echo ""
+                echo "Update MoaV to the latest version"
+                echo ""
+                echo "Options:"
+                echo "  -b, --branch BRANCH   Switch to and pull specified branch"
+                echo "                        Examples: main, dev, paqet"
+                echo ""
+                echo "Examples:"
+                echo "  moav update              # Update current branch"
+                echo "  moav update -b main      # Switch to main and update"
+                echo "  moav update -b dev       # Switch to dev branch"
+                return 0
+                ;;
+            *)
+                error "Unknown option: $1"
+                echo "Use 'moav update --help' for usage"
+                return 1
+                ;;
+        esac
+    done
+
     echo ""
     info "Updating MoaV..."
     echo ""
@@ -610,12 +642,17 @@ cmd_update() {
     current_branch=$(git -C "$install_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     echo -e "  Current branch: ${CYAN}$current_branch${NC}"
 
-    # Warn if not on main branch
-    if [[ "$current_branch" != "main" && "$current_branch" != "master" ]]; then
+    # Show target branch if switching
+    if [[ -n "$target_branch" ]]; then
+        echo -e "  Target branch: ${GREEN}$target_branch${NC}"
+    fi
+
+    # Warn if not on main branch (and not switching)
+    if [[ -z "$target_branch" && "$current_branch" != "main" && "$current_branch" != "master" ]]; then
         echo ""
         echo -e "  ${YELLOW}⚠ Warning:${NC} You are on branch '${YELLOW}$current_branch${NC}' (not main)"
         echo -e "    This may be a development or feature branch."
-        echo -e "    To switch to stable: ${WHITE}cd $install_dir && git checkout main${NC}"
+        echo -e "    To switch to stable: ${WHITE}moav update -b main${NC}"
     fi
     echo ""
 
@@ -692,16 +729,47 @@ cmd_update() {
         esac
     fi
 
+    # Fetch latest from remote
+    info "Fetching from remote..."
+    if ! git -C "$install_dir" fetch --all --prune 2>/dev/null; then
+        warn "Failed to fetch, continuing with local data..."
+    fi
+
+    # Switch branch if requested
+    if [[ -n "$target_branch" && "$target_branch" != "$current_branch" ]]; then
+        info "Switching to branch: $target_branch"
+
+        # Check if branch exists locally or remotely
+        if git -C "$install_dir" show-ref --verify --quiet "refs/heads/$target_branch" 2>/dev/null; then
+            # Branch exists locally
+            git -C "$install_dir" checkout "$target_branch"
+        elif git -C "$install_dir" show-ref --verify --quiet "refs/remotes/origin/$target_branch" 2>/dev/null; then
+            # Branch exists on remote, create local tracking branch
+            git -C "$install_dir" checkout -b "$target_branch" "origin/$target_branch"
+        else
+            error "Branch '$target_branch' not found locally or on remote"
+            echo ""
+            echo "Available branches:"
+            git -C "$install_dir" branch -a | head -15
+            return 1
+        fi
+        success "Switched to branch: $target_branch"
+        current_branch="$target_branch"
+    fi
+
     # Pull latest changes
-    info "Running git pull..."
-    if git -C "$install_dir" pull; then
+    info "Pulling latest changes..."
+    if git -C "$install_dir" pull origin "$current_branch" 2>/dev/null || git -C "$install_dir" pull; then
         echo ""
         local new_commit
         new_commit=$(git -C "$install_dir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        local new_branch
+        new_branch=$(git -C "$install_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+
         if [[ "$current_commit" == "$new_commit" ]]; then
-            success "Already up to date"
+            success "Already up to date (branch: $new_branch)"
         else
-            success "Updated: $current_commit → $new_commit"
+            success "Updated: $current_commit → $new_commit (branch: $new_branch)"
             echo ""
             echo -e "${YELLOW}Note:${NC} If containers have changed, run: ${WHITE}moav build${NC}"
         fi
@@ -1979,7 +2047,7 @@ show_usage() {
     echo "  version, --version    Show version information"
     echo "  install               Install 'moav' command globally"
     echo "  uninstall             Remove global 'moav' command"
-    echo "  update                Update MoaV (git pull)"
+    echo "  update [-b BRANCH]    Update MoaV (git pull), optionally switch branch"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
     echo "  domainless            Enable domain-less mode (WireGuard, Conduit, Snowflake only)"
@@ -2013,6 +2081,7 @@ show_usage() {
     echo "  moav                           # Interactive menu"
     echo "  moav install                   # Install globally (run from anywhere)"
     echo "  moav update                    # Update MoaV (git pull)"
+    echo "  moav update -b dev             # Switch to dev branch and update"
     echo "  moav start                     # Start all services"
     echo "  moav start proxy admin         # Start proxy and admin profiles"
     echo "  moav stop conduit              # Stop specific service"
