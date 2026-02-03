@@ -4,7 +4,10 @@
 # Auto-detects network configuration and starts paqet server
 # =============================================================================
 
-set -euo pipefail
+# Note: We don't use pipefail here because commands like `cmd | head -1`
+# cause SIGPIPE when head exits after reading one line, which pipefail
+# treats as an error (exit code 141).
+set -eu
 
 # Colors for logging
 RED='\033[0;31m'
