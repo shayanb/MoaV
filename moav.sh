@@ -64,6 +64,14 @@ trap goodbye SIGINT
 
 print_header() {
     clear
+    # Get current branch
+    local branch
+    branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    local version_line="v${VERSION}"
+    if [[ -n "$branch" && "$branch" != "main" ]]; then
+        version_line="v${VERSION} (${branch})"
+    fi
+
     echo -e "${CYAN}"
     echo "╔════════════════════════════════════════════════════╗"
     echo "║                                                    ║"
@@ -77,7 +85,7 @@ print_header() {
     echo "║           Mother of all VPNs                       ║"
     echo "║                                                    ║"
     echo "║  Multi-protocol Circumvention Stack                ║"
-    printf "║  %-49s ║\n" "v${VERSION}"
+    printf "║  %-49s ║\n" "$version_line"
     echo "╚════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -583,6 +591,38 @@ do_uninstall() {
 }
 
 cmd_update() {
+    local target_branch=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -b|--branch)
+                target_branch="$2"
+                shift 2
+                ;;
+            -h|--help)
+                echo "Usage: moav update [-b BRANCH]"
+                echo ""
+                echo "Update MoaV to the latest version"
+                echo ""
+                echo "Options:"
+                echo "  -b, --branch BRANCH   Switch to and pull specified branch"
+                echo "                        Examples: main, dev, paqet"
+                echo ""
+                echo "Examples:"
+                echo "  moav update              # Update current branch"
+                echo "  moav update -b main      # Switch to main and update"
+                echo "  moav update -b dev       # Switch to dev branch"
+                return 0
+                ;;
+            *)
+                error "Unknown option: $1"
+                echo "Use 'moav update --help' for usage"
+                return 1
+                ;;
+        esac
+    done
+
     echo ""
     info "Updating MoaV..."
     echo ""
@@ -610,12 +650,17 @@ cmd_update() {
     current_branch=$(git -C "$install_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     echo -e "  Current branch: ${CYAN}$current_branch${NC}"
 
-    # Warn if not on main branch
-    if [[ "$current_branch" != "main" && "$current_branch" != "master" ]]; then
+    # Show target branch if switching
+    if [[ -n "$target_branch" ]]; then
+        echo -e "  Target branch: ${GREEN}$target_branch${NC}"
+    fi
+
+    # Warn if not on main branch (and not switching)
+    if [[ -z "$target_branch" && "$current_branch" != "main" && "$current_branch" != "master" ]]; then
         echo ""
         echo -e "  ${YELLOW}⚠ Warning:${NC} You are on branch '${YELLOW}$current_branch${NC}' (not main)"
         echo -e "    This may be a development or feature branch."
-        echo -e "    To switch to stable: ${WHITE}cd $install_dir && git checkout main${NC}"
+        echo -e "    To switch to stable: ${WHITE}moav update -b main${NC}"
     fi
     echo ""
 
@@ -692,16 +737,48 @@ cmd_update() {
         esac
     fi
 
+    # Fetch latest from remote
+    info "Fetching from remote..."
+    if ! git -C "$install_dir" fetch --all --prune 2>/dev/null; then
+        warn "Failed to fetch, continuing with local data..."
+    fi
+
+    # Switch branch if requested
+    if [[ -n "$target_branch" && "$target_branch" != "$current_branch" ]]; then
+        info "Switching to branch: $target_branch"
+
+        # Check if branch exists (locally or on remote)
+        if ! git -C "$install_dir" show-ref --verify --quiet "refs/heads/$target_branch" 2>/dev/null && \
+           ! git -C "$install_dir" show-ref --verify --quiet "refs/remotes/origin/$target_branch" 2>/dev/null; then
+            error "Branch '$target_branch' does not exist"
+            echo ""
+            echo "Available branches:"
+            git -C "$install_dir" branch -a | sed 's/^/  /' | head -15
+            return 1
+        fi
+
+        # Checkout the branch
+        if ! git -C "$install_dir" checkout "$target_branch" 2>/dev/null; then
+            error "Failed to checkout branch '$target_branch'"
+            return 1
+        fi
+        success "Switched to branch: $target_branch"
+        current_branch="$target_branch"
+    fi
+
     # Pull latest changes
-    info "Running git pull..."
-    if git -C "$install_dir" pull; then
+    info "Pulling latest changes..."
+    if git -C "$install_dir" pull origin "$current_branch" 2>/dev/null || git -C "$install_dir" pull; then
         echo ""
         local new_commit
         new_commit=$(git -C "$install_dir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        local new_branch
+        new_branch=$(git -C "$install_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+
         if [[ "$current_commit" == "$new_commit" ]]; then
-            success "Already up to date"
+            success "Already up to date (branch: $new_branch)"
         else
-            success "Updated: $current_commit → $new_commit"
+            success "Updated: $current_commit → $new_commit (branch: $new_branch)"
             echo ""
             echo -e "${YELLOW}Note:${NC} If containers have changed, run: ${WHITE}moav build${NC}"
         fi
@@ -1979,7 +2056,7 @@ show_usage() {
     echo "  version, --version    Show version information"
     echo "  install               Install 'moav' command globally"
     echo "  uninstall             Remove global 'moav' command"
-    echo "  update                Update MoaV (git pull)"
+    echo "  update [-b BRANCH]    Update MoaV (git pull), optionally switch branch"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
     echo "  domainless            Enable domain-less mode (WireGuard, Conduit, Snowflake only)"
@@ -2013,6 +2090,7 @@ show_usage() {
     echo "  moav                           # Interactive menu"
     echo "  moav install                   # Install globally (run from anywhere)"
     echo "  moav update                    # Update MoaV (git pull)"
+    echo "  moav update -b dev             # Switch to dev branch and update"
     echo "  moav start                     # Start all services"
     echo "  moav start proxy admin         # Start proxy and admin profiles"
     echo "  moav stop conduit              # Stop specific service"
@@ -2372,13 +2450,19 @@ cmd_restart() {
 
 cmd_status() {
     # Simple header without clearing terminal
-    local singbox_ver wstunnel_ver conduit_ver
+    local singbox_ver wstunnel_ver conduit_ver branch
     singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
     wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
     conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
+    branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+    local version_str="v${VERSION}"
+    if [[ -n "$branch" && "$branch" != "main" ]]; then
+        version_str="v${VERSION} (${branch})"
+    fi
 
     echo ""
-    echo -e "${CYAN}MoaV${NC} v${VERSION}  ${DIM}│${NC}  ${DIM}sing-box ${singbox_ver}  wstunnel ${wstunnel_ver}  conduit ${conduit_ver}${NC}"
+    echo -e "${CYAN}MoaV${NC} ${version_str}  ${DIM}│${NC}  ${DIM}sing-box ${singbox_ver}  wstunnel ${wstunnel_ver}  conduit ${conduit_ver}${NC}"
     echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
     show_status
@@ -3348,11 +3432,10 @@ cmd_regenerate_users() {
 # =============================================================================
 
 main_interactive() {
-    print_header
-
     # Check prerequisites only if not already verified
     # Also re-check if .env is missing (user may have deleted it)
     if ! prereqs_already_checked; then
+        print_header
         # Clear stale prereqs flag if .env is missing
         if [[ -f "$PREREQS_FILE" ]] && [[ ! -f ".env" ]]; then
             rm -f "$PREREQS_FILE"
@@ -3406,7 +3489,8 @@ main() {
             do_uninstall
             ;;
         update)
-            cmd_update
+            shift
+            cmd_update "$@"
             ;;
         check)
             cmd_check
