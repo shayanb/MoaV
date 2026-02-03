@@ -619,6 +619,79 @@ cmd_update() {
     fi
     echo ""
 
+    # Check for local changes that would block git pull
+    local changes
+    changes=$(git -C "$install_dir" status --porcelain 2>/dev/null)
+
+    if [[ -n "$changes" ]]; then
+        echo -e "${YELLOW}⚠ Local changes detected:${NC}"
+        echo ""
+        # Show modified files (limit to 10 for readability)
+        echo "$changes" | head -10 | while read -r line; do
+            echo -e "    ${CYAN}$line${NC}"
+        done
+        local change_count
+        change_count=$(echo "$changes" | wc -l | tr -d ' ')
+        if [[ "$change_count" -gt 10 ]]; then
+            echo -e "    ${DIM}... and $((change_count - 10)) more files${NC}"
+        fi
+        echo ""
+        echo "These changes will conflict with the update."
+        echo ""
+        echo "Options:"
+        echo -e "  ${WHITE}1)${NC} Stash changes (save temporarily, can restore later)"
+        echo -e "  ${WHITE}2)${NC} Discard changes (reset to clean state - ${RED}LOSES YOUR CHANGES${NC})"
+        echo -e "  ${WHITE}3)${NC} Abort (handle manually)"
+        echo ""
+        read -rp "Choice [1/2/3]: " choice
+
+        case "$choice" in
+            1|"")
+                info "Stashing local changes..."
+                local stash_msg="moav-update-$(date +%Y%m%d-%H%M%S)"
+                if git -C "$install_dir" stash push -m "$stash_msg" --include-untracked; then
+                    success "Changes stashed"
+                    echo ""
+                    echo -e "${CYAN}To restore your changes later:${NC}"
+                    echo -e "  ${WHITE}cd $install_dir && git stash pop${NC}"
+                    echo ""
+                    echo -e "${DIM}Or view stashed changes: git stash list${NC}"
+                    echo ""
+                else
+                    error "Failed to stash changes"
+                    echo "  Try manually: cd $install_dir && git stash"
+                    return 1
+                fi
+                ;;
+            2)
+                echo ""
+                echo -e "${RED}WARNING: This will permanently discard all local changes!${NC}"
+                read -rp "Are you sure? [y/N]: " confirm
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    info "Discarding local changes..."
+                    git -C "$install_dir" checkout -- . 2>/dev/null
+                    git -C "$install_dir" clean -fd 2>/dev/null
+                    success "Local changes discarded"
+                    echo ""
+                else
+                    info "Aborted"
+                    return 0
+                fi
+                ;;
+            3|*)
+                info "Aborted. Handle changes manually:"
+                echo ""
+                echo -e "  ${WHITE}cd $install_dir${NC}"
+                echo -e "  ${WHITE}git status${NC}           # View changes"
+                echo -e "  ${WHITE}git stash${NC}            # Save changes temporarily"
+                echo -e "  ${WHITE}git checkout -- .${NC}    # Discard changes"
+                echo -e "  ${WHITE}moav update${NC}          # Try again"
+                echo ""
+                return 0
+                ;;
+        esac
+    fi
+
     # Pull latest changes
     info "Running git pull..."
     if git -C "$install_dir" pull; then
@@ -634,6 +707,11 @@ cmd_update() {
         fi
     else
         error "Failed to update. Check your network connection or git status."
+        echo ""
+        echo "Troubleshooting:"
+        echo "  - Check network: ping github.com"
+        echo "  - View git status: cd $install_dir && git status"
+        echo "  - See docs: https://github.com/shayanb/MoaV/blob/main/docs/TROUBLESHOOTING.md#git-update-issues"
         return 1
     fi
 }

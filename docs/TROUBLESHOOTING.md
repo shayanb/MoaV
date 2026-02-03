@@ -4,6 +4,10 @@ Common issues and their solutions.
 
 ## Table of Contents
 
+- [Git and Update Issues](#git-and-update-issues)
+  - [Update fails with "local changes would be overwritten"](#update-fails-with-local-changes-would-be-overwritten)
+  - [Recovering from failed updates](#recovering-from-failed-updates)
+  - [Switching branches](#switching-branches)
 - [Server-Side Issues](#server-side-issues)
   - [Services won't start](#services-wont-start)
   - [Certificate issues](#certificate-issues)
@@ -18,6 +22,188 @@ Common issues and their solutions.
 - [Reset and Re-bootstrap](#reset-and-re-bootstrap)
 - [Common Commands](#common-commands)
 - [Getting Help](#getting-help)
+
+---
+
+## Git and Update Issues
+
+### Update fails with "local changes would be overwritten"
+
+When running `moav update` or the installer, you may see:
+
+```
+error: Your local changes to the following files would be overwritten by merge:
+    scripts/client-test.sh
+Please commit your changes or stash them before you merge.
+Aborting
+```
+
+**Why this happens:**
+- You edited files while testing a fix or feature
+- You manually modified configuration scripts
+- You tested a development branch and switched back
+
+**Solution 1: Use the interactive prompt (recommended)**
+
+The latest MoaV versions detect this and offer options:
+```bash
+moav update
+# Will show:
+# ⚠ Local changes detected:
+#     M scripts/client-test.sh
+# Options:
+#   1) Stash changes (save temporarily, can restore later)
+#   2) Discard changes (reset to clean state)
+#   3) Abort
+```
+
+Choose option 1 to save your changes, or option 2 to discard them.
+
+**Solution 2: Manual stash**
+
+```bash
+cd /opt/moav
+
+# Save your changes temporarily
+git stash
+
+# Now update
+moav update
+# or: git pull
+
+# Restore your changes (may cause conflicts)
+git stash pop
+```
+
+**Solution 3: Discard changes**
+
+If you don't need your local changes:
+```bash
+cd /opt/moav
+
+# Discard all local modifications
+git checkout -- .
+
+# Remove untracked files
+git clean -fd
+
+# Now update
+moav update
+```
+
+### Recovering from failed updates
+
+If an update fails partway through:
+
+```bash
+cd /opt/moav
+
+# Check current state
+git status
+
+# If there are merge conflicts
+git merge --abort
+
+# Reset to last known good state
+git reset --hard HEAD
+
+# Try updating again
+moav update
+```
+
+**If you need to completely reset:**
+
+```bash
+cd /opt/moav
+
+# Fetch latest from remote
+git fetch origin
+
+# Hard reset to remote main
+git reset --hard origin/main
+
+# Verify
+git status
+```
+
+### Switching branches
+
+**Switch to a feature/test branch:**
+```bash
+cd /opt/moav
+git fetch origin
+git checkout feature-branch-name
+git pull
+moav build  # Rebuild containers if needed
+```
+
+**Switch back to stable (main):**
+```bash
+cd /opt/moav
+git checkout main
+git pull
+moav build
+```
+
+**If switching fails due to local changes:**
+```bash
+# Stash changes first
+git stash
+git checkout main
+git pull
+
+# Optionally restore changes
+git stash pop
+```
+
+### Common scenarios
+
+**Testing a bug fix from GitHub:**
+```bash
+# Save current state
+cd /opt/moav
+git stash
+
+# Get the fix
+git fetch origin
+git checkout fix-branch-name
+moav build
+moav restart
+
+# After testing, return to main
+git checkout main
+git stash pop  # Restore your changes if needed
+```
+
+**Accidentally edited files:**
+```bash
+# See what changed
+git diff
+
+# If you want to keep changes, stash them
+git stash
+
+# If you want to discard
+git checkout -- filename.sh
+
+# Or discard all changes
+git checkout -- .
+```
+
+**View stashed changes:**
+```bash
+# List all stashes
+git stash list
+
+# Show what's in the most recent stash
+git stash show -p
+
+# Apply a specific stash
+git stash apply stash@{0}
+
+# Delete a stash
+git stash drop stash@{0}
+```
 
 ---
 
