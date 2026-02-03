@@ -8,7 +8,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ## Features
 
-- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, WireGuard (direct & wstunnel), DNS tunnel
+- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, WireGuard (direct & wstunnel), Paqet, DNS tunnel
 - **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, or DNS
 - **Per-user credentials** - Create, revoke, and manage users independently
 - **Easy deployment** - Docker Compose based, single command setup
@@ -120,6 +120,7 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 | Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
 | WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | Full VPN, simple setup |
 | WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN when UDP is blocked |
+| Paqet | 9999/tcp | ★★★☆☆ | ★★★☆☆ | Raw packet, bypasses OS firewall |
 | DNS Tunnel | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort, hard to block |
 | Psiphon | - | ★★★★☆ | ★★★☆☆ | Standalone, no server needed |
 | Tor (Snowflake) | - | ★★★★☆ | ★★☆☆☆ | Standalone, uses Tor network |

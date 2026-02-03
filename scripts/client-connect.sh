@@ -24,6 +24,7 @@ TEST_TIMEOUT="${TEST_TIMEOUT:-10}"
 
 # Protocol priority for auto mode
 # Note: psiphon excluded - requires embedded server list, not supported in client mode
+# Note: paqet excluded from auto - requires privileged mode and network config
 PROTOCOL_PRIORITY=(reality hysteria2 trojan wireguard tor dnstt)
 
 # State
@@ -397,6 +398,64 @@ connect_dnstt() {
     return 0
 }
 
+# Connect using paqet (raw packet proxy)
+# NOTE: Requires privileged mode and host networking - normally run via moav client
+connect_paqet() {
+    local config_file=""
+
+    for f in "$CONFIG_DIR"/paqet*.yaml "$CONFIG_DIR"/paqet*.yml; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+
+    if [[ -z "$config_file" ]]; then
+        log_error "No paqet config found"
+        return 1
+    fi
+
+    # Check if config needs customization
+    if grep -q "CHANGE_ME" "$config_file"; then
+        log_error "Paqet config needs customization first"
+        log_info "Edit $config_file and fill in your network details:"
+        log_info "  - interface: your network interface (eth0, en0, etc.)"
+        log_info "  - addr: your local IP address"
+        log_info "  - router_mac: your gateway's MAC address"
+        log_info "See paqet-instructions.txt for help finding these values"
+        return 1
+    fi
+
+    # Check if paqet binary exists
+    if ! command -v paqet >/dev/null 2>&1; then
+        log_error "paqet binary not found"
+        log_info "Download from: https://github.com/hanselime/paqet/releases"
+        return 1
+    fi
+
+    # Extract server for logging
+    local server=$(grep -E "^\s*addr:" "$config_file" | grep -v "YOUR_LOCAL" | sed 's/.*addr:[[:space:]]*//' | tr -d '"' | head -1)
+
+    log_info "Starting paqet client to $server..."
+    log_warn "Note: paqet requires root/admin privileges and raw socket access"
+
+    paqet run -c "$config_file" &
+    CURRENT_PID=$!
+    CURRENT_PROTOCOL="paqet"
+
+    sleep 3
+
+    if ! kill -0 $CURRENT_PID 2>/dev/null; then
+        log_error "paqet failed to start"
+        log_info "Common issues:"
+        log_info "  - Not running as root/admin"
+        log_info "  - OpenVZ/LXC container (needs KVM or bare metal)"
+        log_info "  - libpcap not installed"
+        log_info "  - Incorrect network interface or gateway MAC"
+        return 1
+    fi
+
+    log_success "paqet tunnel established"
+    return 0
+}
+
 # Connect using Psiphon (standalone, doesn't need MoaV server)
 # NOTE: Not implemented - Psiphon tunnel-core requires embedded server lists
 # that are not publicly available. Use the official Psiphon apps instead:
@@ -549,6 +608,9 @@ main() {
             ;;
         dnstt)
             connect_dnstt && connected=true
+            ;;
+        paqet)
+            connect_paqet && connected=true
             ;;
         *)
             log_error "Unknown protocol: $PROTOCOL"

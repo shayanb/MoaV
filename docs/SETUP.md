@@ -360,6 +360,7 @@ docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon 
 #   proxy     - sing-box + decoy (main proxy services)
 #   wireguard - WireGuard VPN via wstunnel
 #   dnstt     - DNS tunnel (last resort)
+#   paqet     - Paqet raw packet proxy (last resort, requires host network)
 #   admin     - Stats dashboard (https://domain:9443 or https://ip:9443 in domain-less mode)
 #   conduit   - Psiphon bandwidth donation (includes traffic stats by country)
 #   snowflake - Tor Snowflake proxy (bandwidth donation for Tor users)

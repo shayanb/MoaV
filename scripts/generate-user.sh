@@ -233,6 +233,127 @@ if [[ "${ENABLE_DNSTT:-true}" == "true" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# Generate Paqet client config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_PAQET:-false}" == "true" ]]; then
+    PAQET_KEY_FILE="/state/keys/paqet.key"
+    PAQET_PORT="${PORT_PAQET:-9999}"
+
+    if [[ -f "$PAQET_KEY_FILE" ]]; then
+        PAQET_KEY=$(cat "$PAQET_KEY_FILE")
+
+        # Generate client config template (user needs to fill in their network details)
+        cat > "$OUTPUT_DIR/paqet-client.yaml" <<EOF
+# Paqet Client Configuration
+# ==========================
+# IMPORTANT: You must fill in YOUR network details below!
+# See paqet-instructions.txt for how to find these values.
+
+role: "client"
+
+log:
+  level: "info"
+
+socks5:
+  - listen: "127.0.0.1:1080"
+
+network:
+  interface: "CHANGE_ME"           # Your network interface (en0, eth0, wlan0)
+  ipv4:
+    addr: "YOUR_LOCAL_IP:0"        # Your local IP address (port 0 = auto)
+    router_mac: "CHANGE_ME"        # Your gateway/router MAC address
+
+server:
+  addr: "${SERVER_IP}:${PAQET_PORT}"
+
+transport:
+  protocol: "kcp"
+  kcp:
+    mode: "fast"
+    block: "aes"
+    key: "${PAQET_KEY}"
+EOF
+
+        # Generate instructions
+        cat > "$OUTPUT_DIR/paqet-instructions.txt" <<EOF
+# Paqet Client Setup Instructions
+# ================================
+# Paqet is a raw packet-level proxy that bypasses OS firewalls.
+# Use this as a LAST RESORT when other protocols are blocked.
+
+# Requirements:
+# - libpcap installed
+# - Root/administrator privileges
+# - NOT OpenVZ/LXC container (requires KVM or bare metal)
+
+# Step 1: Install paqet
+# ---------------------
+# Download from: https://github.com/hanselime/paqet/releases
+# Or build from source: go install github.com/hanselime/paqet/cmd/paqet@latest
+
+# Step 2: Install libpcap
+# -----------------------
+# Debian/Ubuntu: sudo apt install libpcap-dev
+# macOS: Comes pre-installed (or: brew install libpcap)
+# Windows: Install Npcap from https://npcap.com
+
+# Step 3: Find YOUR network details
+# ---------------------------------
+# Linux:
+#   Interface: ip a (look for eth0, wlan0, etc.)
+#   Local IP:  ip -4 addr show <interface> | grep inet
+#   Gateway:   ip route | grep default
+#   Gateway MAC: arp -n <gateway_ip>
+#
+# macOS:
+#   Interface: ifconfig (look for en0)
+#   Local IP:  ifconfig <interface> | grep inet
+#   Gateway:   netstat -rn | grep default
+#   Gateway MAC: arp -n <gateway_ip>
+#
+# Windows:
+#   Interface: Get-NetAdapter | Select-Object Name, InterfaceGuid
+#   Local IP:  ipconfig
+#   Gateway:   ipconfig | findstr Gateway
+#   Gateway MAC: arp -a <gateway_ip>
+
+# Step 4: Edit paqet-client.yaml
+# ------------------------------
+# Replace CHANGE_ME values with your network details:
+#   - interface: your network interface name
+#   - addr: your local IP (keep :0 for auto port)
+#   - router_mac: your gateway's MAC address
+
+# Step 5: Run paqet
+# -----------------
+# Linux/macOS: sudo paqet run -c paqet-client.yaml
+# Windows: Run as Administrator: paqet run -c paqet-client.yaml
+
+# Step 6: Use the proxy
+# ---------------------
+# Configure applications to use SOCKS5 proxy at 127.0.0.1:1080
+
+# Server Connection Info:
+# -----------------------
+# Server: ${SERVER_IP}:${PAQET_PORT}
+# Protocol: KCP over raw TCP packets
+# Encryption: AES
+
+# Troubleshooting:
+# ----------------
+# - "permission denied" → Run as root/admin
+# - "no route to host" → Check firewall, gateway MAC
+# - "pcap error" → Install libpcap, check interface name
+# - OpenVZ/LXC error → Use KVM VPS or bare metal instead
+EOF
+
+        log_info "  - Paqet config generated"
+    else
+        log_warn "  - Paqet key not found, skipping config generation"
+    fi
+fi
+
+# -----------------------------------------------------------------------------
 # Generate README.html from template
 # -----------------------------------------------------------------------------
 TEMPLATE_FILE="/docs/client-guide-template.html"

@@ -251,6 +251,86 @@ docker compose logs sing-box | grep -i hysteria
 nc -vuz YOUR_SERVER_IP 443
 ```
 
+### Paqet not starting
+
+Paqet requires special system capabilities. Common issues:
+
+1. **OpenVZ/LXC container detected:**
+   ```
+   OpenVZ detected - raw sockets not supported!
+   ```
+   **Solution:** Paqet requires KVM, Xen, or bare metal. OpenVZ/LXC don't support raw sockets.
+
+2. **Missing libpcap:**
+   ```
+   error loading libpcap
+   ```
+   **Solution:**
+   ```bash
+   # Debian/Ubuntu
+   apt install libpcap-dev
+
+   # Alpine (in container)
+   apk add libpcap
+   ```
+
+3. **Permission denied:**
+   ```
+   permission denied creating raw socket
+   ```
+   **Solution:** Paqet must run with root/admin privileges and the container needs:
+   - `--network host`
+   - `--privileged` (or `--cap-add NET_RAW --cap-add NET_ADMIN`)
+
+4. **Gateway MAC not detected:**
+   ```
+   Could not detect gateway MAC address
+   ```
+   **Solution:** The entrypoint script auto-detects network config. If it fails:
+   ```bash
+   # Check gateway IP
+   ip route | grep default
+
+   # Ping gateway to populate ARP table
+   ping -c 1 GATEWAY_IP
+
+   # Get MAC
+   ip neigh show GATEWAY_IP
+   ```
+
+5. **iptables rules not set:**
+   Paqet needs specific iptables rules to prevent kernel RST packets:
+   ```bash
+   # These should be set automatically by the entrypoint
+   iptables -t raw -A PREROUTING -p tcp --dport 9999 -j NOTRACK
+   iptables -t raw -A OUTPUT -p tcp --sport 9999 -j NOTRACK
+   iptables -t mangle -A OUTPUT -p tcp --sport 9999 --tcp-flags RST RST -j DROP
+   ```
+
+### Paqet iptables rules not persisting
+
+The iptables rules set by paqet's entrypoint are lost on reboot. To persist them:
+
+**Debian/Ubuntu:**
+```bash
+# Save rules
+iptables-save > /etc/iptables/rules.v4
+
+# Install iptables-persistent
+apt install iptables-persistent
+```
+
+**Alpine:**
+```bash
+# Save rules
+/etc/init.d/iptables save
+
+# Enable at boot
+rc-update add iptables
+```
+
+Or add the rules to your server's startup script.
+
 ### WireGuard connected but no traffic
 
 **Check if peer is loaded:**
