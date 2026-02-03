@@ -3410,11 +3410,10 @@ cmd_regenerate_users() {
 # =============================================================================
 
 main_interactive() {
-    print_header
-
     # Check prerequisites only if not already verified
     # Also re-check if .env is missing (user may have deleted it)
     if ! prereqs_already_checked; then
+        print_header
         # Clear stale prereqs flag if .env is missing
         if [[ -f "$PREREQS_FILE" ]] && [[ ! -f ".env" ]]; then
             rm -f "$PREREQS_FILE"
@@ -3468,7 +3467,8 @@ main() {
             do_uninstall
             ;;
         update)
-            cmd_update
+            shift
+            cmd_update "$@"
             ;;
         check)
             cmd_check
