@@ -2007,7 +2007,7 @@ show_usage() {
     echo ""
     echo "Profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, client, all"
     echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, admin, psiphon-conduit, snowflake"
-    echo "Aliases:  conduit→psiphon-conduit, singbox→sing-box, wg→wireguard, dns→dnstt"
+    echo "Aliases:  proxy/singbox/reality→sing-box, wg→wireguard, dns→dnstt, conduit→psiphon-conduit"
     echo ""
     echo "Examples:"
     echo "  moav                           # Interactive menu"
@@ -2295,13 +2295,13 @@ resolve_profile() {
 resolve_service() {
     local svc="$1"
     case "$svc" in
-        conduit|psiphon)    echo "psiphon-conduit" ;;
-        singbox|sing)       echo "sing-box" ;;
-        wg)                 echo "wireguard" ;;
-        ws|tunnel)          echo "wstunnel" ;;
-        dns)                echo "dnstt" ;;
-        snow|tor)           echo "snowflake" ;;
-        *)                  echo "$svc" ;;
+        conduit|psiphon)                echo "psiphon-conduit" ;;
+        singbox|sing|proxy|reality)     echo "sing-box" ;;
+        wg)                             echo "wireguard" ;;
+        ws|tunnel)                      echo "wstunnel" ;;
+        dns)                            echo "dnstt" ;;
+        snow|tor)                       echo "snowflake" ;;
+        *)                              echo "$svc" ;;
     esac
 }
 
