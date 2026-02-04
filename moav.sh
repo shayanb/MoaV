@@ -1676,65 +1676,79 @@ restart_services() {
 }
 
 view_logs() {
-    print_section "View Logs"
+    local log_interrupted=false
 
-    # Get all services (running or not)
-    local all_services
-    all_services=$(docker compose ps --services -a 2>/dev/null | sort)
+    while true; do
+        log_interrupted=false
+        print_section "View Logs"
 
-    echo "Options:"
-    echo ""
-    echo -e "  ${WHITE}a)${NC} All services (follow)"
-    echo -e "  ${WHITE}t)${NC} Last 100 lines (all services)"
+        # Get all services (running or not)
+        local all_services
+        all_services=$(docker compose ps --services -a 2>/dev/null | sort)
 
-    if [[ -n "$all_services" ]]; then
+        echo "Options:"
         echo ""
-        local i=1
-        local services_array=()
-        while IFS= read -r svc; do
-            [[ -z "$svc" ]] && continue
-            services_array+=("$svc")
-            echo -e "  ${WHITE}$i)${NC} $svc"
-            ((i++))
-        done <<< "$all_services"
-    fi
+        echo -e "  ${WHITE}a)${NC} All services (follow)"
+        echo -e "  ${WHITE}t)${NC} Last 100 lines (all services)"
 
-    echo ""
-    echo -e "  ${WHITE}0)${NC} Cancel"
-    echo ""
-
-    prompt "Choice: "
-    read -r choice < /dev/tty 2>/dev/null || choice=""
-
-    case $choice in
-        a|A)
+        if [[ -n "$all_services" ]]; then
             echo ""
-            info "Showing logs for all services. Press Ctrl+C to exit."
-            echo ""
-            docker compose --profile all logs -t -f
-            ;;
-        t|T)
-            docker compose --profile all logs -t --tail=100
-            ;;
-        0|"")
-            return 0
-            ;;
-        [1-9]*)
-            local idx=$((choice - 1))
-            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
-                local service="${services_array[$idx]}"
+            local i=1
+            local services_array=()
+            while IFS= read -r svc; do
+                [[ -z "$svc" ]] && continue
+                services_array+=("$svc")
+                echo -e "  ${WHITE}$i)${NC} $svc"
+                ((i++))
+            done <<< "$all_services"
+        fi
+
+        echo ""
+        echo -e "  ${WHITE}0)${NC} Back to main menu"
+        echo ""
+
+        prompt "Choice: "
+        read -r choice < /dev/tty 2>/dev/null || choice=""
+
+        case $choice in
+            a|A)
                 echo ""
-                info "Showing logs for $service. Press Ctrl+C to exit."
+                info "Showing logs for all services. Press Ctrl+C to return to menu."
                 echo ""
-                docker compose logs -t -f "$service"
-            else
+                # Trap SIGINT to return to menu instead of exiting
+                trap 'log_interrupted=true' INT
+                docker compose --profile all logs -t -f 2>/dev/null || true
+                trap - INT
+                [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
+                ;;
+            t|T)
+                docker compose --profile all logs -t --tail=100
+                press_enter
+                ;;
+            0|"")
+                return 0
+                ;;
+            [1-9]*)
+                local idx=$((choice - 1))
+                if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
+                    local service="${services_array[$idx]}"
+                    echo ""
+                    info "Showing logs for $service. Press Ctrl+C to return to menu."
+                    echo ""
+                    # Trap SIGINT to return to menu instead of exiting
+                    trap 'log_interrupted=true' INT
+                    docker compose logs -t -f "$service" 2>/dev/null || true
+                    trap - INT
+                    [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
+                else
+                    warn "Invalid choice"
+                fi
+                ;;
+            *)
                 warn "Invalid choice"
-            fi
-            ;;
-        *)
-            warn "Invalid choice"
-            ;;
-    esac
+                ;;
+        esac
+    done
 }
 
 show_log_help() {
@@ -2451,13 +2465,13 @@ resolve_profile() {
 resolve_service() {
     local svc="$1"
     case "$svc" in
-        conduit|psiphon)                echo "psiphon-conduit" ;;
-        singbox|sing|proxy|reality)     echo "sing-box" ;;
-        wg)                             echo "wireguard" ;;
-        ws|tunnel)                      echo "wstunnel" ;;
-        dns)                            echo "dnstt" ;;
-        snow|tor)                       echo "snowflake" ;;
-        *)                              echo "$svc" ;;
+        conduit|psiphon)              echo "psiphon-conduit" ;;
+        singbox|sing|proxy|reality)   echo "sing-box" ;;
+        wg)                           echo "wireguard" ;;
+        ws|tunnel)                    echo "wstunnel" ;;
+        dns)                          echo "dnstt" ;;
+        snow|tor)                     echo "snowflake" ;;
+        *)                            echo "$svc" ;;
     esac
 }
 
