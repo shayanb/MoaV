@@ -1,51 +1,39 @@
 # =============================================================================
 # MoaV Client - Multi-protocol client for testing and connecting
 # =============================================================================
-# Supports: Reality, Trojan, Hysteria2, WireGuard (via wireguard-go + wstunnel),
-#           dnstt, Psiphon, Tor/Snowflake
+# Supports: Reality, Trojan, Hysteria2, WireGuard (via wstunnel),
+#           dnstt, Tor/Snowflake
 #
-# Strategy: Download pre-built binaries, fallback to building from source
+# Strategy: Download pre-built binaries with proper architecture detection
 # =============================================================================
 
 # =============================================================================
-# Builder stages - compile from source as fallback
+# Builder stage - compile dnstt (no official releases available)
 # =============================================================================
+FROM --platform=$BUILDPLATFORM golang:1.22-alpine AS dnstt-builder
 
-# Build sing-box from source (fallback)
-FROM golang:1.22-alpine AS singbox-builder
-ARG SINGBOX_VERSION=1.12.17
-RUN apk add --no-cache git build-base
-RUN go install -v -tags with_quic,with_utls,with_reality_server,with_clash_api \
-    github.com/sagernet/sing-box/cmd/sing-box@v${SINGBOX_VERSION} || \
-    echo "sing-box build failed"
-RUN cp /go/bin/sing-box /sing-box 2>/dev/null || touch /sing-box
+# For cross-compilation
+ARG TARGETARCH
+ARG TARGETOS=linux
 
-# Build dnstt from source (no official releases)
-FROM golang:1.22-alpine AS dnstt-builder
 RUN apk add --no-cache git
+
+# Build dnstt-client with cross-compilation
 RUN git clone https://www.bamsoftware.com/git/dnstt.git /tmp/dnstt && \
     cd /tmp/dnstt/dnstt-client && \
-    go build -o /dnstt-client . || touch /dnstt-client
-
-# Build snowflake from source (fallback)
-FROM golang:1.22-alpine AS snowflake-builder
-ARG SNOWFLAKE_VERSION=2.11.0
-RUN apk add --no-cache git
-RUN go install gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/v2/client@v${SNOWFLAKE_VERSION} || \
-    echo "snowflake build failed"
-RUN cp /go/bin/client /snowflake-client 2>/dev/null || touch /snowflake-client
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 go build -o /dnstt-client . || touch /dnstt-client
 
 # =============================================================================
-# Final image - prefer pre-built binaries, fallback to built versions
+# Final image - download pre-built binaries for correct architecture
 # =============================================================================
 FROM alpine:3.20
 
 # Architecture detection for multi-arch support
 ARG TARGETARCH
 
-# Versions (keep in sync with builder stages)
-ARG SINGBOX_VERSION=1.12.17
-ARG WSTUNNEL_VERSION=10.5.1
+# Versions - read from .env via docker-compose build args, with fallback defaults
+ARG SINGBOX_VERSION=1.12.19
+ARG WSTUNNEL_VERSION=10.5.2
 ARG SNOWFLAKE_VERSION=2.11.0
 
 # Install runtime dependencies
@@ -62,46 +50,62 @@ RUN apk add --no-cache \
     tor \
     && rm -rf /var/cache/apk/*
 
-# Copy built binaries from builder stages (as fallback)
-COPY --from=singbox-builder /sing-box /tmp/sing-box-built
-COPY --from=dnstt-builder /dnstt-client /tmp/dnstt-client-built
-COPY --from=snowflake-builder /snowflake-client /tmp/snowflake-client-built
+# Architecture mapping helper script
+# TARGETARCH from buildx: amd64, arm64, arm/v7, etc.
+# Fallback to runtime detection if not set
+RUN echo '#!/bin/sh' > /tmp/get-arch.sh && \
+    echo 'if [ -n "$TARGETARCH" ]; then' >> /tmp/get-arch.sh && \
+    echo '  echo "$TARGETARCH"' >> /tmp/get-arch.sh && \
+    echo 'else' >> /tmp/get-arch.sh && \
+    echo '  case "$(uname -m)" in' >> /tmp/get-arch.sh && \
+    echo '    x86_64|amd64) echo "amd64" ;;' >> /tmp/get-arch.sh && \
+    echo '    aarch64|arm64) echo "arm64" ;;' >> /tmp/get-arch.sh && \
+    echo '    armv7l) echo "arm" ;;' >> /tmp/get-arch.sh && \
+    echo '    *) echo "amd64" ;;' >> /tmp/get-arch.sh && \
+    echo '  esac' >> /tmp/get-arch.sh && \
+    echo 'fi' >> /tmp/get-arch.sh && \
+    chmod +x /tmp/get-arch.sh
 
-# sing-box: try pre-built, fallback to built
-# TARGETARCH is amd64 or arm64
-RUN wget -qO- "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-${TARGETARCH:-amd64}.tar.gz" | \
+# Determine architecture once
+RUN ARCH=$(/tmp/get-arch.sh) && echo "Building for architecture: $ARCH" && echo "$ARCH" > /tmp/arch
+
+# sing-box: download pre-built binary
+RUN ARCH=$(cat /tmp/arch) && \
+    echo "Downloading sing-box for ${ARCH}..." && \
+    wget -qO- "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-${ARCH}.tar.gz" | \
     tar xz -C /tmp && \
-    mv /tmp/sing-box-${SINGBOX_VERSION}-linux-${TARGETARCH:-amd64}/sing-box /usr/local/bin/ && \
+    mv /tmp/sing-box-${SINGBOX_VERSION}-linux-${ARCH}/sing-box /usr/local/bin/ && \
+    chmod +x /usr/local/bin/sing-box && \
     rm -rf /tmp/sing-box-* && \
-    echo "sing-box: using pre-built binary (${TARGETARCH:-amd64})" || \
-    (cp /tmp/sing-box-built /usr/local/bin/sing-box && echo "sing-box: using locally built binary")
-RUN chmod +x /usr/local/bin/sing-box && rm -f /tmp/sing-box-built
+    echo "sing-box ${SINGBOX_VERSION} installed (${ARCH})"
 
-# wstunnel: try pre-built (no fallback build, optional)
+# wstunnel: download pre-built binary
 # wstunnel uses underscore in filename: linux_amd64, linux_arm64
-RUN wget -qO- "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_${TARGETARCH:-amd64}.tar.gz" | \
-    tar xz -C /usr/local/bin/ && \
+RUN ARCH=$(cat /tmp/arch) && \
+    echo "Downloading wstunnel for ${ARCH}..." && \
+    wget -qO- "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_${ARCH}.tar.gz" | \
+    tar xz -C /usr/local/bin/ wstunnel && \
     chmod +x /usr/local/bin/wstunnel && \
-    echo "wstunnel: using pre-built binary (${TARGETARCH:-amd64})" || \
-    echo "wstunnel: not available (optional)"
+    echo "wstunnel ${WSTUNNEL_VERSION} installed (${ARCH})" || \
+    echo "wstunnel: download failed (optional, needed for WireGuard-wstunnel)"
 
-# snowflake-client: try pre-built, fallback to built
-RUN wget -qO /usr/local/bin/snowflake-client \
-    "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/releases/v${SNOWFLAKE_VERSION}/downloads/client/snowflake-client-linux-${TARGETARCH:-amd64}" && \
-    echo "snowflake: using pre-built binary (${TARGETARCH:-amd64})" || \
-    (cp /tmp/snowflake-client-built /usr/local/bin/snowflake-client && echo "snowflake: using locally built binary")
-RUN chmod +x /usr/local/bin/snowflake-client 2>/dev/null || true
-RUN rm -f /tmp/snowflake-client-built
+# snowflake-client: download pre-built binary
+RUN ARCH=$(cat /tmp/arch) && \
+    echo "Downloading snowflake-client for ${ARCH}..." && \
+    wget -qO /usr/local/bin/snowflake-client \
+    "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/releases/v${SNOWFLAKE_VERSION}/downloads/client/snowflake-client-linux-${ARCH}" && \
+    chmod +x /usr/local/bin/snowflake-client && \
+    echo "snowflake-client ${SNOWFLAKE_VERSION} installed (${ARCH})" || \
+    echo "snowflake-client: download failed (optional, needed for Tor)"
 
-# psiphon: NOT included - requires embedded server lists not available for CLI
-# Users should use official Psiphon apps instead (Android/iOS/Windows)
+# dnstt-client: copy cross-compiled binary from builder
+COPY --from=dnstt-builder /dnstt-client /usr/local/bin/dnstt-client
+RUN chmod +x /usr/local/bin/dnstt-client 2>/dev/null && \
+    echo "dnstt-client installed" || \
+    echo "dnstt-client: not available (optional)"
 
-# dnstt-client: always use built (no official releases)
-RUN cp /tmp/dnstt-client-built /usr/local/bin/dnstt-client && \
-    chmod +x /usr/local/bin/dnstt-client && \
-    echo "dnstt: using locally built binary" || \
-    echo "dnstt: build failed (optional)"
-RUN rm -f /tmp/dnstt-client-built
+# Cleanup
+RUN rm -f /tmp/get-arch.sh /tmp/arch
 
 # Create directories
 RUN mkdir -p /config /app /state /var/log/moav

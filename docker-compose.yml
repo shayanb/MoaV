@@ -22,7 +22,7 @@ services:
       context: .
       dockerfile: Dockerfile.sing-box
       args:
-        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.17}
+        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.19}
     container_name: moav-sing-box
     restart: unless-stopped
     networks:
@@ -60,7 +60,7 @@ services:
       context: .
       dockerfile: Dockerfile.wstunnel
       args:
-        WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.1}
+        WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.2}
     container_name: moav-wstunnel
     restart: unless-stopped
     networks:
@@ -193,7 +193,7 @@ services:
       context: .
       dockerfile: Dockerfile.psiphon
       args:
-        CONDUIT_VERSION: ${CONDUIT_VERSION:-1.2.0}
+        CONDUIT_VERSION: ${CONDUIT_VERSION:-1.4.0}
     container_name: moav-conduit
     restart: unless-stopped
     networks:
@@ -220,6 +220,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.snowflake
+      args:
+        SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
     container_name: moav-snowflake
     restart: unless-stopped
     network_mode: host
@@ -298,6 +300,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.client
+      args:
+        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.19}
+        WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.2}
+        SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
     container_name: moav-client
     volumes:
       - ./outputs/bundles:/bundles:ro
