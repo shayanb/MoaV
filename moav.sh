@@ -1723,12 +1723,12 @@ view_logs() {
                 echo ""
                 # Trap SIGINT to return to menu instead of exiting
                 trap 'log_interrupted=true' INT
-                docker compose --profile all logs -t -f 2>/dev/null | format_log_timestamps || true
+                docker compose --ansi always --profile all logs -t -f 2>/dev/null | format_log_timestamps || true
                 trap - INT
                 [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 ;;
             t|T)
-                docker compose --profile all logs -t --tail=100 | format_log_timestamps
+                docker compose --ansi always --profile all logs -t --tail=100 | format_log_timestamps
                 press_enter
                 ;;
             0|"")
@@ -1743,7 +1743,7 @@ view_logs() {
                     echo ""
                     # Trap SIGINT to return to menu instead of exiting
                     trap 'log_interrupted=true' INT
-                    docker compose logs -t -f "$service" 2>/dev/null | format_log_timestamps || true
+                    docker compose --ansi always logs -t -f "$service" 2>/dev/null | format_log_timestamps || true
                     trap - INT
                     [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 else
@@ -2617,7 +2617,7 @@ cmd_logs() {
     done
 
     # Build docker compose command
-    local cmd="docker compose"
+    local cmd="docker compose --ansi always"
     if [[ -z "$services_to_log" ]]; then
         cmd="$cmd --profile all"
     fi
