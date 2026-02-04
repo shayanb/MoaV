@@ -1675,6 +1675,12 @@ restart_services() {
     esac
 }
 
+# Format Docker timestamps from ISO to readable format
+# 2026-02-04T20:17:10.426340440Z -> 2026-02-04 20:17:10
+format_log_timestamps() {
+    sed -u 's/\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\)T\([0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\)\.[0-9]*Z/\1 \2/g'
+}
+
 view_logs() {
     local log_interrupted=false
 
@@ -1717,12 +1723,12 @@ view_logs() {
                 echo ""
                 # Trap SIGINT to return to menu instead of exiting
                 trap 'log_interrupted=true' INT
-                docker compose --profile all logs -t -f 2>/dev/null || true
+                docker compose --profile all logs -t -f 2>/dev/null | format_log_timestamps || true
                 trap - INT
                 [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 ;;
             t|T)
-                docker compose --profile all logs -t --tail=100
+                docker compose --profile all logs -t --tail=100 | format_log_timestamps
                 press_enter
                 ;;
             0|"")
@@ -1737,7 +1743,7 @@ view_logs() {
                     echo ""
                     # Trap SIGINT to return to menu instead of exiting
                     trap 'log_interrupted=true' INT
-                    docker compose logs -t -f "$service" 2>/dev/null || true
+                    docker compose logs -t -f "$service" 2>/dev/null | format_log_timestamps || true
                     trap - INT
                     [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 else
@@ -2620,9 +2626,9 @@ cmd_logs() {
     if [[ "$follow" == "true" ]]; then
         echo -e "${CYAN}Following logs (Ctrl+C to exit)...${NC}"
         echo ""
-        $cmd -f $services_to_log
+        $cmd -f $services_to_log | format_log_timestamps
     else
-        $cmd $services_to_log
+        $cmd $services_to_log | format_log_timestamps
     fi
 }
 
