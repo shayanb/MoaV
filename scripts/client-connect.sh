@@ -366,35 +366,52 @@ connect_dnstt() {
     # Extract domain - look for t.domain.com pattern (portable)
     local domain=$(grep -oE 't\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' "$config_file" | head -1)
 
-    # Extract pubkey from config file (portable)
-    local pubkey=$(grep -i "pubkey" "$config_file" | sed 's/.*[=:][[:space:]]*//' | grep -oE '[A-Za-z0-9+/=]{40,}' | head -1)
+    # Extract pubkey - look for hex string (64 chars) in the config
+    local pubkey=""
+    pubkey=$(grep -oE '[0-9a-fA-F]{64}' "$config_file" | head -1)
 
-    # Check for server.pub in bundle
-    [[ -z "$pubkey" ]] && [[ -f "$CONFIG_DIR/server.pub" ]] && pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r')
+    # Check for server.pub in bundle (hex format)
+    [[ -z "$pubkey" ]] && [[ -f "$CONFIG_DIR/server.pub" ]] && pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r ')
 
-    # Check for server.pub in default dnstt outputs location (mounted at /dnstt)
-    [[ -z "$pubkey" ]] && [[ -f "/dnstt/server.pub" ]] && pubkey=$(cat "/dnstt/server.pub" | tr -d '\n\r')
+    # Check for server.pub in default dnstt outputs location
+    [[ -z "$pubkey" ]] && [[ -f "/outputs/dnstt/server.pub" ]] && pubkey=$(cat "/outputs/dnstt/server.pub" | tr -d '\n\r ')
+
+    # Check configs directory
+    [[ -z "$pubkey" ]] && [[ -f "/configs/dnstt/server.pub" ]] && pubkey=$(cat "/configs/dnstt/server.pub" | tr -d '\n\r ')
 
     if [[ -z "$domain" ]] || [[ -z "$pubkey" ]]; then
         log_error "Could not extract dnstt domain or pubkey"
+        log_debug "domain=$domain pubkey=${pubkey:0:20}..."
         return 1
     fi
 
     log_info "Starting dnstt client for $domain..."
+    log_info "Note: DNS tunneling is slow - please be patient"
 
+    # dnstt-client creates a TCP tunnel to the server's upstream (sing-box SOCKS proxy)
+    # So the local port acts as a SOCKS5 proxy
     dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "$domain" 127.0.0.1:$SOCKS_PORT &
     CURRENT_PID=$!
     CURRENT_PROTOCOL="dnstt"
 
-    sleep 3
+    # DNS tunneling takes longer to establish
+    sleep 5
 
     if ! kill -0 $CURRENT_PID 2>/dev/null; then
         log_error "dnstt-client failed to start"
         return 1
     fi
 
-    log_success "dnstt tunnel established"
-    return 0
+    # Test connectivity (with longer timeout for DNS tunnel)
+    log_info "Testing tunnel connectivity..."
+    if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time 30 "$TEST_URL" >/dev/null 2>&1; then
+        log_success "dnstt tunnel established and working"
+        return 0
+    else
+        log_warn "Tunnel established but connectivity test timed out"
+        log_info "DNS tunneling is slow - connection may still work"
+        return 0
+    fi
 }
 
 # Connect using Psiphon (standalone, doesn't need MoaV server)

@@ -18,7 +18,8 @@ if [[ -z "${DNSTT_DOMAIN:-}" ]]; then
     exit 1
 fi
 DNSTT_LISTEN="${DNSTT_LISTEN:-:5353}"
-DNSTT_UPSTREAM="${DNSTT_UPSTREAM:-127.0.0.1:8080}"
+# Upstream points to sing-box's mixed inbound (SOCKS5/HTTP proxy on Docker network)
+DNSTT_UPSTREAM="${DNSTT_UPSTREAM:-sing-box:1080}"
 
 echo "[dnstt] Starting dnstt-server"
 echo "[dnstt] Domain: $DNSTT_DOMAIN"

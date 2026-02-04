@@ -702,19 +702,28 @@ test_dnstt() {
     # Extract domain - look for t.domain.com pattern
     local domain=$(grep -oE 't\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' "$config_file" | head -1)
 
-    # Extract pubkey - look for base64-like string after "pubkey"
-    local pubkey=$(grep -i "pubkey" "$config_file" | sed 's/.*[=:][[:space:]]*//' | grep -oE '[A-Za-z0-9+/=]{40,}' | head -1)
+    # Extract pubkey - look for hex string (64 chars) in the config
+    local pubkey=""
 
-    # Check for server.pub file in bundle
+    # First try to find hex pubkey in the instructions file
+    pubkey=$(grep -oE '[0-9a-fA-F]{64}' "$config_file" | head -1)
+
+    # Check for server.pub file in bundle (hex format)
     if [[ -z "$pubkey" ]] && [[ -f "$CONFIG_DIR/server.pub" ]]; then
-        pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r')
+        pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r ')
         log_debug "Found pubkey in bundle: server.pub"
     fi
 
-    # Check for server.pub in default dnstt outputs location (mounted at /dnstt)
-    if [[ -z "$pubkey" ]] && [[ -f "/dnstt/server.pub" ]]; then
-        pubkey=$(cat "/dnstt/server.pub" | tr -d '\n\r')
-        log_debug "Found pubkey in /dnstt/server.pub"
+    # Check for server.pub in default dnstt outputs location
+    if [[ -z "$pubkey" ]] && [[ -f "/outputs/dnstt/server.pub" ]]; then
+        pubkey=$(cat "/outputs/dnstt/server.pub" | tr -d '\n\r ')
+        log_debug "Found pubkey in /outputs/dnstt/server.pub"
+    fi
+
+    # Check configs directory
+    if [[ -z "$pubkey" ]] && [[ -f "/configs/dnstt/server.pub" ]]; then
+        pubkey=$(cat "/configs/dnstt/server.pub" | tr -d '\n\r ')
+        log_debug "Found pubkey in /configs/dnstt/server.pub"
     fi
 
     if [[ -z "$domain" ]]; then
@@ -735,28 +744,85 @@ test_dnstt() {
         return
     fi
 
-    # Try to establish dnstt tunnel briefly
-    if command -v dnstt-client >/dev/null 2>&1; then
-        log_debug "Starting dnstt-client..."
-        dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "$domain" 127.0.0.1:10803 &
-        local pid=$!
-        sleep 5
-
-        if kill -0 $pid 2>/dev/null; then
-            log_success "dnstt client started successfully"
-            RESULTS[dnstt]="pass"
-            DETAILS[dnstt]="DNS tunnel established to $domain"
-            kill $pid 2>/dev/null || true
-        else
-            detail="dnstt client failed to start"
-            log_error "$detail"
-            RESULTS[dnstt]="fail"
-            DETAILS[dnstt]="$detail"
-        fi
-    else
+    # Check if dnstt-client is available
+    if ! command -v dnstt-client >/dev/null 2>&1; then
         RESULTS[dnstt]="warn"
         DETAILS[dnstt]="dnstt-client not available, config looks valid for $domain"
+        return
     fi
+
+    log_debug "Starting dnstt-client tunnel..."
+    local error_log="$TEMP_DIR/dnstt-error.log"
+
+    # Start dnstt-client with DoH resolver
+    # dnstt-client creates a raw TCP tunnel, not SOCKS
+    # We connect to it and the server forwards to sing-box SOCKS proxy
+    dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "$domain" 127.0.0.1:10803 2>"$error_log" &
+    local pid=$!
+
+    # Give it time to establish the tunnel
+    sleep 5
+
+    if ! kill -0 $pid 2>/dev/null; then
+        detail="dnstt-client failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -3 "$error_log" | tr '\n' ' ')
+            detail="dnstt error: $error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[dnstt]="fail"
+        DETAILS[dnstt]="$detail"
+        return
+    fi
+
+    log_debug "dnstt-client running (PID $pid), testing connectivity..."
+
+    # dnstt tunnels raw TCP to the server's upstream (sing-box SOCKS proxy)
+    # So we can use the local dnstt port as a SOCKS5 proxy
+    local test_success=false
+
+    # Test 1: Basic connectivity through the tunnel
+    if curl -sf --socks5 127.0.0.1:10803 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        log_debug "Basic connectivity test passed"
+        test_success=true
+    else
+        log_debug "Basic connectivity test failed, trying extended timeout..."
+        # DNS tunneling is slow, try with longer timeout
+        if curl -sf --socks5 127.0.0.1:10803 --max-time 30 "$TEST_URL" >/dev/null 2>&1; then
+            log_debug "Extended timeout test passed"
+            test_success=true
+        fi
+    fi
+
+    if [[ "$test_success" == "true" ]]; then
+        # Test 2: Verify public IP (optional but recommended)
+        local tunnel_ip=""
+        tunnel_ip=$(curl -sf --socks5 127.0.0.1:10803 --max-time 30 https://api.ipify.org 2>/dev/null || \
+                    curl -sf --socks5 127.0.0.1:10803 --max-time 30 https://ifconfig.me 2>/dev/null || \
+                    echo "")
+
+        if [[ -n "$tunnel_ip" ]]; then
+            log_success "dnstt tunnel working, exit IP: $tunnel_ip"
+            RESULTS[dnstt]="pass"
+            DETAILS[dnstt]="DNS tunnel to $domain working (exit IP: $tunnel_ip)"
+        else
+            log_success "dnstt tunnel established to $domain"
+            RESULTS[dnstt]="pass"
+            DETAILS[dnstt]="DNS tunnel to $domain working"
+        fi
+    else
+        detail="Tunnel established but connectivity test failed (DNS tunneling is slow)"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -3 "$error_log" | tr '\n' ' ')
+            [[ -n "$error_msg" ]] && detail="$detail - $error_msg"
+        fi
+        log_warn "$detail"
+        RESULTS[dnstt]="warn"
+        DETAILS[dnstt]="$detail"
+    fi
+
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
 }
 
 # =============================================================================

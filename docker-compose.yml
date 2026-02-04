@@ -124,7 +124,10 @@ services:
       - ./outputs:/outputs
     environment:
       - DNSTT_DOMAIN=${DNSTT_SUBDOMAIN:-t}.${DOMAIN}
+      - DNSTT_UPSTREAM=sing-box:1080
       - TZ=${TZ:-UTC}
+    depends_on:
+      - sing-box
     profiles:
       - dnstt
       - all
