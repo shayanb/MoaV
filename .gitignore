@@ -45,7 +45,9 @@ venv/
 # Generated configs (keep templates)
 configs/sing-box/config.json
 configs/wireguard/wg0.conf
+configs/wireguard/server.pub
 configs/dnstt/server.conf
+configs/dnstt/server.pub
 spec.yaml
 .claude/settings.local.json
 *.mp4
