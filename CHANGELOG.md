@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-02-04
+
+### Added
+- **Hysteria2 Salamander obfuscation** - Disguises QUIC traffic as random UDP to bypass Iranian/Chinese censorship
+- `HYSTERIA2_OBFS_PASSWORD` config option (auto-generated if empty)
+- Update available notification in CLI header and admin dashboard
+- Internet accessibility check (exit IP verification) for all protocol tests
+- Component version management via `.env` file (`SINGBOX_VERSION`, `WSTUNNEL_VERSION`, `CONDUIT_VERSION`, `SNOWFLAKE_VERSION`)
+
+### Changed
+- Default Reality target changed from `www.microsoft.com` to `dl.google.com` (less fingerprinted in censored regions)
+- DNS fallback servers: removed Cloudflare DoH (was failing), added Google UDP and Quad9 UDP
+- Admin dashboard UI cleanup and improvements
+- GitHub Actions release workflow now includes changelog and quick install docs
+
+### Fixed
+- **Critical: dnstt traffic not routing** - sing-box mixed inbound was localhost-only, changed to `0.0.0.0:1080` for Docker network access
+- **Critical: Client container architecture mismatch** - Fixed "Exec format error" by properly downloading binaries for target architecture (arm64/amd64)
+- `moav test` silently failing on dnstt - Fixed pipefail issues with grep commands
+- `moav test` now properly validates user exists before testing
+- `moav update` conflicts from generated files (`configs/wireguard/server.pub`, `configs/dnstt/server.pub`) - Now in `.gitignore`
+- Profile dependency error when selecting only dnstt - Auto-adds proxy profile when dnstt is selected
+
+### Security
+- Hysteria2 obfuscation helps bypass QUIC fingerprinting and blocking
+
 ## [1.2.0] - 2026-02-03
 
 ### Added
@@ -158,7 +184,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/shayanb/MoaV/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/shayanb/MoaV/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/shayanb/MoaV/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/shayanb/MoaV/compare/v1.0.2...v1.1.1
