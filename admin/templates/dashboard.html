@@ -144,6 +144,22 @@
             color: var(--accent);
             font-size: 0.875rem;
         }
+        .update-banner {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid var(--success);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            color: var(--success);
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .update-banner a {
+            color: var(--success);
+            text-decoration: underline;
+        }
         .refresh-btn {
             background: var(--accent);
             color: white;
@@ -210,6 +226,13 @@
         {% if error %}
         <div class="error-box">
             <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        {% if update_available %}
+        <div class="update-banner">
+            <span>Update available: <strong>v{{ latest_version }}</strong> (current: v{{ current_version }})</span>
+            <span>Run <code>moav update</code> to upgrade</span>
         </div>
         {% endif %}
 
@@ -292,9 +315,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for user, data in user_stats.items() %}
+                        {% for ip, data in connection_stats.items() %}
                         <tr>
-                            <td>{{ user }}</td>
+                            <td>{{ ip }}</td>
                             <td>{{ data.connections }}</td>
                             <td>{{ format_bytes(data.upload) }}</td>
                             <td>{{ format_bytes(data.download) }}</td>
@@ -388,7 +411,7 @@
                         </td>
                         <td>
                             <a href="/download/{{ user.username }}" class="download-btn">
-                                ⬇ Download .zip
+                                Download .zip
                             </a>
                         </td>
                     </tr>

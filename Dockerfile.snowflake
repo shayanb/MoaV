@@ -4,12 +4,15 @@
 # The official image is minimal, so we build our own with bandwidth limiting
 FROM golang:1.23-alpine AS builder
 
+ARG SNOWFLAKE_VERSION=2.11.0
+
 RUN apk add --no-cache git
 
-# Clone and build snowflake proxy
-RUN git clone https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake.git /snowflake
+# Clone and build snowflake proxy (pinned to specific version)
+RUN git clone --depth 1 --branch v${SNOWFLAKE_VERSION} \
+    https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake.git /snowflake
 WORKDIR /snowflake/proxy
-RUN go build -o /bin/proxy
+RUN go build -ldflags="-s -w" -o /bin/proxy
 
 # Final image
 FROM alpine:3.19

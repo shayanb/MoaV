@@ -10,6 +10,7 @@ import asyncio
 import socket
 import zipfile
 import io
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +41,68 @@ try:
                 CLASH_SECRET = line.split("=", 1)[1].strip()
 except FileNotFoundError:
     pass
+
+# Current version
+CURRENT_VERSION = "unknown"
+try:
+    with open("/app/VERSION") as f:
+        CURRENT_VERSION = f.read().strip()
+except FileNotFoundError:
+    pass
+
+# Update check cache
+UPDATE_CACHE = {"version": None, "checked_at": 0}
+UPDATE_CACHE_TTL = 3600  # 1 hour
+
+
+def version_gt(v1: str, v2: str) -> bool:
+    """Check if v1 > v2 (semver comparison)"""
+    try:
+        v1_parts = [int(x) for x in v1.split(".")[:3]]
+        v2_parts = [int(x) for x in v2.split(".")[:3]]
+        return v1_parts > v2_parts
+    except (ValueError, AttributeError):
+        return False
+
+
+async def check_for_updates() -> dict:
+    """Check GitHub for latest release (cached for 1 hour)"""
+    now = time.time()
+
+    # Return cached result if still valid
+    if UPDATE_CACHE["version"] and (now - UPDATE_CACHE["checked_at"]) < UPDATE_CACHE_TTL:
+        latest = UPDATE_CACHE["version"]
+        return {
+            "update_available": version_gt(latest, CURRENT_VERSION),
+            "latest_version": latest,
+            "current_version": CURRENT_VERSION,
+        }
+
+    # Fetch from GitHub API
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                "https://api.github.com/repos/shayanb/MoaV/releases/latest"
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                latest = data.get("tag_name", "").lstrip("v")
+                if latest:
+                    UPDATE_CACHE["version"] = latest
+                    UPDATE_CACHE["checked_at"] = now
+                    return {
+                        "update_available": version_gt(latest, CURRENT_VERSION),
+                        "latest_version": latest,
+                        "current_version": CURRENT_VERSION,
+                    }
+    except Exception:
+        pass
+
+    return {
+        "update_available": False,
+        "latest_version": None,
+        "current_version": CURRENT_VERSION,
+    }
 
 
 def verify_auth(request: Request, credentials: HTTPBasicCredentials = Depends(security)):
@@ -262,6 +325,7 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
     stats = await fetch_singbox_stats()
     conduit_stats = await fetch_conduit_stats()
     services = get_services_status()
+    update_info = await check_for_updates()
 
     # Count active connections by source IP
     user_stats = {}
@@ -282,7 +346,7 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
         "stats": stats,
         "conduit_stats": conduit_stats,
         "services": services,
-        "user_stats": user_stats,
+        "connection_stats": connection_stats,
         "all_users": all_users,
         "format_bytes": format_bytes,
         "total_connections": len(stats.get("connections", [])),
@@ -290,7 +354,10 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
         "total_upload": format_bytes(stats["traffic"]["upload"]),
         "total_download": format_bytes(stats["traffic"]["download"]),
         "error": stats.get("error"),
-        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "update_available": update_info["update_available"],
+        "latest_version": update_info["latest_version"],
+        "current_version": update_info["current_version"],
     })
 
 

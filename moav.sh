@@ -48,6 +48,8 @@ get_component_version() {
 
 # State file for persistent checks
 PREREQS_FILE="$SCRIPT_DIR/.moav_prereqs_ok"
+UPDATE_CACHE_FILE="/tmp/.moav_update_check"
+LATEST_VERSION=""
 
 # Handle Ctrl+C gracefully
 goodbye() {
@@ -62,6 +64,59 @@ trap goodbye SIGINT
 # Helper Functions
 # =============================================================================
 
+# Check for updates (async, cached for 1 hour)
+check_for_updates() {
+    local cache_file="$UPDATE_CACHE_FILE"
+    local cache_max_age=3600  # 1 hour
+
+    # Only check on main branch
+    local branch
+    branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    if [[ "$branch" != "main" && "$branch" != "master" ]]; then
+        return
+    fi
+
+    # Check cache
+    if [[ -f "$cache_file" ]]; then
+        local cache_age
+        cache_age=$(( $(date +%s) - $(stat -c %Y "$cache_file" 2>/dev/null || stat -f %m "$cache_file" 2>/dev/null || echo 0) ))
+        if [[ $cache_age -lt $cache_max_age ]]; then
+            LATEST_VERSION=$(cat "$cache_file" 2>/dev/null)
+            return
+        fi
+    fi
+
+    # Fetch latest release (in background, don't block)
+    {
+        local latest
+        latest=$(curl -s --max-time 3 "https://api.github.com/repos/shayanb/MoaV/releases/latest" 2>/dev/null | grep '"tag_name"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
+        if [[ -n "$latest" && "$latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "$latest" > "$cache_file"
+        fi
+    } &
+}
+
+# Read cached update info
+get_latest_version() {
+    if [[ -f "$UPDATE_CACHE_FILE" ]]; then
+        cat "$UPDATE_CACHE_FILE" 2>/dev/null
+    fi
+}
+
+# Compare semver versions: returns 0 if $1 > $2
+version_gt() {
+    local v1="$1" v2="$2"
+    local IFS=.
+    local i v1_parts=($v1) v2_parts=($v2)
+    for ((i=0; i<3; i++)); do
+        local n1="${v1_parts[i]:-0}"
+        local n2="${v2_parts[i]:-0}"
+        if ((n1 > n2)); then return 0; fi
+        if ((n1 < n2)); then return 1; fi
+    done
+    return 1
+}
+
 print_header() {
     clear
     # Get current branch
@@ -70,6 +125,14 @@ print_header() {
     local version_line="v${VERSION}"
     if [[ -n "$branch" && "$branch" != "main" ]]; then
         version_line="v${VERSION} (${branch})"
+    fi
+
+    # Check for update (only on main branch)
+    local update_line=""
+    local latest
+    latest=$(get_latest_version)
+    if [[ -n "$latest" ]] && version_gt "$latest" "$VERSION"; then
+        update_line="Update available: v${latest} (moav update)"
     fi
 
     echo -e "${CYAN}"
@@ -86,6 +149,9 @@ print_header() {
     echo "║                                                    ║"
     echo "║  Multi-protocol Circumvention Stack                ║"
     printf "║  %-49s ║\n" "$version_line"
+    if [[ -n "$update_line" ]]; then
+        printf "║  ${NC}${YELLOW}%-49s${CYAN} ║\n" "$update_line"
+    fi
     echo "╚════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -1341,6 +1407,18 @@ select_profiles() {
                 6) SELECTED_PROFILES+=("snowflake") ;;
             esac
         done
+    fi
+
+    # dnstt requires sing-box (proxy profile) to forward traffic
+    # Auto-add proxy if dnstt is selected but proxy isn't
+    local has_dnstt=false has_proxy=false
+    for p in "${SELECTED_PROFILES[@]}"; do
+        [[ "$p" == "dnstt" ]] && has_dnstt=true
+        [[ "$p" == "proxy" ]] && has_proxy=true
+    done
+    if [[ "$has_dnstt" == "true" ]] && [[ "$has_proxy" == "false" ]]; then
+        info "dnstt requires proxy services - auto-adding proxy profile"
+        SELECTED_PROFILES+=("proxy")
     fi
 
     if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
@@ -3432,6 +3510,9 @@ cmd_regenerate_users() {
 # =============================================================================
 
 main_interactive() {
+    # Start async update check (won't block, results cached for next header display)
+    check_for_updates
+
     # Check prerequisites only if not already verified
     # Also re-check if .env is missing (user may have deleted it)
     if ! prereqs_already_checked; then

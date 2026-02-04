@@ -228,7 +228,7 @@ EOF
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(tail -5 "$error_log" | tr '\n' ' ')
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
             detail="sing-box error: $error_msg"
         fi
         log_error "$detail"
@@ -239,14 +239,24 @@ EOF
 
     # Test connection
     if curl -sf --socks5 127.0.0.1:10800 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
-        log_success "Reality connection successful"
-        RESULTS[reality]="pass"
-        DETAILS[reality]="Connected via VLESS/Reality"
+        # Verify we can access the internet and get exit IP
+        local exit_ip=""
+        exit_ip=$(curl -sf --socks5 127.0.0.1:10800 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:10800 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "Reality connection successful (exit IP: $exit_ip)"
+            RESULTS[reality]="pass"
+            DETAILS[reality]="Connected via VLESS/Reality, exit IP: $exit_ip"
+        else
+            log_success "Reality connection successful"
+            RESULTS[reality]="pass"
+            DETAILS[reality]="Connected via VLESS/Reality"
+        fi
     else
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" | tail -1 | tr '\n' ' ')
+            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" 2>/dev/null | tail -1 | tr '\n' ' ' || true)
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
         # If IPv6 config and network unreachable, warn instead of fail
@@ -379,7 +389,7 @@ EOF
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(tail -5 "$error_log" | tr '\n' ' ')
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
             detail="sing-box error: $error_msg"
         fi
         log_error "$detail"
@@ -389,14 +399,24 @@ EOF
     fi
 
     if curl -sf --socks5 127.0.0.1:10801 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
-        log_success "Trojan connection successful"
-        RESULTS[trojan]="pass"
-        DETAILS[trojan]="Connected via Trojan"
+        # Verify we can access the internet and get exit IP
+        local exit_ip=""
+        exit_ip=$(curl -sf --socks5 127.0.0.1:10801 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:10801 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "Trojan connection successful (exit IP: $exit_ip)"
+            RESULTS[trojan]="pass"
+            DETAILS[trojan]="Connected via Trojan, exit IP: $exit_ip"
+        else
+            log_success "Trojan connection successful"
+            RESULTS[trojan]="pass"
+            DETAILS[trojan]="Connected via Trojan"
+        fi
     else
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" | tail -1 | tr '\n' ' ')
+            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" 2>/dev/null | tail -1 | tr '\n' ' ' || true)
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
         # If IPv6 config and network unreachable, warn instead of fail
@@ -445,7 +465,7 @@ test_hysteria2() {
     log_debug "Using config: $config_file"
 
     local client_config="$TEMP_DIR/hysteria2-client.json"
-    local server="" auth="" sni="" host="" port=""
+    local server="" auth="" sni="" host="" port="" obfs_type="" obfs_password=""
 
     if [[ "$config_file" == *.txt ]]; then
         local uri=$(cat "$config_file" | tr -d '\n\r')
@@ -453,10 +473,14 @@ test_hysteria2() {
         # For hysteria2, server might include port
         server=$(echo "$uri" | sed -n 's|.*@\([^?#]*\).*|\1|p' | head -1)
         sni=$(extract_param "$uri" "sni")
+        obfs_type=$(extract_param "$uri" "obfs")
+        obfs_password=$(extract_param "$uri" "obfs-password")
     elif [[ "$config_file" == *.yaml ]] || [[ "$config_file" == *.yml ]]; then
         server=$(grep -E "^server:" "$config_file" | sed 's/server:[[:space:]]*//' | tr -d '"' | head -1)
         auth=$(grep -E "^auth:" "$config_file" | sed 's/auth:[[:space:]]*//' | tr -d '"' | head -1)
         sni=$(grep -E "^[[:space:]]*sni:" "$config_file" | sed 's/.*sni:[[:space:]]*//' | tr -d '"' | head -1)
+        obfs_type=$(grep -E "^[[:space:]]*type:" "$config_file" | head -1 | sed 's/.*type:[[:space:]]*//' | tr -d '"' || true)
+        obfs_password=$(grep -E "^[[:space:]]*password:" "$config_file" | head -2 | tail -1 | sed 's/.*password:[[:space:]]*//' | tr -d '"' || true)
     fi
 
     # Parse host:port - handle both IPv4 and IPv6
@@ -491,6 +515,17 @@ test_hysteria2() {
         return
     fi
 
+    # Build obfs config if present
+    local obfs_config=""
+    if [[ -n "$obfs_type" ]] && [[ -n "$obfs_password" ]]; then
+        obfs_config=",
+      \"obfs\": {
+        \"type\": \"$obfs_type\",
+        \"password\": \"$obfs_password\"
+      }"
+        log_debug "Using obfuscation: type=$obfs_type"
+    fi
+
     cat > "$client_config" << EOF
 {
   "log": {"level": "error"},
@@ -503,7 +538,7 @@ test_hysteria2() {
       "tag": "proxy",
       "server": "$host",
       "server_port": $port,
-      "password": "$auth",
+      "password": "$auth"$obfs_config,
       "tls": {
         "enabled": true,
         "server_name": "$sni"
@@ -536,7 +571,7 @@ EOF
     if ! kill -0 $pid 2>/dev/null; then
         detail="sing-box failed to start"
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(tail -5 "$error_log" | tr '\n' ' ')
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
             detail="sing-box error: $error_msg"
         fi
         log_error "$detail"
@@ -546,14 +581,24 @@ EOF
     fi
 
     if curl -sf --socks5 127.0.0.1:10802 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
-        log_success "Hysteria2 connection successful"
-        RESULTS[hysteria2]="pass"
-        DETAILS[hysteria2]="Connected via Hysteria2"
+        # Verify we can access the internet and get exit IP
+        local exit_ip=""
+        exit_ip=$(curl -sf --socks5 127.0.0.1:10802 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:10802 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "Hysteria2 connection successful (exit IP: $exit_ip)"
+            RESULTS[hysteria2]="pass"
+            DETAILS[hysteria2]="Connected via Hysteria2, exit IP: $exit_ip"
+        else
+            log_success "Hysteria2 connection successful"
+            RESULTS[hysteria2]="pass"
+            DETAILS[hysteria2]="Connected via Hysteria2"
+        fi
     else
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" | tail -1 | tr '\n' ' ')
+            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" 2>/dev/null | tail -1 | tr '\n' ' ' || true)
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
         # If IPv6 config and network unreachable, warn instead of fail
@@ -685,8 +730,13 @@ test_dnstt() {
     local config_file=""
     local detail=""
 
-    for f in "$CONFIG_DIR"/dnstt*.txt "$CONFIG_DIR"/*dnstt*; do
-        [[ -f "$f" ]] && config_file="$f" && break
+    # Find dnstt config file - handle glob expansion safely
+    # shellcheck disable=SC2044
+    for f in "$CONFIG_DIR"/dnstt*.txt "$CONFIG_DIR"/*dnstt* "$CONFIG_DIR"/dnstt-instructions.txt; do
+        if [[ -f "$f" ]]; then
+            config_file="$f"
+            break
+        fi
     done
 
     if [[ -z "$config_file" ]]; then
@@ -700,21 +750,31 @@ test_dnstt() {
     log_debug "Using config: $config_file"
 
     # Extract domain - look for t.domain.com pattern
-    local domain=$(grep -oE 't\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' "$config_file" | head -1)
+    # Note: grep returns non-zero if no match, so we use || true to avoid pipefail exit
+    local domain=$(grep -oE 't\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' "$config_file" 2>/dev/null | head -1 || true)
 
-    # Extract pubkey - look for base64-like string after "pubkey"
-    local pubkey=$(grep -i "pubkey" "$config_file" | sed 's/.*[=:][[:space:]]*//' | grep -oE '[A-Za-z0-9+/=]{40,}' | head -1)
+    # Extract pubkey - look for hex string (64 chars) in the config
+    local pubkey=""
 
-    # Check for server.pub file in bundle
+    # First try to find hex pubkey in the instructions file
+    pubkey=$(grep -oE '[0-9a-fA-F]{64}' "$config_file" 2>/dev/null | head -1 || true)
+
+    # Check for server.pub file in bundle (hex format)
     if [[ -z "$pubkey" ]] && [[ -f "$CONFIG_DIR/server.pub" ]]; then
-        pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r')
+        pubkey=$(cat "$CONFIG_DIR/server.pub" | tr -d '\n\r ')
         log_debug "Found pubkey in bundle: server.pub"
     fi
 
-    # Check for server.pub in default dnstt outputs location (mounted at /dnstt)
-    if [[ -z "$pubkey" ]] && [[ -f "/dnstt/server.pub" ]]; then
-        pubkey=$(cat "/dnstt/server.pub" | tr -d '\n\r')
-        log_debug "Found pubkey in /dnstt/server.pub"
+    # Check for server.pub in default dnstt outputs location
+    if [[ -z "$pubkey" ]] && [[ -f "/outputs/dnstt/server.pub" ]]; then
+        pubkey=$(cat "/outputs/dnstt/server.pub" | tr -d '\n\r ')
+        log_debug "Found pubkey in /outputs/dnstt/server.pub"
+    fi
+
+    # Check configs directory
+    if [[ -z "$pubkey" ]] && [[ -f "/configs/dnstt/server.pub" ]]; then
+        pubkey=$(cat "/configs/dnstt/server.pub" | tr -d '\n\r ')
+        log_debug "Found pubkey in /configs/dnstt/server.pub"
     fi
 
     if [[ -z "$domain" ]]; then
@@ -735,28 +795,86 @@ test_dnstt() {
         return
     fi
 
-    # Try to establish dnstt tunnel briefly
-    if command -v dnstt-client >/dev/null 2>&1; then
-        log_debug "Starting dnstt-client..."
-        dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "$domain" 127.0.0.1:10803 &
-        local pid=$!
-        sleep 5
-
-        if kill -0 $pid 2>/dev/null; then
-            log_success "dnstt client started successfully"
-            RESULTS[dnstt]="pass"
-            DETAILS[dnstt]="DNS tunnel established to $domain"
-            kill $pid 2>/dev/null || true
-        else
-            detail="dnstt client failed to start"
-            log_error "$detail"
-            RESULTS[dnstt]="fail"
-            DETAILS[dnstt]="$detail"
-        fi
-    else
+    # Check if dnstt-client is available
+    if ! command -v dnstt-client >/dev/null 2>&1; then
         RESULTS[dnstt]="warn"
         DETAILS[dnstt]="dnstt-client not available, config looks valid for $domain"
+        return
     fi
+
+    log_debug "Starting dnstt-client tunnel..."
+    local error_log="$TEMP_DIR/dnstt-error.log"
+
+    # Start dnstt-client with DoH resolver
+    # dnstt-client creates a raw TCP tunnel, not SOCKS
+    # We connect to it and the server forwards to sing-box SOCKS proxy
+    dnstt-client -doh https://1.1.1.1/dns-query -pubkey "$pubkey" "$domain" 127.0.0.1:10803 2>"$error_log" &
+    local pid=$!
+
+    # Give it time to establish the tunnel
+    sleep 5
+
+    if ! kill -0 $pid 2>/dev/null; then
+        detail="dnstt-client failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg
+            error_msg=$(tail -3 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
+            [[ -n "$error_msg" ]] && detail="dnstt error: $error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[dnstt]="fail"
+        DETAILS[dnstt]="$detail"
+        return
+    fi
+
+    log_debug "dnstt-client running (PID $pid), testing connectivity..."
+
+    # dnstt tunnels raw TCP to the server's upstream (sing-box SOCKS proxy)
+    # So we can use the local dnstt port as a SOCKS5 proxy
+    local test_success=false
+
+    # Test 1: Basic connectivity through the tunnel
+    if curl -sf --socks5 127.0.0.1:10803 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        log_debug "Basic connectivity test passed"
+        test_success=true
+    else
+        log_debug "Basic connectivity test failed, trying extended timeout..."
+        # DNS tunneling is slow, try with longer timeout
+        if curl -sf --socks5 127.0.0.1:10803 --max-time 30 "$TEST_URL" >/dev/null 2>&1; then
+            log_debug "Extended timeout test passed"
+            test_success=true
+        fi
+    fi
+
+    if [[ "$test_success" == "true" ]]; then
+        # Test 2: Verify public IP (optional but recommended)
+        local tunnel_ip=""
+        tunnel_ip=$(curl -sf --socks5 127.0.0.1:10803 --max-time 30 https://api.ipify.org 2>/dev/null || true)
+        [[ -z "$tunnel_ip" ]] && tunnel_ip=$(curl -sf --socks5 127.0.0.1:10803 --max-time 30 https://ifconfig.me 2>/dev/null || true)
+
+        if [[ -n "$tunnel_ip" ]]; then
+            log_success "dnstt tunnel working, exit IP: $tunnel_ip"
+            RESULTS[dnstt]="pass"
+            DETAILS[dnstt]="DNS tunnel to $domain working (exit IP: $tunnel_ip)"
+        else
+            log_success "dnstt tunnel established to $domain"
+            RESULTS[dnstt]="pass"
+            DETAILS[dnstt]="DNS tunnel to $domain working"
+        fi
+    else
+        detail="Tunnel established but connectivity test failed (DNS tunneling is slow)"
+        if [[ -s "$error_log" ]]; then
+            local error_msg
+            error_msg=$(tail -3 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
+            [[ -n "$error_msg" ]] && detail="$detail - $error_msg"
+        fi
+        log_warn "$detail"
+        RESULTS[dnstt]="warn"
+        DETAILS[dnstt]="$detail"
+    fi
+
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
 }
 
 # =============================================================================

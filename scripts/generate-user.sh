@@ -34,14 +34,19 @@ if [[ "${ENABLE_REALITY:-true}" == "true" ]] && [[ -f "$STATE_DIR/keys/reality.e
     source "$STATE_DIR/keys/reality.env"
 fi
 
+# Load Hysteria2 obfuscation password
+if [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && [[ -f "$STATE_DIR/keys/clash-api.env" ]]; then
+    source "$STATE_DIR/keys/clash-api.env"
+fi
+
 # Create output directory
 OUTPUT_DIR="/outputs/bundles/$USER_ID"
 ensure_dir "$OUTPUT_DIR"
 
 # Parse Reality target (only if Reality is enabled)
 if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
-    REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f1)
-    REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f2)
+    REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-dl.google.com:443}" | cut -d: -f1)
+    REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-dl.google.com:443}" | cut -d: -f2)
 fi
 
 log_info "Generating bundle for $USER_ID..."
@@ -154,6 +159,11 @@ if [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]]; then
 server: ${SERVER_IP}:443
 auth: ${USER_PASSWORD}
 
+obfs:
+  type: salamander
+  salamander:
+    password: ${HYSTERIA2_OBFS_PASSWORD}
+
 tls:
   sni: ${DOMAIN}
 
@@ -177,6 +187,10 @@ EOF
       "server": "${SERVER_IP}",
       "server_port": 443,
       "password": "${USER_PASSWORD}",
+      "obfs": {
+        "type": "salamander",
+        "password": "${HYSTERIA2_OBFS_PASSWORD}"
+      },
       "tls": {
         "enabled": true,
         "server_name": "${DOMAIN}"
@@ -190,19 +204,19 @@ EOF
 }
 EOF
 
-    # Hysteria2 URI (IPv4)
-    HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}#MoaV-Hysteria2-${USER_ID}"
+    # Hysteria2 URI (IPv4) - includes obfs parameter
+    HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USER_ID}"
     echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
     qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
 
     # Generate IPv6 link if available
     if [[ -n "${SERVER_IPV6:-}" ]]; then
-        HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}#MoaV-Hysteria2-${USER_ID}-IPv6"
+        HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USER_ID}-IPv6"
         echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
         qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
     fi
 
-    log_info "  - Hysteria2 config generated"
+    log_info "  - Hysteria2 config generated (with obfuscation)"
 fi
 
 # -----------------------------------------------------------------------------

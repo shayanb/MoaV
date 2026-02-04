@@ -163,11 +163,19 @@ if [[ "${ENABLE_REALITY:-true}" == "true" ]] || [[ "${ENABLE_TROJAN:-true}" == "
     CLASH_API_SECRET=$(pwgen -s 32 1)
     echo "CLASH_API_SECRET=$CLASH_API_SECRET" > "$STATE_DIR/keys/clash-api.env"
 
+    # Generate Hysteria2 obfuscation password (for bypassing QUIC blocking)
+    if [[ -z "${HYSTERIA2_OBFS_PASSWORD:-}" ]]; then
+        HYSTERIA2_OBFS_PASSWORD=$(pwgen -s 24 1)
+        log_info "Generated Hysteria2 obfuscation password"
+    fi
+    echo "HYSTERIA2_OBFS_PASSWORD=$HYSTERIA2_OBFS_PASSWORD" >> "$STATE_DIR/keys/clash-api.env"
+
     # Parse Reality target
-    REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f1)
-    REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-www.microsoft.com:443}" | cut -d: -f2)
+    REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-dl.google.com:443}" | cut -d: -f1)
+    REALITY_TARGET_PORT=$(echo "${REALITY_TARGET:-dl.google.com:443}" | cut -d: -f2)
 else
     CLASH_API_SECRET=""
+    HYSTERIA2_OBFS_PASSWORD=""
     REALITY_TARGET_HOST=""
     REALITY_TARGET_PORT=""
 fi
@@ -177,7 +185,8 @@ fi
 # -----------------------------------------------------------------------------
 export REALITY_PUBLIC_KEY
 export REALITY_SHORT_ID
-export REALITY_TARGET="${REALITY_TARGET:-www.microsoft.com:443}"
+export REALITY_TARGET="${REALITY_TARGET:-dl.google.com:443}"
+export HYSTERIA2_OBFS_PASSWORD
 # In domain-less mode, DOMAIN stays empty; otherwise use as-is
 export DOMAIN="${DOMAIN:-}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
@@ -299,6 +308,7 @@ if [[ "$singbox_needed" == "true" ]]; then
     export REALITY_TARGET_PORT
     export REALITY_SERVER_NAME="$REALITY_TARGET_HOST"
     export CLASH_API_SECRET
+    export HYSTERIA2_OBFS_PASSWORD
     export LOG_LEVEL="${LOG_LEVEL:-info}"
 
     envsubst < /configs/sing-box/config.json.template > /configs/sing-box/config.json

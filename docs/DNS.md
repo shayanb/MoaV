@@ -75,6 +75,19 @@ TTL: 300
 
 This tells DNS resolvers that queries for `*.t.yourdomain.com` should be sent to `dns.yourdomain.com` (your server).
 
+### Optional: IPv6 Support
+
+If your server has IPv6, you can also add an AAAA record for the nameserver:
+
+```
+Type: AAAA
+Name: dns
+Value: YOUR_SERVER_IPV6
+TTL: 300
+```
+
+> **More Info**: For detailed dnstt documentation, see the [official dnstt guide](https://www.bamsoftware.com/software/dnstt/).
+
 ## Provider-Specific Instructions
 
 ### Cloudflare

@@ -69,10 +69,17 @@ export USER_ID USER_UUID USER_PASSWORD
 export REALITY_PUBLIC_KEY REALITY_SHORT_ID
 export SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org)}"
 export DOMAIN="${DOMAIN:-}"
-export REALITY_TARGET="${REALITY_TARGET:-www.microsoft.com:443}"
+export REALITY_TARGET="${REALITY_TARGET:-dl.google.com:443}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
+export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
+
+# Load Hysteria2 obfuscation password if available
+if [[ -f "$STATE_DIR/keys/clash-api.env" ]]; then
+    source "$STATE_DIR/keys/clash-api.env"
+    export HYSTERIA2_OBFS_PASSWORD
+fi
 
 /app/generate-user.sh "$USER_ID"
 

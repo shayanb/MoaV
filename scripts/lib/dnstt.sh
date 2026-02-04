@@ -86,11 +86,12 @@ generate_dnstt_config() {
     dnstt_pubkey=$(cat "$STATE_DIR/keys/dnstt-server.pub.hex")
 
     # Write server config
+    # Upstream points to sing-box's mixed inbound (SOCKS5/HTTP proxy)
     cat > "$DNSTT_CONFIG_DIR/server.conf" <<EOF
 # dnstt server configuration
 DNSTT_DOMAIN=${DNSTT_SUBDOMAIN:-t}.${DOMAIN}
 DNSTT_PRIVKEY_FILE=/state/keys/dnstt-server.key.hex
-DNSTT_UPSTREAM=127.0.0.1:8080
+DNSTT_UPSTREAM=sing-box:1080
 EOF
 
     # Write public key for clients
@@ -118,6 +119,8 @@ dnstt_generate_client_instructions() {
 # =============================
 # Use this as a LAST RESORT when other methods are blocked.
 # DNS tunneling is SLOW but often works when everything else fails.
+#
+# Official documentation: https://www.bamsoftware.com/software/dnstt/
 
 # Server Public Key (hex):
 $dnstt_pubkey
@@ -137,28 +140,53 @@ dnstt-client -doh https://1.1.1.1/dns-query -pubkey $dnstt_pubkey $dnstt_domain 
 # Then configure your apps to use SOCKS5 proxy: 127.0.0.1:1080
 
 # -------------------------
-# Option 2: Using Plain UDP DNS
+# Option 2: Using DoT (DNS over TLS)
 # -------------------------
 
-# If DoH is blocked, try plain UDP (use a public resolver):
+# If DoH is blocked, try DoT:
+dnstt-client -dot 1.1.1.1:853 -pubkey $dnstt_pubkey $dnstt_domain 127.0.0.1:1080
+
+# -------------------------
+# Option 3: Using Plain UDP DNS
+# -------------------------
+
+# If DoH and DoT are blocked, try plain UDP (less secure, more detectable):
 dnstt-client -udp 8.8.8.8:53 -pubkey $dnstt_pubkey $dnstt_domain 127.0.0.1:1080
 
 # -------------------------
 # Alternative Resolvers (if one is blocked, try another):
 # -------------------------
-# - Cloudflare DoH: https://1.1.1.1/dns-query
-# - Google DoH: https://dns.google/dns-query
-# - Cloudflare UDP: 1.1.1.1:53
-# - Google UDP: 8.8.8.8:53
-# - Quad9 DoH: https://dns.quad9.net/dns-query
+# DoH:
+# - Cloudflare: https://1.1.1.1/dns-query
+# - Google: https://dns.google/dns-query
+# - Quad9: https://dns.quad9.net/dns-query
+#
+# DoT:
+# - Cloudflare: 1.1.1.1:853
+# - Google: dns.google:853
+# - Quad9: dns.quad9.net:853
+#
+# UDP (less secure):
+# - Cloudflare: 1.1.1.1:53
+# - Google: 8.8.8.8:53
+# - Quad9: 9.9.9.9:53
+
+# -------------------------
+# Troubleshooting:
+# -------------------------
+# - If connection is very slow, try a different resolver
+# - If you get MTU errors, the server may need -mtu 512 flag
+# - DNS tunneling works best when other methods are blocked
+# - Expect 10-50 KB/s throughput (suitable for chat, email, basic browsing)
 
 # -------------------------
 # Notes:
 # -------------------------
-# - DNS tunneling is slow (expect 10-50 KB/s)
-# - Works best for text-based apps (chat, email)
+# - DNS tunneling is slow by design (data hidden in DNS queries)
+# - Works best for text-based apps (chat, email, light browsing)
 # - Not suitable for video streaming or large downloads
 # - Keep the dnstt-client running while you need the connection
+# - Traffic exits through the MoaV server (your IP appears as server IP)
 EOF
 
     log_info "Generated dnstt instructions for $user_id"
