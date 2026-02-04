@@ -395,6 +395,7 @@
                 <thead>
                     <tr>
                         <th>User</th>
+                        <th>Created</th>
                         <th>Protocols</th>
                         <th>Download</th>
                     </tr>
@@ -403,6 +404,7 @@
                     {% for user in all_users %}
                     <tr>
                         <td>{{ user.username }}</td>
+                        <td style="color: var(--text-muted); font-size: 0.85em;">{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>
                             {% if user.has_reality %}<span class="protocol-tag">Reality</span>{% endif %}
                             {% if user.has_trojan %}<span class="protocol-tag">Trojan</span>{% endif %}

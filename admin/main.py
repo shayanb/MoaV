@@ -403,7 +403,7 @@ def list_users():
     if not bundle_path.exists():
         return users
 
-    for user_dir in sorted(bundle_path.iterdir()):
+    for user_dir in bundle_path.iterdir():
         # Skip non-directories and zip files
         if not user_dir.is_dir():
             continue
@@ -422,6 +422,9 @@ def list_users():
         # Check if zip already exists
         zip_exists = (bundle_path / f"{username}.zip").exists()
 
+        # Get creation date from directory modification time
+        created_at = datetime.fromtimestamp(user_dir.stat().st_mtime)
+
         users.append({
             "username": username,
             "has_reality": has_reality,
@@ -429,7 +432,11 @@ def list_users():
             "has_hysteria2": has_hysteria2,
             "has_trojan": has_trojan,
             "zip_exists": zip_exists,
+            "created_at": created_at,
         })
+
+    # Sort by creation date, newest first
+    users.sort(key=lambda u: u["created_at"], reverse=True)
 
     return users
 
