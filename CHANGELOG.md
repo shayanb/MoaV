@@ -7,31 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.1] - 2026-02-04
+## [1.2.2] - 2026-02-04
+
+### Breaking Changes
+- **Fresh setup required**: This version includes protocol changes (Hysteria2 obfuscation, Reality target) that require regenerating both server configuration and all user configs. Existing users must receive new config files.
 
 ### Added
 - **Hysteria2 Salamander obfuscation** - Disguises QUIC traffic as random UDP to bypass Iranian/Chinese censorship
 - `HYSTERIA2_OBFS_PASSWORD` config option (auto-generated if empty)
+- `moav config rebuild` - Regenerates server config and all users with new credentials
 - Update available notification in CLI header and admin dashboard
+- Admin dashboard: User bundles table now shows creation date, sorted newest first
 - Internet accessibility check (exit IP verification) for all protocol tests
-- Component version management via `.env` file (`SINGBOX_VERSION`, `WSTUNNEL_VERSION`, `CONDUIT_VERSION`, `SNOWFLAKE_VERSION`)
+- Component version management via `.env` file
 
 ### Changed
 - Default Reality target changed from `www.microsoft.com` to `dl.google.com` (less fingerprinted in censored regions)
-- DNS fallback servers: removed Cloudflare DoH (was failing), added Google UDP and Quad9 UDP
-- Admin dashboard UI cleanup and improvements
-- GitHub Actions release workflow now includes changelog and quick install docs
+- DNS fallback servers: removed Cloudflare DoH (failing), added Google UDP and Quad9 UDP
+- `moav config rebuild` simplified - cleanly regenerates everything instead of complex state preservation
+- Admin dashboard UI improvements
 
 ### Fixed
-- **Critical: dnstt traffic not routing** - sing-box mixed inbound was localhost-only, changed to `0.0.0.0:1080` for Docker network access
-- **Critical: Client container architecture mismatch** - Fixed "Exec format error" by properly downloading binaries for target architecture (arm64/amd64)
-- `moav test` silently failing on dnstt - Fixed pipefail issues with grep commands
-- `moav test` now properly validates user exists before testing
-- `moav update` conflicts from generated files (`configs/wireguard/server.pub`, `configs/dnstt/server.pub`) - Now in `.gitignore`
-- Profile dependency error when selecting only dnstt - Auto-adds proxy profile when dnstt is selected
+- **Critical: dnstt traffic not routing** - sing-box mixed inbound was localhost-only
+- **Critical: Client container architecture mismatch** - Fixed arm64/amd64 binary downloads
+- Admin dashboard crash on load (`connection_stats` undefined)
+- `moav logs` Ctrl+C now returns to menu instead of exiting
+- `moav logs proxy` and `moav logs reality` aliases for sing-box
+- `moav regenerate-users` now passes Hysteria2 obfuscation password
+- `moav test` various fixes for dnstt and validation
+- `moav update` conflicts from generated files
 
 ### Security
-- Hysteria2 obfuscation helps bypass QUIC fingerprinting and blocking
+- Hysteria2 obfuscation helps bypass QUIC fingerprinting and blocking in Iran/China
 
 ## [1.2.0] - 2026-02-03
 
