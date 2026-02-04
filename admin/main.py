@@ -346,7 +346,7 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
         "stats": stats,
         "conduit_stats": conduit_stats,
         "services": services,
-        "connection_stats": connection_stats,
+        "connection_stats": user_stats,
         "all_users": all_users,
         "format_bytes": format_bytes,
         "total_connections": len(stats.get("connections", [])),
