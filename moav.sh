@@ -1409,6 +1409,18 @@ select_profiles() {
         done
     fi
 
+    # dnstt requires sing-box (proxy profile) to forward traffic
+    # Auto-add proxy if dnstt is selected but proxy isn't
+    local has_dnstt=false has_proxy=false
+    for p in "${SELECTED_PROFILES[@]}"; do
+        [[ "$p" == "dnstt" ]] && has_dnstt=true
+        [[ "$p" == "proxy" ]] && has_proxy=true
+    done
+    if [[ "$has_dnstt" == "true" ]] && [[ "$has_proxy" == "false" ]]; then
+        info "dnstt requires proxy services - auto-adding proxy profile"
+        SELECTED_PROFILES+=("proxy")
+    fi
+
     if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
         warn "No profiles selected"
         return 1

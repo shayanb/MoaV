@@ -126,8 +126,8 @@ services:
       - DNSTT_DOMAIN=${DNSTT_SUBDOMAIN:-t}.${DOMAIN}
       - DNSTT_UPSTREAM=sing-box:1080
       - TZ=${TZ:-UTC}
-    depends_on:
-      - sing-box
+    # Note: dnstt requires sing-box (proxy profile) to be running
+    # The moav CLI auto-adds proxy profile when dnstt is selected
     profiles:
       - dnstt
       - all
