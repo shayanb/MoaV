@@ -36,35 +36,89 @@ jobs:
             found { print }
           ' CHANGELOG.md)
 
-          # Handle multi-line output
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Save to file for later use
+          echo "$NOTES" > changelog_notes.txt
+          echo "Extracted changelog for version $VERSION"
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: MoaV v${{ github.ref_name }}
-          body: |
-            ${{ steps.changelog.outputs.notes }}
+      - name: Check existing release
+        id: existing
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if gh release view "$TAG" --json body -q .body > existing_body.txt 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Found existing release for $TAG"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No existing release for $TAG"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            ---
+      - name: Build release body
+        id: body
+        run: |
+          # Define the install guide section
+          cat > install_guide.txt << 'GUIDE_EOF'
 
-            ## Quick Install
+          ---
 
-            ```bash
-            curl -fsSL moav.sh/install.sh | bash
-            ```
+          ## Quick Install
 
-            This will install MoaV to `/opt/moav` and guide you through setup.
+          ```bash
+          curl -fsSL moav.sh/install.sh | bash
+          ```
 
-            ## Documentation
+          This will install MoaV to `/opt/moav` and guide you through setup.
 
-            - [Setup Guide](https://github.com/shayanb/MoaV/blob/main/docs/SETUP.md) - Complete installation instructions
-            - [Client Setup](https://github.com/shayanb/MoaV/blob/main/docs/CLIENTS.md) - How to connect from devices
-            - [DNS Configuration](https://github.com/shayanb/MoaV/blob/main/docs/DNS.md) - DNS records setup
-            - [Troubleshooting](https://github.com/shayanb/MoaV/blob/main/docs/TROUBLESHOOTING.md) - Common issues and solutions
-          draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          ## Documentation
+
+          - [Setup Guide](https://github.com/shayanb/MoaV/blob/main/docs/SETUP.md) - Complete installation instructions
+          - [Client Setup](https://github.com/shayanb/MoaV/blob/main/docs/CLIENTS.md) - How to connect from devices
+          - [DNS Configuration](https://github.com/shayanb/MoaV/blob/main/docs/DNS.md) - DNS records setup
+          - [Troubleshooting](https://github.com/shayanb/MoaV/blob/main/docs/TROUBLESHOOTING.md) - Common issues and solutions
+          GUIDE_EOF
+
+          if [ "${{ steps.existing.outputs.exists }}" = "true" ]; then
+            # Check if install guide already present in existing body
+            if grep -q "## Quick Install" existing_body.txt; then
+              echo "Install guide already present, keeping existing body"
+              cp existing_body.txt release_body.txt
+            else
+              echo "Appending install guide to existing body"
+              cat existing_body.txt > release_body.txt
+              cat install_guide.txt >> release_body.txt
+            fi
+          else
+            echo "Creating new release body with changelog + install guide"
+            cat changelog_notes.txt > release_body.txt
+            cat install_guide.txt >> release_body.txt
+          fi
+
+          echo "Final release body:"
+          cat release_body.txt
+
+      - name: Create or Update Release
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+
+          # Determine if prerelease
+          PRERELEASE=""
+          if echo "$TAG" | grep -qE "(alpha|beta|rc)"; then
+            PRERELEASE="--prerelease"
+          fi
+
+          if [ "${{ steps.existing.outputs.exists }}" = "true" ]; then
+            echo "Updating existing release..."
+            gh release edit "$TAG" \
+              --title "MoaV $TAG" \
+              --notes-file release_body.txt \
+              $PRERELEASE
+          else
+            echo "Creating new release..."
+            gh release create "$TAG" \
+              --title "MoaV $TAG" \
+              --notes-file release_body.txt \
+              $PRERELEASE
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
