@@ -1,52 +1,70 @@
-# name: Release
+name: Release
 
-# on:
-#   push:
-#     tags:
-#       - 'v*'
+on:
+  push:
+    tags:
+      - 'v*'
 
-# permissions:
-#   contents: write
+permissions:
+  contents: write
 
-# jobs:
-#   release:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v4
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-#       - name: Validate version
-#         run: |
-#           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-#           FILE_VERSION=$(cat VERSION)
-#           if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
-#             echo "Error: Tag version ($TAG_VERSION) does not match VERSION file ($FILE_VERSION)"
-#             exit 1
-#           fi
-#           echo "Version: $TAG_VERSION"
+      - name: Validate version
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          FILE_VERSION=$(cat VERSION)
+          if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
+            echo "Error: Tag version ($TAG_VERSION) does not match VERSION file ($FILE_VERSION)"
+            exit 1
+          fi
+          echo "Version: $TAG_VERSION"
 
-#       - name: Extract changelog
-#         id: changelog
-#         run: |
-#           VERSION="${GITHUB_REF#refs/tags/v}"
-#           # Extract section for this version from CHANGELOG.md
-#           NOTES=$(awk -v ver="## [$VERSION]" '
-#             $0 ~ ver { found=1; next }
-#             found && /^## \[/ { exit }
-#             found { print }
-#           ' CHANGELOG.md)
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          # Extract section for this version from CHANGELOG.md
+          NOTES=$(awk -v ver="## [$VERSION]" '
+            $0 ~ ver { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md)
 
-#           # Handle multi-line output
-#           echo "notes<<EOF" >> $GITHUB_OUTPUT
-#           echo "$NOTES" >> $GITHUB_OUTPUT
-#           echo "EOF" >> $GITHUB_OUTPUT
+          # Handle multi-line output
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-#       - name: Create Release
-#         uses: softprops/action-gh-release@v1
-#         with:
-#           name: MoaV v${{ github.ref_name }}
-#           body: ${{ steps.changelog.outputs.notes }}
-#           draft: false
-#           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MoaV v${{ github.ref_name }}
+          body: |
+            ${{ steps.changelog.outputs.notes }}
+
+            ---
+
+            ## Quick Install
+
+            ```bash
+            curl -fsSL moav.sh/install.sh | bash
+            ```
+
+            This will install MoaV to `/opt/moav` and guide you through setup.
+
+            ## Documentation
+
+            - [Setup Guide](https://github.com/shayanb/MoaV/blob/main/docs/SETUP.md) - Complete installation instructions
+            - [Client Setup](https://github.com/shayanb/MoaV/blob/main/docs/CLIENTS.md) - How to connect from devices
+            - [DNS Configuration](https://github.com/shayanb/MoaV/blob/main/docs/DNS.md) - DNS records setup
+            - [Troubleshooting](https://github.com/shayanb/MoaV/blob/main/docs/TROUBLESHOOTING.md) - Common issues and solutions
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
