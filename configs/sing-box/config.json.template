@@ -123,16 +123,33 @@
         "type": "local"
       },
       {
-        "tag": "google-udp",
+        "tag": "google-dns",
         "type": "udp",
         "server": "8.8.8.8"
       },
       {
-        "tag": "quad9-udp",
+        "tag": "cloudflare-dns",
+        "type": "udp",
+        "server": "1.1.1.1"
+      },
+      {
+        "tag": "quad9-dns",
         "type": "udp",
         "server": "9.9.9.9"
+      },
+      {
+        "tag": "google-doh",
+        "type": "https",
+        "server": "8.8.8.8",
+        "server_port": 443
+      },
+      {
+        "tag": "cloudflare-doh",
+        "type": "https",
+        "server": "1.1.1.1",
+        "server_port": 443
       }
     ],
-    "final": "local-dns"
+    "final": "google-dns"
   }
 }

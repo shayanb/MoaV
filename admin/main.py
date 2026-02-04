@@ -328,17 +328,17 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
     update_info = await check_for_updates()
 
     # Count active connections by source IP
-    connection_stats = {}
+    user_stats = {}
     for conn in stats.get("connections", []):
         metadata = conn.get("metadata", {})
         source_ip = metadata.get("sourceIP", "unknown")
-        if source_ip not in connection_stats:
-            connection_stats[source_ip] = {"connections": 0, "upload": 0, "download": 0}
-        connection_stats[source_ip]["connections"] += 1
-        connection_stats[source_ip]["upload"] += conn.get("upload", 0)
-        connection_stats[source_ip]["download"] += conn.get("download", 0)
+        if source_ip not in user_stats:
+            user_stats[source_ip] = {"connections": 0, "upload": 0, "download": 0}
+        user_stats[source_ip]["connections"] += 1
+        user_stats[source_ip]["upload"] += conn.get("upload", 0)
+        user_stats[source_ip]["download"] += conn.get("download", 0)
 
-    # Get all users with their bundle info
+    # Get all users with their bundle info (no active status tracking)
     all_users = list_users()
 
     return templates.TemplateResponse("dashboard.html", {

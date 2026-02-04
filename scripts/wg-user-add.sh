@@ -231,11 +231,11 @@ cat > "$OUTPUT_DIR/wireguard-instructions.txt" <<EOF
 # ---------------------------
 # This creates a local UDP tunnel to the server:
 
-wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://${SERVER_IP}:8080
+wstunnel client -L udp://127.0.0.1:51820:moav-wireguard:51820 ws://${SERVER_IP}:8080
 
 # Step 3: Connect WireGuard
 # -------------------------
-# Import wireguard.conf into your WireGuard app.
+# Import wireguard-wstunnel.conf into your WireGuard app.
 # The config points to 127.0.0.1:51820 (the local wstunnel endpoint).
 
 # For Android/iOS:
@@ -246,8 +246,8 @@ wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://${SERVER_IP}:8080
 
 # For desktop:
 # ------------
-# Terminal 1: wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://${SERVER_IP}:8080
-# Terminal 2: wg-quick up ./wireguard.conf
+# Terminal 1: wstunnel client -L udp://127.0.0.1:51820:moav-wireguard:51820 ws://${SERVER_IP}:8080
+# Terminal 2: wg-quick up ./wireguard-wstunnel.conf
 
 # Server info:
 # ------------
@@ -316,5 +316,5 @@ cat "$OUTPUT_DIR/wireguard.conf"
 echo ""
 echo "=== wstunnel Mode (for restrictive networks) ==="
 echo "Run wstunnel first:"
-echo "  wstunnel client -L udp://127.0.0.1:51820:127.0.0.1:51820 ws://${SERVER_IP}:8080"
+echo "  wstunnel client -L udp://127.0.0.1:51820:moav-wireguard:51820 ws://${SERVER_IP}:8080"
 echo "Then use wireguard-wstunnel.conf"

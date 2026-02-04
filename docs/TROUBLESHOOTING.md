@@ -368,6 +368,75 @@ docker compose up -d sing-box
 docker compose --profile setup run --rm bootstrap
 ```
 
+### WireGuard handshake timeout
+
+If you see:
+```
+Handshake for peer 1 (SERVER:51820) did not complete after 5 seconds, retrying
+```
+
+This means UDP packets aren't reaching the server. Common causes:
+
+1. **UDP port 51820 blocked** - Most common in restrictive networks
+   - Try WireGuard-wstunnel mode instead (tunnels over TCP/WebSocket)
+
+2. **Server firewall:**
+   ```bash
+   ufw allow 51820/udp
+   ```
+
+3. **Server WireGuard not running:**
+   ```bash
+   docker compose --profile wireguard ps
+   # Should show wireguard as "running"
+   ```
+
+### WireGuard-wstunnel not connecting
+
+If you see errors like:
+```
+Cannot connect to tcp endpoint SERVER:8080 due to timeout
+```
+
+1. **Open port 8080 on server firewall:**
+   ```bash
+   ufw allow 8080/tcp
+   ```
+
+2. **Check wstunnel is running:**
+   ```bash
+   docker compose --profile wireguard ps
+   # Both wireguard and wstunnel should be running
+   ```
+
+3. **Check wstunnel logs:**
+   ```bash
+   docker compose logs wstunnel
+   ```
+
+4. **Rebuild after update** (if you updated MoaV):
+   ```bash
+   docker compose --profile wireguard build wstunnel
+   docker compose --profile wireguard up -d
+   ```
+
+### Hysteria2 not working
+
+Hysteria2 uses **UDP port 443**. If it's not working but Reality/Trojan work:
+
+1. **UDP is likely blocked** by your network - this is common in restrictive environments
+2. Hysteria2 is designed for networks where TCP is throttled but UDP works
+3. **Try other protocols** - Reality and Trojan use TCP and are more likely to work
+
+**Verify server-side:**
+```bash
+# Check Hysteria2 is listening
+docker compose logs sing-box | grep -i hysteria
+
+# Test UDP connectivity (from another machine)
+nc -vuz YOUR_SERVER_IP 443
+```
+
 ### WireGuard connected but no traffic
 
 **Check if peer is loaded:**
