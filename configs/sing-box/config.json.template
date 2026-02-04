@@ -77,6 +77,10 @@
       "listen_port": 443,
       "sniff": true,
       "users": ${HYSTERIA2_USERS_JSON},
+      "obfs": {
+        "type": "salamander",
+        "password": "${HYSTERIA2_OBFS_PASSWORD}"
+      },
       "tls": {
         "enabled": true,
         "server_name": "${DOMAIN}",

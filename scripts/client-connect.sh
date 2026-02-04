@@ -209,23 +209,37 @@ EOF
             ;;
 
         hysteria2)
-            local server="" auth="" sni=""
+            local server="" auth="" sni="" obfs_type="" obfs_password=""
 
             if [[ "$config_file" == *.txt ]]; then
                 local uri=$(cat "$config_file" | tr -d '\n\r')
                 auth=$(extract_auth "$uri" "hysteria2")
                 server=$(echo "$uri" | sed -n 's|.*@\([^?#]*\).*|\1|p' | head -1)
                 sni=$(extract_param "$uri" "sni")
+                obfs_type=$(extract_param "$uri" "obfs")
+                obfs_password=$(extract_param "$uri" "obfs-password")
             elif [[ "$config_file" == *.yaml ]] || [[ "$config_file" == *.yml ]]; then
                 server=$(grep -E "^server:" "$config_file" | sed 's/server:[[:space:]]*//' | tr -d '"' | head -1)
                 auth=$(grep -E "^auth:" "$config_file" | sed 's/auth:[[:space:]]*//' | tr -d '"' | head -1)
                 sni=$(grep -E "^[[:space:]]*sni:" "$config_file" | sed 's/.*sni:[[:space:]]*//' | tr -d '"' | head -1)
+                obfs_type=$(grep -E "^[[:space:]]*type:" "$config_file" | head -1 | sed 's/.*type:[[:space:]]*//' | tr -d '"')
+                obfs_password=$(grep -E "^[[:space:]]*password:" "$config_file" | head -2 | tail -1 | sed 's/.*password:[[:space:]]*//' | tr -d '"')
             fi
 
             local host="${server%:*}"
             local port="${server##*:}"
             [[ "$port" == "$host" ]] && port=443
             [[ -z "$sni" ]] && sni="$host"
+
+            # Build obfs config if present
+            local obfs_config=""
+            if [[ -n "$obfs_type" ]] && [[ -n "$obfs_password" ]]; then
+                obfs_config=",
+      \"obfs\": {
+        \"type\": \"$obfs_type\",
+        \"password\": \"$obfs_password\"
+      }"
+            fi
 
             cat > "$output_file" << EOF
 {
@@ -237,7 +251,7 @@ EOF
       "tag": "proxy",
       "server": "$host",
       "server_port": $port,
-      "password": "$auth",
+      "password": "$auth"$obfs_config,
       "tls": {
         "enabled": true,
         "server_name": "$sni"

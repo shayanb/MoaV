@@ -272,8 +272,13 @@ SERVER_IPV6=
 
 ```bash
 # Reality target - a popular site to impersonate
-# Good choices: www.microsoft.com, www.apple.com, dl.google.com
-REALITY_TARGET=www.microsoft.com:443
+# For censored regions (Iran, China), avoid microsoft.com as it's well-known
+# Better choices: dl.google.com, www.googletagmanager.com, www.doi.org
+REALITY_TARGET=dl.google.com:443
+
+# Hysteria2 obfuscation password (auto-generated if empty)
+# REQUIRED for bypassing QUIC blocking in censored regions
+HYSTERIA2_OBFS_PASSWORD=
 
 # Number of initial users to create
 INITIAL_USERS=5

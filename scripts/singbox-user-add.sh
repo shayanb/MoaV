@@ -110,6 +110,14 @@ else
     REALITY_SHORT_ID=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/reality.env 2>/dev/null | grep REALITY_SHORT_ID | cut -d= -f2 || echo "")
 fi
 
+# Load Hysteria2 obfuscation password
+if [[ -f "$STATE_DIR/keys/clash-api.env" ]]; then
+    source "$STATE_DIR/keys/clash-api.env"
+else
+    # Try docker volume
+    HYSTERIA2_OBFS_PASSWORD=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/clash-api.env 2>/dev/null | grep HYSTERIA2_OBFS_PASSWORD | cut -d= -f2 || echo "")
+fi
+
 # Get server IP
 SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org || echo "YOUR_SERVER_IP")}"
 
@@ -120,7 +128,7 @@ fi
 [[ "${SERVER_IPV6:-}" == "disabled" ]] && SERVER_IPV6=""
 
 # Parse Reality target
-REALITY_TARGET="${REALITY_TARGET:-www.microsoft.com:443}"
+REALITY_TARGET="${REALITY_TARGET:-dl.google.com:443}"
 REALITY_TARGET_HOST=$(echo "$REALITY_TARGET" | cut -d: -f1)
 
 # -----------------------------------------------------------------------------
@@ -135,8 +143,8 @@ echo "$REALITY_LINK" > "$OUTPUT_DIR/reality.txt"
 TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}"
 echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
 
-# Hysteria2 link (IPv4)
-HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}#MoaV-Hysteria2-${USERNAME}"
+# Hysteria2 link (IPv4) - with obfuscation for censorship bypass
+HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}"
 echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
 
 # Generate IPv6 links if available
@@ -147,7 +155,7 @@ if [[ -n "$SERVER_IPV6" ]]; then
     TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}-IPv6"
     echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
 
-    HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}#MoaV-Hysteria2-${USERNAME}-IPv6"
+    HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}-IPv6"
     echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
 
     log_info "Generated IPv6 links (server: $SERVER_IPV6)"
