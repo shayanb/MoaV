@@ -1911,7 +1911,7 @@ add_user() {
 
     echo ""
     echo "This will add '$username' to:"
-    echo "  • sing-box (Reality, Trojan, Hysteria2)"
+    echo "  • sing-box (Reality, Trojan, Hysteria2, CDN VLESS+WS)"
     echo "  • WireGuard"
     echo ""
 
@@ -2570,6 +2570,12 @@ cmd_status() {
     if echo "$running" | grep -q "admin"; then
         echo ""
         echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+    fi
+
+    # Show CDN domain if configured
+    local cdn_domain=$(grep -E '^CDN_DOMAIN=' "$SCRIPT_DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$cdn_domain" ]]; then
+        echo -e "  ${CYAN}CDN Domain:${NC}      $cdn_domain"
     fi
 
     # Show default profiles
@@ -3489,6 +3495,10 @@ cmd_regenerate_users() {
 
     info "Regenerating bundles..."
 
+    local cdn_domain=$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local cdn_ws_path=$(grep -E '^CDN_WS_PATH=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    cdn_ws_path="${cdn_ws_path:-/ws}"
+
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
     for username in $users_found; do
@@ -3498,6 +3508,8 @@ cmd_regenerate_users() {
             -e "SERVER_IP=$server_ip" \
             -e "SERVER_IPV6=$server_ipv6" \
             -e "DOMAIN=$domain" \
+            -e "CDN_DOMAIN=$cdn_domain" \
+            -e "CDN_WS_PATH=$cdn_ws_path" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true

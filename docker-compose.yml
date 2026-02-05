@@ -31,6 +31,7 @@ services:
       - "${PORT_HTTPS:-443}:443/tcp"      # Reality (VLESS)
       - "${PORT_TROJAN:-8443}:8443/tcp"   # Trojan (backup)
       - "${PORT_HYSTERIA:-443}:443/udp"   # Hysteria2 (QUIC)
+      - "${PORT_CDN:-2082}:2082/tcp"      # CDN WebSocket (VLESS+WS)
     volumes:
       - ./configs/sing-box:/etc/sing-box:ro
       - moav_certs:/certs:ro
@@ -296,6 +297,8 @@ services:
       - ENABLE_WIREGUARD=${ENABLE_WIREGUARD:-true}
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
+      - CDN_DOMAIN=${CDN_DOMAIN:-}
+      - CDN_WS_PATH=${CDN_WS_PATH:-/ws}
     profiles:
       - setup
 

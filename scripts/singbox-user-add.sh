@@ -89,6 +89,12 @@ jq --arg name "$USERNAME" --arg pass "$USER_PASSWORD" \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
 mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 
+# Add to VLESS WS users (CDN)
+jq --arg name "$USERNAME" --arg uuid "$USER_UUID" \
+    '.inbounds |= map(if .tag == "vless-ws-in" then .users += [{"name": $name, "uuid": $uuid}] else . end)' \
+    "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
+mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+
 # Validate the new config
 if ! jq empty "$TEMP_CONFIG" 2>/dev/null; then
     log_error "Generated invalid JSON config"
@@ -175,6 +181,22 @@ if command -v qrencode &>/dev/null; then
     fi
 fi
 
+# Generate CDN VLESS+WS link (if CDN_DOMAIN is set)
+CDN_DOMAIN="${CDN_DOMAIN:-$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")}"
+CDN_WS_PATH="${CDN_WS_PATH:-$(grep -E '^CDN_WS_PATH=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "/ws")}"
+CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
+
+if [[ -n "$CDN_DOMAIN" ]]; then
+    CDN_LINK="vless://${USER_UUID}@${CDN_DOMAIN}:443?security=tls&type=ws&path=${CDN_WS_PATH}&sni=${CDN_DOMAIN}&host=${CDN_DOMAIN}&fp=chrome&alpn=http/1.1#MoaV-CDN-${USERNAME}"
+    echo "$CDN_LINK" > "$OUTPUT_DIR/cdn-vless-ws.txt"
+
+    if command -v qrencode &>/dev/null; then
+        qrencode -o "$OUTPUT_DIR/cdn-vless-ws-qr.png" -s 6 "$CDN_LINK" 2>/dev/null || true
+    fi
+
+    log_info "Generated CDN VLESS+WS link (domain: $CDN_DOMAIN)"
+fi
+
 # Try to reload sing-box (hot reload)
 if docker compose ps sing-box --status running &>/dev/null; then
     log_info "Reloading sing-box..."
@@ -212,6 +234,12 @@ if [[ -n "${SERVER_IPV6:-}" ]]; then
     echo ""
     echo "Hysteria2 (IPv6):"
     echo "$HY2_LINK_V6"
+    echo ""
+fi
+
+if [[ -n "${CDN_DOMAIN:-}" ]]; then
+    echo "CDN VLESS+WS Link:"
+    echo "$CDN_LINK"
     echo ""
 fi
 

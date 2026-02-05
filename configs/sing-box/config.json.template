@@ -89,6 +89,18 @@
         "key_path": "/certs/live/${DOMAIN}/privkey.pem"
       },
       "masquerade": "http://decoy:80"
+    },
+    {
+      "type": "vless",
+      "tag": "vless-ws-in",
+      "listen": "::",
+      "listen_port": 2082,
+      "sniff": true,
+      "users": ${VLESS_WS_USERS_JSON},
+      "transport": {
+        "type": "ws",
+        "path": "${CDN_WS_PATH}"
+      }
     }
   ],
   "outbounds": [
