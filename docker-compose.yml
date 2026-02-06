@@ -172,6 +172,7 @@ services:
       - proxy
       - wireguard
       - dnstt
+      - trusttunnel
       - all
 
   # ===========================================================================
@@ -243,6 +244,39 @@ services:
       - all
 
   # ===========================================================================
+  # TRUSTTUNNEL: Modern VPN protocol (looks like HTTPS)
+  # HTTP/2 + HTTP/3 (QUIC) transport, indistinguishable from regular web traffic
+  # ===========================================================================
+  trusttunnel:
+    build:
+      context: .
+      dockerfile: Dockerfile.trusttunnel
+      args:
+        TRUSTTUNNEL_VERSION: ${TRUSTTUNNEL_VERSION:-0.9.125}
+    container_name: moav-trusttunnel
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_TRUSTTUNNEL:-4443}:4443/tcp"   # HTTP/2
+      - "${PORT_TRUSTTUNNEL:-4443}:4443/udp"   # HTTP/3 (QUIC)
+    volumes:
+      - ./configs/trusttunnel:/etc/trusttunnel:ro
+      - moav_certs:/certs:ro
+      - moav_state:/state
+      - moav_logs:/var/log/trusttunnel
+    environment:
+      - DOMAIN=${DOMAIN}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - TZ=${TZ:-UTC}
+    depends_on:
+      certbot:
+        condition: service_completed_successfully
+    profiles:
+      - trusttunnel
+      - all
+
+  # ===========================================================================
   # ADMIN: Stats dashboard
   # ===========================================================================
   admin:
@@ -296,6 +330,7 @@ services:
       - ENABLE_HYSTERIA2=${ENABLE_HYSTERIA2:-true}
       - ENABLE_WIREGUARD=${ENABLE_WIREGUARD:-true}
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
+      - ENABLE_TRUSTTUNNEL=${ENABLE_TRUSTTUNNEL:-true}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
       - CDN_DOMAIN=${CDN_DOMAIN:-}
       - CDN_WS_PATH=${CDN_WS_PATH:-/ws}

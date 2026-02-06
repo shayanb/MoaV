@@ -197,6 +197,55 @@ if [[ -n "$CDN_DOMAIN" ]]; then
     log_info "Generated CDN VLESS+WS link (domain: $CDN_DOMAIN)"
 fi
 
+# Add user to TrustTunnel (if config exists)
+TRUSTTUNNEL_CREDS="configs/trusttunnel/credentials.toml"
+if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
+    log_info "Adding $USERNAME to TrustTunnel..."
+
+    # Check if user already exists in TrustTunnel
+    if grep -q "username = \"$USERNAME\"" "$TRUSTTUNNEL_CREDS" 2>/dev/null; then
+        log_info "User '$USERNAME' already exists in TrustTunnel, skipping..."
+    else
+        # Append new user to credentials.toml
+        cat >> "$TRUSTTUNNEL_CREDS" <<EOF
+
+[[credentials]]
+username = "$USERNAME"
+password = "$USER_PASSWORD"
+EOF
+        log_info "Added $USERNAME to TrustTunnel credentials"
+    fi
+
+    # Generate TrustTunnel client config
+    cat > "$OUTPUT_DIR/trusttunnel.txt" <<EOF
+TrustTunnel Configuration for $USERNAME
+======================================
+
+Endpoint: ${DOMAIN}:4443
+Username: ${USERNAME}
+Password: ${USER_PASSWORD}
+
+Instructions:
+1. Download TrustTunnel client from https://trusttunnel.dev
+2. Open the app and tap + to add a new VPN
+3. Enter the endpoint, username, and password above
+4. Tap Connect
+
+Note: TrustTunnel supports HTTP/2 and HTTP/3 (QUIC) transports,
+which look like regular HTTPS traffic to network observers.
+EOF
+
+    cat > "$OUTPUT_DIR/trusttunnel.json" <<EOF
+{
+  "endpoint": "${DOMAIN}:4443",
+  "username": "${USERNAME}",
+  "password": "${USER_PASSWORD}"
+}
+EOF
+
+    log_info "Generated TrustTunnel client config"
+fi
+
 # Try to reload sing-box (hot reload)
 if docker compose ps sing-box --status running &>/dev/null; then
     log_info "Reloading sing-box..."
@@ -210,8 +259,16 @@ else
     log_info "sing-box not running, config will apply on next start"
 fi
 
+# Try to reload TrustTunnel (if running)
+if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
+    if docker compose ps trusttunnel --status running &>/dev/null; then
+        log_info "Restarting TrustTunnel to apply new credentials..."
+        docker compose restart trusttunnel
+    fi
+fi
+
 echo ""
-log_info "=== sing-box user '$USERNAME' created ==="
+log_info "=== User '$USERNAME' created ==="
 echo ""
 echo "Reality Link:"
 echo "$REALITY_LINK"
@@ -240,6 +297,14 @@ fi
 if [[ -n "${CDN_DOMAIN:-}" ]]; then
     echo "CDN VLESS+WS Link:"
     echo "$CDN_LINK"
+    echo ""
+fi
+
+if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
+    echo "TrustTunnel:"
+    echo "  Endpoint: ${DOMAIN}:4443"
+    echo "  Username: ${USERNAME}"
+    echo "  Password: ${USER_PASSWORD}"
     echo ""
 fi
 

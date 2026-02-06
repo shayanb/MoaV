@@ -266,6 +266,43 @@ EOF
 fi
 
 # -----------------------------------------------------------------------------
+# Generate TrustTunnel client config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]]; then
+    # TrustTunnel uses username/password authentication
+    # Client config includes endpoint, username, and password
+
+    cat > "$OUTPUT_DIR/trusttunnel.txt" <<EOF
+TrustTunnel Configuration for $USER_ID
+======================================
+
+Endpoint: ${DOMAIN}:4443
+Username: ${USER_ID}
+Password: ${USER_PASSWORD}
+
+Instructions:
+1. Download TrustTunnel client from https://trusttunnel.dev
+2. Open the app and tap + to add a new VPN
+3. Enter the endpoint, username, and password above
+4. Tap Connect
+
+Note: TrustTunnel supports HTTP/2 and HTTP/3 (QUIC) transports,
+which look like regular HTTPS traffic to network observers.
+EOF
+
+    # Generate JSON config for programmatic use
+    cat > "$OUTPUT_DIR/trusttunnel.json" <<EOF
+{
+  "endpoint": "${DOMAIN}:4443",
+  "username": "${USER_ID}",
+  "password": "${USER_PASSWORD}"
+}
+EOF
+
+    log_info "  - TrustTunnel config generated"
+fi
+
+# -----------------------------------------------------------------------------
 # Generate WireGuard config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then

@@ -8,7 +8,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ## Features
 
-- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, WireGuard (direct & wstunnel), DNS tunnel
+- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, TrustTunnel, WireGuard (direct & wstunnel), DNS tunnel
 - **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, or DNS
 - **Per-user credentials** - Create, revoke, and manage users independently
 - **Easy deployment** - Docker Compose based, single command setup
@@ -118,6 +118,7 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 | Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | Primary, most reliable |
 | Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | Fast, works when TCP throttled |
 | Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
+| TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 & QUIC, looks like HTTPS |
 | WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | Full VPN, simple setup |
 | WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN when UDP is blocked |
 | DNS Tunnel | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort, hard to block |
@@ -168,7 +169,7 @@ moav logs conduit         # View specific service logs
 moav build                # Build/rebuild all containers
 ```
 
-**Profiles:** `proxy`, `wireguard`, `dnstt`, `admin`, `conduit`, `snowflake`, `all`
+**Profiles:** `proxy`, `wireguard`, `dnstt`, `trusttunnel`, `admin`, `conduit`, `snowflake`, `all`
 
 ## Server Migration
 
@@ -199,7 +200,7 @@ moav test user1           # Test all protocols for user1
 moav test user1 --json    # Output results as JSON
 ```
 
-Tests Reality, Trojan, Hysteria2, WireGuard, and dnstt. Reports pass/fail/skip for each protocol.
+Tests Reality, Trojan, Hysteria2, TrustTunnel, WireGuard, and dnstt. Reports pass/fail/skip for each protocol.
 
 ### Client Mode
 
@@ -215,7 +216,7 @@ The client exposes:
 - SOCKS5 proxy on port 1080 (configurable via `CLIENT_SOCKS_PORT`)
 - HTTP proxy on port 8080 (configurable via `CLIENT_HTTP_PORT`)
 
-Available protocols: `reality`, `trojan`, `hysteria2`, `wireguard`, `dnstt`, `psiphon`, `tor`
+Available protocols: `reality`, `trojan`, `hysteria2`, `trusttunnel`, `wireguard`, `dnstt`, `psiphon`, `tor`
 
 Build the client image separately:
 ```bash
@@ -238,10 +239,10 @@ moav logs conduit             # View conduit logs
 
 | Platform | Recommended Apps |
 |----------|------------------|
-| iOS | Shadowrocket, Hiddify, WireGuard, Psiphon |
-| Android | v2rayNG, Hiddify, WireGuard, Psiphon |
-| macOS | NekoRay, WireGuard, Psiphon |
-| Windows | v2rayN, NekoRay, WireGuard, Psiphon |
+| iOS | Shadowrocket, Hiddify, WireGuard, TrustTunnel, Psiphon |
+| Android | v2rayNG, Hiddify, WireGuard, TrustTunnel, Psiphon |
+| macOS | NekoRay, WireGuard, TrustTunnel, Psiphon |
+| Windows | v2rayN, NekoRay, WireGuard, TrustTunnel, Psiphon |
 
 See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 
@@ -270,6 +271,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 80/tcp | TCP | Certbot | Yes |
 | 51820/udp | UDP | WireGuard | No |
 | 8080/tcp | TCP | wstunnel | No |
+| 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 53/udp | UDP | DNS tunnel | Yes |
 

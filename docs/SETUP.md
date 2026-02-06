@@ -479,6 +479,7 @@ ENABLE_TROJAN=true
 ENABLE_HYSTERIA2=true
 ENABLE_WIREGUARD=true
 ENABLE_DNSTT=true
+ENABLE_TRUSTTUNNEL=true
 ENABLE_PSIPHON_CONDUIT=false
 ENABLE_ADMIN_UI=true
 ```
@@ -555,6 +556,7 @@ docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon 
 #   proxy     - sing-box + decoy (main proxy services)
 #   wireguard - WireGuard VPN via wstunnel
 #   dnstt     - DNS tunnel (last resort)
+#   trusttunnel - TrustTunnel VPN (HTTP/2 + QUIC)
 #   admin     - Stats dashboard (https://domain:9443 or https://ip:9443 in domain-less mode)
 #   conduit   - Psiphon bandwidth donation (includes traffic stats by country)
 #   snowflake - Tor Snowflake proxy (bandwidth donation for Tor users)
@@ -570,6 +572,10 @@ ufw allow 443/tcp    # Reality + Trojan fallback
 ufw allow 443/udp    # Hysteria2
 ufw allow 53/udp     # DNS tunnel (if using dnstt)
 ufw allow 2082/tcp   # CDN WebSocket (if using CDN_DOMAIN)
+
+# For TrustTunnel
+ufw allow 4443/tcp   # TrustTunnel HTTP/2
+ufw allow 4443/udp   # TrustTunnel HTTP/3 (QUIC)
 
 # For admin dashboard
 ufw allow 9443/tcp   # Admin (or your PORT_ADMIN value)
@@ -616,6 +622,8 @@ Each bundle contains:
 - `wireguard.conf` - WireGuard config (direct mode)
 - `wireguard-wstunnel.conf` - WireGuard config (WebSocket mode)
 - `dnstt-instructions.txt` - DNS tunnel instructions
+- `trusttunnel.txt` - TrustTunnel credentials (only if `ENABLE_TRUSTTUNNEL=true`)
+- `trusttunnel.json` - TrustTunnel config for clients
 - `cdn-vless-ws.txt` - CDN VLESS+WS link (only if `CDN_DOMAIN` is set)
 - `cdn-vless-ws-qr.png` - QR code for CDN link
 

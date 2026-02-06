@@ -2,7 +2,7 @@
 # MoaV Client - Multi-protocol client for testing and connecting
 # =============================================================================
 # Supports: Reality, Trojan, Hysteria2, WireGuard (via wstunnel),
-#           dnstt, Tor/Snowflake
+#           dnstt, TrustTunnel, Tor/Snowflake
 #
 # Strategy: Download pre-built binaries with proper architecture detection
 # =============================================================================
@@ -35,6 +35,7 @@ ARG TARGETARCH
 ARG SINGBOX_VERSION=1.12.19
 ARG WSTUNNEL_VERSION=10.5.2
 ARG SNOWFLAKE_VERSION=2.11.0
+ARG TRUSTTUNNEL_VERSION=0.9.125
 
 # Install runtime dependencies
 RUN apk add --no-cache \
@@ -103,6 +104,24 @@ COPY --from=dnstt-builder /dnstt-client /usr/local/bin/dnstt-client
 RUN chmod +x /usr/local/bin/dnstt-client 2>/dev/null && \
     echo "dnstt-client installed" || \
     echo "dnstt-client: not available (optional)"
+
+# trusttunnel-client: download pre-built binary
+# TrustTunnel uses: linux-x86_64, linux-aarch64
+RUN ARCH=$(cat /tmp/arch) && \
+    case "$ARCH" in \
+        amd64) TT_ARCH="x86_64" ;; \
+        arm64) TT_ARCH="aarch64" ;; \
+        *) TT_ARCH="x86_64" ;; \
+    esac && \
+    echo "Downloading trusttunnel-client for ${TT_ARCH}..." && \
+    wget -qO /tmp/tt.tar.gz \
+    "https://github.com/AnyVPN/TrustTunnel/releases/download/v${TRUSTTUNNEL_VERSION}/trusttunnel-v${TRUSTTUNNEL_VERSION}-linux-${TT_ARCH}.tar.gz" && \
+    tar xzf /tmp/tt.tar.gz -C /tmp && \
+    mv /tmp/trusttunnel_client /usr/local/bin/ && \
+    chmod +x /usr/local/bin/trusttunnel_client && \
+    rm -rf /tmp/tt.tar.gz /tmp/trusttunnel* && \
+    echo "trusttunnel-client ${TRUSTTUNNEL_VERSION} installed (${TT_ARCH})" || \
+    echo "trusttunnel-client: download failed (optional)"
 
 # Cleanup
 RUN rm -f /tmp/get-arch.sh /tmp/arch

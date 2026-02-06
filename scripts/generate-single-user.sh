@@ -68,6 +68,24 @@ if [[ -f "$CONFIG_FILE" ]]; then
     log_info "Added $USER_ID to sing-box config"
 fi
 
+# Add to TrustTunnel config
+TRUSTTUNNEL_CREDS="/configs/trusttunnel/credentials.toml"
+if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
+    # Check if user already exists
+    if grep -q "username = \"$USER_ID\"" "$TRUSTTUNNEL_CREDS" 2>/dev/null; then
+        log_info "User $USER_ID already exists in TrustTunnel"
+    else
+        # Append new user
+        cat >> "$TRUSTTUNNEL_CREDS" <<EOF
+
+[[credentials]]
+username = "$USER_ID"
+password = "$USER_PASSWORD"
+EOF
+        log_info "Added $USER_ID to TrustTunnel credentials"
+    fi
+fi
+
 # Generate bundle
 export STATE_DIR
 export USER_ID USER_UUID USER_PASSWORD
@@ -78,6 +96,7 @@ export REALITY_TARGET="${REALITY_TARGET:-dl.google.com:443}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
+export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
 export CDN_DOMAIN="${CDN_DOMAIN:-}"
 export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"

@@ -35,6 +35,7 @@ domain_required=false
 [[ "${ENABLE_TROJAN:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_DNSTT:-true}" == "true" ]] && domain_required=true
+[[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]] && domain_required=true
 
 if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     log_error "DOMAIN is required when TLS-based protocols are enabled"
@@ -48,9 +49,10 @@ if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     log_error "    ENABLE_TROJAN=false"
     log_error "    ENABLE_HYSTERIA2=false"
     log_error "    ENABLE_DNSTT=false"
+    log_error "    ENABLE_TRUSTTUNNEL=false"
     log_error ""
     log_error "  Or run this command to disable them:"
-    log_error "    sed -i 's/^ENABLE_REALITY=.*/ENABLE_REALITY=false/; s/^ENABLE_TROJAN=.*/ENABLE_TROJAN=false/; s/^ENABLE_HYSTERIA2=.*/ENABLE_HYSTERIA2=false/; s/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/' .env"
+    log_error "    sed -i 's/^ENABLE_REALITY=.*/ENABLE_REALITY=false/; s/^ENABLE_TROJAN=.*/ENABLE_TROJAN=false/; s/^ENABLE_HYSTERIA2=.*/ENABLE_HYSTERIA2=false/; s/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/; s/^ENABLE_TRUSTTUNNEL=.*/ENABLE_TRUSTTUNNEL=false/' .env"
     exit 1
 fi
 
@@ -195,6 +197,7 @@ export ENABLE_TROJAN="${ENABLE_TROJAN:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
+export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
 export CDN_DOMAIN="${CDN_DOMAIN:-}"
 export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
 
@@ -250,6 +253,7 @@ REALITY_USERS_JSON="["
 TROJAN_USERS_JSON="["
 HYSTERIA2_USERS_JSON="["
 VLESS_WS_USERS_JSON="["
+TRUSTTUNNEL_CREDENTIALS=""
 
 for i in $(seq -w 1 "$INITIAL_USERS"); do
     # Use "demouser" for single user, otherwise "user01", "user02", etc.
@@ -285,6 +289,13 @@ EOF
     HYSTERIA2_USERS_JSON+="{\"name\":\"$USER_ID\",\"password\":\"$USER_PASSWORD\"}"
     VLESS_WS_USERS_JSON+="{\"name\":\"$USER_ID\",\"uuid\":\"$USER_UUID\"}"
 
+    # TrustTunnel credentials (TOML format)
+    TRUSTTUNNEL_CREDENTIALS+="[[credentials]]
+username = \"$USER_ID\"
+password = \"$USER_PASSWORD\"
+
+"
+
     # Generate user bundle
     /app/generate-user.sh "$USER_ID"
 done
@@ -293,6 +304,26 @@ REALITY_USERS_JSON+="]"
 TROJAN_USERS_JSON+="]"
 HYSTERIA2_USERS_JSON+="]"
 VLESS_WS_USERS_JSON+="]"
+
+# -----------------------------------------------------------------------------
+# Generate TrustTunnel config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]]; then
+    log_info "Generating TrustTunnel configuration..."
+
+    export TRUSTTUNNEL_CREDENTIALS
+
+    # Generate credentials.toml
+    envsubst < /configs/trusttunnel/credentials.toml.template > /configs/trusttunnel/credentials.toml
+
+    # Generate hosts.toml
+    envsubst < /configs/trusttunnel/hosts.toml.template > /configs/trusttunnel/hosts.toml
+
+    # Generate vpn.toml (no substitution needed but copy for consistency)
+    envsubst < /configs/trusttunnel/vpn.toml.template > /configs/trusttunnel/vpn.toml
+
+    log_info "TrustTunnel configuration written to /configs/trusttunnel/"
+fi
 
 # -----------------------------------------------------------------------------
 # Generate sing-box config (only if TLS protocols are enabled)

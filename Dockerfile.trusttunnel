@@ -1,0 +1,38 @@
+# TrustTunnel VPN endpoint
+# Modern VPN protocol that looks like regular HTTPS traffic
+FROM debian:bookworm-slim
+
+ARG TARGETARCH
+ARG TRUSTTUNNEL_VERSION=0.9.125
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/trusttunnel
+
+# Map Docker arch to TrustTunnel arch naming
+# TARGETARCH: amd64, arm64
+# TrustTunnel: x86_64, aarch64
+RUN ARCH=$(case "${TARGETARCH}" in \
+        amd64) echo "x86_64" ;; \
+        arm64) echo "aarch64" ;; \
+        *) echo "x86_64" ;; \
+    esac) && \
+    echo "Downloading TrustTunnel v${TRUSTTUNNEL_VERSION} for ${ARCH}..." && \
+    curl -L -o trusttunnel.tar.gz \
+        "https://github.com/TrustTunnel/TrustTunnel/releases/download/v${TRUSTTUNNEL_VERSION}/trusttunnel-v${TRUSTTUNNEL_VERSION}-linux-${ARCH}.tar.gz" && \
+    tar -xzf trusttunnel.tar.gz && \
+    rm trusttunnel.tar.gz && \
+    chmod +x trusttunnel_endpoint setup_wizard
+
+RUN mkdir -p /etc/trusttunnel /var/log/trusttunnel /state
+
+COPY scripts/trusttunnel-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# TrustTunnel port (HTTP/2 TCP + HTTP/3 QUIC/UDP)
+EXPOSE 4443/tcp 4443/udp
+
+ENTRYPOINT ["/entrypoint.sh"]

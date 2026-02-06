@@ -24,7 +24,7 @@ TEST_TIMEOUT="${TEST_TIMEOUT:-10}"
 
 # Protocol priority for auto mode
 # Note: psiphon excluded - requires embedded server list, not supported in client mode
-PROTOCOL_PRIORITY=(reality hysteria2 trojan wireguard tor dnstt)
+PROTOCOL_PRIORITY=(reality hysteria2 trojan trusttunnel wireguard tor dnstt)
 
 # State
 CURRENT_PID=""
@@ -542,6 +542,71 @@ connect_dnstt() {
     fi
 }
 
+# Connect using TrustTunnel
+connect_trusttunnel() {
+    local config_file=""
+
+    for f in "$CONFIG_DIR"/trusttunnel.txt "$CONFIG_DIR"/trusttunnel.json; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+
+    if [[ -z "$config_file" ]]; then
+        log_error "No TrustTunnel config found"
+        return 1
+    fi
+
+    # Parse config
+    local endpoint="" username="" password=""
+
+    if [[ "$config_file" == *.json ]]; then
+        endpoint=$(jq -r '.endpoint // empty' "$config_file" 2>/dev/null || true)
+        username=$(jq -r '.username // empty' "$config_file" 2>/dev/null || true)
+        password=$(jq -r '.password // empty' "$config_file" 2>/dev/null || true)
+    else
+        # Parse text file - look for Endpoint:, Username:, Password: lines
+        endpoint=$(grep -i "^Endpoint:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        username=$(grep -i "^Username:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        password=$(grep -i "^Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+    fi
+
+    if [[ -z "$endpoint" ]] || [[ -z "$username" ]] || [[ -z "$password" ]]; then
+        log_error "Could not parse TrustTunnel config (missing endpoint/username/password)"
+        return 1
+    fi
+
+    log_debug "TrustTunnel config: endpoint=$endpoint username=$username"
+
+    if ! command -v trusttunnel_client >/dev/null 2>&1; then
+        log_error "trusttunnel_client not available"
+        return 1
+    fi
+
+    log_info "Starting TrustTunnel client..."
+    trusttunnel_client --endpoint "$endpoint" --username "$username" --password "$password" \
+        --socks-bind 0.0.0.0:$SOCKS_PORT &
+    CURRENT_PID=$!
+    CURRENT_PROTOCOL="trusttunnel"
+
+    sleep 5
+
+    if ! kill -0 $CURRENT_PID 2>/dev/null; then
+        log_error "trusttunnel_client failed to start"
+        return 1
+    fi
+
+    # Test connection
+    if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        EXIT_IP=$(curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
+        return 0
+    else
+        log_warn "Connection test failed for trusttunnel"
+        kill $CURRENT_PID 2>/dev/null || true
+        CURRENT_PID=""
+        return 1
+    fi
+}
+
 # Connect using Psiphon (standalone, doesn't need MoaV server)
 # NOTE: Not implemented - Psiphon tunnel-core requires embedded server lists
 # that are not publicly available. Use the official Psiphon apps instead:
@@ -629,6 +694,12 @@ connect_auto() {
                     return 0
                 fi
                 ;;
+            trusttunnel)
+                if connect_trusttunnel; then
+                    log_success "Connected via TrustTunnel"
+                    return 0
+                fi
+                ;;
             psiphon)
                 if connect_psiphon; then
                     log_success "Connected via Psiphon"
@@ -685,6 +756,9 @@ main() {
             ;;
         wireguard)
             connect_wireguard && connected=true
+            ;;
+        trusttunnel)
+            connect_trusttunnel && connected=true
             ;;
         psiphon)
             connect_psiphon && connected=true

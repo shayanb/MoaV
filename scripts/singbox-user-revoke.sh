@@ -52,6 +52,40 @@ mv "$TEMP_CONFIG" "$CONFIG_FILE"
 
 log_info "Removed $USERNAME from sing-box config"
 
+# Remove from TrustTunnel (if config exists)
+TRUSTTUNNEL_CREDS="configs/trusttunnel/credentials.toml"
+if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
+    if grep -q "username = \"$USERNAME\"" "$TRUSTTUNNEL_CREDS" 2>/dev/null; then
+        log_info "Removing $USERNAME from TrustTunnel..."
+
+        # Use awk to remove the credential block for the user
+        # The block starts with [[credentials]] followed by username and password
+        awk -v user="$USERNAME" '
+        BEGIN { skip=0; in_block=0; buffer="" }
+        /^\[\[credentials\]\]/ {
+            if (in_block && !skip) { print buffer }
+            in_block=1; skip=0; buffer=$0 "\n"; next
+        }
+        in_block {
+            buffer = buffer $0 "\n"
+            if (/^username = /) {
+                if (index($0, "\"" user "\"") > 0) { skip=1 }
+            }
+            if (/^$/ || /^\[/) {
+                if (!skip) { print buffer }
+                in_block=0; buffer=""
+                if (/^\[/) { print }
+            }
+            next
+        }
+        { print }
+        END { if (in_block && !skip) { printf "%s", buffer } }
+        ' "$TRUSTTUNNEL_CREDS" > "${TRUSTTUNNEL_CREDS}.tmp" && mv "${TRUSTTUNNEL_CREDS}.tmp" "$TRUSTTUNNEL_CREDS"
+
+        log_info "Removed $USERNAME from TrustTunnel credentials"
+    fi
+fi
+
 # Reload sing-box
 if docker compose ps sing-box --status running &>/dev/null; then
     log_info "Reloading sing-box..."
@@ -62,4 +96,12 @@ if docker compose ps sing-box --status running &>/dev/null; then
     fi
 fi
 
-log_info "User '$USERNAME' revoked from sing-box"
+# Reload TrustTunnel (if running)
+if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
+    if docker compose ps trusttunnel --status running &>/dev/null; then
+        log_info "Restarting TrustTunnel..."
+        docker compose restart trusttunnel
+    fi
+fi
+
+log_info "User '$USERNAME' revoked"

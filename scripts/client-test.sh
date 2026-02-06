@@ -902,6 +902,135 @@ test_dnstt() {
     wait $pid 2>/dev/null || true
 }
 
+# Test TrustTunnel
+test_trusttunnel() {
+    log_info "Testing TrustTunnel..."
+
+    local config_file=""
+    local detail=""
+
+    # Find TrustTunnel config
+    for f in "$CONFIG_DIR"/trusttunnel.txt "$CONFIG_DIR"/trusttunnel.json; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+
+    if [[ -z "$config_file" ]]; then
+        detail="No TrustTunnel config found in bundle"
+        log_warn "$detail"
+        RESULTS[trusttunnel]="skip"
+        DETAILS[trusttunnel]="$detail"
+        return
+    fi
+
+    log_debug "Using config: $config_file"
+
+    # Parse config
+    local endpoint="" username="" password=""
+
+    if [[ "$config_file" == *.json ]]; then
+        endpoint=$(jq -r '.endpoint // empty' "$config_file" 2>/dev/null || true)
+        username=$(jq -r '.username // empty' "$config_file" 2>/dev/null || true)
+        password=$(jq -r '.password // empty' "$config_file" 2>/dev/null || true)
+    else
+        # Parse text file - look for Endpoint:, Username:, Password: lines
+        endpoint=$(grep -i "^Endpoint:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        username=$(grep -i "^Username:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        password=$(grep -i "^Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+    fi
+
+    log_debug "Parsed: endpoint=$endpoint username=$username"
+
+    if [[ -z "$endpoint" ]] || [[ -z "$username" ]] || [[ -z "$password" ]]; then
+        detail="Could not parse TrustTunnel config (missing endpoint/username/password)"
+        log_error "$detail"
+        RESULTS[trusttunnel]="fail"
+        DETAILS[trusttunnel]="$detail"
+        return
+    fi
+
+    # Parse host:port from endpoint
+    local host="" port=""
+    if echo "$endpoint" | grep -q '^\['; then
+        # IPv6: [addr]:port format
+        host=$(echo "$endpoint" | sed 's/^\[\([^]]*\)\].*/\1/')
+        port=$(echo "$endpoint" | sed -n 's/.*\]:\([0-9]*\).*/\1/p')
+    else
+        # IPv4 or hostname: host:port format
+        host="${endpoint%:*}"
+        port="${endpoint##*:}"
+    fi
+    [[ -z "$port" ]] && port="4443"
+
+    # Check if trusttunnel_client is available
+    if ! command -v trusttunnel_client >/dev/null 2>&1; then
+        # Just validate config and test endpoint reachability
+        log_debug "trusttunnel_client not available, testing endpoint reachability..."
+
+        # Test endpoint reachability via TCP
+        if nc -z -w 3 "$host" "$port" 2>/dev/null || curl -sf --max-time 3 "https://${host}:${port}" -o /dev/null 2>/dev/null; then
+            log_success "TrustTunnel config valid, endpoint reachable: $endpoint"
+            RESULTS[trusttunnel]="pass"
+            DETAILS[trusttunnel]="Config valid, endpoint $host:$port reachable (client not installed for full test)"
+        else
+            log_warn "TrustTunnel config valid, endpoint may not be reachable: $endpoint"
+            RESULTS[trusttunnel]="warn"
+            DETAILS[trusttunnel]="Config valid, endpoint $host:$port not reachable (may be blocked)"
+        fi
+        return
+    fi
+
+    # Full test with trusttunnel_client
+    local error_log="$TEMP_DIR/trusttunnel-error.log"
+
+    log_debug "Starting trusttunnel_client..."
+    # TrustTunnel client creates a local SOCKS proxy
+    trusttunnel_client --endpoint "$endpoint" --username "$username" --password "$password" \
+        --socks-bind 127.0.0.1:10804 2>"$error_log" &
+    local pid=$!
+    sleep 5
+
+    if ! kill -0 $pid 2>/dev/null; then
+        detail="trusttunnel_client failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
+            detail="trusttunnel error: $error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[trusttunnel]="fail"
+        DETAILS[trusttunnel]="$detail"
+        return
+    fi
+
+    log_debug "trusttunnel_client running (PID $pid), testing connectivity..."
+
+    if curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        local exit_ip=""
+        exit_ip=$(curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "TrustTunnel connection successful (exit IP: $exit_ip)"
+            RESULTS[trusttunnel]="pass"
+            DETAILS[trusttunnel]="Connected via TrustTunnel, exit IP: $exit_ip"
+        else
+            log_success "TrustTunnel connection successful"
+            RESULTS[trusttunnel]="pass"
+            DETAILS[trusttunnel]="Connected via TrustTunnel"
+        fi
+    else
+        detail="Connection test failed"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[trusttunnel]="fail"
+        DETAILS[trusttunnel]="$detail"
+    fi
+
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
+}
+
 # =============================================================================
 # Output Functions
 # =============================================================================
@@ -937,7 +1066,7 @@ output_json() {
 EOF
 
     local first=true
-    for protocol in reality trojan hysteria2 wireguard dnstt; do
+    for protocol in reality trojan hysteria2 wireguard dnstt trusttunnel; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             [[ "$first" != "true" ]] && echo ","
             first=false
@@ -968,7 +1097,7 @@ output_human() {
     echo ""
     echo "───────────────────────────────────────────────────────────────"
 
-    for protocol in reality trojan hysteria2 wireguard dnstt; do
+    for protocol in reality trojan hysteria2 wireguard dnstt trusttunnel; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             local status="${RESULTS[$protocol]}"
             local detail="${DETAILS[$protocol]:-}"
@@ -1007,6 +1136,7 @@ main() {
     test_hysteria2
     test_wireguard
     test_dnstt
+    test_trusttunnel
 
     # Output results
     if [[ "${JSON_OUTPUT:-false}" == "true" ]]; then
