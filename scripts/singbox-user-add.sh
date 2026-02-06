@@ -259,10 +259,11 @@ EOF
 TrustTunnel Configuration for $USERNAME
 ======================================
 
-Endpoint: ${DOMAIN}:4443
-Server IP: ${SERVER_IP}
+IP Address: ${SERVER_IP}:4443
+Domain: ${DOMAIN}
 Username: ${USERNAME}
 Password: ${USER_PASSWORD}
+DNS Servers: tls://1.1.1.1, tls://8.8.8.8
 
 CLI Client:
 -----------
@@ -272,7 +273,7 @@ CLI Client:
 Mobile/Desktop App:
 -------------------
 1. Download TrustTunnel from app store or https://trusttunnel.org/
-2. Add new VPN with the endpoint, username, and password above
+2. Add new VPN with the settings above
 3. Connect
 
 Note: TrustTunnel supports HTTP/2 and HTTP/3 (QUIC) transports,
@@ -281,10 +282,11 @@ EOF
 
     cat > "$OUTPUT_DIR/trusttunnel.json" <<EOF
 {
-  "endpoint": "${DOMAIN}:4443",
-  "server_ip": "${SERVER_IP}",
+  "ip_address": "${SERVER_IP}:4443",
+  "domain": "${DOMAIN}",
   "username": "${USERNAME}",
-  "password": "${USER_PASSWORD}"
+  "password": "${USER_PASSWORD}",
+  "dns_servers": ["tls://1.1.1.1", "tls://8.8.8.8"]
 }
 EOF
 
@@ -347,9 +349,11 @@ fi
 
 if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
     echo "TrustTunnel:"
-    echo "  Endpoint: ${DOMAIN}:4443"
+    echo "  IP Address: ${SERVER_IP}:4443"
+    echo "  Domain: ${DOMAIN}"
     echo "  Username: ${USERNAME}"
     echo "  Password: ${USER_PASSWORD}"
+    echo "  DNS Servers: tls://1.1.1.1, tls://8.8.8.8"
     echo ""
 fi
 

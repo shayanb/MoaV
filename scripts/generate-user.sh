@@ -309,10 +309,11 @@ EOF
 TrustTunnel Configuration for $USER_ID
 ======================================
 
-Endpoint: ${DOMAIN}:4443
-Server IP: ${SERVER_IP}
+IP Address: ${SERVER_IP}:4443
+Domain: ${DOMAIN}
 Username: ${USER_ID}
 Password: ${USER_PASSWORD}
+DNS Servers: tls://1.1.1.1, tls://8.8.8.8
 
 CLI Client:
 -----------
@@ -322,7 +323,7 @@ CLI Client:
 Mobile/Desktop App:
 -------------------
 1. Download TrustTunnel from app store or https://trusttunnel.org/
-2. Add new VPN with the endpoint, username, and password above
+2. Add new VPN with the settings above
 3. Connect
 
 Note: TrustTunnel supports HTTP/2 and HTTP/3 (QUIC) transports,
@@ -332,10 +333,11 @@ EOF
     # Generate JSON config for programmatic use
     cat > "$OUTPUT_DIR/trusttunnel.json" <<EOF
 {
-  "endpoint": "${DOMAIN}:4443",
-  "server_ip": "${SERVER_IP}",
+  "ip_address": "${SERVER_IP}:4443",
+  "domain": "${DOMAIN}",
   "username": "${USER_ID}",
-  "password": "${USER_PASSWORD}"
+  "password": "${USER_PASSWORD}",
+  "dns_servers": ["tls://1.1.1.1", "tls://8.8.8.8"]
 }
 EOF
 
@@ -416,9 +418,10 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{DNSTT_DOMAIN}}|$DNSTT_DOMAIN|g" "$OUTPUT_HTML"
     sed -i "s|{{DNSTT_PUBKEY}}|$DNSTT_PUBKEY|g" "$OUTPUT_HTML"
 
-    # TrustTunnel password (same as user password)
+    # TrustTunnel password (same as user password) - escape special chars
     if [[ -n "${USER_PASSWORD:-}" ]]; then
-        sed -i "s|{{TRUSTTUNNEL_PASSWORD}}|$USER_PASSWORD|g" "$OUTPUT_HTML"
+        local escaped_pw=$(printf '%s' "$USER_PASSWORD" | sed -e 's/[&\\/]/\\&/g')
+        sed -i "s|{{TRUSTTUNNEL_PASSWORD}}|${escaped_pw}|g" "$OUTPUT_HTML"
     else
         sed -i "s|{{TRUSTTUNNEL_PASSWORD}}|See trusttunnel.txt|g" "$OUTPUT_HTML"
     fi
@@ -458,30 +461,15 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
 
-    # Config values (need special handling for special characters)
-    # Write value to temp file to avoid shell escaping issues
+    # Config values (need special handling for special characters like & in URLs)
+    # Use sed with proper escaping for the replacement value
     replace_placeholder() {
         local placeholder="$1"
         local value="$2"
-        local placeholder_len=${#placeholder}
-        local temp_value_file=$(mktemp)
-        printf '%s' "$value" > "$temp_value_file"
-        awk -v placeholder="$placeholder" -v plen="$placeholder_len" -v valfile="$temp_value_file" '
-        BEGIN {
-            val = ""
-            while ((getline line < valfile) > 0) {
-                if (val != "") val = val "\n"
-                val = val line
-            }
-            close(valfile)
-        }
-        {
-            while ((i = index($0, placeholder)) > 0) {
-                $0 = substr($0, 1, i-1) val substr($0, i+plen)
-            }
-            print
-        }' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
-        rm -f "$temp_value_file"
+        # Escape special sed replacement characters: & \ /
+        # & means "matched pattern" in sed replacement, so escape it
+        local escaped_value=$(printf '%s' "$value" | sed -e 's/[&\\/]/\\&/g')
+        sed -i "s|${placeholder}|${escaped_value}|g" "$OUTPUT_HTML"
     }
 
     if [[ -n "$CONFIG_REALITY" ]]; then
