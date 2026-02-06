@@ -686,68 +686,109 @@ do_uninstall() {
     if command -v docker &>/dev/null && [[ -f "$SCRIPT_DIR/docker-compose.yml" ]]; then
         info "Stopping Docker containers..."
         cd "$SCRIPT_DIR"
+
+        # List running containers before removing
+        local containers
+        containers=$(docker compose --profile all ps -q 2>/dev/null || true)
+        if [[ -n "$containers" ]]; then
+            docker compose --profile all ps --format "  - {{.Name}}" 2>/dev/null || true
+        fi
+
         if [[ "$wipe" == "true" ]]; then
             # Remove containers AND volumes
             docker compose --profile all down -v --remove-orphans 2>/dev/null || true
+            echo "  Removed containers and volumes"
         else
             # Remove containers only, keep volumes
             docker compose --profile all down --remove-orphans 2>/dev/null || true
+            echo "  Removed containers (volumes preserved)"
         fi
         success "Containers removed"
     fi
 
     # Wipe all generated files if --wipe
     if [[ "$wipe" == "true" ]]; then
+        echo ""
         info "Removing configuration files..."
 
         # Remove .env
-        [[ -f "$SCRIPT_DIR/.env" ]] && rm -f "$SCRIPT_DIR/.env"
+        if [[ -f "$SCRIPT_DIR/.env" ]]; then
+            rm -f "$SCRIPT_DIR/.env"
+            echo "  - .env"
+        fi
 
         # Remove generated sing-box config
-        [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]] && rm -f "$SCRIPT_DIR/configs/sing-box/config.json"
+        if [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]]; then
+            rm -f "$SCRIPT_DIR/configs/sing-box/config.json"
+            echo "  - configs/sing-box/config.json"
+        fi
 
         # Remove generated dnstt files
-        rm -f "$SCRIPT_DIR/configs/dnstt/server.conf" 2>/dev/null
-        rm -f "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null
-        rm -f "$SCRIPT_DIR/configs/dnstt/"*.key 2>/dev/null
-        rm -f "$SCRIPT_DIR/configs/dnstt/"*.key.hex 2>/dev/null
+        if ls "$SCRIPT_DIR/configs/dnstt/"*.key "$SCRIPT_DIR/configs/dnstt/server.conf" "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null | head -1 >/dev/null; then
+            rm -f "$SCRIPT_DIR/configs/dnstt/server.conf" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/dnstt/"*.key 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/dnstt/"*.key.hex 2>/dev/null
+            echo "  - configs/dnstt/*"
+        fi
 
         # Remove generated WireGuard files
-        rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" 2>/dev/null
-        rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf."* 2>/dev/null
-        rm -f "$SCRIPT_DIR/configs/wireguard/server.pub" 2>/dev/null
-        rm -f "$SCRIPT_DIR/configs/wireguard/server.key" 2>/dev/null
-        rm -rf "$SCRIPT_DIR/configs/wireguard/wg_confs/" 2>/dev/null
-        rm -rf "$SCRIPT_DIR/configs/wireguard/coredns/" 2>/dev/null
-        rm -rf "$SCRIPT_DIR/configs/wireguard/templates/" 2>/dev/null
-        rm -rf "$SCRIPT_DIR/configs/wireguard/peer"* 2>/dev/null
+        if [[ -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" ]] || [[ -d "$SCRIPT_DIR/configs/wireguard/wg_confs" ]]; then
+            rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf."* 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/wireguard/server.pub" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/wireguard/server.key" 2>/dev/null
+            rm -rf "$SCRIPT_DIR/configs/wireguard/wg_confs/" 2>/dev/null
+            rm -rf "$SCRIPT_DIR/configs/wireguard/coredns/" 2>/dev/null
+            rm -rf "$SCRIPT_DIR/configs/wireguard/templates/" 2>/dev/null
+            rm -rf "$SCRIPT_DIR/configs/wireguard/peer"* 2>/dev/null
+            echo "  - configs/wireguard/*"
+        fi
 
         # Remove generated TrustTunnel files
-        rm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
-        rm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml" 2>/dev/null
-        rm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml" 2>/dev/null
+        if [[ -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" ]]; then
+            rm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml" 2>/dev/null
+            echo "  - configs/trusttunnel/*"
+        fi
 
         # Remove outputs (bundles, keys)
-        if [[ -d "$SCRIPT_DIR/outputs" ]]; then
-            # Keep the directory but remove contents (preserve .gitkeep)
+        if [[ -d "$SCRIPT_DIR/outputs" ]] && [[ -n "$(ls -A "$SCRIPT_DIR/outputs" 2>/dev/null | grep -v .gitkeep)" ]]; then
+            local bundle_count
+            bundle_count=$(find "$SCRIPT_DIR/outputs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
             find "$SCRIPT_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
+            echo "  - outputs/ ($bundle_count user bundles)"
+        fi
+
+        # Remove state directory (user credentials)
+        if [[ -d "$SCRIPT_DIR/state" ]]; then
+            local user_count
+            user_count=$(find "$SCRIPT_DIR/state/users" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+            rm -rf "$SCRIPT_DIR/state/" 2>/dev/null
+            echo "  - state/ ($user_count users)"
         fi
 
         # Remove certbot certificates
-        rm -rf "$SCRIPT_DIR/certbot/" 2>/dev/null
+        if [[ -d "$SCRIPT_DIR/certbot" ]]; then
+            rm -rf "$SCRIPT_DIR/certbot/" 2>/dev/null
+            echo "  - certbot/"
+        fi
 
         success "Configuration files removed"
     fi
 
     # Remove global symlink
     if [[ -e "$INSTALL_PATH" ]]; then
+        echo ""
         if [[ -L "$INSTALL_PATH" ]]; then
-            info "Removing global command at $INSTALL_PATH"
+            info "Removing global command..."
             if [[ -w "$(dirname "$INSTALL_PATH")" ]]; then
                 rm -f "$INSTALL_PATH"
             else
                 sudo rm -f "$INSTALL_PATH"
             fi
+            echo "  - $INSTALL_PATH"
             success "Global command removed"
         else
             warn "$INSTALL_PATH is not a symlink, not removing"
@@ -758,15 +799,15 @@ do_uninstall() {
     if [[ "$wipe" == "true" ]]; then
         success "MoaV completely uninstalled"
         echo ""
-        echo "To reinstall fresh:"
-        echo "  cd $SCRIPT_DIR"
-        echo "  cp .env.example .env"
-        echo "  ./moav.sh"
+        echo "To reinstall:"
+        echo "  curl -fsSL moav.sh/install.sh | bash"
+        echo ""
+        echo "Or locally:"
+        echo "  cp .env.example .env && ./moav.sh"
     else
         success "MoaV uninstalled (data preserved)"
         echo ""
         echo "To reinstall with existing data:"
-        echo "  cd $SCRIPT_DIR"
         echo "  ./moav.sh install"
         echo "  moav start"
     fi
