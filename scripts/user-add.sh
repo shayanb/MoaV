@@ -179,6 +179,15 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_WIREGUARD=$(cat "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || echo "")
     CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
 
+    # Read user password from trusttunnel.json or credentials
+    if [[ -f "$OUTPUT_DIR/trusttunnel.json" ]]; then
+        USER_PASSWORD=$(jq -r '.password // empty' "$OUTPUT_DIR/trusttunnel.json" 2>/dev/null || echo "")
+    elif [[ -f "state/users/$USERNAME/credentials.env" ]]; then
+        USER_PASSWORD=$(grep "^USER_PASSWORD=" "state/users/$USERNAME/credentials.env" 2>/dev/null | cut -d= -f2 || echo "")
+    else
+        USER_PASSWORD=""
+    fi
+
     # Get dnstt info
     DNSTT_DOMAIN="${DNSTT_SUBDOMAIN:-t}.${DOMAIN}"
     DNSTT_PUBKEY=$(cat "outputs/dnstt/server.pub" 2>/dev/null || echo "")
@@ -210,6 +219,14 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i.bak "s|{{DNSTT_DOMAIN}}|$DNSTT_DOMAIN|g" "$OUTPUT_HTML"
     sed -i.bak "s|{{DNSTT_PUBKEY}}|$DNSTT_PUBKEY|g" "$OUTPUT_HTML"
 
+    # TrustTunnel password (escape special chars)
+    if [[ -n "${USER_PASSWORD:-}" ]]; then
+        ESCAPED_PW=$(printf '%s' "$USER_PASSWORD" | sed -e 's/[&\|]/\\&/g')
+        sed -i.bak "s|{{TRUSTTUNNEL_PASSWORD}}|${ESCAPED_PW}|g" "$OUTPUT_HTML"
+    else
+        sed -i.bak "s|{{TRUSTTUNNEL_PASSWORD}}|See trusttunnel.txt|g" "$OUTPUT_HTML"
+    fi
+
     # Remove demo notice placeholders (not a demo user)
     sed -i.bak "s|{{DEMO_NOTICE_EN}}||g" "$OUTPUT_HTML"
     sed -i.bak "s|{{DEMO_NOTICE_FA}}||g" "$OUTPUT_HTML"
@@ -221,43 +238,45 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i.bak "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
     sed -i.bak "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
 
-    # Config values (escape & for awk)
-    escape_for_awk() {
-        echo "$1" | sed 's/&/\\&/g'
+    # Config values - use sed with proper escaping for special characters
+    # In sed replacement: & means "matched pattern", \ is escape char
+    # We escape: & -> \&, \ -> \\, | -> \| (since we use | as delimiter)
+    escape_for_sed() {
+        printf '%s' "$1" | sed -e 's/[&\|]/\\&/g'
     }
 
     if [[ -n "$CONFIG_REALITY" ]]; then
-        ESCAPED=$(escape_for_awk "$CONFIG_REALITY")
-        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_REALITY\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        ESCAPED=$(escape_for_sed "$CONFIG_REALITY")
+        sed -i.bak "s|{{CONFIG_REALITY}}|${ESCAPED}|g" "$OUTPUT_HTML"
     else
         sed -i.bak "s|{{CONFIG_REALITY}}|No Reality config available|g" "$OUTPUT_HTML"
     fi
 
     if [[ -n "$CONFIG_HYSTERIA2" ]]; then
-        ESCAPED=$(escape_for_awk "$CONFIG_HYSTERIA2")
-        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_HYSTERIA2\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        ESCAPED=$(escape_for_sed "$CONFIG_HYSTERIA2")
+        sed -i.bak "s|{{CONFIG_HYSTERIA2}}|${ESCAPED}|g" "$OUTPUT_HTML"
     else
         sed -i.bak "s|{{CONFIG_HYSTERIA2}}|No Hysteria2 config available|g" "$OUTPUT_HTML"
     fi
 
     if [[ -n "$CONFIG_TROJAN" ]]; then
-        ESCAPED=$(escape_for_awk "$CONFIG_TROJAN")
-        awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_TROJAN\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        ESCAPED=$(escape_for_sed "$CONFIG_TROJAN")
+        sed -i.bak "s|{{CONFIG_TROJAN}}|${ESCAPED}|g" "$OUTPUT_HTML"
     else
         sed -i.bak "s|{{CONFIG_TROJAN}}|No Trojan config available|g" "$OUTPUT_HTML"
     fi
 
-    # WireGuard configs are multiline
+    # WireGuard configs (single line in HTML, original is multiline)
     if [[ -n "$CONFIG_WIREGUARD" ]]; then
-        ESCAPED=$(echo "$CONFIG_WIREGUARD" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-        awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        ESCAPED=$(escape_for_sed "$CONFIG_WIREGUARD")
+        sed -i.bak "s|{{CONFIG_WIREGUARD}}|${ESCAPED}|g" "$OUTPUT_HTML"
     else
         sed -i.bak "s|{{CONFIG_WIREGUARD}}|No WireGuard config available|g" "$OUTPUT_HTML"
     fi
 
     if [[ -n "$CONFIG_WIREGUARD_WSTUNNEL" ]]; then
-        ESCAPED=$(echo "$CONFIG_WIREGUARD_WSTUNNEL" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-        awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD_WSTUNNEL\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+        ESCAPED=$(escape_for_sed "$CONFIG_WIREGUARD_WSTUNNEL")
+        sed -i.bak "s|{{CONFIG_WIREGUARD_WSTUNNEL}}|${ESCAPED}|g" "$OUTPUT_HTML"
     else
         sed -i.bak "s|{{CONFIG_WIREGUARD_WSTUNNEL}}|No WireGuard-wstunnel config available|g" "$OUTPUT_HTML"
     fi
