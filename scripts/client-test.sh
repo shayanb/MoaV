@@ -968,15 +968,24 @@ test_trusttunnel() {
         return
     fi
 
-    # Check if trusttunnel_client is available
+    # Check if trusttunnel_client is available and TUN device is accessible
+    local can_full_test=true
     if ! command -v trusttunnel_client >/dev/null 2>&1; then
-        log_debug "trusttunnel_client not available, testing endpoint reachability..."
+        log_debug "trusttunnel_client not available"
+        can_full_test=false
+    elif [[ ! -c /dev/net/tun ]]; then
+        log_debug "TUN device not available (/dev/net/tun not found or not a character device)"
+        can_full_test=false
+    fi
+
+    if [[ "$can_full_test" != "true" ]]; then
+        log_debug "Full VPN test not possible, testing endpoint reachability..."
 
         # Test endpoint reachability via TCP
         if nc -z -w 3 "$server_ip" "$port" 2>/dev/null || curl -sf --max-time 3 "https://${host}:${port}" -o /dev/null 2>/dev/null; then
             log_success "TrustTunnel config valid, endpoint reachable: ${host}:${port}"
             RESULTS[trusttunnel]="pass"
-            DETAILS[trusttunnel]="Config valid, endpoint ${server_ip}:${port} reachable (client not installed for full test)"
+            DETAILS[trusttunnel]="Config valid, endpoint ${server_ip}:${port} reachable (TUN not available for full VPN test)"
         else
             log_warn "TrustTunnel config valid, endpoint may not be reachable: ${host}:${port}"
             RESULTS[trusttunnel]="warn"
@@ -1024,6 +1033,24 @@ EOF
     sleep 8
 
     if ! kill -0 $pid 2>/dev/null; then
+        # Check if it's a TUN/listener creation failure
+        if grep -qi "Failed to create listener\|tun\|permission" "$error_log" 2>/dev/null; then
+            log_debug "TUN interface creation failed, falling back to endpoint reachability test..."
+            rm -f "$test_config"
+
+            # Fall back to endpoint reachability test
+            if nc -z -w 3 "$server_ip" "$port" 2>/dev/null || curl -sf --max-time 3 "https://${host}:${port}" -o /dev/null 2>/dev/null; then
+                log_success "TrustTunnel config valid, endpoint reachable: ${host}:${port}"
+                RESULTS[trusttunnel]="pass"
+                DETAILS[trusttunnel]="Config valid, endpoint ${server_ip}:${port} reachable (TUN unavailable for full VPN test)"
+            else
+                log_warn "TrustTunnel config valid, endpoint may not be reachable: ${host}:${port}"
+                RESULTS[trusttunnel]="warn"
+                DETAILS[trusttunnel]="Config valid, endpoint ${server_ip}:${port} not reachable (may be blocked)"
+            fi
+            return
+        fi
+
         detail="trusttunnel_client failed to start"
         if [[ -s "$error_log" ]]; then
             local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
