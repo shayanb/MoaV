@@ -683,9 +683,9 @@ do_uninstall() {
     echo ""
 
     # Stop and remove containers
-    if command -v docker &>/dev/null && [[ -f "$MOAV_DIR/docker-compose.yml" ]]; then
+    if command -v docker &>/dev/null && [[ -f "$SCRIPT_DIR/docker-compose.yml" ]]; then
         info "Stopping Docker containers..."
-        cd "$MOAV_DIR"
+        cd "$SCRIPT_DIR"
         if [[ "$wipe" == "true" ]]; then
             # Remove containers AND volumes
             docker compose --profile all down -v --remove-orphans 2>/dev/null || true
@@ -701,40 +701,40 @@ do_uninstall() {
         info "Removing configuration files..."
 
         # Remove .env
-        [[ -f "$MOAV_DIR/.env" ]] && rm -f "$MOAV_DIR/.env"
+        [[ -f "$SCRIPT_DIR/.env" ]] && rm -f "$SCRIPT_DIR/.env"
 
         # Remove generated sing-box config
-        [[ -f "$MOAV_DIR/configs/sing-box/config.json" ]] && rm -f "$MOAV_DIR/configs/sing-box/config.json"
+        [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]] && rm -f "$SCRIPT_DIR/configs/sing-box/config.json"
 
         # Remove generated dnstt files
-        rm -f "$MOAV_DIR/configs/dnstt/server.conf" 2>/dev/null
-        rm -f "$MOAV_DIR/configs/dnstt/server.pub" 2>/dev/null
-        rm -f "$MOAV_DIR/configs/dnstt/"*.key 2>/dev/null
-        rm -f "$MOAV_DIR/configs/dnstt/"*.key.hex 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/dnstt/server.conf" 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/dnstt/"*.key 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/dnstt/"*.key.hex 2>/dev/null
 
         # Remove generated WireGuard files
-        rm -f "$MOAV_DIR/configs/wireguard/wg0.conf" 2>/dev/null
-        rm -f "$MOAV_DIR/configs/wireguard/wg0.conf."* 2>/dev/null
-        rm -f "$MOAV_DIR/configs/wireguard/server.pub" 2>/dev/null
-        rm -f "$MOAV_DIR/configs/wireguard/server.key" 2>/dev/null
-        rm -rf "$MOAV_DIR/configs/wireguard/wg_confs/" 2>/dev/null
-        rm -rf "$MOAV_DIR/configs/wireguard/coredns/" 2>/dev/null
-        rm -rf "$MOAV_DIR/configs/wireguard/templates/" 2>/dev/null
-        rm -rf "$MOAV_DIR/configs/wireguard/peer"* 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf."* 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/wireguard/server.pub" 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/wireguard/server.key" 2>/dev/null
+        rm -rf "$SCRIPT_DIR/configs/wireguard/wg_confs/" 2>/dev/null
+        rm -rf "$SCRIPT_DIR/configs/wireguard/coredns/" 2>/dev/null
+        rm -rf "$SCRIPT_DIR/configs/wireguard/templates/" 2>/dev/null
+        rm -rf "$SCRIPT_DIR/configs/wireguard/peer"* 2>/dev/null
 
         # Remove generated TrustTunnel files
-        rm -f "$MOAV_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
-        rm -f "$MOAV_DIR/configs/trusttunnel/hosts.toml" 2>/dev/null
-        rm -f "$MOAV_DIR/configs/trusttunnel/credentials.toml" 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml" 2>/dev/null
+        rm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml" 2>/dev/null
 
         # Remove outputs (bundles, keys)
-        if [[ -d "$MOAV_DIR/outputs" ]]; then
+        if [[ -d "$SCRIPT_DIR/outputs" ]]; then
             # Keep the directory but remove contents (preserve .gitkeep)
-            find "$MOAV_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
+            find "$SCRIPT_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
         fi
 
         # Remove certbot certificates
-        rm -rf "$MOAV_DIR/certbot/" 2>/dev/null
+        rm -rf "$SCRIPT_DIR/certbot/" 2>/dev/null
 
         success "Configuration files removed"
     fi
@@ -759,14 +759,14 @@ do_uninstall() {
         success "MoaV completely uninstalled"
         echo ""
         echo "To reinstall fresh:"
-        echo "  cd $MOAV_DIR"
+        echo "  cd $SCRIPT_DIR"
         echo "  cp .env.example .env"
         echo "  ./moav.sh"
     else
         success "MoaV uninstalled (data preserved)"
         echo ""
         echo "To reinstall with existing data:"
-        echo "  cd $MOAV_DIR"
+        echo "  cd $SCRIPT_DIR"
         echo "  ./moav.sh install"
         echo "  moav start"
     fi
