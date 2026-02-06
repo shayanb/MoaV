@@ -476,7 +476,34 @@ If you see `lookup cdn.yourdomain.com: operation was canceled`:
 1. Verify port 2082 is open: `ufw allow 2082/tcp`
 2. Check sing-box is listening: `docker compose logs sing-box | grep vless-ws`
 
-**Cloudflare error (520, 521, etc.):**
+**Cloudflare 521 "Web server is down":**
+
+This usually means Cloudflare can't reach your origin on the correct port.
+
+1. **Check Origin Rule exists** (most common cause):
+   - Go to Cloudflare → Rules → Origin Rules
+   - You need a rule that redirects `cdn.yourdomain.com` to port 2082
+   - Without this, Cloudflare connects to port 80 (wrong port)
+   - See [DNS.md Cloudflare section](DNS.md#cloudflare) for setup instructions
+
+2. **Verify port 2082 is reachable:**
+   ```bash
+   # From another machine, test direct access to your server
+   curl -s -o /dev/null -w "%{http_code}" http://YOUR_SERVER_IP:2082/ws
+   # Should return 400 (sing-box responding)
+   ```
+
+3. **Check firewall:**
+   ```bash
+   ufw allow 2082/tcp
+   ```
+
+4. **Verify sing-box is listening:**
+   ```bash
+   docker compose logs sing-box | grep -i "vless-ws"
+   ```
+
+**Cloudflare 520 "Unknown error":**
 1. Set SSL/TLS mode to **Flexible** in Cloudflare dashboard
 2. Verify sing-box container is running
 3. Check sing-box config has `vless-ws-in` inbound on port 2082

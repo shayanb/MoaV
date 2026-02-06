@@ -411,10 +411,19 @@ Client --HTTPS:443--> Cloudflare CDN --HTTP:2082--> Your Server
    - Set Proxy status: **Proxied** (orange cloud)
    - Keep your main `@` record as **DNS only** (gray cloud)
 
-2. **Set Cloudflare SSL Mode:**
+2. **Create Origin Rule (Required):**
+   - Go to **Rules** → **Origin Rules** → **Create rule**
+   - Rule name: `CDN to port 2082`
+   - Match: **Hostname** equals `cdn.yourdomain.com`
+   - Action: **Destination Port** → Rewrite to `2082`
+   - Click **Deploy**
+
+   > This is required because Cloudflare Flexible SSL connects to port 80 by default, but MoaV listens on 2082.
+
+3. **Set Cloudflare SSL Mode:**
    - SSL/TLS → Overview → Set to **Flexible**
 
-3. **Configure MoaV:**
+4. **Configure MoaV:**
    ```bash
    # In .env
    CDN_DOMAIN=cdn.yourdomain.com
@@ -422,7 +431,7 @@ Client --HTTPS:443--> Cloudflare CDN --HTTP:2082--> Your Server
    PORT_CDN=2082
    ```
 
-4. **Apply Changes:**
+5. **Apply Changes:**
    ```bash
    # If already bootstrapped:
    moav regenerate-users
@@ -430,9 +439,15 @@ Client --HTTPS:443--> Cloudflare CDN --HTTP:2082--> Your Server
    # Or for new setup, just run bootstrap normally
    ```
 
-5. **Open Firewall:**
+6. **Open Firewall:**
    ```bash
    ufw allow 2082/tcp
+   ```
+
+7. **Verify CDN Works:**
+   ```bash
+   # Should return 400 (not 521)
+   curl -s -o /dev/null -w "%{http_code}" https://cdn.yourdomain.com/ws
    ```
 
 User bundles will now include `cdn-vless-ws.txt` with Cloudflare-routed connection.

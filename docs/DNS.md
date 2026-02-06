@@ -106,7 +106,39 @@ TTL: 300
 | NS | t | dns.yourdomain.com | - |
 | A | cdn | YOUR_IP | **Proxied** (orange cloud) |
 
-> The `cdn` record is optional — only needed if you want CDN-fronted VLESS+WS. See [CDN Setup](SETUP.md#cdn-fronted-vlesswebsocket-cloudflare) for details. All other records **must** be DNS only (gray cloud).
+> The `cdn` record is optional — only needed if you want CDN-fronted VLESS+WS. All other records **must** be DNS only (gray cloud).
+
+#### CDN Origin Rule (Required for CDN Mode)
+
+If you added the `cdn` record above, you **must** also create an Origin Rule to redirect traffic to port 2082. By default, Cloudflare's Flexible SSL connects to origin port 80, but MoaV's CDN listener runs on port 2082.
+
+**Step 1: Go to Rules → Origin Rules**
+
+1. In Cloudflare Dashboard, select your domain
+2. Navigate to **Rules** → **Origin Rules**
+3. Click **Create rule**
+
+**Step 2: Configure the Rule**
+
+| Field | Value |
+|-------|-------|
+| Rule name | `CDN to port 2082` |
+| When incoming requests match... | **Hostname** equals `cdn.yourdomain.com` |
+| Then... | **Destination Port** → Rewrite to `2082` |
+
+**Step 3: Deploy**
+
+Click **Deploy** to activate the rule.
+
+**Verify it works:**
+```bash
+# Should return HTTP 400 (sing-box responding, not Cloudflare 521)
+curl -s -o /dev/null -w "%{http_code}" https://cdn.yourdomain.com/ws
+```
+
+A `400` response means sing-box is receiving the request. A `521` means the Origin Rule is missing or misconfigured.
+
+See [CDN Setup Guide](SETUP.md#cdn-fronted-vlesswebsocket-cloudflare) for complete CDN configuration.
 
 ### Namecheap
 
