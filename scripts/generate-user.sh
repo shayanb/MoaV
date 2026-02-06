@@ -376,6 +376,13 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{DNSTT_DOMAIN}}|$DNSTT_DOMAIN|g" "$OUTPUT_HTML"
     sed -i "s|{{DNSTT_PUBKEY}}|$DNSTT_PUBKEY|g" "$OUTPUT_HTML"
 
+    # TrustTunnel password (same as user password)
+    if [[ -n "${USER_PASSWORD:-}" ]]; then
+        sed -i "s|{{TRUSTTUNNEL_PASSWORD}}|$USER_PASSWORD|g" "$OUTPUT_HTML"
+    else
+        sed -i "s|{{TRUSTTUNNEL_PASSWORD}}|See trusttunnel.txt|g" "$OUTPUT_HTML"
+    fi
+
     # Demo user notice (only for bootstrap demouser)
     if [[ "${IS_DEMO_USER:-false}" == "true" ]]; then
         # Build list of disabled services

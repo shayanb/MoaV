@@ -587,9 +587,10 @@
                 <li><a href="#en" onclick="scrollToSection('hysteria2-en')">2. Hysteria2 <span class="toc-badge badge-secondary">Fast</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('trojan-en')">3. Trojan <span class="toc-badge badge-secondary">Backup</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('wireguard-en')">4. WireGuard <span class="toc-badge badge-secondary">Full VPN</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">5. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('tor-en')">6. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('psiphon-en')">7. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('trusttunnel-en')">5. TrustTunnel <span class="toc-badge badge-secondary">Stealth VPN</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">6. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('tor-en')">7. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('psiphon-en')">8. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('apps-en')">Recommended Apps</a></li>
             </ul>
         </div>
@@ -777,11 +778,66 @@
             </div>
         </div>
 
+        <!-- TrustTunnel -->
+        <div class="protocol-section" id="trusttunnel-en">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>5. TrustTunnel</h2>
+                    <span class="protocol-badge badge-secondary">Stealth VPN</span>
+                </div>
+                <span class="protocol-port">Port 4443/tcp+udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">Modern VPN protocol by AdGuard that looks like regular HTTPS traffic. Uses HTTP/2 and HTTP/3 (QUIC) for stealth.</p>
+
+                <div class="extra-section">
+                    <h4>When to use TrustTunnel</h4>
+                    <ul>
+                        <li>Other protocols are being detected and blocked</li>
+                        <li>You need a full VPN (all traffic routed)</li>
+                        <li>Your network actively inspects traffic patterns</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>Download TrustTunnel Client</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/trusttunnel/id6740670603" target="_blank">TrustTunnel on App Store</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=com.AnyVPN.trusttunnel" target="_blank">TrustTunnel on Play Store</a> or <a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">Direct APK</a></li>
+                        <li><strong>Windows/macOS/Linux:</strong> <a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">GitHub Releases</a></li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>How to connect</h4>
+                    <ol>
+                        <li>Download and install TrustTunnel client for your platform</li>
+                        <li>Open the app and tap "Add Server" or "+"</li>
+                        <li>Enter the connection details below</li>
+                        <li>Save and connect</li>
+                    </ol>
+                </div>
+
+                <div class="config-box">
+                    <h4>Server Endpoint</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{DOMAIN}}:4443</div>
+                </div>
+                <div class="config-box">
+                    <h4>Username</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{USERNAME}}</div>
+                </div>
+                <div class="config-box">
+                    <h4>Password</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{TRUSTTUNNEL_PASSWORD}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- DNS Tunnel -->
         <div class="protocol-section" id="dns-tunnel-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>5. DNS Tunnel</h2>
+                    <h2>6. DNS Tunnel</h2>
                     <span class="protocol-badge badge-fallback">Last Resort</span>
                 </div>
                 <span class="protocol-port">Port 53/udp</span>
@@ -834,7 +890,7 @@
         <div class="protocol-section" id="tor-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>6. Tor</h2>
+                    <h2>7. Tor</h2>
                     <span class="protocol-badge badge-standalone">Standalone</span>
                 </div>
                 <span class="protocol-port">Various</span>
@@ -871,7 +927,7 @@
         <div class="protocol-section" id="psiphon-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>7. Psiphon</h2>
+                    <h2>8. Psiphon</h2>
                     <span class="protocol-badge badge-standalone">Standalone</span>
                 </div>
                 <span class="protocol-port">Various</span>
@@ -922,7 +978,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td rowspan="6"><span class="platform-icon">📱</span>iOS</td>
+                        <td rowspan="7"><span class="platform-icon">📱</span>iOS</td>
                         <td><a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a> ($2.99)</td>
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
@@ -943,11 +999,15 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://apps.apple.com/app/trusttunnel/id6740670603" target="_blank">TrustTunnel</a> (Free)</td>
+                        <td class="protocols">TrustTunnel</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://apps.apple.com/us/app/onion-browser/id519296448" target="_blank">Onion Browser</a> (Free)</td>
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="5"><span class="platform-icon">🤖</span>Android</td>
+                        <td rowspan="6"><span class="platform-icon">🤖</span>Android</td>
                         <td><a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -960,6 +1020,10 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=com.AnyVPN.trusttunnel" target="_blank">TrustTunnel</a></td>
+                        <td class="protocols">TrustTunnel</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://play.google.com/store/apps/details?id=com.evozi.injector" target="_blank">HTTP Injector</a></td>
                         <td class="protocols">DNS Tunnel</td>
                     </tr>
@@ -968,7 +1032,7 @@
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="4"><span class="platform-icon">🪟</span>Windows</td>
+                        <td rowspan="5"><span class="platform-icon">🪟</span>Windows</td>
                         <td><a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -981,11 +1045,15 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
+                        <td class="protocols">TrustTunnel</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="5"><span class="platform-icon">🍎</span>macOS</td>
+                        <td rowspan="6"><span class="platform-icon">🍎</span>macOS</td>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (Free)</td>
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
@@ -1002,17 +1070,25 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
+                        <td class="protocols">TrustTunnel</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="3"><span class="platform-icon">🐧</span>Linux</td>
+                        <td rowspan="4"><span class="platform-icon">🐧</span>Linux</td>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
                     <tr>
                         <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
                         <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
+                        <td class="protocols">TrustTunnel</td>
                     </tr>
                     <tr>
                         <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
@@ -1046,9 +1122,10 @@
                 <li><a href="#fa" onclick="scrollToSection('hysteria2-fa')">۲. Hysteria2 <span class="toc-badge badge-secondary">سریع</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('trojan-fa')">۳. Trojan <span class="toc-badge badge-secondary">پشتیبان</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('wireguard-fa')">۴. WireGuard <span class="toc-badge badge-secondary">VPN کامل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۵. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۶. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۷. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('trusttunnel-fa')">۵. TrustTunnel <span class="toc-badge badge-secondary">VPN مخفی</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۶. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۷. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۸. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('apps-fa')">اپلیکیشن‌ها</a></li>
             </ul>
         </div>
@@ -1236,11 +1313,66 @@
             </div>
         </div>
 
+        <!-- TrustTunnel -->
+        <div class="protocol-section" id="trusttunnel-fa">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۵. TrustTunnel</h2>
+                    <span class="protocol-badge badge-secondary">VPN مخفی</span>
+                </div>
+                <span class="protocol-port">پورت 4443/tcp+udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">پروتکل VPN مدرن از AdGuard که شبیه ترافیک HTTPS معمولی به نظر می‌رسد. از HTTP/2 و HTTP/3 (QUIC) برای پنهان‌کاری استفاده می‌کند.</p>
+
+                <div class="extra-section">
+                    <h4>چه زمانی از TrustTunnel استفاده کنید</h4>
+                    <ul>
+                        <li>سایر پروتکل‌ها شناسایی و مسدود می‌شوند</li>
+                        <li>به VPN کامل نیاز دارید (همه ترافیک هدایت شود)</li>
+                        <li>شبکه شما فعالانه الگوهای ترافیک را بررسی می‌کند</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>دانلود کلاینت TrustTunnel</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/trusttunnel/id6740670603" target="_blank">TrustTunnel در App Store</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=com.AnyVPN.trusttunnel" target="_blank">TrustTunnel در Play Store</a> یا <a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">APK مستقیم</a></li>
+                        <li><strong>Windows/macOS/Linux:</strong> <a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">GitHub Releases</a></li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>نحوه اتصال</h4>
+                    <ol>
+                        <li>کلاینت TrustTunnel را برای پلتفرم خود دانلود و نصب کنید</li>
+                        <li>برنامه را باز کنید و روی "Add Server" یا "+" بزنید</li>
+                        <li>اطلاعات اتصال زیر را وارد کنید</li>
+                        <li>ذخیره کنید و متصل شوید</li>
+                    </ol>
+                </div>
+
+                <div class="config-box">
+                    <h4>آدرس سرور</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{DOMAIN}}:4443</div>
+                </div>
+                <div class="config-box">
+                    <h4>نام کاربری</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{USERNAME}}</div>
+                </div>
+                <div class="config-box">
+                    <h4>رمز عبور</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{TRUSTTUNNEL_PASSWORD}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- DNS Tunnel -->
         <div class="protocol-section" id="dns-tunnel-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۵. تونل DNS</h2>
+                    <h2>۶. تونل DNS</h2>
                     <span class="protocol-badge badge-fallback">آخرین راه‌حل</span>
                 </div>
                 <span class="protocol-port">پورت 53/udp</span>
@@ -1291,7 +1423,7 @@
         <div class="protocol-section" id="tor-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۶. Tor</h2>
+                    <h2>۷. Tor</h2>
                     <span class="protocol-badge badge-standalone">مستقل</span>
                 </div>
                 <span class="protocol-port">مختلف</span>
@@ -1319,7 +1451,7 @@
         <div class="protocol-section" id="psiphon-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۷. Psiphon</h2>
+                    <h2>۸. Psiphon</h2>
                     <span class="protocol-badge badge-standalone">مستقل</span>
                 </div>
                 <span class="protocol-port">مختلف</span>
@@ -1351,7 +1483,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td rowspan="6"><span class="platform-icon">📱</span>iOS</td>
+                        <td rowspan="7"><span class="platform-icon">📱</span>iOS</td>
                         <td><a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
@@ -1372,11 +1504,15 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://apps.apple.com/app/trusttunnel/id6740670603" target="_blank">TrustTunnel</a></td>
+                        <td class="protocols">TrustTunnel</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://apps.apple.com/us/app/onion-browser/id519296448" target="_blank">Onion Browser</a></td>
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="4"><span class="platform-icon">🤖</span>Android</td>
+                        <td rowspan="5"><span class="platform-icon">🤖</span>Android</td>
                         <td><a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -1389,11 +1525,15 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=com.AnyVPN.trusttunnel" target="_blank">TrustTunnel</a></td>
+                        <td class="protocols">TrustTunnel</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://play.google.com/store/apps/details?id=org.torproject.torbrowser" target="_blank">Tor Browser</a></td>
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="3"><span class="platform-icon">🪟</span>Windows</td>
+                        <td rowspan="4"><span class="platform-icon">🪟</span>Windows</td>
                         <td><a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -1402,11 +1542,15 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
+                        <td class="protocols">TrustTunnel</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="4"><span class="platform-icon">🍎</span>macOS</td>
+                        <td rowspan="5"><span class="platform-icon">🍎</span>macOS</td>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -1417,6 +1561,10 @@
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a></td>
                         <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
+                        <td class="protocols">TrustTunnel</td>
                     </tr>
                     <tr>
                         <td><a href="https://www.torproject.org/download/" target="_blank">Tor Browser</a></td>

@@ -115,7 +115,7 @@ RUN ARCH=$(cat /tmp/arch) && \
     esac && \
     echo "Downloading trusttunnel-client for ${TT_ARCH}..." && \
     wget -qO /tmp/tt.tar.gz \
-    "https://github.com/AnyVPN/TrustTunnel/releases/download/v${TRUSTTUNNEL_VERSION}/trusttunnel-v${TRUSTTUNNEL_VERSION}-linux-${TT_ARCH}.tar.gz" && \
+    "https://github.com/TrustTunnel/TrustTunnel/releases/download/v${TRUSTTUNNEL_VERSION}/trusttunnel-v${TRUSTTUNNEL_VERSION}-linux-${TT_ARCH}.tar.gz" && \
     tar xzf /tmp/tt.tar.gz -C /tmp && \
     mv /tmp/trusttunnel_client /usr/local/bin/ && \
     chmod +x /usr/local/bin/trusttunnel_client && \
