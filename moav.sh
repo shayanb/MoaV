@@ -1458,27 +1458,27 @@ select_profiles() {
     local proxy_line wg_line dnstt_line trusttunnel_line admin_line
 
     if [[ "$proxy_enabled" == "true" ]]; then
-        proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site       ${CYAN}│${NC}"
+        proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 (v2ray apps)       ${CYAN}│${NC}"
     else
         proxy_line="  ${CYAN}│${NC}  ${DIM}1   proxy        Reality, Trojan, Hysteria2 (disabled)${NC}        ${CYAN}│${NC}"
     fi
 
     if [[ "$wg_enabled" == "true" ]]; then
-        wg_line="  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel            ${CYAN}│${NC}"
+        wg_line="  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN + WebSocket tunnel              ${CYAN}│${NC}"
     else
         wg_line="  ${CYAN}│${NC}  ${DIM}2   wireguard    WireGuard VPN (disabled)${NC}                      ${CYAN}│${NC}"
     fi
 
     if [[ "$dnstt_enabled" == "true" ]]; then
-        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}                ${CYAN}│${NC}"
+        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${DIM}(slow, last resort)${NC}               ${CYAN}│${NC}"
     else
         dnstt_line="  ${CYAN}│${NC}  ${DIM}3   dnstt        DNS tunnel (disabled)${NC}                       ${CYAN}│${NC}"
     fi
 
     if [[ "$trusttunnel_enabled" == "true" ]]; then
-        trusttunnel_line="  ${CYAN}│${NC}  ${GREEN}4${NC}   trusttunnel  HTTP/2 + QUIC VPN (looks like HTTPS)           ${CYAN}│${NC}"
+        trusttunnel_line="  ${CYAN}│${NC}  ${GREEN}4${NC}   trusttunnel  TrustTunnel VPN (HTTP/2 + QUIC)               ${CYAN}│${NC}"
     else
-        trusttunnel_line="  ${CYAN}│${NC}  ${DIM}4   trusttunnel  HTTP/2 + QUIC VPN (disabled)${NC}                 ${CYAN}│${NC}"
+        trusttunnel_line="  ${CYAN}│${NC}  ${DIM}4   trusttunnel  TrustTunnel VPN (disabled)${NC}                    ${CYAN}│${NC}"
     fi
 
     if [[ "$admin_enabled" == "true" ]]; then
@@ -1497,11 +1497,11 @@ select_profiles() {
     echo -e "$trusttunnel_line"
     echo -e "$admin_line"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Psiphon bandwidth donation                    ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Tor Snowflake donation                        ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          All enabled services                          ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${RED}0${NC}   Cancel       Exit without selecting                        ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                   ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Cancel${NC}       Exit without selecting                        ${CYAN}│${NC}"
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
