@@ -281,7 +281,7 @@ Username: ${USER_ID}
 Password: ${USER_PASSWORD}
 
 Instructions:
-1. Download TrustTunnel client from https://trusttunnel.dev
+1. Download TrustTunnel client from https://trusttunnel.org/
 2. Open the app and tap + to add a new VPN
 3. Enter the endpoint, username, and password above
 4. Tap Connect

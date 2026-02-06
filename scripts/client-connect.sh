@@ -576,6 +576,16 @@ connect_trusttunnel() {
 
     log_debug "TrustTunnel config: endpoint=$endpoint username=$username"
 
+    # TrustTunnel only provides GUI apps for mobile/desktop, no CLI client
+    log_error "TrustTunnel does not provide a CLI client"
+    log_info "Use the TrustTunnel app on your device instead:"
+    log_info "  Endpoint: $endpoint"
+    log_info "  Username: $username"
+    log_info "  Password: $password"
+    log_info "Download from: https://trusttunnel.org/ or app stores"
+    return 1
+
+    # CLI client code (not available)
     if ! command -v trusttunnel_client >/dev/null 2>&1; then
         log_error "trusttunnel_client not available"
         return 1

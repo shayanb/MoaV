@@ -23,7 +23,7 @@ RUN ARCH=$(case "${TARGETARCH}" in \
     echo "Downloading TrustTunnel v${TRUSTTUNNEL_VERSION} for ${ARCH}..." && \
     curl -L -o trusttunnel.tar.gz \
         "https://github.com/TrustTunnel/TrustTunnel/releases/download/v${TRUSTTUNNEL_VERSION}/trusttunnel-v${TRUSTTUNNEL_VERSION}-linux-${ARCH}.tar.gz" && \
-    tar -xzf trusttunnel.tar.gz && \
+    tar -xzf trusttunnel.tar.gz --strip-components=1 && \
     rm trusttunnel.tar.gz && \
     chmod +x trusttunnel_endpoint setup_wizard
 
