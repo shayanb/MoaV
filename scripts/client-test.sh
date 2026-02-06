@@ -937,15 +937,17 @@ test_trusttunnel() {
         password=$(grep -E '^password\s*=' "$config_file" | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' || true)
         endpoint="${host}:${port:-4443}"
     elif [[ "$config_file" == *.json ]]; then
-        endpoint=$(jq -r '.endpoint // empty' "$config_file" 2>/dev/null || true)
-        server_ip=$(jq -r '.server_ip // empty' "$config_file" 2>/dev/null || true)
+        # Support both old and new field names
+        endpoint=$(jq -r '.ip_address // .endpoint // empty' "$config_file" 2>/dev/null || true)
+        server_ip=$(jq -r '.domain // .server_ip // empty' "$config_file" 2>/dev/null || true)
         username=$(jq -r '.username // empty' "$config_file" 2>/dev/null || true)
         password=$(jq -r '.password // empty' "$config_file" 2>/dev/null || true)
         host="${endpoint%:*}"
         port="${endpoint##*:}"
     else
-        endpoint=$(grep -i "^Endpoint:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
-        server_ip=$(grep -i "^Server IP:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        # Support both old and new field names in txt files
+        endpoint=$(grep -iE "^(IP Address|Endpoint):" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        server_ip=$(grep -iE "^(Domain|Server IP):" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         username=$(grep -i "^Username:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         password=$(grep -i "^Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         host="${endpoint%:*}"
@@ -1017,7 +1019,7 @@ EOF
 
     log_debug "Starting trusttunnel_client with config..."
     # TrustTunnel client creates TUN interface (full VPN)
-    trusttunnel_client "$test_config" >"$error_log" 2>&1 &
+    trusttunnel_client --config "$test_config" >"$error_log" 2>&1 &
     local pid=$!
     sleep 8
 

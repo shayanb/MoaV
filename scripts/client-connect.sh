@@ -570,7 +570,7 @@ connect_trusttunnel() {
         log_info "Note: TrustTunnel is a full VPN - all container traffic will be tunneled"
 
         # Run TrustTunnel client in background
-        trusttunnel_client "$config_file" > /var/log/moav/trusttunnel.log 2>&1 &
+        trusttunnel_client --config "$config_file" > /var/log/moav/trusttunnel.log 2>&1 &
         CURRENT_PID=$!
         CURRENT_PROTOCOL="trusttunnel"
 
@@ -601,13 +601,15 @@ connect_trusttunnel() {
     local endpoint="" username="" password="" server_ip=""
 
     if [[ "$config_file" == *.json ]]; then
-        endpoint=$(jq -r '.endpoint // empty' "$config_file" 2>/dev/null || true)
-        server_ip=$(jq -r '.server_ip // empty' "$config_file" 2>/dev/null || true)
+        # Support both old and new field names
+        endpoint=$(jq -r '.ip_address // .endpoint // empty' "$config_file" 2>/dev/null || true)
+        server_ip=$(jq -r '.domain // .server_ip // empty' "$config_file" 2>/dev/null || true)
         username=$(jq -r '.username // empty' "$config_file" 2>/dev/null || true)
         password=$(jq -r '.password // empty' "$config_file" 2>/dev/null || true)
     else
-        endpoint=$(grep -i "^Endpoint:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
-        server_ip=$(grep -i "^Server IP:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        # Support both old and new field names in txt files
+        endpoint=$(grep -iE "^(IP Address|Endpoint):" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        server_ip=$(grep -iE "^(Domain|Server IP):" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         username=$(grep -i "^Username:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         password=$(grep -i "^Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
     fi
@@ -646,7 +648,7 @@ mtu_size = 1280
 EOF
 
     log_info "Starting TrustTunnel VPN client..."
-    trusttunnel_client "$temp_config" > /var/log/moav/trusttunnel.log 2>&1 &
+    trusttunnel_client --config "$temp_config" > /var/log/moav/trusttunnel.log 2>&1 &
     CURRENT_PID=$!
     CURRENT_PROTOCOL="trusttunnel"
 
