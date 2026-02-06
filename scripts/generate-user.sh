@@ -220,6 +220,52 @@ EOF
 fi
 
 # -----------------------------------------------------------------------------
+# Generate CDN VLESS+WS client config (if CDN_DOMAIN is set)
+# -----------------------------------------------------------------------------
+if [[ -n "${CDN_DOMAIN:-}" ]]; then
+    CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
+
+    cat > "$OUTPUT_DIR/cdn-vless-ws-singbox.json" <<EOF
+{
+  "log": {"level": "info"},
+  "inbounds": [
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
+  ],
+  "outbounds": [
+    {
+      "type": "vless",
+      "tag": "proxy",
+      "server": "${CDN_DOMAIN}",
+      "server_port": 443,
+      "uuid": "${USER_UUID}",
+      "tls": {
+        "enabled": true,
+        "server_name": "${CDN_DOMAIN}",
+        "utls": {"enabled": true, "fingerprint": "chrome"},
+        "alpn": ["http/1.1"]
+      },
+      "transport": {
+        "type": "ws",
+        "path": "${CDN_WS_PATH}",
+        "headers": {"Host": "${CDN_DOMAIN}"}
+      }
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "final": "proxy"
+  }
+}
+EOF
+
+    CDN_LINK="vless://${USER_UUID}@${CDN_DOMAIN}:443?security=tls&type=ws&path=${CDN_WS_PATH}&sni=${CDN_DOMAIN}&host=${CDN_DOMAIN}&fp=chrome&alpn=http/1.1#MoaV-CDN-${USER_ID}"
+    echo "$CDN_LINK" > "$OUTPUT_DIR/cdn-vless-ws.txt"
+    qrencode -o "$OUTPUT_DIR/cdn-vless-ws-qr.png" -s 6 "$CDN_LINK" 2>/dev/null || true
+
+    log_info "  - CDN VLESS+WS config generated (domain: $CDN_DOMAIN)"
+fi
+
+# -----------------------------------------------------------------------------
 # Generate WireGuard config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then

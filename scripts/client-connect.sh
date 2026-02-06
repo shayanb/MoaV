@@ -29,6 +29,7 @@ PROTOCOL_PRIORITY=(reality hysteria2 trojan wireguard tor dnstt)
 # State
 CURRENT_PID=""
 CURRENT_PROTOCOL=""
+EXIT_IP=""
 
 # =============================================================================
 # Logging
@@ -71,15 +72,30 @@ extract_auth() {
 }
 
 # Extract host from URI (between @ and :port or ?)
+# Handles both IPv4 (server:port) and IPv6 ([addr]:port)
 extract_host() {
     local uri="$1"
-    echo "$uri" | sed -n 's|.*@\([^:]*\):.*|\1|p' | head -1
+    # Check for IPv6 (brackets after @)
+    if echo "$uri" | grep -q '@\['; then
+        # IPv6: extract [address] including brackets, then remove brackets for sing-box
+        echo "$uri" | sed -n 's|.*@\(\[[^]]*\]\):.*|\1|p' | head -1 | tr -d '[]'
+    else
+        # IPv4: extract until colon
+        echo "$uri" | sed -n 's|.*@\([^:]*\):.*|\1|p' | head -1
+    fi
 }
 
 # Extract port from URI
+# Handles both IPv4 (server:port) and IPv6 ([addr]:port)
 extract_port() {
     local uri="$1"
-    echo "$uri" | sed -n 's|.*:\([0-9]*\)[?#].*|\1|p' | head -1
+    # Check for IPv6 (brackets) - port comes after ]:
+    if echo "$uri" | grep -q '@\['; then
+        echo "$uri" | sed -n 's|.*\]:\([0-9]*\)[?#].*|\1|p' | head -1
+    else
+        # IPv4 - port comes after host:
+        echo "$uri" | sed -n 's|.*:\([0-9]*\)[?#].*|\1|p' | head -1
+    fi
 }
 
 # Generate sing-box client config for proxy protocols
@@ -88,27 +104,49 @@ generate_singbox_config() {
     local output_file="$2"
     local config_file=""
 
-    # Find config file (prefer .txt over .json to avoid legacy format issues)
+    # Find config file (prefer IPv4 over IPv6, .txt over .json)
     case "$protocol" in
         reality)
-            for f in "$CONFIG_DIR"/reality*.txt "$CONFIG_DIR"/reality*.json; do
+            # Prefer non-IPv6 configs first
+            for f in "$CONFIG_DIR"/reality.txt "$CONFIG_DIR"/reality.json; do
                 [[ -f "$f" ]] && config_file="$f" && break
             done
+            # Fall back to any reality config (including ipv6)
+            if [[ -z "$config_file" ]]; then
+                for f in "$CONFIG_DIR"/reality*.txt "$CONFIG_DIR"/reality*.json; do
+                    [[ -f "$f" ]] && config_file="$f" && break
+                done
+            fi
             ;;
         trojan)
-            for f in "$CONFIG_DIR"/trojan*.txt "$CONFIG_DIR"/trojan*.json; do
+            for f in "$CONFIG_DIR"/trojan.txt "$CONFIG_DIR"/trojan.json; do
                 [[ -f "$f" ]] && config_file="$f" && break
             done
+            if [[ -z "$config_file" ]]; then
+                for f in "$CONFIG_DIR"/trojan*.txt "$CONFIG_DIR"/trojan*.json; do
+                    [[ -f "$f" ]] && config_file="$f" && break
+                done
+            fi
             ;;
         hysteria2)
-            for f in "$CONFIG_DIR"/hysteria2*.txt "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml; do
+            for f in "$CONFIG_DIR"/hysteria2.txt "$CONFIG_DIR"/hysteria2.yaml "$CONFIG_DIR"/hysteria2.yml; do
                 [[ -f "$f" ]] && config_file="$f" && break
             done
+            if [[ -z "$config_file" ]]; then
+                for f in "$CONFIG_DIR"/hysteria2*.txt "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml; do
+                    [[ -f "$f" ]] && config_file="$f" && break
+                done
+            fi
             ;;
         wireguard)
-            for f in "$CONFIG_DIR"/wireguard*.conf "$CONFIG_DIR"/wg*.conf; do
+            for f in "$CONFIG_DIR"/wireguard.conf "$CONFIG_DIR"/wg.conf; do
                 [[ -f "$f" ]] && config_file="$f" && break
             done
+            if [[ -z "$config_file" ]]; then
+                for f in "$CONFIG_DIR"/wireguard*.conf "$CONFIG_DIR"/wg*.conf; do
+                    [[ -f "$f" ]] && config_file="$f" && break
+                done
+            fi
             ;;
     esac
 
@@ -138,7 +176,19 @@ generate_singbox_config() {
                 local fp=$(extract_param "$uri" "fp")
 
                 [[ -z "$fp" ]] && fp="chrome"
+
+                # Ensure port is numeric
+                port=$(echo "$port" | tr -cd '0-9')
                 [[ -z "$port" ]] && port="443"
+
+                # Validate required fields
+                if [[ -z "$server" ]] || [[ -z "$uuid" ]] || [[ -z "$sni" ]] || [[ -z "$pbk" ]]; then
+                    log_error "Failed to parse Reality URI (missing required fields)"
+                    log_debug "server='$server' uuid='${uuid:0:8}...' sni='$sni' pbk='${pbk:0:10}...'"
+                    return 1
+                fi
+
+                log_debug "Reality config: server=$server port=$port sni=$sni"
 
                 cat > "$output_file" << EOF
 {
@@ -181,7 +231,19 @@ EOF
                 local sni=$(extract_param "$uri" "sni")
 
                 [[ -z "$sni" ]] && sni="$server"
+
+                # Ensure port is numeric
+                port=$(echo "$port" | tr -cd '0-9')
                 [[ -z "$port" ]] && port="8443"
+
+                # Validate required fields
+                if [[ -z "$server" ]] || [[ -z "$password" ]]; then
+                    log_error "Failed to parse Trojan URI (missing required fields)"
+                    log_debug "server='$server' password='${password:0:8}...'"
+                    return 1
+                fi
+
+                log_debug "Trojan config: server=$server port=$port sni=$sni"
 
                 cat > "$output_file" << EOF
 {
@@ -226,10 +288,35 @@ EOF
                 obfs_password=$(grep -E "^[[:space:]]*password:" "$config_file" | head -2 | tail -1 | sed 's/.*password:[[:space:]]*//' | tr -d '"')
             fi
 
-            local host="${server%:*}"
-            local port="${server##*:}"
-            [[ "$port" == "$host" ]] && port=443
+            # Parse host:port - handle both IPv4 and IPv6
+            local host="" port=""
+            if echo "$server" | grep -q '^\['; then
+                # IPv6: [addr]:port format
+                host=$(echo "$server" | sed 's/^\[\([^]]*\)\].*/\1/')
+                port=$(echo "$server" | sed -n 's/.*\]:\([0-9]*\).*/\1/p')
+                [[ -z "$port" ]] && port="443"
+            elif echo "$server" | grep -q ':'; then
+                # IPv4: host:port format
+                host="${server%:*}"
+                port="${server##*:}"
+            else
+                host="$server"
+                port="443"
+            fi
+
+            # Ensure port is numeric
+            port=$(echo "$port" | tr -cd '0-9')
+            [[ -z "$port" ]] && port="443"
             [[ -z "$sni" ]] && sni="$host"
+
+            # Validate required fields
+            if [[ -z "$host" ]] || [[ -z "$auth" ]]; then
+                log_error "Failed to parse Hysteria2 config (missing required fields)"
+                log_debug "host='$host' auth='${auth:0:8}...'"
+                return 1
+            fi
+
+            log_debug "Hysteria2 config: host=$host port=$port sni=$sni"
 
             # Build obfs config if present
             local obfs_config=""
@@ -270,8 +357,30 @@ EOF
             local peer_public_key=$(grep -i "PublicKey" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r')
             local address=$(grep -i "Address" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r' | cut -d',' -f1)
 
-            local server="${endpoint%:*}"
-            local port="${endpoint#*:}"
+            # Parse endpoint - handle both IPv4 and IPv6
+            local server="" port=""
+            if echo "$endpoint" | grep -q '^\['; then
+                # IPv6: [addr]:port format
+                server=$(echo "$endpoint" | sed 's/^\[\([^]]*\)\].*/\1/')
+                port=$(echo "$endpoint" | sed -n 's/.*\]:\([0-9]*\).*/\1/p')
+            else
+                # IPv4: host:port format
+                server="${endpoint%:*}"
+                port="${endpoint##*:}"
+            fi
+
+            # Ensure port is numeric
+            port=$(echo "$port" | tr -cd '0-9')
+            [[ -z "$port" ]] && port="51820"
+
+            # Validate required fields
+            if [[ -z "$server" ]] || [[ -z "$private_key" ]] || [[ -z "$peer_public_key" ]]; then
+                log_error "Failed to parse WireGuard config (missing required fields)"
+                log_debug "server='$server' private_key='${private_key:0:10}...' peer_public_key='${peer_public_key:0:10}...'"
+                return 1
+            fi
+
+            log_debug "WireGuard config: server=$server port=$port"
 
             cat > "$output_file" << EOF
 {
@@ -323,6 +432,9 @@ connect_singbox() {
     # Test connection
     sleep 1
     if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        # Get exit IP for display
+        EXIT_IP=$(curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
         return 0
     else
         log_warn "Connection test failed for $protocol"
@@ -355,6 +467,8 @@ connect_wireguard() {
 
     # Test connection
     if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        EXIT_IP=$(curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
         return 0
     else
         log_warn "Connection test failed for wireguard"
@@ -598,6 +712,9 @@ main() {
     echo "═══════════════════════════════════════════════════════════════"
     echo ""
     echo "  Protocol:   $CURRENT_PROTOCOL"
+    if [[ -n "${EXIT_IP:-}" ]]; then
+        echo -e "  Exit IP:    ${CYAN}$EXIT_IP${NC}"
+    fi
     echo "  SOCKS5:     localhost:$SOCKS_PORT"
     echo "  HTTP:       localhost:$HTTP_PORT"
     echo ""

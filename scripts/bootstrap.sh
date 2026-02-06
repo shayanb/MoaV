@@ -195,6 +195,8 @@ export ENABLE_TROJAN="${ENABLE_TROJAN:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
+export CDN_DOMAIN="${CDN_DOMAIN:-}"
+export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
 
 # -----------------------------------------------------------------------------
 # Generate WireGuard server config (before creating users)
@@ -247,6 +249,7 @@ log_info "Creating $INITIAL_USERS initial users..."
 REALITY_USERS_JSON="["
 TROJAN_USERS_JSON="["
 HYSTERIA2_USERS_JSON="["
+VLESS_WS_USERS_JSON="["
 
 for i in $(seq -w 1 "$INITIAL_USERS"); do
     # Use "demouser" for single user, otherwise "user01", "user02", etc.
@@ -275,10 +278,12 @@ EOF
     [[ $i -gt 1 ]] && REALITY_USERS_JSON+=","
     [[ $i -gt 1 ]] && TROJAN_USERS_JSON+=","
     [[ $i -gt 1 ]] && HYSTERIA2_USERS_JSON+=","
+    [[ $i -gt 1 ]] && VLESS_WS_USERS_JSON+=","
 
     REALITY_USERS_JSON+="{\"name\":\"$USER_ID\",\"uuid\":\"$USER_UUID\",\"flow\":\"xtls-rprx-vision\"}"
     TROJAN_USERS_JSON+="{\"name\":\"$USER_ID\",\"password\":\"$USER_PASSWORD\"}"
     HYSTERIA2_USERS_JSON+="{\"name\":\"$USER_ID\",\"password\":\"$USER_PASSWORD\"}"
+    VLESS_WS_USERS_JSON+="{\"name\":\"$USER_ID\",\"uuid\":\"$USER_UUID\"}"
 
     # Generate user bundle
     /app/generate-user.sh "$USER_ID"
@@ -287,6 +292,7 @@ done
 REALITY_USERS_JSON+="]"
 TROJAN_USERS_JSON+="]"
 HYSTERIA2_USERS_JSON+="]"
+VLESS_WS_USERS_JSON+="]"
 
 # -----------------------------------------------------------------------------
 # Generate sing-box config (only if TLS protocols are enabled)
@@ -302,6 +308,7 @@ if [[ "$singbox_needed" == "true" ]]; then
     export REALITY_USERS_JSON
     export TROJAN_USERS_JSON
     export HYSTERIA2_USERS_JSON
+    export VLESS_WS_USERS_JSON
     export REALITY_PRIVATE_KEY
     export REALITY_SHORT_ID
     export REALITY_TARGET_HOST
@@ -309,6 +316,7 @@ if [[ "$singbox_needed" == "true" ]]; then
     export REALITY_SERVER_NAME="$REALITY_TARGET_HOST"
     export CLASH_API_SECRET
     export HYSTERIA2_OBFS_PASSWORD
+    export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
     export LOG_LEVEL="${LOG_LEVEL:-info}"
 
     envsubst < /configs/sing-box/config.json.template > /configs/sing-box/config.json

@@ -104,6 +104,9 @@ TTL: 300
 | A | @ | YOUR_IP | DNS only |
 | A | dns | YOUR_IP | DNS only |
 | NS | t | dns.yourdomain.com | - |
+| A | cdn | YOUR_IP | **Proxied** (orange cloud) |
+
+> The `cdn` record is optional — only needed if you want CDN-fronted VLESS+WS. See [CDN Setup](SETUP.md#cdn-fronted-vlesswebsocket-cloudflare) for details. All other records **must** be DNS only (gray cloud).
 
 ### Namecheap
 

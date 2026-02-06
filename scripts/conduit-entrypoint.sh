@@ -38,11 +38,12 @@ cleanup() {
 trap cleanup 15 2
 
 # Run conduit in foreground
+# Strip application timestamps (Docker already adds them)
 /app/conduit start \
     -d "$CONDUIT_DATA_DIR" \
     -b "$CONDUIT_BANDWIDTH" \
     -m "$CONDUIT_MAX_CLIENTS" \
-    -v &
+    -v 2>&1 | sed -u 's/^[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\} //' &
 CONDUIT_PID=$!
 
 # Wait for conduit to exit

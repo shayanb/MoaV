@@ -28,6 +28,11 @@ singbox_add_user() {
         '.inbounds[] | select(.tag == "hysteria2-in") | .users += [{"name": $name, "password": $password}]' \
         "$config_file" > /tmp/config.tmp && mv /tmp/config.tmp "$config_file"
 
+    # Add to VLESS WS users (CDN)
+    jq --arg name "$user_id" --arg uuid "$user_uuid" \
+        '.inbounds[] | select(.tag == "vless-ws-in") | .users += [{"name": $name, "uuid": $uuid}]' \
+        "$config_file" > /tmp/config.tmp && mv /tmp/config.tmp "$config_file"
+
     log_info "Added user $user_id to sing-box configuration"
 }
 

@@ -60,6 +60,11 @@ if [[ -f "$CONFIG_FILE" ]]; then
         '(.inbounds[] | select(.tag == "hysteria2-in") | .users) += [{"name": $name, "password": $password}]' \
         "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
 
+    # Add to VLESS WS inbound (CDN)
+    jq --arg name "$USER_ID" --arg uuid "$USER_UUID" \
+        '(.inbounds[] | select(.tag == "vless-ws-in") | .users) += [{"name": $name, "uuid": $uuid}]' \
+        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+
     log_info "Added $USER_ID to sing-box config"
 fi
 
@@ -74,6 +79,8 @@ export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
+export CDN_DOMAIN="${CDN_DOMAIN:-}"
+export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
 
 # Load Hysteria2 obfuscation password if available
 if [[ -f "$STATE_DIR/keys/clash-api.env" ]]; then

@@ -119,12 +119,15 @@ test_reality() {
     if [[ -z "$config_file" ]]; then
         detail="No Reality config found in bundle"
         log_warn "$detail"
+        log_debug "Searched in: $CONFIG_DIR for reality*.txt, reality*.json"
+        log_debug "Available files: $(ls -1 "$CONFIG_DIR" 2>/dev/null | tr '\n' ' ')"
         RESULTS[reality]="skip"
         DETAILS[reality]="$detail"
         return
     fi
 
     log_debug "Using config: $config_file"
+    log_debug "Config content: $(cat "$config_file" | head -1 | cut -c1-80)..."
 
     local client_config="$TEMP_DIR/reality-client.json"
 
@@ -232,12 +235,16 @@ EOF
             detail="sing-box error: $error_msg"
         fi
         log_error "$detail"
+        log_debug "Generated config was: $(cat "$client_config" 2>/dev/null | tr '\n' ' ')"
         RESULTS[reality]="fail"
         DETAILS[reality]="$detail"
         return
     fi
 
+    log_debug "sing-box started successfully (PID: $pid)"
+
     # Test connection
+    log_debug "Testing connectivity via SOCKS5 on port 10800..."
     if curl -sf --socks5 127.0.0.1:10800 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
         # Verify we can access the internet and get exit IP
         local exit_ip=""
@@ -256,9 +263,11 @@ EOF
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" 2>/dev/null | tail -1 | tr '\n' ' ' || true)
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
+        log_debug "Full error log: $(cat "$error_log" 2>/dev/null | tail -10 | tr '\n' ' ')"
+        log_debug "Server: $server:$port, SNI: $sni"
         # If IPv6 config and network unreachable, warn instead of fail
         if [[ "$is_ipv6" == "true" ]] && echo "$detail" | grep -qi "unreachable\|network"; then
             log_warn "IPv6 config - $detail"
@@ -297,12 +306,14 @@ test_trojan() {
     if [[ -z "$config_file" ]]; then
         detail="No Trojan config found in bundle"
         log_warn "$detail"
+        log_debug "Searched in: $CONFIG_DIR for trojan*.txt, trojan*.json"
         RESULTS[trojan]="skip"
         DETAILS[trojan]="$detail"
         return
     fi
 
     log_debug "Using config: $config_file"
+    log_debug "Config content: $(cat "$config_file" | head -1 | cut -c1-80)..."
 
     local client_config="$TEMP_DIR/trojan-client.json"
 
@@ -393,10 +404,14 @@ EOF
             detail="sing-box error: $error_msg"
         fi
         log_error "$detail"
+        log_debug "Generated config was: $(cat "$client_config" 2>/dev/null | tr '\n' ' ')"
         RESULTS[trojan]="fail"
         DETAILS[trojan]="$detail"
         return
     fi
+
+    log_debug "sing-box started successfully (PID: $pid)"
+    log_debug "Testing connectivity via SOCKS5 on port 10801..."
 
     if curl -sf --socks5 127.0.0.1:10801 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
         # Verify we can access the internet and get exit IP
@@ -416,9 +431,11 @@ EOF
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" 2>/dev/null | tail -1 | tr '\n' ' ' || true)
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
+        log_debug "Full error log: $(cat "$error_log" 2>/dev/null | tail -10 | tr '\n' ' ')"
+        log_debug "Server: $server:$port, SNI: $sni"
         # If IPv6 config and network unreachable, warn instead of fail
         if [[ "$is_ipv6" == "true" ]] && echo "$detail" | grep -qi "unreachable\|network"; then
             log_warn "IPv6 config - $detail"
@@ -457,12 +474,14 @@ test_hysteria2() {
     if [[ -z "$config_file" ]]; then
         detail="No Hysteria2 config found in bundle"
         log_warn "$detail"
+        log_debug "Searched in: $CONFIG_DIR for hysteria2*.txt, hysteria2*.yaml"
         RESULTS[hysteria2]="skip"
         DETAILS[hysteria2]="$detail"
         return
     fi
 
     log_debug "Using config: $config_file"
+    log_debug "Config content: $(cat "$config_file" | head -3 | tr '\n' ' ')"
 
     local client_config="$TEMP_DIR/hysteria2-client.json"
     local server="" auth="" sni="" host="" port="" obfs_type="" obfs_password=""
@@ -575,10 +594,14 @@ EOF
             detail="sing-box error: $error_msg"
         fi
         log_error "$detail"
+        log_debug "Generated config was: $(cat "$client_config" 2>/dev/null | tr '\n' ' ')"
         RESULTS[hysteria2]="fail"
         DETAILS[hysteria2]="$detail"
         return
     fi
+
+    log_debug "sing-box started successfully (PID: $pid)"
+    log_debug "Testing connectivity via SOCKS5 on port 10802..."
 
     if curl -sf --socks5 127.0.0.1:10802 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
         # Verify we can access the internet and get exit IP
@@ -598,9 +621,11 @@ EOF
         detail="Connection test failed"
         # Check for sing-box errors during operation
         if [[ -s "$error_log" ]]; then
-            local error_msg=$(grep -i "error\|fail\|unreachable" "$error_log" 2>/dev/null | tail -1 | tr '\n' ' ' || true)
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
             [[ -n "$error_msg" ]] && detail="$error_msg"
         fi
+        log_debug "Full error log: $(cat "$error_log" 2>/dev/null | tail -10 | tr '\n' ' ')"
+        log_debug "Server: $host:$port, SNI: $sni"
         # If IPv6 config and network unreachable, warn instead of fail
         if [[ "$is_ipv6" == "true" ]] && echo "$detail" | grep -qi "unreachable\|network"; then
             log_warn "IPv6 config - $detail"

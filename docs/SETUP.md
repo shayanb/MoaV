@@ -7,6 +7,8 @@ Complete setup guide for deploying MoaV on a VPS or home server.
 - [Use Cases](#use-cases)
 - [Prerequisites](#prerequisites)
 - [Domain-less Mode](#domain-less-mode)
+- [Adding a Domain After Domainless Setup](#adding-a-domain-after-domainless-setup)
+- [CDN-Fronted VLESS+WebSocket (Cloudflare)](#cdn-fronted-vlesswebsocket-cloudflare)
 - [Quick Install (Recommended)](#quick-install-recommended)
   - [Manual Installation](#manual-installation)
     - [Using moav.sh](#using-moavsh)
@@ -117,6 +119,194 @@ The admin dashboard will use a **self-signed certificate** - your browser will s
 - Quick testing before setting up DNS
 - Home servers where you just need WireGuard VPN
 - Running Conduit/Snowflake to donate bandwidth
+
+---
+
+## Adding a Domain After Domainless Setup
+
+If you initially set up MoaV in domain-less mode and later acquired a domain, you can enable the full protocol suite without starting from scratch. Your existing WireGuard configs and users are preserved.
+
+### Step 1: Configure DNS
+
+Point your domain to your server before proceeding. See [DNS.md](DNS.md) for provider-specific instructions.
+
+```bash
+# Verify DNS is working
+dig +short yourdomain.com
+# Should return your server IP
+```
+
+### Step 2: Update .env
+
+```bash
+cd /opt/moav
+nano .env
+```
+
+Set or update these values:
+
+```bash
+# Set your domain and email
+DOMAIN=yourdomain.com
+ACME_EMAIL=you@example.com
+
+# Re-enable protocols (change false → true)
+ENABLE_REALITY=true
+ENABLE_TROJAN=true
+ENABLE_HYSTERIA2=true
+ENABLE_DNSTT=true        # optional, only if you set up NS records
+ENABLE_ADMIN_UI=true
+
+# Update default profiles to include proxy
+DEFAULT_PROFILES="proxy admin wireguard"
+```
+
+### Step 3: Re-run Bootstrap
+
+```bash
+moav bootstrap
+```
+
+When prompted that bootstrap has already been run, confirm to re-run it. This will:
+- Generate Reality/dnstt keys (if not already present)
+- Obtain a TLS certificate from Let's Encrypt
+- Recreate user bundles with the new domain-based configs (Reality, Trojan, Hysteria2)
+
+**Note:** Existing WireGuard keys and user UUIDs are preserved. Users who were already using WireGuard will continue to work.
+
+### Step 4: Rebuild and Start
+
+```bash
+# Rebuild containers (needed for new config)
+docker compose --profile all build
+
+# Start services including the new proxy profile
+moav start
+```
+
+### Step 5: Distribute Updated Bundles
+
+User bundles now include Reality, Trojan, and Hysteria2 configs in addition to WireGuard:
+
+```bash
+# Regenerate packages for distribution
+moav user package user1
+```
+
+---
+
+## CDN-Fronted VLESS+WebSocket (Cloudflare)
+
+MoaV includes a VLESS+WebSocket inbound that works behind Cloudflare's CDN. This is useful when direct connections to your server are blocked but Cloudflare IPs are accessible.
+
+### How It Works
+
+```
+Client --HTTPS:443--> Cloudflare CDN --HTTP:2082--> Your Server (sing-box)
+```
+
+- Cloudflare terminates TLS and forwards traffic to your origin over HTTP on port 2082
+- The sing-box `vless-ws-in` inbound listens on port 2082 (plain HTTP, no TLS needed on origin)
+- Uses the same user UUIDs as Reality (no extra credentials to manage)
+- Client links are only generated when `CDN_DOMAIN` is set in `.env`
+
+### Prerequisites
+
+- A domain managed through Cloudflare (free plan works)
+- The domain's proxy status set to **Proxied** (orange cloud) — this is the opposite of the main domain setup
+
+### Step 1: Create a CDN Subdomain in Cloudflare
+
+1. Log into [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Select your domain → DNS → Records
+3. Add a new record:
+
+| Type | Name | Content | Proxy status |
+|------|------|---------|--------------|
+| A | `cdn` | YOUR_SERVER_IP | **Proxied** (orange cloud) |
+
+This creates `cdn.yourdomain.com` routed through Cloudflare.
+
+> **Important:** The main `@` A record for Reality/Trojan must stay **DNS only** (gray cloud). Only the CDN subdomain should be **Proxied**.
+
+### Step 2: Set Cloudflare SSL Mode
+
+1. In Cloudflare Dashboard → SSL/TLS → Overview
+2. Set encryption mode to **Flexible**
+
+This tells Cloudflare to connect to your origin over HTTP (port 2082), while clients connect to Cloudflare over HTTPS (port 443).
+
+> **Note:** If you use **Full** mode instead of Flexible, Cloudflare will try to connect to your origin over HTTPS, which won't work since the vless-ws-in inbound is plain HTTP.
+
+### Step 3: Configure MoaV
+
+Edit your `.env`:
+
+```bash
+# CDN domain (the Cloudflare-proxied subdomain)
+CDN_DOMAIN=cdn.yourdomain.com
+
+# WebSocket path (default is fine for most setups)
+CDN_WS_PATH=/ws
+
+# Port for the CDN inbound (default 2082, a Cloudflare-allowed HTTP port)
+PORT_CDN=2082
+```
+
+> **Port 2082** is one of [Cloudflare's supported HTTP ports](https://developers.cloudflare.com/fundamentals/reference/network-ports/). Other options: 2052, 2086, 2095, 8080, 8880. If you change this, also update the template port.
+
+### Step 4: Apply the Configuration
+
+**If you haven't bootstrapped yet:** Just run `moav bootstrap` — CDN configs will be included automatically.
+
+**If already bootstrapped:** Regenerate user bundles to include the new CDN links:
+
+```bash
+moav regenerate-users
+```
+
+Or for a single user:
+
+```bash
+moav user add newuser   # New users get CDN links automatically
+```
+
+### Step 5: Open Firewall Port
+
+```bash
+ufw allow 2082/tcp   # CDN WebSocket inbound
+```
+
+### Step 6: Verify
+
+```bash
+# Test that the WebSocket endpoint responds
+curl -s -o /dev/null -w "%{http_code}" \
+  -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  http://localhost:2082/ws
+# Should return 400 (Bad Request) — this means sing-box is listening
+# A real WebSocket client will complete the upgrade handshake
+```
+
+### User Bundle Output
+
+When `CDN_DOMAIN` is set, each user bundle includes:
+- `cdn-vless-ws.txt` — Share link for mobile/desktop clients
+- `cdn-vless-ws-singbox.json` — Full sing-box client config
+- `cdn-vless-ws-qr.png` — QR code for mobile import
+
+The share link format:
+```
+vless://UUID@cdn.yourdomain.com:443?security=tls&type=ws&path=/ws&sni=cdn.yourdomain.com&host=cdn.yourdomain.com&fp=chrome&alpn=http/1.1#MoaV-CDN-username
+```
+
+### Cloudflare-Specific Notes
+
+- **Free plan** is sufficient — no paid features required
+- **WebSocket support** is enabled by default on all Cloudflare plans
+- **Rate limiting:** Cloudflare may rate-limit heavy traffic on the free plan. For high-throughput use, consider a paid plan
+- **Under Attack Mode:** If enabled, it may interfere with WebSocket connections. Add a Page Rule to bypass for the CDN subdomain if needed
+- The vless-ws-in inbound is always present in the sing-box config (harmless if unused). CDN client links are only generated when `CDN_DOMAIN` is set
 
 ---
 
@@ -379,6 +569,7 @@ docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon 
 ufw allow 443/tcp    # Reality + Trojan fallback
 ufw allow 443/udp    # Hysteria2
 ufw allow 53/udp     # DNS tunnel (if using dnstt)
+ufw allow 2082/tcp   # CDN WebSocket (if using CDN_DOMAIN)
 
 # For admin dashboard
 ufw allow 9443/tcp   # Admin (or your PORT_ADMIN value)
@@ -425,6 +616,8 @@ Each bundle contains:
 - `wireguard.conf` - WireGuard config (direct mode)
 - `wireguard-wstunnel.conf` - WireGuard config (WebSocket mode)
 - `dnstt-instructions.txt` - DNS tunnel instructions
+- `cdn-vless-ws.txt` - CDN VLESS+WS link (only if `CDN_DOMAIN` is set)
+- `cdn-vless-ws-qr.png` - QR code for CDN link
 
 ### Download via Admin Dashboard (Easiest)
 

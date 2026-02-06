@@ -1675,6 +1675,12 @@ restart_services() {
     esac
 }
 
+# Format Docker timestamps from ISO to readable format
+# 2026-02-04T20:17:10.426340440Z -> 2026-02-04 20:17:10
+format_log_timestamps() {
+    sed -u 's/\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\)T\([0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}\)\.[0-9]*Z/\1 \2/g'
+}
+
 view_logs() {
     local log_interrupted=false
 
@@ -1717,12 +1723,12 @@ view_logs() {
                 echo ""
                 # Trap SIGINT to return to menu instead of exiting
                 trap 'log_interrupted=true' INT
-                docker compose --profile all logs -t -f 2>/dev/null || true
+                docker compose --ansi always --profile all logs -t -f 2>/dev/null | format_log_timestamps || true
                 trap - INT
                 [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 ;;
             t|T)
-                docker compose --profile all logs -t --tail=100
+                docker compose --ansi always --profile all logs -t --tail=100 | format_log_timestamps
                 press_enter
                 ;;
             0|"")
@@ -1737,7 +1743,7 @@ view_logs() {
                     echo ""
                     # Trap SIGINT to return to menu instead of exiting
                     trap 'log_interrupted=true' INT
-                    docker compose logs -t -f "$service" 2>/dev/null || true
+                    docker compose --ansi always logs -t -f "$service" 2>/dev/null | format_log_timestamps || true
                     trap - INT
                     [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 else
@@ -1905,7 +1911,7 @@ add_user() {
 
     echo ""
     echo "This will add '$username' to:"
-    echo "  • sing-box (Reality, Trojan, Hysteria2)"
+    echo "  • sing-box (Reality, Trojan, Hysteria2, CDN VLESS+WS)"
     echo "  • WireGuard"
     echo ""
 
@@ -2566,6 +2572,12 @@ cmd_status() {
         echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
     fi
 
+    # Show CDN domain if configured
+    local cdn_domain=$(grep -E '^CDN_DOMAIN=' "$SCRIPT_DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$cdn_domain" ]]; then
+        echo -e "  ${CYAN}CDN Domain:${NC}      $cdn_domain"
+    fi
+
     # Show default profiles
     local defaults
     defaults=$(get_default_profiles)
@@ -2611,7 +2623,7 @@ cmd_logs() {
     done
 
     # Build docker compose command
-    local cmd="docker compose"
+    local cmd="docker compose --ansi always"
     if [[ -z "$services_to_log" ]]; then
         cmd="$cmd --profile all"
     fi
@@ -2620,9 +2632,9 @@ cmd_logs() {
     if [[ "$follow" == "true" ]]; then
         echo -e "${CYAN}Following logs (Ctrl+C to exit)...${NC}"
         echo ""
-        $cmd -f $services_to_log
+        $cmd -f $services_to_log | format_log_timestamps
     else
-        $cmd $services_to_log
+        $cmd $services_to_log | format_log_timestamps
     fi
 }
 
@@ -3483,6 +3495,10 @@ cmd_regenerate_users() {
 
     info "Regenerating bundles..."
 
+    local cdn_domain=$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local cdn_ws_path=$(grep -E '^CDN_WS_PATH=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    cdn_ws_path="${cdn_ws_path:-/ws}"
+
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
     for username in $users_found; do
@@ -3492,6 +3508,8 @@ cmd_regenerate_users() {
             -e "SERVER_IP=$server_ip" \
             -e "SERVER_IPV6=$server_ipv6" \
             -e "DOMAIN=$domain" \
+            -e "CDN_DOMAIN=$cdn_domain" \
+            -e "CDN_WS_PATH=$cdn_ws_path" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true
