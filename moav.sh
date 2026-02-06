@@ -1419,13 +1419,18 @@ show_status() {
 }
 
 # Display service selection menu and populate SELECTED_PROFILES array
-# Usage: select_profiles [save_to_env]
-#   save_to_env: if "save", updates DEFAULT_PROFILES in .env
+# Usage: select_profiles [mode]
+#   mode: "save" to update .env, "start" for start menu, "stop" for stop menu
 select_profiles() {
-    local save_to_env="${1:-}"
+    local mode="${1:-}"
     SELECTED_PROFILES=()
 
-    print_section "Select Services"
+    case "$mode" in
+        start)   print_section "Start Services" ;;
+        stop)    print_section "Stop Services" ;;
+        restart) print_section "Restart Services" ;;
+        *)       print_section "Select Services" ;;
+    esac
 
     # Read ENABLE_* settings to show disabled status
     local env_file="$SCRIPT_DIR/.env"
@@ -1470,9 +1475,9 @@ select_profiles() {
     fi
 
     if [[ "$dnstt_enabled" == "true" ]]; then
-        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${DIM}(slow, last resort)${NC}               ${CYAN}│${NC}"
+        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${DIM}(slow, last resort)${NC}                ${CYAN}│${NC}"
     else
-        dnstt_line="  ${CYAN}│${NC}  ${DIM}3   dnstt        DNS tunnel (disabled)${NC}                       ${CYAN}│${NC}"
+        dnstt_line="  ${CYAN}│${NC}  ${DIM}3   dnstt        DNS tunnel (disabled)${NC}                        ${CYAN}│${NC}"
     fi
 
     if [[ "$trusttunnel_enabled" == "true" ]]; then
@@ -1500,7 +1505,7 @@ select_profiles() {
     echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                   ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Cancel${NC}       Exit without selecting                        ${CYAN}│${NC}"
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
@@ -1607,7 +1612,7 @@ select_profiles() {
     done
 
     # Save to .env if requested
-    if [[ "$save_to_env" == "save" ]]; then
+    if [[ "$mode" == "save" ]]; then
         save_default_profiles
     fi
 
@@ -1651,34 +1656,11 @@ get_default_profiles() {
 }
 
 start_services() {
-    print_section "Start Services"
+    # Use the unified service selection menu
+    SELECTED_PROFILE_STRING=""
+    select_profiles "start" || return 1
 
-    echo "How would you like to start services?"
-    echo ""
-    echo -e "  ${WHITE}1)${NC} Start ALL services"
-    echo -e "  ${WHITE}2)${NC} Select specific services"
-    echo -e "  ${WHITE}0)${NC} Cancel"
-    echo ""
-
-    prompt "Choice: "
-    read -r choice < /dev/tty 2>/dev/null || choice=""
-
-    local profiles=""
-
-    case $choice in
-        1)
-            profiles="--profile all"
-            ;;
-        2)
-            SELECTED_PROFILE_STRING=""
-            select_profiles || return 1
-            profiles="$SELECTED_PROFILE_STRING"
-            ;;
-        0|*)
-            return 1
-            ;;
-    esac
-
+    local profiles="$SELECTED_PROFILE_STRING"
     if [[ -z "$profiles" ]]; then
         warn "No profiles selected"
         return 1
@@ -1719,134 +1701,70 @@ start_services() {
 }
 
 stop_services() {
-    print_section "Stop Services"
-
-    # Get running services
+    # Check if any services are running
     local running_services
     running_services=$(docker compose ps --services --filter "status=running" 2>/dev/null | sort)
 
     if [[ -z "$running_services" ]]; then
+        print_section "Stop Services"
         warn "No services are currently running"
         return 0
     fi
 
-    echo "Running services:"
+    # Use the unified service selection menu
+    SELECTED_PROFILE_STRING=""
+    select_profiles "stop" || return 1
+
+    local profiles="$SELECTED_PROFILE_STRING"
+    if [[ -z "$profiles" ]]; then
+        warn "No profiles selected"
+        return 1
+    fi
+
     echo ""
+    info "Stopping services..."
 
-    # Show status table
-    docker compose ps --filter "status=running" 2>/dev/null | head -20
-    echo ""
+    if [[ "$profiles" == "--profile all" ]]; then
+        docker compose --profile all stop
+    else
+        # Stop each selected profile
+        docker compose $profiles stop
+    fi
 
-    echo "Options:"
-    echo ""
-    echo -e "  ${WHITE}a)${NC} Stop ALL services"
-
-    # Build numbered list of services
-    local i=1
-    local services_array=()
-    while IFS= read -r svc; do
-        [[ -z "$svc" ]] && continue
-        services_array+=("$svc")
-        echo -e "  ${WHITE}$i)${NC} Stop $svc"
-        ((i++))
-    done <<< "$running_services"
-
-    echo -e "  ${WHITE}0)${NC} Cancel"
-    echo ""
-
-    prompt "Choice: "
-    read -r choice < /dev/tty 2>/dev/null || choice=""
-
-    case $choice in
-        a|A)
-            echo ""
-            info "Stopping all services..."
-            docker compose --profile all stop
-            success "All services stopped!"
-            ;;
-        0|"")
-            return 0
-            ;;
-        [1-9]*)
-            local idx=$((choice - 1))
-            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
-                local service="${services_array[$idx]}"
-                echo ""
-                info "Stopping $service..."
-                docker compose stop "$service"
-                success "$service stopped!"
-            else
-                warn "Invalid choice"
-            fi
-            ;;
-        *)
-            warn "Invalid choice"
-            ;;
-    esac
+    success "Services stopped!"
 }
 
 restart_services() {
-    print_section "Restart Services"
-
-    # Get running services
+    # Check if any services are running
     local running_services
     running_services=$(docker compose ps --services --filter "status=running" 2>/dev/null | sort)
 
     if [[ -z "$running_services" ]]; then
+        print_section "Restart Services"
         warn "No services are currently running"
         return 0
     fi
 
-    echo "Running services:"
+    # Use the unified service selection menu
+    SELECTED_PROFILE_STRING=""
+    select_profiles "restart" || return 1
+
+    local profiles="$SELECTED_PROFILE_STRING"
+    if [[ -z "$profiles" ]]; then
+        warn "No profiles selected"
+        return 1
+    fi
+
     echo ""
-    docker compose ps --filter "status=running" 2>/dev/null | head -20
-    echo ""
+    info "Restarting services..."
 
-    echo "Options:"
-    echo ""
-    echo -e "  ${WHITE}a)${NC} Restart ALL services"
+    if [[ "$profiles" == "--profile all" ]]; then
+        docker compose --profile all restart
+    else
+        docker compose $profiles restart
+    fi
 
-    local i=1
-    local services_array=()
-    while IFS= read -r svc; do
-        [[ -z "$svc" ]] && continue
-        services_array+=("$svc")
-        echo -e "  ${WHITE}$i)${NC} Restart $svc"
-        ((i++))
-    done <<< "$running_services"
-
-    echo -e "  ${WHITE}0)${NC} Cancel"
-    echo ""
-
-    prompt "Choice: "
-    read -r choice < /dev/tty 2>/dev/null || choice=""
-
-    case $choice in
-        a|A)
-            echo ""
-            info "Restarting all services..."
-            docker compose --profile all restart
-            success "All services restarted!"
-            ;;
-        0|"")
-            return 0
-            ;;
-        [1-9]*)
-            local idx=$((choice - 1))
-            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
-                local service="${services_array[$idx]}"
-                echo ""
-                info "Restarting $service..."
-                docker compose restart "$service"
-                success "$service restarted!"
-            else
-                warn "Invalid choice"
-            fi
-            ;;
-        *)
-            warn "Invalid choice"
-            ;;
-    esac
+    success "Services restarted!"
 }
 
 # Format Docker timestamps from ISO to readable format
