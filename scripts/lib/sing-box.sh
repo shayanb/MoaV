@@ -81,7 +81,7 @@ trusttunnel_add_user() {
     # Append new user
     cat >> "$creds_file" <<EOF
 
-[[credentials]]
+[[client]]
 username = "$user_id"
 password = "$user_password"
 EOF
@@ -101,7 +101,7 @@ trusttunnel_remove_user() {
     # Use awk to remove the credential block for the user
     awk -v user="$user_id" '
     BEGIN { skip=0 }
-    /^\[\[credentials\]\]/ {
+    /^\[\[client\]\]/ {
         block_start = NR
         skip = 0
         next_block = 1

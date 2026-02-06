@@ -59,10 +59,10 @@ if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
         log_info "Removing $USERNAME from TrustTunnel..."
 
         # Use awk to remove the credential block for the user
-        # The block starts with [[credentials]] followed by username and password
+        # The block starts with [[client]] followed by username and password
         awk -v user="$USERNAME" '
         BEGIN { skip=0; in_block=0; buffer="" }
-        /^\[\[credentials\]\]/ {
+        /^\[\[client\]\]/ {
             if (in_block && !skip) { print buffer }
             in_block=1; skip=0; buffer=$0 "\n"; next
         }

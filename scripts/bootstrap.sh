@@ -289,8 +289,8 @@ EOF
     HYSTERIA2_USERS_JSON+="{\"name\":\"$USER_ID\",\"password\":\"$USER_PASSWORD\"}"
     VLESS_WS_USERS_JSON+="{\"name\":\"$USER_ID\",\"uuid\":\"$USER_UUID\"}"
 
-    # TrustTunnel credentials (TOML format)
-    TRUSTTUNNEL_CREDENTIALS+="[[credentials]]
+    # TrustTunnel credentials (TOML format - uses [[client]] not [[credentials]])
+    TRUSTTUNNEL_CREDENTIALS+="[[client]]
 username = \"$USER_ID\"
 password = \"$USER_PASSWORD\"
 

@@ -78,7 +78,7 @@ if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
         # Append new user
         cat >> "$TRUSTTUNNEL_CREDS" <<EOF
 
-[[credentials]]
+[[client]]
 username = "$USER_ID"
 password = "$USER_PASSWORD"
 EOF

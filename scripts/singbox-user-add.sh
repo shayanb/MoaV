@@ -209,7 +209,7 @@ if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
         # Append new user to credentials.toml
         cat >> "$TRUSTTUNNEL_CREDS" <<EOF
 
-[[credentials]]
+[[client]]
 username = "$USERNAME"
 password = "$USER_PASSWORD"
 EOF
