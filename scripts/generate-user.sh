@@ -420,7 +420,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
 
     # TrustTunnel password (same as user password) - escape special chars
     if [[ -n "${USER_PASSWORD:-}" ]]; then
-        local escaped_pw=$(printf '%s' "$USER_PASSWORD" | sed -e 's/[&\\/]/\\&/g')
+        escaped_pw=$(printf '%s' "$USER_PASSWORD" | sed -e 's/[&\\/]/\\&/g')
         sed -i "s|{{TRUSTTUNNEL_PASSWORD}}|${escaped_pw}|g" "$OUTPUT_HTML"
     else
         sed -i "s|{{TRUSTTUNNEL_PASSWORD}}|See trusttunnel.txt|g" "$OUTPUT_HTML"
