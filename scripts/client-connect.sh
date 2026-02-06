@@ -543,10 +543,13 @@ connect_dnstt() {
 }
 
 # Connect using TrustTunnel
+# Note: TrustTunnel is a full VPN (TUN-based), not a proxy
+# It routes all container traffic through the VPN tunnel
 connect_trusttunnel() {
     local config_file=""
 
-    for f in "$CONFIG_DIR"/trusttunnel.txt "$CONFIG_DIR"/trusttunnel.json; do
+    # Look for TOML config first (full config), then fall back to JSON/txt
+    for f in "$CONFIG_DIR"/trusttunnel.toml "$CONFIG_DIR"/trusttunnel.json "$CONFIG_DIR"/trusttunnel.txt; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
 
@@ -555,16 +558,56 @@ connect_trusttunnel() {
         return 1
     fi
 
-    # Parse config
-    local endpoint="" username="" password=""
+    if ! command -v trusttunnel_client >/dev/null 2>&1; then
+        log_error "trusttunnel_client not available"
+        log_info "TrustTunnel CLI client not installed in this container"
+        return 1
+    fi
+
+    # If we have a TOML config, use it directly
+    if [[ "$config_file" == *.toml ]]; then
+        log_info "Starting TrustTunnel VPN client..."
+        log_info "Note: TrustTunnel is a full VPN - all container traffic will be tunneled"
+
+        # Run TrustTunnel client in background
+        trusttunnel_client "$config_file" > /var/log/moav/trusttunnel.log 2>&1 &
+        CURRENT_PID=$!
+        CURRENT_PROTOCOL="trusttunnel"
+
+        # Wait for TUN interface to come up
+        sleep 8
+
+        if ! kill -0 $CURRENT_PID 2>/dev/null; then
+            log_error "trusttunnel_client failed to start"
+            [[ -f /var/log/moav/trusttunnel.log ]] && tail -5 /var/log/moav/trusttunnel.log
+            return 1
+        fi
+
+        # Test connection directly (traffic goes through TUN)
+        if curl -sf --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+            EXIT_IP=$(curl -sf --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                      curl -sf --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
+            log_success "TrustTunnel VPN connected (exit IP: ${EXIT_IP:-unknown})"
+            return 0
+        else
+            log_warn "Connection test failed for TrustTunnel"
+            kill $CURRENT_PID 2>/dev/null || true
+            CURRENT_PID=""
+            return 1
+        fi
+    fi
+
+    # Fall back to parsing JSON/txt for manual info
+    local endpoint="" username="" password="" server_ip=""
 
     if [[ "$config_file" == *.json ]]; then
         endpoint=$(jq -r '.endpoint // empty' "$config_file" 2>/dev/null || true)
+        server_ip=$(jq -r '.server_ip // empty' "$config_file" 2>/dev/null || true)
         username=$(jq -r '.username // empty' "$config_file" 2>/dev/null || true)
         password=$(jq -r '.password // empty' "$config_file" 2>/dev/null || true)
     else
-        # Parse text file - look for Endpoint:, Username:, Password: lines
         endpoint=$(grep -i "^Endpoint:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        server_ip=$(grep -i "^Server IP:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         username=$(grep -i "^Username:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         password=$(grep -i "^Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
     fi
@@ -574,45 +617,57 @@ connect_trusttunnel() {
         return 1
     fi
 
-    log_debug "TrustTunnel config: endpoint=$endpoint username=$username"
+    # Generate a temporary TOML config
+    local temp_config="/tmp/trusttunnel-temp.toml"
+    local hostname="${endpoint%:*}"
+    local port="${endpoint#*:}"
+    [[ -z "$server_ip" ]] && server_ip="$hostname"
 
-    # TrustTunnel only provides GUI apps for mobile/desktop, no CLI client
-    log_error "TrustTunnel does not provide a CLI client"
-    log_info "Use the TrustTunnel app on your device instead:"
-    log_info "  Endpoint: $endpoint"
-    log_info "  Username: $username"
-    log_info "  Password: $password"
-    log_info "Download from: https://trusttunnel.org/ or app stores"
-    return 1
+    cat > "$temp_config" <<EOF
+loglevel = "info"
+vpn_mode = "general"
+killswitch_enabled = false
+post_quantum_group_enabled = true
+dns_upstreams = ["tls://1.1.1.1"]
 
-    # CLI client code (not available)
-    if ! command -v trusttunnel_client >/dev/null 2>&1; then
-        log_error "trusttunnel_client not available"
-        return 1
-    fi
+[endpoint]
+hostname = "$hostname"
+addresses = ["$server_ip:$port"]
+has_ipv6 = false
+username = "$username"
+password = "$password"
+upstream_protocol = "http2"
+upstream_fallback_protocol = "http3"
 
-    log_info "Starting TrustTunnel client..."
-    trusttunnel_client --endpoint "$endpoint" --username "$username" --password "$password" \
-        --socks-bind 0.0.0.0:$SOCKS_PORT &
+[listener.tun]
+included_routes = ["0.0.0.0/0"]
+excluded_routes = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+mtu_size = 1280
+EOF
+
+    log_info "Starting TrustTunnel VPN client..."
+    trusttunnel_client "$temp_config" > /var/log/moav/trusttunnel.log 2>&1 &
     CURRENT_PID=$!
     CURRENT_PROTOCOL="trusttunnel"
 
-    sleep 5
+    sleep 8
 
     if ! kill -0 $CURRENT_PID 2>/dev/null; then
         log_error "trusttunnel_client failed to start"
+        [[ -f /var/log/moav/trusttunnel.log ]] && tail -5 /var/log/moav/trusttunnel.log
+        rm -f "$temp_config"
         return 1
     fi
 
-    # Test connection
-    if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
-        EXIT_IP=$(curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
-                  curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
+    if curl -sf --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        EXIT_IP=$(curl -sf --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || echo "")
+        log_success "TrustTunnel VPN connected (exit IP: ${EXIT_IP:-unknown})"
         return 0
     else
-        log_warn "Connection test failed for trusttunnel"
+        log_warn "Connection test failed for TrustTunnel"
         kill $CURRENT_PID 2>/dev/null || true
         CURRENT_PID=""
+        rm -f "$temp_config"
         return 1
     fi
 }

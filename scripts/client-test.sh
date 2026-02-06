@@ -903,14 +903,15 @@ test_dnstt() {
 }
 
 # Test TrustTunnel
+# Note: TrustTunnel CLI uses TUN interface (full VPN), not SOCKS proxy
 test_trusttunnel() {
     log_info "Testing TrustTunnel..."
 
     local config_file=""
     local detail=""
 
-    # Find TrustTunnel config
-    for f in "$CONFIG_DIR"/trusttunnel.txt "$CONFIG_DIR"/trusttunnel.json; do
+    # Find TrustTunnel config - prefer TOML for full test
+    for f in "$CONFIG_DIR"/trusttunnel.toml "$CONFIG_DIR"/trusttunnel.json "$CONFIG_DIR"/trusttunnel.txt; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
 
@@ -924,23 +925,40 @@ test_trusttunnel() {
 
     log_debug "Using config: $config_file"
 
-    # Parse config
-    local endpoint="" username="" password=""
+    # Parse config to get endpoint info for reachability test
+    local endpoint="" username="" password="" server_ip="" host="" port=""
 
-    if [[ "$config_file" == *.json ]]; then
+    if [[ "$config_file" == *.toml ]]; then
+        # Parse TOML config
+        host=$(grep -E '^hostname\s*=' "$config_file" | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' || true)
+        server_ip=$(grep -E '^addresses\s*=' "$config_file" | head -1 | sed 's/.*\["\([^"]*\)".*/\1/' | cut -d: -f1 || true)
+        port=$(grep -E '^addresses\s*=' "$config_file" | head -1 | sed 's/.*:\([0-9]*\)".*/\1/' || true)
+        username=$(grep -E '^username\s*=' "$config_file" | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' || true)
+        password=$(grep -E '^password\s*=' "$config_file" | head -1 | sed 's/.*=\s*"\([^"]*\)".*/\1/' || true)
+        endpoint="${host}:${port:-4443}"
+    elif [[ "$config_file" == *.json ]]; then
         endpoint=$(jq -r '.endpoint // empty' "$config_file" 2>/dev/null || true)
+        server_ip=$(jq -r '.server_ip // empty' "$config_file" 2>/dev/null || true)
         username=$(jq -r '.username // empty' "$config_file" 2>/dev/null || true)
         password=$(jq -r '.password // empty' "$config_file" 2>/dev/null || true)
+        host="${endpoint%:*}"
+        port="${endpoint##*:}"
     else
-        # Parse text file - look for Endpoint:, Username:, Password: lines
         endpoint=$(grep -i "^Endpoint:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        server_ip=$(grep -i "^Server IP:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         username=$(grep -i "^Username:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
         password=$(grep -i "^Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        host="${endpoint%:*}"
+        port="${endpoint##*:}"
     fi
 
-    log_debug "Parsed: endpoint=$endpoint username=$username"
+    [[ -z "$port" ]] && port="4443"
+    [[ -z "$host" ]] && host="$server_ip"
+    [[ -z "$server_ip" ]] && server_ip="$host"
 
-    if [[ -z "$endpoint" ]] || [[ -z "$username" ]] || [[ -z "$password" ]]; then
+    log_debug "Parsed: host=$host port=$port username=$username"
+
+    if [[ -z "$host" ]] || [[ -z "$username" ]] || [[ -z "$password" ]]; then
         detail="Could not parse TrustTunnel config (missing endpoint/username/password)"
         log_error "$detail"
         RESULTS[trusttunnel]="fail"
@@ -948,76 +966,92 @@ test_trusttunnel() {
         return
     fi
 
-    # Parse host:port from endpoint
-    local host="" port=""
-    if echo "$endpoint" | grep -q '^\['; then
-        # IPv6: [addr]:port format
-        host=$(echo "$endpoint" | sed 's/^\[\([^]]*\)\].*/\1/')
-        port=$(echo "$endpoint" | sed -n 's/.*\]:\([0-9]*\).*/\1/p')
-    else
-        # IPv4 or hostname: host:port format
-        host="${endpoint%:*}"
-        port="${endpoint##*:}"
-    fi
-    [[ -z "$port" ]] && port="4443"
-
     # Check if trusttunnel_client is available
     if ! command -v trusttunnel_client >/dev/null 2>&1; then
-        # Just validate config and test endpoint reachability
         log_debug "trusttunnel_client not available, testing endpoint reachability..."
 
         # Test endpoint reachability via TCP
-        if nc -z -w 3 "$host" "$port" 2>/dev/null || curl -sf --max-time 3 "https://${host}:${port}" -o /dev/null 2>/dev/null; then
-            log_success "TrustTunnel config valid, endpoint reachable: $endpoint"
+        if nc -z -w 3 "$server_ip" "$port" 2>/dev/null || curl -sf --max-time 3 "https://${host}:${port}" -o /dev/null 2>/dev/null; then
+            log_success "TrustTunnel config valid, endpoint reachable: ${host}:${port}"
             RESULTS[trusttunnel]="pass"
-            DETAILS[trusttunnel]="Config valid, endpoint $host:$port reachable (client not installed for full test)"
+            DETAILS[trusttunnel]="Config valid, endpoint ${server_ip}:${port} reachable (client not installed for full test)"
         else
-            log_warn "TrustTunnel config valid, endpoint may not be reachable: $endpoint"
+            log_warn "TrustTunnel config valid, endpoint may not be reachable: ${host}:${port}"
             RESULTS[trusttunnel]="warn"
-            DETAILS[trusttunnel]="Config valid, endpoint $host:$port not reachable (may be blocked)"
+            DETAILS[trusttunnel]="Config valid, endpoint ${server_ip}:${port} not reachable (may be blocked)"
         fi
         return
     fi
 
     # Full test with trusttunnel_client
     local error_log="$TEMP_DIR/trusttunnel-error.log"
+    local test_config="$TEMP_DIR/trusttunnel-test.toml"
 
-    log_debug "Starting trusttunnel_client..."
-    # TrustTunnel client creates a local SOCKS proxy
-    trusttunnel_client --endpoint "$endpoint" --username "$username" --password "$password" \
-        --socks-bind 127.0.0.1:10804 2>"$error_log" &
+    # Use TOML config if available, otherwise generate one
+    if [[ "$config_file" == *.toml ]]; then
+        cp "$config_file" "$test_config"
+    else
+        # Generate temporary TOML config for testing
+        cat > "$test_config" <<EOF
+loglevel = "info"
+vpn_mode = "general"
+killswitch_enabled = false
+post_quantum_group_enabled = true
+dns_upstreams = ["tls://1.1.1.1"]
+
+[endpoint]
+hostname = "$host"
+addresses = ["$server_ip:$port"]
+has_ipv6 = false
+username = "$username"
+password = "$password"
+upstream_protocol = "http2"
+upstream_fallback_protocol = "http3"
+
+[listener.tun]
+included_routes = ["0.0.0.0/0"]
+excluded_routes = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+mtu_size = 1280
+EOF
+    fi
+
+    log_debug "Starting trusttunnel_client with config..."
+    # TrustTunnel client creates TUN interface (full VPN)
+    trusttunnel_client "$test_config" >"$error_log" 2>&1 &
     local pid=$!
-    sleep 5
+    sleep 8
 
     if ! kill -0 $pid 2>/dev/null; then
         detail="trusttunnel_client failed to start"
         if [[ -s "$error_log" ]]; then
             local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
-            detail="trusttunnel error: $error_msg"
+            detail="TrustTunnel error: $error_msg"
         fi
         log_error "$detail"
         RESULTS[trusttunnel]="fail"
         DETAILS[trusttunnel]="$detail"
+        rm -f "$test_config"
         return
     fi
 
     log_debug "trusttunnel_client running (PID $pid), testing connectivity..."
 
-    if curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+    # Test connectivity directly (traffic goes through TUN interface)
+    if curl -sf --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
         local exit_ip=""
-        exit_ip=$(curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
-                  curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        exit_ip=$(curl -sf --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
         if [[ -n "$exit_ip" ]]; then
-            log_success "TrustTunnel connection successful (exit IP: $exit_ip)"
+            log_success "TrustTunnel VPN connection successful (exit IP: $exit_ip)"
             RESULTS[trusttunnel]="pass"
-            DETAILS[trusttunnel]="Connected via TrustTunnel, exit IP: $exit_ip"
+            DETAILS[trusttunnel]="Connected via TrustTunnel VPN, exit IP: $exit_ip"
         else
-            log_success "TrustTunnel connection successful"
+            log_success "TrustTunnel VPN connection successful"
             RESULTS[trusttunnel]="pass"
-            DETAILS[trusttunnel]="Connected via TrustTunnel"
+            DETAILS[trusttunnel]="Connected via TrustTunnel VPN"
         fi
     else
-        detail="Connection test failed"
+        detail="VPN connection test failed"
         if [[ -s "$error_log" ]]; then
             local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
             [[ -n "$error_msg" ]] && detail="$error_msg"
@@ -1029,6 +1063,7 @@ test_trusttunnel() {
 
     kill $pid 2>/dev/null || true
     wait $pid 2>/dev/null || true
+    rm -f "$test_config"
 }
 
 # =============================================================================

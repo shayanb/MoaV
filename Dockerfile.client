@@ -105,10 +105,24 @@ RUN chmod +x /usr/local/bin/dnstt-client 2>/dev/null && \
     echo "dnstt-client installed" || \
     echo "dnstt-client: not available (optional)"
 
-# trusttunnel-client: TrustTunnel only provides mobile/desktop GUI apps, no CLI client
-# The MoaV client container cannot connect via TrustTunnel
-# Users should use the TrustTunnel app on their devices instead
-RUN echo "trusttunnel-client: not available (TrustTunnel only provides GUI apps, no CLI client)"
+# trusttunnel-client: download CLI client from TrustTunnelClient repo
+# TrustTunnelClient uses: linux-x86_64, linux-aarch64
+ARG TRUSTTUNNEL_CLIENT_VERSION=0.99.105
+RUN ARCH=$(cat /tmp/arch) && \
+    case "$ARCH" in \
+        amd64) TT_ARCH="x86_64" ;; \
+        arm64) TT_ARCH="aarch64" ;; \
+        *) TT_ARCH="x86_64" ;; \
+    esac && \
+    echo "Downloading trusttunnel_client v${TRUSTTUNNEL_CLIENT_VERSION} for ${TT_ARCH}..." && \
+    wget -qO /tmp/tt.tar.gz \
+    "https://github.com/TrustTunnel/TrustTunnelClient/releases/download/v${TRUSTTUNNEL_CLIENT_VERSION}/trusttunnel_client-v${TRUSTTUNNEL_CLIENT_VERSION}-linux-${TT_ARCH}.tar.gz" && \
+    tar xzf /tmp/tt.tar.gz -C /tmp --strip-components=1 && \
+    mv /tmp/trusttunnel_client /usr/local/bin/ && \
+    chmod +x /usr/local/bin/trusttunnel_client && \
+    rm -rf /tmp/tt.tar.gz /tmp/*.md /tmp/LICENSE && \
+    echo "trusttunnel_client v${TRUSTTUNNEL_CLIENT_VERSION} installed (${TT_ARCH})" || \
+    echo "trusttunnel_client: download failed (optional)"
 
 # Cleanup
 RUN rm -f /tmp/get-arch.sh /tmp/arch

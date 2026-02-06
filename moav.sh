@@ -3516,6 +3516,14 @@ cmd_regenerate_users() {
     local cdn_ws_path=$(grep -E '^CDN_WS_PATH=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     cdn_ws_path="${cdn_ws_path:-/ws}"
 
+    # Load ENABLE_* settings from .env
+    local enable_reality=$(grep -E '^ENABLE_REALITY=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_trojan=$(grep -E '^ENABLE_TROJAN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_hysteria2=$(grep -E '^ENABLE_HYSTERIA2=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_wireguard=$(grep -E '^ENABLE_WIREGUARD=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_dnstt=$(grep -E '^ENABLE_DNSTT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_trusttunnel=$(grep -E '^ENABLE_TRUSTTUNNEL=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
     for username in $users_found; do
@@ -3527,6 +3535,12 @@ cmd_regenerate_users() {
             -e "DOMAIN=$domain" \
             -e "CDN_DOMAIN=$cdn_domain" \
             -e "CDN_WS_PATH=$cdn_ws_path" \
+            -e "ENABLE_REALITY=${enable_reality:-true}" \
+            -e "ENABLE_TROJAN=${enable_trojan:-true}" \
+            -e "ENABLE_HYSTERIA2=${enable_hysteria2:-true}" \
+            -e "ENABLE_WIREGUARD=${enable_wireguard:-true}" \
+            -e "ENABLE_DNSTT=${enable_dnstt:-true}" \
+            -e "ENABLE_TRUSTTUNNEL=${enable_trusttunnel:-true}" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true

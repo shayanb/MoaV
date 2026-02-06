@@ -348,6 +348,7 @@ services:
         SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.19}
         WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.2}
         SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
+        TRUSTTUNNEL_CLIENT_VERSION: ${TRUSTTUNNEL_CLIENT_VERSION:-0.99.105}
     container_name: moav-client
     volumes:
       - ./outputs/bundles:/bundles:ro
@@ -357,5 +358,9 @@ services:
     ports:
       - "${CLIENT_SOCKS_PORT:-1080}:1080"
       - "${CLIENT_HTTP_PORT:-8080}:8080"
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
     profiles:
       - client
