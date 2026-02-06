@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-02-06
+
+### Added
+- **TrustTunnel VPN protocol integration** - Modern VPN protocol from AdGuard using HTTP/2 and HTTP/3 (QUIC)
+  - New `trusttunnel` Docker service and profile
+  - TrustTunnel endpoint on port 4443 (TCP+UDP)
+  - Full TOML config generation for CLI client
+  - TrustTunnel section in client guide (HTML) with all app fields
+  - Admin dashboard: TrustTunnel service status and "TT" protocol tag for users
+- TrustTunnel CLI client (`trusttunnel_client`) in client container for testing
+- `moav start trusttunnel` and service menu option
+- User bundles now include `trusttunnel.toml`, `trusttunnel.txt`, and `trusttunnel.json`
+
+### Changed
+- Client test gracefully falls back to endpoint reachability check when TUN device unavailable
+- TrustTunnel app store links updated to correct URLs
+
+### Fixed
+- **README.html placeholder replacement broken** - Multiple issues fixed:
+  - `local` variable used outside function causing script exit with `set -e`
+  - sed `&` character interpreted as "matched pattern" in replacement strings
+  - awk escape sequence warnings (`\&` treated as plain `&`)
+  - Multiline WireGuard configs breaking sed commands
+  - Now uses Python-based replacement for reliable handling of special characters and multiline content
+- TrustTunnel CLI client requires `--config` flag (was missing)
+- TrustTunnel credentials format: `[[client]]` not `[[credentials]]`, `[[main_hosts]]` not `[[hosts]]`
+
 ## [1.2.3] - 2026-02-06
 
 ### Added
@@ -219,7 +246,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.3...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.4...HEAD
+[1.2.4]: https://github.com/shayanb/MoaV/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/shayanb/MoaV/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/shayanb/MoaV/compare/v1.2.0...v1.2.2
 [1.2.0]: https://github.com/shayanb/MoaV/compare/v1.1.2...v1.2.0
