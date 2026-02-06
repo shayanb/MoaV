@@ -410,6 +410,7 @@
                             {% if user.has_trojan %}<span class="protocol-tag">Trojan</span>{% endif %}
                             {% if user.has_hysteria2 %}<span class="protocol-tag">Hy2</span>{% endif %}
                             {% if user.has_wireguard %}<span class="protocol-tag">WG</span>{% endif %}
+                            {% if user.has_trusttunnel %}<span class="protocol-tag">TT</span>{% endif %}
                         </td>
                         <td>
                             <a href="/download/{{ user.username }}" class="download-btn">

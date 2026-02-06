@@ -24,7 +24,7 @@ TEST_TIMEOUT="${TEST_TIMEOUT:-10}"
 
 # Protocol priority for auto mode
 # Note: psiphon excluded - requires embedded server list, not supported in client mode
-PROTOCOL_PRIORITY=(reality hysteria2 trojan wireguard tor dnstt)
+PROTOCOL_PRIORITY=(reality hysteria2 trojan trusttunnel wireguard tor dnstt)
 
 # State
 CURRENT_PID=""
@@ -542,6 +542,138 @@ connect_dnstt() {
     fi
 }
 
+# Connect using TrustTunnel
+# Note: TrustTunnel is a full VPN (TUN-based), not a proxy
+# It routes all container traffic through the VPN tunnel
+connect_trusttunnel() {
+    local config_file=""
+
+    # Look for TOML config first (full config), then fall back to JSON/txt
+    for f in "$CONFIG_DIR"/trusttunnel.toml "$CONFIG_DIR"/trusttunnel.json "$CONFIG_DIR"/trusttunnel.txt; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+
+    if [[ -z "$config_file" ]]; then
+        log_error "No TrustTunnel config found"
+        return 1
+    fi
+
+    if ! command -v trusttunnel_client >/dev/null 2>&1; then
+        log_error "trusttunnel_client not available"
+        log_info "TrustTunnel CLI client not installed in this container"
+        return 1
+    fi
+
+    # If we have a TOML config, use it directly
+    if [[ "$config_file" == *.toml ]]; then
+        log_info "Starting TrustTunnel VPN client..."
+        log_info "Note: TrustTunnel is a full VPN - all container traffic will be tunneled"
+
+        # Run TrustTunnel client in background
+        trusttunnel_client --config "$config_file" > /var/log/moav/trusttunnel.log 2>&1 &
+        CURRENT_PID=$!
+        CURRENT_PROTOCOL="trusttunnel"
+
+        # Wait for TUN interface to come up
+        sleep 8
+
+        if ! kill -0 $CURRENT_PID 2>/dev/null; then
+            log_error "trusttunnel_client failed to start"
+            [[ -f /var/log/moav/trusttunnel.log ]] && tail -5 /var/log/moav/trusttunnel.log
+            return 1
+        fi
+
+        # Test connection directly (traffic goes through TUN)
+        if curl -sf --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+            EXIT_IP=$(curl -sf --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                      curl -sf --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
+            log_success "TrustTunnel VPN connected (exit IP: ${EXIT_IP:-unknown})"
+            return 0
+        else
+            log_warn "Connection test failed for TrustTunnel"
+            kill $CURRENT_PID 2>/dev/null || true
+            CURRENT_PID=""
+            return 1
+        fi
+    fi
+
+    # Fall back to parsing JSON/txt for manual info
+    local endpoint="" username="" password="" server_ip=""
+
+    if [[ "$config_file" == *.json ]]; then
+        # Support both old and new field names
+        endpoint=$(jq -r '.ip_address // .endpoint // empty' "$config_file" 2>/dev/null || true)
+        server_ip=$(jq -r '.domain // .server_ip // empty' "$config_file" 2>/dev/null || true)
+        username=$(jq -r '.username // empty' "$config_file" 2>/dev/null || true)
+        password=$(jq -r '.password // empty' "$config_file" 2>/dev/null || true)
+    else
+        # Support both old and new field names in txt files
+        endpoint=$(grep -iE "^(IP Address|Endpoint):" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        server_ip=$(grep -iE "^(Domain|Server IP):" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        username=$(grep -i "^Username:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        password=$(grep -i "^Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+    fi
+
+    if [[ -z "$endpoint" ]] || [[ -z "$username" ]] || [[ -z "$password" ]]; then
+        log_error "Could not parse TrustTunnel config (missing endpoint/username/password)"
+        return 1
+    fi
+
+    # Generate a temporary TOML config
+    local temp_config="/tmp/trusttunnel-temp.toml"
+    local hostname="${endpoint%:*}"
+    local port="${endpoint#*:}"
+    [[ -z "$server_ip" ]] && server_ip="$hostname"
+
+    cat > "$temp_config" <<EOF
+loglevel = "info"
+vpn_mode = "general"
+killswitch_enabled = false
+post_quantum_group_enabled = true
+dns_upstreams = ["tls://1.1.1.1"]
+
+[endpoint]
+hostname = "$hostname"
+addresses = ["$server_ip:$port"]
+has_ipv6 = false
+username = "$username"
+password = "$password"
+upstream_protocol = "http2"
+upstream_fallback_protocol = "http3"
+
+[listener.tun]
+included_routes = ["0.0.0.0/0"]
+excluded_routes = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+mtu_size = 1280
+EOF
+
+    log_info "Starting TrustTunnel VPN client..."
+    trusttunnel_client --config "$temp_config" > /var/log/moav/trusttunnel.log 2>&1 &
+    CURRENT_PID=$!
+    CURRENT_PROTOCOL="trusttunnel"
+
+    sleep 8
+
+    if ! kill -0 $CURRENT_PID 2>/dev/null; then
+        log_error "trusttunnel_client failed to start"
+        [[ -f /var/log/moav/trusttunnel.log ]] && tail -5 /var/log/moav/trusttunnel.log
+        rm -f "$temp_config"
+        return 1
+    fi
+
+    if curl -sf --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        EXIT_IP=$(curl -sf --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || echo "")
+        log_success "TrustTunnel VPN connected (exit IP: ${EXIT_IP:-unknown})"
+        return 0
+    else
+        log_warn "Connection test failed for TrustTunnel"
+        kill $CURRENT_PID 2>/dev/null || true
+        CURRENT_PID=""
+        rm -f "$temp_config"
+        return 1
+    fi
+}
+
 # Connect using Psiphon (standalone, doesn't need MoaV server)
 # NOTE: Not implemented - Psiphon tunnel-core requires embedded server lists
 # that are not publicly available. Use the official Psiphon apps instead:
@@ -629,6 +761,12 @@ connect_auto() {
                     return 0
                 fi
                 ;;
+            trusttunnel)
+                if connect_trusttunnel; then
+                    log_success "Connected via TrustTunnel"
+                    return 0
+                fi
+                ;;
             psiphon)
                 if connect_psiphon; then
                     log_success "Connected via Psiphon"
@@ -685,6 +823,9 @@ main() {
             ;;
         wireguard)
             connect_wireguard && connected=true
+            ;;
+        trusttunnel)
+            connect_trusttunnel && connected=true
             ;;
         psiphon)
             connect_psiphon && connected=true

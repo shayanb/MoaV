@@ -8,7 +8,7 @@
 
 ## ویژگی‌ها
 
-- **پروتکل‌های متعدد** - Reality (VLESS)، Trojan، Hysteria2، WireGuard (مستقیم و wstunnel)، تونل DNS
+- **پروتکل‌های متعدد** - Reality (VLESS)، Trojan، Hysteria2، TrustTunnel، WireGuard (مستقیم و wstunnel)، تونل DNS
 - **اولویت پنهان‌کاری** - تمام ترافیک شبیه HTTPS معمولی، WebSocket، یا DNS به نظر می‌رسد
 - **اعتبارنامه‌های جداگانه برای هر کاربر** - ایجاد، لغو و مدیریت کاربران به صورت مستقل
 - **نصب آسان** - مبتنی بر Docker Compose، راه‌اندازی با یک دستور
@@ -140,6 +140,7 @@ docker compose --profile all up -d                 # شروع تمام سروی�
 | Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | اصلی، قابل اعتمادترین |
 | Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | سریع، کار می‌کند وقتی TCP محدود است |
 | Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | پشتیبان، از دامنه شما استفاده می‌کند |
+| TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 و QUIC، شبیه HTTPS |
 | WireGuard (مستقیم) | 51820/udp | ★★★☆☆ | ★★★★★ | VPN کامل، نصب ساده |
 | WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN وقتی UDP مسدود است |
 | تونل DNS | 53/udp | ★★★☆☆ | ★☆☆☆☆ | آخرین راه‌حل، سخت برای مسدود کردن |
@@ -220,7 +221,7 @@ moav build                # ساخت/بازسازی تمام کانتینرها
 
 </div>
 
-**پروفایل‌ها:** `proxy`، `wireguard`، `dnstt`، `admin`، `conduit`، `snowflake`، `all`
+**پروفایل‌ها:** `proxy`، `wireguard`، `dnstt`، `trusttunnel`، `admin`، `conduit`، `snowflake`، `all`
 
 **نام مستعار سرویس‌ها:** `conduit`←psiphon-conduit، `singbox`←sing-box، `wg`←wireguard، `dns`←dnstt
 

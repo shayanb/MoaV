@@ -60,3 +60,60 @@ singbox_reload() {
     docker kill --signal=SIGHUP moav-sing-box 2>/dev/null || true
     log_info "Sent reload signal to sing-box"
 }
+
+# Add a user to TrustTunnel credentials
+trusttunnel_add_user() {
+    local user_id="$1"
+    local user_password="$2"
+    local creds_file="/configs/trusttunnel/credentials.toml"
+
+    if [[ ! -f "$creds_file" ]]; then
+        log_info "TrustTunnel not configured, skipping"
+        return 0
+    fi
+
+    # Check if user already exists
+    if grep -q "username = \"$user_id\"" "$creds_file" 2>/dev/null; then
+        log_info "User $user_id already exists in TrustTunnel"
+        return 0
+    fi
+
+    # Append new user
+    cat >> "$creds_file" <<EOF
+
+[[client]]
+username = "$user_id"
+password = "$user_password"
+EOF
+
+    log_info "Added user $user_id to TrustTunnel credentials"
+}
+
+# Remove a user from TrustTunnel credentials
+trusttunnel_remove_user() {
+    local user_id="$1"
+    local creds_file="/configs/trusttunnel/credentials.toml"
+
+    if [[ ! -f "$creds_file" ]]; then
+        return 0
+    fi
+
+    # Use awk to remove the credential block for the user
+    awk -v user="$user_id" '
+    BEGIN { skip=0 }
+    /^\[\[client\]\]/ {
+        block_start = NR
+        skip = 0
+        next_block = 1
+    }
+    next_block && /^username = / {
+        if ($0 ~ "username = \"" user "\"") {
+            skip = 1
+        }
+        next_block = 0
+    }
+    !skip { print }
+    ' "$creds_file" > "${creds_file}.tmp" && mv "${creds_file}.tmp" "$creds_file"
+
+    log_info "Removed user $user_id from TrustTunnel credentials"
+}

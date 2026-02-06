@@ -64,6 +64,11 @@ configs/wireguard/coredns/
 configs/wireguard/templates/
 configs/wireguard/peer*/
 
+# TrustTunnel generated files (keep .template files)
+configs/trusttunnel/vpn.toml
+configs/trusttunnel/hosts.toml
+configs/trusttunnel/credentials.toml
+
 # Generic patterns for generated secrets
 *.key
 *.key.hex

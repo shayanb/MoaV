@@ -139,6 +139,7 @@ def check_service_status(name: str) -> str:
         "wireguard": "moav-wireguard",
         "dnstt": "moav-dnstt",
         "conduit": "moav-conduit",
+        "trusttunnel": "moav-trusttunnel",
     }
 
     # Snowflake uses host networking, can't check from inside container
@@ -302,6 +303,13 @@ def get_services_status():
             "status": check_service_status("dnstt")
         },
         {
+            "name": "trusttunnel",
+            "description": "TrustTunnel VPN (HTTP/2, HTTP/3)",
+            "ports": "4443/tcp+udp",
+            "profile": "trusttunnel",
+            "status": check_service_status("trusttunnel")
+        },
+        {
             "name": "conduit",
             "description": "Psiphon bandwidth donation",
             "ports": "dynamic",
@@ -418,6 +426,7 @@ def list_users():
         has_wireguard = (user_dir / "wireguard.conf").exists()
         has_hysteria2 = (user_dir / "hysteria2.yaml").exists() or (user_dir / "hysteria2.txt").exists()
         has_trojan = (user_dir / "trojan.txt").exists()
+        has_trusttunnel = (user_dir / "trusttunnel.toml").exists() or (user_dir / "trusttunnel.txt").exists()
 
         # Check if zip already exists
         zip_exists = (bundle_path / f"{username}.zip").exists()
@@ -431,6 +440,7 @@ def list_users():
             "has_wireguard": has_wireguard,
             "has_hysteria2": has_hysteria2,
             "has_trojan": has_trojan,
+            "has_trusttunnel": has_trusttunnel,
             "zip_exists": zip_exists,
             "created_at": created_at,
         })
