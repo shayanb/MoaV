@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-02-06
+
+### Added
+- **CDN-fronted VLESS+WebSocket inbound** - New protocol for Cloudflare CDN-proxied connections
+  - sing-box `vless-ws-in` inbound on port 2082 (plain HTTP, Cloudflare terminates TLS)
+  - Uses same user UUIDs as Reality (no extra credentials)
+  - Client links generated when `CDN_DOMAIN` is set in `.env`
+- `CDN_DOMAIN` config option - Set to your Cloudflare-proxied subdomain (e.g., `cdn.yourdomain.com`)
+- `CDN_WS_PATH` config option - WebSocket path (default: `/ws`)
+- `PORT_CDN` config option - CDN inbound port (default: `2082`, a Cloudflare-allowed HTTP port)
+- User bundles now include `cdn-vless-ws.txt`, `cdn-vless-ws-singbox.json`, and QR code when CDN is configured
+- Documentation: "Adding a Domain After Domainless Setup" guide in SETUP.md
+- Documentation: Full CDN setup guide with Cloudflare configuration steps
+
+### Changed
+- `moav status` now displays CDN domain when configured
+- User add message now mentions CDN VLESS+WS
+- DNS.md Cloudflare section now includes optional `cdn` A record (Proxied)
+
+### Fixed
+- **`moav client connect` failing while `moav test` works** - Connect mode was missing IPv6 URI parsing, causing "invalid address" errors when IPv6 configs were present
+  - `extract_host()` and `extract_port()` now handle IPv6 URIs (`@[addr]:port` format)
+  - Config file discovery now prefers IPv4 configs (`reality.txt`) before falling back to globs (`reality*.txt`)
+  - WireGuard endpoint parsing now handles IPv6 addresses
+  - Added field validation with debug logging for all protocols
+  - Added port numeric validation for Reality and Trojan (was only in test mode)
+
 ## [1.2.2] - 2026-02-04
 
 ### Breaking Changes
@@ -192,8 +219,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.1...HEAD
-[1.2.1]: https://github.com/shayanb/MoaV/compare/v1.2.0...v1.2.1
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/shayanb/MoaV/compare/v1.2.2...v1.2.3
+[1.2.2]: https://github.com/shayanb/MoaV/compare/v1.2.0...v1.2.2
 [1.2.0]: https://github.com/shayanb/MoaV/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/shayanb/MoaV/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/shayanb/MoaV/compare/v1.0.2...v1.1.1
