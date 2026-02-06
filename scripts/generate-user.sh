@@ -382,6 +382,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_REALITY=$(cat "$OUTPUT_DIR/reality.txt" 2>/dev/null | tr -d '\n' || echo "")
     CONFIG_HYSTERIA2=$(cat "$OUTPUT_DIR/hysteria2.txt" 2>/dev/null | tr -d '\n' || echo "")
     CONFIG_TROJAN=$(cat "$OUTPUT_DIR/trojan.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_CDN=$(cat "$OUTPUT_DIR/cdn-vless-ws.txt" 2>/dev/null | tr -d '\n' || echo "")
     CONFIG_WIREGUARD=$(cat "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || echo "")
     CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
 
@@ -402,6 +403,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_REALITY_B64=$(qr_to_base64 "$OUTPUT_DIR/reality-qr.png")
     QR_HYSTERIA2_B64=$(qr_to_base64 "$OUTPUT_DIR/hysteria2-qr.png")
     QR_TROJAN_B64=$(qr_to_base64 "$OUTPUT_DIR/trojan-qr.png")
+    QR_CDN_B64=$(qr_to_base64 "$OUTPUT_DIR/cdn-vless-ws-qr.png")
     QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
 
@@ -454,54 +456,70 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     # Clean up any .bak files
     rm -f "$OUTPUT_HTML.bak"
 
-    # QR codes (base64)
+    # QR codes (base64) - safe for sed as base64 has no special chars
     sed -i "s|{{QR_REALITY}}|$QR_REALITY_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_HYSTERIA2}}|$QR_HYSTERIA2_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_TROJAN}}|$QR_TROJAN_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_CDN}}|$QR_CDN_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
 
-    # Config values (need special handling for special characters like & in URLs)
-    # Use sed with proper escaping for the replacement value
+    # Python-based placeholder replacement - handles special chars and multiline safely
     replace_placeholder() {
         local placeholder="$1"
         local value="$2"
-        # Escape special sed replacement characters: & \ /
-        # & means "matched pattern" in sed replacement, so escape it
-        local escaped_value=$(printf '%s' "$value" | sed -e 's/[&\\/]/\\&/g')
-        sed -i "s|${placeholder}|${escaped_value}|g" "$OUTPUT_HTML"
+        python3 -c "
+import sys
+placeholder = sys.argv[1]
+value = sys.argv[2]
+filepath = sys.argv[3]
+with open(filepath, 'r') as f:
+    content = f.read()
+content = content.replace(placeholder, value)
+with open(filepath, 'w') as f:
+    f.write(content)
+" "$placeholder" "$value" "$OUTPUT_HTML"
     }
 
     if [[ -n "$CONFIG_REALITY" ]]; then
         replace_placeholder "{{CONFIG_REALITY}}" "$CONFIG_REALITY"
     else
-        sed -i "s|{{CONFIG_REALITY}}|No Reality config available|g" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_REALITY}}" "No Reality config available"
     fi
 
     if [[ -n "$CONFIG_HYSTERIA2" ]]; then
         replace_placeholder "{{CONFIG_HYSTERIA2}}" "$CONFIG_HYSTERIA2"
     else
-        sed -i "s|{{CONFIG_HYSTERIA2}}|No Hysteria2 config available|g" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_HYSTERIA2}}" "No Hysteria2 config available"
     fi
 
     if [[ -n "$CONFIG_TROJAN" ]]; then
         replace_placeholder "{{CONFIG_TROJAN}}" "$CONFIG_TROJAN"
     else
-        sed -i "s|{{CONFIG_TROJAN}}|No Trojan config available|g" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_TROJAN}}" "No Trojan config available"
     fi
 
-    # WireGuard config is multiline - use same safe replacement
+    # CDN VLESS+WS config
+    if [[ -n "$CONFIG_CDN" ]]; then
+        replace_placeholder "{{CONFIG_CDN}}" "$CONFIG_CDN"
+        replace_placeholder "{{CDN_DOMAIN}}" "${CDN_DOMAIN:-}"
+    else
+        replace_placeholder "{{CONFIG_CDN}}" "CDN not configured"
+        replace_placeholder "{{CDN_DOMAIN}}" "Not configured"
+    fi
+
+    # WireGuard config is multiline - use Python replacement
     if [[ -n "$CONFIG_WIREGUARD" ]]; then
         replace_placeholder "{{CONFIG_WIREGUARD}}" "$CONFIG_WIREGUARD"
     else
-        sed -i "s|{{CONFIG_WIREGUARD}}|No WireGuard config available|g" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_WIREGUARD}}" "No WireGuard config available"
     fi
 
     # WireGuard-wstunnel config is multiline
     if [[ -n "$CONFIG_WIREGUARD_WSTUNNEL" ]]; then
         replace_placeholder "{{CONFIG_WIREGUARD_WSTUNNEL}}" "$CONFIG_WIREGUARD_WSTUNNEL"
     else
-        sed -i "s|{{CONFIG_WIREGUARD_WSTUNNEL}}|No WireGuard-wstunnel config available|g" "$OUTPUT_HTML"
+        replace_placeholder "{{CONFIG_WIREGUARD_WSTUNNEL}}" "No WireGuard-wstunnel config available"
     fi
 
     log_info "  - README.html generated"
