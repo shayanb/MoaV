@@ -29,6 +29,7 @@ PROTOCOL_PRIORITY=(reality hysteria2 trojan wireguard tor dnstt)
 # State
 CURRENT_PID=""
 CURRENT_PROTOCOL=""
+EXIT_IP=""
 
 # =============================================================================
 # Logging
@@ -431,6 +432,9 @@ connect_singbox() {
     # Test connection
     sleep 1
     if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        # Get exit IP for display
+        EXIT_IP=$(curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
         return 0
     else
         log_warn "Connection test failed for $protocol"
@@ -463,6 +467,8 @@ connect_wireguard() {
 
     # Test connection
     if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        EXIT_IP=$(curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
         return 0
     else
         log_warn "Connection test failed for wireguard"
@@ -706,6 +712,9 @@ main() {
     echo "═══════════════════════════════════════════════════════════════"
     echo ""
     echo "  Protocol:   $CURRENT_PROTOCOL"
+    if [[ -n "${EXIT_IP:-}" ]]; then
+        echo -e "  Exit IP:    ${CYAN}$EXIT_IP${NC}"
+    fi
     echo "  SOCKS5:     localhost:$SOCKS_PORT"
     echo "  HTTP:       localhost:$HTTP_PORT"
     echo ""
