@@ -7,6 +7,7 @@ Common issues and their solutions.
 - [Git and Update Issues](#git-and-update-issues)
   - [Update fails with "local changes would be overwritten"](#update-fails-with-local-changes-would-be-overwritten)
   - [Recovering from failed updates](#recovering-from-failed-updates)
+  - [Breaking changes after update](#breaking-changes-after-update)
   - [Switching branches](#switching-branches)
 - [Server-Side Issues](#server-side-issues)
   - [Services won't start](#services-wont-start)
@@ -128,6 +129,44 @@ git reset --hard origin/main
 # Verify
 git status
 ```
+
+### Breaking changes after update
+
+Some updates include breaking changes (marked in [CHANGELOG](../CHANGELOG.md)) that require regenerating configs. Symptoms include:
+
+- Clients can't connect after update
+- Services crash on startup
+- Protocol-specific errors (e.g., "invalid obfuscation password")
+
+**Option 1: Rebuild configs (keeps users)**
+
+```bash
+moav config rebuild
+moav restart
+```
+
+This regenerates server config while preserving user credentials. You must redistribute new config bundles to all users.
+
+**Option 2: Fresh start (new keys, new users)**
+
+If Option 1 doesn't work or you want a clean slate:
+
+```bash
+# Complete wipe and fresh install
+moav uninstall --wipe
+
+# Reconfigure
+cp .env.example .env
+nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
+
+# Bootstrap fresh
+./moav.sh
+```
+
+**After any breaking change update:**
+1. Download new user bundles from admin dashboard or `outputs/bundles/`
+2. Distribute to all users
+3. Users must delete old configs and import new ones
 
 ### Switching branches
 
@@ -878,41 +917,45 @@ During major events, Govs sometimes shuts internet entirely:
 If things are broken beyond repair, reset everything:
 
 ```bash
-# Stop all containers
-docker compose --profile all down
+# Complete wipe - removes all containers, volumes, configs, keys, bundles
+moav uninstall --wipe
 
-# Remove the bootstrap flag and all generated state
-docker run --rm -v moav_moav_state:/state alpine rm -rf /state/.bootstrapped /state/keys /state/users
+# Reconfigure
+cp .env.example .env
+nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
 
-# Optionally remove generated configs (will be regenerated)
-rm -rf configs/sing-box/config.json configs/wireguard/wg0.conf configs/dnstt/server.conf
-
-# Remove Docker volumes entirely (complete reset)
-docker volume rm moav_moav_state moav_moav_certs moav_moav_logs
-
-# Re-run bootstrap
-docker compose --profile setup run --rm bootstrap
-
-# Start services
-docker compose --profile all up -d
+# Fresh bootstrap
+./moav.sh
 ```
 
-### Partial reset (keep certificates)
+This gives you a completely clean installation with new keys and certificates.
 
-To re-bootstrap while keeping your SSL certificates:
+### Partial reset (keep data)
+
+Remove containers but keep your configuration for quick reinstall:
 
 ```bash
-# Stop services
-docker compose --profile all down
+# Remove containers only, keep .env, keys, bundles
+moav uninstall
 
+# Reinstall and start
+./moav.sh install
+moav start
+```
+
+### Re-bootstrap only
+
+To regenerate server config without removing anything:
+
+```bash
 # Remove only the bootstrap flag
 docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
 
 # Re-run bootstrap
-docker compose --profile setup run --rm bootstrap
+moav bootstrap
 
-# Start services
-docker compose --profile all up -d
+# Restart services
+moav restart
 ```
 
 ### Reset only WireGuard

@@ -637,22 +637,138 @@ do_install() {
 }
 
 do_uninstall() {
-    if [[ ! -e "$INSTALL_PATH" ]]; then
-        warn "Not installed (no file at $INSTALL_PATH)"
+    local wipe=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --wipe)
+                wipe=true
+                shift
+                ;;
+            *)
+                error "Unknown option: $1"
+                echo "Usage: moav uninstall [--wipe]"
+                return 1
+                ;;
+        esac
+    done
+
+    echo ""
+    if [[ "$wipe" == "true" ]]; then
+        warn "This will COMPLETELY REMOVE MoaV including:"
+        echo "  - All Docker containers and volumes"
+        echo "  - All configuration files (.env, configs/)"
+        echo "  - All generated keys and certificates"
+        echo "  - All user bundles (outputs/)"
+        echo "  - Global 'moav' command"
+        echo ""
+        warn "This cannot be undone! All keys and user configs will be lost."
+    else
+        info "This will remove:"
+        echo "  - All Docker containers (data preserved in volumes)"
+        echo "  - Global 'moav' command"
+        echo ""
+        echo "Preserved: .env, keys, user bundles, volumes"
+        echo "Use --wipe to remove everything"
+    fi
+    echo ""
+
+    read -r -p "Continue? [y/N] " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        info "Cancelled"
         return 0
     fi
 
-    if [[ -L "$INSTALL_PATH" ]]; then
-        info "Removing symlink at $INSTALL_PATH"
-        if [[ -w "$(dirname "$INSTALL_PATH")" ]]; then
-            rm -f "$INSTALL_PATH"
+    echo ""
+
+    # Stop and remove containers
+    if command -v docker &>/dev/null && [[ -f "$MOAV_DIR/docker-compose.yml" ]]; then
+        info "Stopping Docker containers..."
+        cd "$MOAV_DIR"
+        if [[ "$wipe" == "true" ]]; then
+            # Remove containers AND volumes
+            docker compose --profile all down -v --remove-orphans 2>/dev/null || true
         else
-            sudo rm -f "$INSTALL_PATH"
+            # Remove containers only, keep volumes
+            docker compose --profile all down --remove-orphans 2>/dev/null || true
         fi
-        success "Uninstalled"
+        success "Containers removed"
+    fi
+
+    # Wipe all generated files if --wipe
+    if [[ "$wipe" == "true" ]]; then
+        info "Removing configuration files..."
+
+        # Remove .env
+        [[ -f "$MOAV_DIR/.env" ]] && rm -f "$MOAV_DIR/.env"
+
+        # Remove generated sing-box config
+        [[ -f "$MOAV_DIR/configs/sing-box/config.json" ]] && rm -f "$MOAV_DIR/configs/sing-box/config.json"
+
+        # Remove generated dnstt files
+        rm -f "$MOAV_DIR/configs/dnstt/server.conf" 2>/dev/null
+        rm -f "$MOAV_DIR/configs/dnstt/server.pub" 2>/dev/null
+        rm -f "$MOAV_DIR/configs/dnstt/"*.key 2>/dev/null
+        rm -f "$MOAV_DIR/configs/dnstt/"*.key.hex 2>/dev/null
+
+        # Remove generated WireGuard files
+        rm -f "$MOAV_DIR/configs/wireguard/wg0.conf" 2>/dev/null
+        rm -f "$MOAV_DIR/configs/wireguard/wg0.conf."* 2>/dev/null
+        rm -f "$MOAV_DIR/configs/wireguard/server.pub" 2>/dev/null
+        rm -f "$MOAV_DIR/configs/wireguard/server.key" 2>/dev/null
+        rm -rf "$MOAV_DIR/configs/wireguard/wg_confs/" 2>/dev/null
+        rm -rf "$MOAV_DIR/configs/wireguard/coredns/" 2>/dev/null
+        rm -rf "$MOAV_DIR/configs/wireguard/templates/" 2>/dev/null
+        rm -rf "$MOAV_DIR/configs/wireguard/peer"* 2>/dev/null
+
+        # Remove generated TrustTunnel files
+        rm -f "$MOAV_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
+        rm -f "$MOAV_DIR/configs/trusttunnel/hosts.toml" 2>/dev/null
+        rm -f "$MOAV_DIR/configs/trusttunnel/credentials.toml" 2>/dev/null
+
+        # Remove outputs (bundles, keys)
+        if [[ -d "$MOAV_DIR/outputs" ]]; then
+            # Keep the directory but remove contents (preserve .gitkeep)
+            find "$MOAV_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
+        fi
+
+        # Remove certbot certificates
+        rm -rf "$MOAV_DIR/certbot/" 2>/dev/null
+
+        success "Configuration files removed"
+    fi
+
+    # Remove global symlink
+    if [[ -e "$INSTALL_PATH" ]]; then
+        if [[ -L "$INSTALL_PATH" ]]; then
+            info "Removing global command at $INSTALL_PATH"
+            if [[ -w "$(dirname "$INSTALL_PATH")" ]]; then
+                rm -f "$INSTALL_PATH"
+            else
+                sudo rm -f "$INSTALL_PATH"
+            fi
+            success "Global command removed"
+        else
+            warn "$INSTALL_PATH is not a symlink, not removing"
+        fi
+    fi
+
+    echo ""
+    if [[ "$wipe" == "true" ]]; then
+        success "MoaV completely uninstalled"
+        echo ""
+        echo "To reinstall fresh:"
+        echo "  cd $MOAV_DIR"
+        echo "  cp .env.example .env"
+        echo "  ./moav.sh"
     else
-        error "$INSTALL_PATH is not a symlink, not removing"
-        return 1
+        success "MoaV uninstalled (data preserved)"
+        echo ""
+        echo "To reinstall with existing data:"
+        echo "  cd $MOAV_DIR"
+        echo "  ./moav.sh install"
+        echo "  moav start"
     fi
 }
 
@@ -2170,7 +2286,7 @@ show_usage() {
     echo "  help, --help, -h      Show this help message"
     echo "  version, --version    Show version information"
     echo "  install               Install 'moav' command globally"
-    echo "  uninstall             Remove global 'moav' command"
+    echo "  uninstall [--wipe]    Remove containers and global command (--wipe removes all data)"
     echo "  update [-b BRANCH]    Update MoaV (git pull), optionally switch branch"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
@@ -3630,7 +3746,8 @@ main() {
             do_install
             ;;
         uninstall)
-            do_uninstall
+            shift
+            do_uninstall "$@"
             ;;
         update)
             shift
