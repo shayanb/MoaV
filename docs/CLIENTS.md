@@ -7,7 +7,6 @@ This guide explains how to connect to MoaV from various devices.
 - [Quick Reference](#quick-reference)
   - [Protocol Support](#protocol-support-by-port)
   - [Client Apps](#client-apps)
-
 - [Protocol Priority](#protocol-priority)
 - [MoaV Client Container (Linux/Docker)](#moav-client-container-linuxdocker)
 - [iOS Setup](#ios-setup)
@@ -16,6 +15,8 @@ This guide explains how to connect to MoaV from various devices.
 - [Windows Setup](#windows-setup)
 - [WireGuard Setup](#wireguard-setup)
 - [Hysteria2 Setup](#hysteria2-setup)
+- [CDN VLESS+WS Setup (When IP Blocked)](#cdn-vlessws-setup-when-ip-blocked)
+- [TrustTunnel Setup](#trusttunnel-setup)
 - [DNS Tunnel Setup (Last Resort)](#dns-tunnel-setup-last-resort)
 - [Psiphon Setup](#psiphon-setup)
 - [About Psiphon Conduit (Server Feature)](#about-psiphon-conduit-server-feature)
@@ -34,6 +35,8 @@ This guide explains how to connect to MoaV from various devices.
 | [Reality (VLESS)](https://github.com/XTLS/REALITY) | 443/tcp | TLS camouflage, virtually undetectable |
 | [Trojan](https://trojan-gfw.github.io/trojan/) | 8443/tcp | HTTPS mimicry, battle-tested |
 | [Hysteria2](https://v2.hysteria.network/) | 443/udp | QUIC-based, fast on lossy networks |
+| CDN (VLESS+WS) | 443 via Cloudflare | When server IP is blocked |
+| [TrustTunnel](https://trusttunnel.org/) | 4443/tcp+udp | HTTP/2 & QUIC, looks like HTTPS |
 | [WireGuard](https://www.wireguard.com/) (Direct) | 51820/udp | Full VPN mode, simple setup |
 | [WireGuard](https://www.wireguard.com/) + [wstunnel](https://github.com/erebe/wstunnel) | 8080/tcp | VPN wrapped in WebSocket |
 | [DNS Tunnel](https://www.bamsoftware.com/software/dnstt/) | 53/udp | Last resort, slow but hard to block |
@@ -56,6 +59,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Onion Browser](https://apps.apple.com/us/app/onion-browser/id519296448) | Tor | [App Store (Free)](https://apps.apple.com/us/app/onion-browser/id519296448) |
 | [Psiphon](https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909) | Psiphon | [App Store (Free)](https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909) |
 | [WireGuard](https://apps.apple.com/us/app/wireguard/id1441195209) | WireGuard | [App Store (Free)](https://apps.apple.com/us/app/wireguard/id1441195209) |
+| [TrustTunnel](https://apps.apple.com/app/trusttunnel/id6478890498) | TrustTunnel | [App Store (Free)](https://apps.apple.com/app/trusttunnel/id6478890498) |
 
 #### Android
 
@@ -71,6 +75,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Play Store](https://play.google.com/store/apps/details?id=org.torproject.torbrowser) / [Official](https://www.torproject.org/download/) |
 | [Psiphon](https://psiphon.ca/) | Psiphon | [Play Store](https://play.google.com/store/apps/details?id=com.psiphon3) / [APK](https://psiphon.ca/en/download.html) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [Play Store](https://play.google.com/store/apps/details?id=com.wireguard.android) |
+| [TrustTunnel](https://trusttunnel.org/) | TrustTunnel | [Play Store](https://play.google.com/store/apps/details?id=org.trusttunnel.app) / [GitHub](https://github.com/TrustTunnel/TrustTunnelClient) |
 
 #### Windows
 
@@ -84,6 +89,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [Psiphon](https://psiphon.ca/) | Psiphon | [Official](https://psiphon.ca/en/download.html) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [Official](https://www.wireguard.com/install/) |
+| [TrustTunnel](https://trusttunnel.org/) | TrustTunnel | [GitHub](https://github.com/TrustTunnel/TrustTunnelClient/releases) |
 
 #### macOS
 
@@ -98,6 +104,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [Psiphon](https://psiphon.ca/) | Psiphon | [App Store (Apple Silicon)](https://apps.apple.com/us/app/psiphon/id1276263909) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [App Store](https://apps.apple.com/us/app/wireguard/id1451685025) |
+| [TrustTunnel](https://trusttunnel.org/) | TrustTunnel | [GitHub](https://github.com/TrustTunnel/TrustTunnelClient/releases) |
 
 #### Linux
 
@@ -110,6 +117,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/mihomo-party-org/mihomo-party/releases) |
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [Official](https://www.wireguard.com/install/) |
+| [TrustTunnel](https://trusttunnel.org/) | TrustTunnel | [GitHub](https://github.com/TrustTunnel/TrustTunnelClient/releases) |
 | **MoaV Client** | All MoaV protocols | Built-in (Docker) |
 
 ¹ NekoRay: Repository notes it is no longer actively maintained. Consider alternatives like Hiddify or Clash Verge.
@@ -126,11 +134,13 @@ Try these in order. If one doesn't work, try the next:
 1. **Reality (VLESS)** - Primary, most reliable (port 443/tcp)
 2. **Hysteria2** - Fast alternative, uses QUIC/UDP (port 443/udp)
 3. **Trojan** - Backup, uses your domain's TLS cert (port 8443/tcp)
-4. **WireGuard (Direct)** - Full VPN mode, simple setup (port 51820/udp)
-5. **WireGuard (wstunnel)** - VPN wrapped in WebSocket, for restrictive networks (port 8080/tcp)
-6. **Tor (Snowflake)** - Uses Tor network (no server needed)
-7. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
-8. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
+4. **CDN (VLESS+WS)** - When server IP is blocked, routes via Cloudflare (port 443 via CDN)
+5. **TrustTunnel** - HTTP/2 & QUIC, looks like normal HTTPS (port 4443)
+6. **WireGuard (Direct)** - Full VPN mode, simple setup (port 51820/udp)
+7. **WireGuard (wstunnel)** - VPN wrapped in WebSocket, for restrictive networks (port 8080/tcp)
+8. **Tor (Snowflake)** - Uses Tor network (no server needed)
+9. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
+10. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
 
 ---
 
@@ -489,6 +499,77 @@ This creates a local proxy on:
 - HTTP: `127.0.0.1:8080`
 
 Configure your browser/apps to use this proxy.
+
+---
+
+## CDN VLESS+WS Setup (When IP Blocked)
+
+Use this when direct connections to your server are blocked but Cloudflare IPs are accessible.
+
+**Your config file:** `cdn-vless-ws.txt`
+
+CDN mode routes your traffic through Cloudflare's CDN, making it appear as regular HTTPS traffic to a CDN-hosted website.
+
+### Using Any VLESS Client
+
+The CDN link works in any app that supports VLESS with WebSocket transport:
+
+1. Copy the link from `cdn-vless-ws.txt`
+2. Import into your client app (Shadowrocket, v2rayNG, Hiddify, etc.)
+3. Connect
+
+**Link format:**
+```
+vless://UUID@cdn.yourdomain.com:443?security=tls&type=ws&path=/ws&sni=cdn.yourdomain.com&host=cdn.yourdomain.com&fp=chrome&alpn=http/1.1#MoaV-CDN-username
+```
+
+### iOS (Shadowrocket)
+
+1. Open Shadowrocket
+2. Tap scanner icon → scan `cdn-vless-ws-qr.png`
+3. Or paste the link from `cdn-vless-ws.txt`
+4. Toggle ON to connect
+
+### Android (v2rayNG / Hiddify)
+
+1. Open v2rayNG or Hiddify
+2. Tap "+" → "Import from clipboard"
+3. Paste the link from `cdn-vless-ws.txt`
+4. Connect
+
+**Note:** CDN mode is slower than direct connections but works when your server's IP is blocked.
+
+---
+
+## TrustTunnel Setup
+
+TrustTunnel uses HTTP/2 and HTTP/3 (QUIC), making traffic look like regular HTTPS.
+
+**Your config files:**
+- `trusttunnel.txt` - Credentials and instructions
+- `trusttunnel.toml` - CLI client configuration
+- `trusttunnel.json` - JSON format for apps
+
+### Mobile Apps (iOS/Android)
+
+1. Download TrustTunnel from App Store or Play Store
+2. Tap "+" to add a new VPN
+3. Enter the settings from `trusttunnel.txt`:
+   - Server: `yourdomain.com:4443`
+   - Username: (from bundle)
+   - Password: (from bundle)
+4. Connect
+
+### Desktop (CLI Client)
+
+```bash
+# Download from https://github.com/TrustTunnel/TrustTunnelClient/releases
+
+# Run with config file
+trusttunnel_client --config trusttunnel.toml
+```
+
+The CLI client creates a TUN interface for full VPN functionality.
 
 ---
 

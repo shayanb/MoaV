@@ -1,477 +1,188 @@
 # MoaV Setup Guide
 
-Complete setup guide for deploying MoaV on a VPS or home server.
+Complete guide to deploy MoaV on a VPS or home server.
 
 ## Table of Contents
 
-- [Use Cases](#use-cases)
 - [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Step-by-Step Setup](#step-by-step-setup)
+  - [Step 1: Get a Server](#step-1-get-a-server)
+  - [Step 2: Configure DNS](#step-2-configure-dns)
+  - [Step 3: Install MoaV](#step-3-install-moav)
+  - [Step 4: Configure Environment](#step-4-configure-environment)
+  - [Step 5: Run Bootstrap](#step-5-run-bootstrap)
+  - [Step 6: Start Services](#step-6-start-services)
+  - [Step 7: Download User Bundles](#step-7-download-user-bundles)
+  - [Step 8: Distribute to Users](#step-8-distribute-to-users)
 - [Domain-less Mode](#domain-less-mode)
-- [Adding a Domain After Domainless Setup](#adding-a-domain-after-domainless-setup)
-- [CDN-Fronted VLESS+WebSocket (Cloudflare)](#cdn-fronted-vlesswebsocket-cloudflare)
-- [Quick Install (Recommended)](#quick-install-recommended)
-  - [Manual Installation](#manual-installation)
-    - [Using moav.sh](#using-moavsh)
-    - [Step 3: Configure Environment](#step-3-configure-environment)
-    - [Step 4: Configure DNS](#step-4-configure-dns)
-    - [Step 5: Run Bootstrap](#step-5-run-bootstrap)
-    - [Step 6: Prepare for DNS Tunnel (Optional)](#step-6-prepare-for-dns-tunnel-optional)
-    - [Step 7: Start Services](#step-7-start-services)
-    - [Step 8: Verify](#step-8-verify)
-  - [Distribute User Bundles](#step-9-distribute-user-bundles)
-  
+- [CDN-Fronted Mode (Cloudflare)](#cdn-fronted-mode-cloudflare)
 - [Managing Users](#managing-users)
-- [Bandwidth Donation Services](#bandwidth-donation-services)
-  - [Conduit Stats (Traffic by Country)](#conduit-stats-traffic-by-country)
-- [Re-bootstrapping](#re-bootstrapping)
-- [Updating](#updating)
-- [Testing New Features / Bug Fixes](#testing-new-features--bug-fixes)
+- [Service Management](#service-management)
 - [Server Migration](#server-migration)
 - [IPv6 Support](#ipv6-support)
-- [Troubleshooting](#troubleshooting)
-- [Security Notes](#security-notes)
-
----
-
-## Use Cases
-
-MoaV can be deployed in several configurations:
-
-### VPS in a Free Country
-The most common setup - deploy on a VPS in a country with unrestricted internet to help users bypass censorship.
-
-**Benefits:**
-- Dedicated public IP with all ports open
-- High bandwidth and reliability
-- Easy DNS setup with your domain
-- Can serve multiple users remotely
-
-### Home VPN Server
-Run MoaV on a Raspberry Pi or home server to create a personal VPN for yourself and family.
-
-**Benefits:**
-- No monthly VPS costs
-- Full control over your hardware
-- Share with trusted family and friends
-- Great for travelers needing access to home network
-- Can donate bandwidth via Conduit/Snowflake to help others
-
-**Considerations:**
-- Requires port forwarding on your router
-- Dynamic IP needs DDNS setup (see [DNS.md](DNS.md#dynamic-dns-for-home-servers))
-- Some ISPs use CGNAT which blocks incoming connections
-- Lower upload bandwidth than VPS
-
-**Hardware:** Raspberry Pi 4 (2GB+ RAM) or any ARM64/x64 Linux system works great.
-
-### Hybrid Setup
-Run a home server for personal use AND a VPS for distributing to users in censored regions.
+- [Bandwidth Donation (Conduit & Snowflake)](#bandwidth-donation-conduit--snowflake)
+- [Updating MoaV](#updating-moav)
+- [Re-bootstrapping](#re-bootstrapping)
 
 ---
 
 ## Prerequisites
 
-- A VPS or home server with:
-  - Debian 12, Ubuntu 22.04, or Ubuntu 24.04 (also works on Raspberry Pi OS)
-  - **Architecture:** x64 (AMD64) or ARM64 (Raspberry Pi 4, Apple Silicon, etc.)
-  - At least 1 vCPU, 1GB RAM, 10GB disk
-  - Public IPv4 address (or dynamic IP with DDNS for home servers)
-  - Public IPv6 address (optional, see [IPv6 Support](#ipv6-support))
-  - Ports open based on services you want (see table below)
+**Server Requirements:**
+- Debian 12, Ubuntu 22.04, or Ubuntu 24.04 (Raspberry Pi OS works too)
+- Architecture: x64 (AMD64) or ARM64 (Raspberry Pi 4, Apple Silicon)
+- Minimum: 1 vCPU, 1GB RAM, 10GB disk
+- Public IPv4 address
+- Public IPv6 address (optional, see [IPv6 Support](#ipv6-support))
 
-- A domain name (optional - see [Domain-less Mode](#domain-less-mode))
-  - **Required for:** Reality, Trojan, Hysteria2, DNS tunnel
-  - **Not required for:** WireGuard, Admin dashboard, Conduit, Snowflake
-  - **VPS:** Point domain to your server's static IP
-  - **Home server:** Use DDNS service (see [Dynamic DNS for Home Servers](DNS.md#dynamic-dns-for-home-servers))
+**Domain (Optional but Recommended):**
+- Required for: Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, DNS tunnel
+- Not required for: WireGuard, Admin dashboard, Conduit, Snowflake
+- See [Domain-less Mode](#domain-less-mode) if you don't have a domain
 
+**Ports to Open:**
 
-## Domain-less Mode
-
-Don't have a domain? MoaV can run in **domain-less mode** with limited but useful services:
-
-| Service | Port | Description |
-|---------|------|-------------|
-| WireGuard | 51820/udp | Full VPN, works on most networks |
-| wstunnel | 8080/tcp | WireGuard over WebSocket (when UDP blocked) |
-| Admin | 9443/tcp | Dashboard with self-signed certificate |
-| Conduit | dynamic | Psiphon bandwidth donation |
-| Snowflake | dynamic | Tor bandwidth donation |
-
-**What's NOT available without a domain:**
-- Reality, Trojan, Hysteria2 (require TLS certificates)
-- DNS tunnel (requires DNS delegation)
-
-### Setup Domain-less Mode
-
-```bash
-# Option 1: Interactive setup
-moav
-# When prompted for domain, leave empty and confirm domain-less mode
-
-# Option 2: Direct command
-moav domainless
-```
-
-The admin dashboard will use a **self-signed certificate** - your browser will show a security warning which is expected. Click "Advanced" → "Proceed" to access.
-
-**Tip:** Domain-less mode is great for:
-- Quick testing before setting up DNS
-- Home servers where you just need WireGuard VPN
-- Running Conduit/Snowflake to donate bandwidth
+| Port | Protocol | Service | Requires Domain |
+|------|----------|---------|-----------------|
+| 443/tcp | TCP | Reality (VLESS) | Yes |
+| 443/udp | UDP | Hysteria2 | Yes |
+| 8443/tcp | TCP | Trojan | Yes |
+| 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
+| 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) |
+| 51820/udp | UDP | WireGuard | No |
+| 8080/tcp | TCP | wstunnel | No |
+| 9443/tcp | TCP | Admin dashboard | No |
+| 53/udp | UDP | DNS tunnel | Yes |
+| 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
 ---
 
-## Adding a Domain After Domainless Setup
+## Quick Start
 
-If you initially set up MoaV in domain-less mode and later acquired a domain, you can enable the full protocol suite without starting from scratch. Your existing WireGuard configs and users are preserved.
-
-### Step 1: Configure DNS
-
-Point your domain to your server before proceeding. See [DNS.md](DNS.md) for provider-specific instructions.
+For experienced users who want the fastest path:
 
 ```bash
-# Verify DNS is working
+# 1. SSH into your VPS
+ssh root@YOUR_SERVER_IP
+
+# 2. Run the installer
+curl -fsSL moav.sh/install.sh | bash
+
+# 3. Follow the interactive prompts
+# 4. Done! User bundles are in /opt/moav/outputs/bundles/
+```
+
+The installer handles everything: Docker, dependencies, configuration, and first-time setup.
+
+---
+
+## Step-by-Step Setup
+
+### Step 1: Get a Server
+
+Choose a VPS provider and create a server:
+
+| Provider | Minimum Plan | Price | Deploy Guide |
+|----------|--------------|-------|--------------|
+| Hetzner | CX22 (2 vCPU, 4GB) | €5.39/mo | [DEPLOY.md#hetzner](DEPLOY.md#hetzner) |
+| DigitalOcean | Basic (1 vCPU, 1GB) | $6/mo | [DEPLOY.md#digitalocean](DEPLOY.md#digitalocean) |
+| Vultr | 25GB SSD (1 vCPU, 1GB) | $5/mo | [DEPLOY.md#vultr](DEPLOY.md#vultr) |
+| Linode | Nanode 1GB | $5/mo | [DEPLOY.md#linode](DEPLOY.md#linode) |
+
+**Home Server:** Raspberry Pi 4 (2GB+ RAM) or any ARM64/x64 Linux works. See [DNS.md](DNS.md#dynamic-dns-for-home-servers) for dynamic DNS setup.
+
+### Step 2: Configure DNS
+
+Point your domain to your server **before** running setup.
+
+**Minimum DNS Records:**
+
+| Type | Name | Value | Notes |
+|------|------|-------|-------|
+| A | @ | YOUR_SERVER_IP | Main domain |
+
+**Additional Records (for all features):**
+
+| Type | Name | Value | Notes |
+|------|------|-------|-------|
+| A | dns | YOUR_SERVER_IP | For DNS tunnel NS delegation |
+| NS | t | dns.yourdomain.com | DNS tunnel subdomain |
+| A | cdn | YOUR_SERVER_IP | CDN mode (Cloudflare: **Proxied** orange cloud) |
+
+**Important:** For Cloudflare users, the main `@` record must be **DNS only** (gray cloud). Only the `cdn` record should be **Proxied** (orange cloud).
+
+See [DNS.md](DNS.md) for provider-specific instructions.
+
+**Verify DNS is working:**
+```bash
 dig +short yourdomain.com
 # Should return your server IP
 ```
 
-### Step 2: Update .env
+### Step 3: Install MoaV
 
-```bash
-cd /opt/moav
-nano .env
-```
-
-Set or update these values:
-
-```bash
-# Set your domain and email
-DOMAIN=yourdomain.com
-ACME_EMAIL=you@example.com
-
-# Re-enable protocols (change false → true)
-ENABLE_REALITY=true
-ENABLE_TROJAN=true
-ENABLE_HYSTERIA2=true
-ENABLE_DNSTT=true        # optional, only if you set up NS records
-ENABLE_ADMIN_UI=true
-
-# Update default profiles to include proxy
-DEFAULT_PROFILES="proxy admin wireguard"
-```
-
-### Step 3: Re-run Bootstrap
-
-```bash
-moav bootstrap
-```
-
-When prompted that bootstrap has already been run, confirm to re-run it. This will:
-- Generate Reality/dnstt keys (if not already present)
-- Obtain a TLS certificate from Let's Encrypt
-- Recreate user bundles with the new domain-based configs (Reality, Trojan, Hysteria2)
-
-**Note:** Existing WireGuard keys and user UUIDs are preserved. Users who were already using WireGuard will continue to work.
-
-### Step 4: Rebuild and Start
-
-```bash
-# Rebuild containers (needed for new config)
-docker compose --profile all build
-
-# Start services including the new proxy profile
-moav start
-```
-
-### Step 5: Distribute Updated Bundles
-
-User bundles now include Reality, Trojan, and Hysteria2 configs in addition to WireGuard:
-
-```bash
-# Regenerate packages for distribution
-moav user package user1
-```
-
----
-
-## CDN-Fronted VLESS+WebSocket (Cloudflare)
-
-MoaV includes a VLESS+WebSocket inbound that works behind Cloudflare's CDN. This is useful when direct connections to your server are blocked but Cloudflare IPs are accessible.
-
-### How It Works
-
-```
-Client --HTTPS:443--> Cloudflare CDN --HTTP:2082--> Your Server (sing-box)
-```
-
-- Cloudflare terminates TLS and forwards traffic to your origin over HTTP on port 2082
-- The sing-box `vless-ws-in` inbound listens on port 2082 (plain HTTP, no TLS needed on origin)
-- Uses the same user UUIDs as Reality (no extra credentials to manage)
-- Client links are only generated when `CDN_DOMAIN` is set in `.env`
-
-### Prerequisites
-
-- A domain managed through Cloudflare (free plan works)
-- The domain's proxy status set to **Proxied** (orange cloud) — this is the opposite of the main domain setup
-
-### Step 1: Create a CDN Subdomain in Cloudflare
-
-1. Log into [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. Select your domain → DNS → Records
-3. Add a new record:
-
-| Type | Name | Content | Proxy status |
-|------|------|---------|--------------|
-| A | `cdn` | YOUR_SERVER_IP | **Proxied** (orange cloud) |
-
-This creates `cdn.yourdomain.com` routed through Cloudflare.
-
-> **Important:** The main `@` A record for Reality/Trojan must stay **DNS only** (gray cloud). Only the CDN subdomain should be **Proxied**.
-
-### Step 2: Set Cloudflare SSL Mode
-
-1. In Cloudflare Dashboard → SSL/TLS → Overview
-2. Set encryption mode to **Flexible**
-
-This tells Cloudflare to connect to your origin over HTTP (port 2082), while clients connect to Cloudflare over HTTPS (port 443).
-
-> **Note:** If you use **Full** mode instead of Flexible, Cloudflare will try to connect to your origin over HTTPS, which won't work since the vless-ws-in inbound is plain HTTP.
-
-### Step 3: Configure MoaV
-
-Edit your `.env`:
-
-```bash
-# CDN domain (the Cloudflare-proxied subdomain)
-CDN_DOMAIN=cdn.yourdomain.com
-
-# WebSocket path (default is fine for most setups)
-CDN_WS_PATH=/ws
-
-# Port for the CDN inbound (default 2082, a Cloudflare-allowed HTTP port)
-PORT_CDN=2082
-```
-
-> **Port 2082** is one of [Cloudflare's supported HTTP ports](https://developers.cloudflare.com/fundamentals/reference/network-ports/). Other options: 2052, 2086, 2095, 8080, 8880. If you change this, also update the template port.
-
-### Step 4: Apply the Configuration
-
-**If you haven't bootstrapped yet:** Just run `moav bootstrap` — CDN configs will be included automatically.
-
-**If already bootstrapped:** Regenerate user bundles to include the new CDN links:
-
-```bash
-moav regenerate-users
-```
-
-Or for a single user:
-
-```bash
-moav user add newuser   # New users get CDN links automatically
-```
-
-### Step 5: Open Firewall Port
-
-```bash
-ufw allow 2082/tcp   # CDN WebSocket inbound
-```
-
-### Step 6: Verify
-
-```bash
-# Test that the WebSocket endpoint responds
-curl -s -o /dev/null -w "%{http_code}" \
-  -H "Connection: Upgrade" -H "Upgrade: websocket" \
-  http://localhost:2082/ws
-# Should return 400 (Bad Request) — this means sing-box is listening
-# A real WebSocket client will complete the upgrade handshake
-```
-
-### User Bundle Output
-
-When `CDN_DOMAIN` is set, each user bundle includes:
-- `cdn-vless-ws.txt` — Share link for mobile/desktop clients
-- `cdn-vless-ws-singbox.json` — Full sing-box client config
-- `cdn-vless-ws-qr.png` — QR code for mobile import
-
-The share link format:
-```
-vless://UUID@cdn.yourdomain.com:443?security=tls&type=ws&path=/ws&sni=cdn.yourdomain.com&host=cdn.yourdomain.com&fp=chrome&alpn=http/1.1#MoaV-CDN-username
-```
-
-### Cloudflare-Specific Notes
-
-- **Free plan** is sufficient — no paid features required
-- **WebSocket support** is enabled by default on all Cloudflare plans
-- **Rate limiting:** Cloudflare may rate-limit heavy traffic on the free plan. For high-throughput use, consider a paid plan
-- **Under Attack Mode:** If enabled, it may interfere with WebSocket connections. Add a Page Rule to bypass for the CDN subdomain if needed
-- The vless-ws-in inbound is always present in the sing-box config (harmless if unused). CDN client links are only generated when `CDN_DOMAIN` is set
-
----
-
-## Quick Install (Recommended)
-
-The fastest way to get started is the one-liner installer. SSH into your VPS and run:
+SSH into your server and run:
 
 ```bash
 curl -fsSL moav.sh/install.sh | bash
 ```
 
-This will:
-1. **Check prerequisites** - Detect your OS and check for Docker, git, qrencode
-2. **Install missing packages** - Prompt to install Docker, git, qrencode if missing
-3. **Clone MoaV** - Download to `/opt/moav`
-4. **Launch setup** - Offer to run the interactive setup wizard
+This installs:
+- Docker and Docker Compose
+- Git and qrencode
+- MoaV to `/opt/moav`
+- `moav` command (available globally)
 
-The installer supports:
-- **Debian/Ubuntu** - Uses `apt` and official Docker install script
-- **RHEL/Fedora/CentOS** - Uses `dnf`/`yum` and official Docker install script
-- **Alpine** - Uses `apk`
-
-After installation, configure your environment and run the setup:
-
+**Manual Installation** (if you prefer):
 ```bash
-cd /opt/moav
-cp .env.example .env
-nano .env                    # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
-./moav.sh                    # Run interactive setup
-```
-
-**Skip to [Step 3: Configure Environment](#step-3-configure-environment)** if you used the quick installer.
-
----
-
-## Manual Installation
-
-If you prefer manual installation or the quick installer doesn't work for your environment, follow these steps.
-
-### Step 1: Initial Server Setup
-
-SSH into your fresh VPS:
-
-```bash
-ssh root@YOUR_SERVER_IP
-```
-
-Update the system and install Docker:
-
-```bash
-# Update system
-apt update && apt upgrade -y
-
-# Install Docker (includes Docker Compose plugin)
+# Install Docker
 curl -fsSL https://get.docker.com | sh
 
-# Add your user to docker group (optional, avoids needing sudo)
-usermod -aG docker $USER
+# Install dependencies
+apt install -y git qrencode
 
-# Install qrencode for QR code generation
-apt install -y qrencode
-
-# Verify installation
-docker --version
-docker compose version
-```
-
-### Step 2: Clone MoaV
-
-```bash
-# Clone the repository
+# Clone MoaV
 git clone https://github.com/shayanb/MoaV.git /opt/moav
 cd /opt/moav
 ```
 
-Or download and extract:
-
-```bash
-mkdir -p /opt/moav
-cd /opt/moav
-# Upload or download your MoaV files here
-```
-
-## Using moav.sh
-
-After installation (quick or manual), MoaV provides an interactive management script:
+### Step 4: Configure Environment
 
 ```bash
 cd /opt/moav
-./moav.sh              # Interactive menu (guides you through setup)
-./moav.sh install      # Install 'moav' command globally
-```
-
-Once installed globally, run `moav` from anywhere:
-
-```bash
-moav                            # Interactive menu
-moav help                       # Show all available commands
-moav check                      # Check prerequisites
-moav bootstrap                  # Run first-time setup
-moav start                      # Start all services
-moav start proxy admin          # Start specific profiles
-moav stop                       # Stop all services
-moav stop conduit               # Stop specific service
-moav restart sing-box           # Restart specific service
-moav status                     # Show service status
-moav logs                       # View all logs
-moav logs sing-box conduit      # View specific service logs
-moav users                      # List users
-moav user add joe               # Add user
-moav user revoke joe            # Revoke user
-moav user package joe           # Create distributable zip
-moav build                      # Build all containers
-moav export                     # Export full backup
-moav import backup.tar.gz      # Import from backup
-moav migrate-ip 1.2.3.4        # Update to new IP
-moav uninstall                  # Remove global command
-```
-
-If you prefer manual setup, continue with the steps below.
-
-## Step 3: Configure Environment
-
-```bash
-# Copy example environment file
 cp .env.example .env
-
-# Edit with your settings
 nano .env
 ```
 
-**Required settings to change:**
+**Required Settings:**
 
 ```bash
-# Your domain (must be configured first - see DNS.md)
-DOMAIN=your-domain.com
+# Your domain (must match DNS from Step 2)
+DOMAIN=yourdomain.com
 
-# Email for Let's Encrypt
-ACME_EMAIL=your-email@example.com
+# Email for Let's Encrypt certificates
+ACME_EMAIL=you@example.com
 
-# Admin password (change this!)
-ADMIN_PASSWORD=your-secure-password-here
-
-# Your server's public IP (optional, auto-detected)
-SERVER_IP=YOUR_SERVER_IP
-
-# Your server's public IPv6 (optional, auto-detected if available)
-# Set to "disabled" to explicitly disable IPv6 support
-SERVER_IPV6=
+# Admin dashboard password (change this!)
+ADMIN_PASSWORD=your-secure-password
 ```
 
-**Optional settings:**
+**Optional Settings:**
 
 ```bash
-# Reality target - a popular site to impersonate
-# For censored regions (Iran, China), avoid microsoft.com as it's well-known
-# Better choices: dl.google.com, www.googletagmanager.com, www.doi.org
+# Server IP (auto-detected if empty)
+SERVER_IP=
+
+# Initial users to create (default: 5)
+INITIAL_USERS=5
+
+# Reality target (site to impersonate)
+# Good choices: dl.google.com, www.apple.com, www.doi.org
 REALITY_TARGET=dl.google.com:443
 
-# Hysteria2 obfuscation password (auto-generated if empty)
-# REQUIRED for bypassing QUIC blocking in censored regions
-HYSTERIA2_OBFS_PASSWORD=
-
-# Number of initial users to create
-INITIAL_USERS=5
+# CDN domain (optional, Cloudflare-proxied subdomain)
+CDN_DOMAIN=cdn.yourdomain.com
 
 # Enable/disable services
 ENABLE_REALITY=true
@@ -484,598 +195,475 @@ ENABLE_PSIPHON_CONDUIT=false
 ENABLE_ADMIN_UI=true
 ```
 
-## Step 4: Configure DNS
+### Step 5: Run Bootstrap
 
-Before proceeding, you must configure DNS records. See [DNS.md](DNS.md) for detailed instructions.
-
-**Minimum required:**
-- `A` record: `your-domain.com` → `YOUR_SERVER_IP`
-
-**For DNS tunnel (optional but recommended):**
-- `A` record: `dns.your-domain.com` → `YOUR_SERVER_IP`
-- `NS` record: `t.your-domain.com` → `dns.your-domain.com`
-
-## Step 5: Run Bootstrap
-
-Initialize the stack (generates keys, creates users, obtains TLS certificate):
+Initialize MoaV (generates keys, obtains certificates, creates users):
 
 ```bash
-# Run bootstrap
+moav bootstrap
+# Or manually:
 docker compose --profile setup run --rm bootstrap
 ```
 
 This will:
-1. Generate Reality keypair
-2. Generate dnstt keypair
-3. Obtain TLS certificate from Let's Encrypt
-4. Create initial users
-5. Generate user bundles in `outputs/bundles/`
+1. Generate Reality and dnstt keypairs
+2. Obtain TLS certificate from Let's Encrypt
+3. Generate WireGuard server keys
+4. Create initial users (default: 5)
+5. Generate user bundles with configs and QR codes
 
-**Note:** If certificate acquisition fails, ensure:
-- DNS is properly configured (A record pointing to this server)
-- Port 80 is temporarily open (for HTTP-01 challenge)
-- Domain propagation is complete (`dig your-domain.com`)
+**DNS Tunnel Preparation** (optional):
 
-## Step 6: Prepare for DNS Tunnel (Optional)
-
-If you want to use the DNS tunnel (dnstt), you need to free port 53:
-
+If you want to use the DNS tunnel, free port 53 first:
 ```bash
-# Stop and disable systemd-resolved (uses port 53)
+# Stop systemd-resolved (uses port 53)
 systemctl stop systemd-resolved
 systemctl disable systemd-resolved
 
-# Set up direct DNS resolution
+# Set up direct DNS
 echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
 ```
 
-## Step 7: Start Services
+### Step 6: Start Services
 
-**Easy way:**
 ```bash
-moav start              # Start all services
-moav start proxy admin  # Or specific profiles
+# Start all services
+moav start
+
+# Or start specific profiles
+moav start proxy admin          # Main proxy + dashboard
+moav start proxy admin wireguard # Add WireGuard
+moav start all                   # Everything
 ```
 
-**Manual way:**
+**Available Profiles:**
+- `proxy` - Reality, Trojan, Hysteria2, CDN (sing-box + decoy)
+- `wireguard` - WireGuard VPN + wstunnel
+- `dnstt` - DNS tunnel
+- `trusttunnel` - TrustTunnel VPN
+- `admin` - Admin dashboard
+- `conduit` - Psiphon bandwidth donation
+- `snowflake` - Tor bandwidth donation
+- `all` - Everything
+
+**Open Firewall Ports:**
 ```bash
-# Start all services (recommended)
-docker compose --profile all up -d
-
-# Or start just the proxy services (Reality, Trojan, Hysteria2)
-docker compose --profile proxy up -d
-
-# Or combine specific profiles
-docker compose --profile proxy --profile admin up -d          # Proxy + admin dashboard
-docker compose --profile proxy --profile wireguard up -d      # Proxy + WireGuard VPN
-docker compose --profile proxy --profile dnstt up -d          # Proxy + DNS tunnel
-docker compose --profile proxy --profile conduit up -d        # Proxy + Psiphon Conduit
-
-# Available profiles:
-#   setup     - Bootstrap/initialization (run once)
-#   proxy     - sing-box + decoy (main proxy services)
-#   wireguard - WireGuard VPN via wstunnel
-#   dnstt     - DNS tunnel (last resort)
-#   trusttunnel - TrustTunnel VPN (HTTP/2 + QUIC)
-#   admin     - Stats dashboard (https://domain:9443 or https://ip:9443 in domain-less mode)
-#   conduit   - Psiphon bandwidth donation (includes traffic stats by country)
-#   snowflake - Tor Snowflake proxy (bandwidth donation for Tor users)
-#   all       - Everything
-
-# Note: certbot runs automatically with any profile to manage TLS certificates
-```
-
-**Open required firewall ports:**
-```bash
-# For proxy services
-ufw allow 443/tcp    # Reality + Trojan fallback
+# Proxy services
+ufw allow 443/tcp    # Reality
 ufw allow 443/udp    # Hysteria2
-ufw allow 53/udp     # DNS tunnel (if using dnstt)
-ufw allow 2082/tcp   # CDN WebSocket (if using CDN_DOMAIN)
+ufw allow 8443/tcp   # Trojan
 
-# For TrustTunnel
-ufw allow 4443/tcp   # TrustTunnel HTTP/2
-ufw allow 4443/udp   # TrustTunnel HTTP/3 (QUIC)
+# TrustTunnel
+ufw allow 4443/tcp   # HTTP/2
+ufw allow 4443/udp   # HTTP/3 (QUIC)
 
-# For admin dashboard
-ufw allow 9443/tcp   # Admin (or your PORT_ADMIN value)
+# CDN (if using)
+ufw allow 2082/tcp   # CDN WebSocket
+
+# WireGuard
+ufw allow 51820/udp  # Direct
+ufw allow 8080/tcp   # wstunnel
+
+# DNS tunnel
+ufw allow 53/udp
+
+# Admin
+ufw allow 9443/tcp
 ```
 
-## Step 8: Verify
-
-Check that services are running:
-
+**Verify Services:**
 ```bash
+moav status
+# Or:
 docker compose ps
 ```
 
-All services should show "Up" or "Up (healthy)".
+### Step 7: Download User Bundles
 
-**Note:** Normal browsers visiting `https://your-domain.com` will get an empty response or connection error. This is expected! Port 443 runs the Reality protocol which impersonates microsoft.com - only clients with the correct config can connect.
-
-To verify the server is working:
-```bash
-# Check sing-box is healthy
-docker compose logs sing-box | tail -20
-
-# Test from a client device with the Reality config
-# If it connects and you can browse, it's working!
-```
-
-The Trojan fallback (port 8443) serves the decoy "Under Construction" page for invalid auth attempts.
-
-## Step 9: Distribute User Bundles
-
-User bundles are in `outputs/bundles/`:
+User bundles are ready in `outputs/bundles/`:
 
 ```bash
 ls outputs/bundles/
 # user01/ user02/ user03/ user04/ user05/
 ```
 
-Each bundle contains:
-- `README.html` - User instructions (bilingual EN/FA)
-- `reality.txt` - Reality protocol link (primary)
-- `reality-qr.png` - QR code for mobile import
-- `trojan.txt` - Trojan link (backup)
-- `hysteria2.yaml` - Hysteria2 config
-- `wireguard.conf` - WireGuard config (direct mode)
-- `wireguard-wstunnel.conf` - WireGuard config (WebSocket mode)
+**Each bundle contains:**
+- `README.html` - User instructions (English + Farsi)
+- `reality.txt` - Reality share link + QR code
+- `trojan.txt` - Trojan share link
+- `hysteria2.txt` - Hysteria2 share link
+- `cdn-vless-ws.txt` - CDN share link (if CDN_DOMAIN set)
+- `wireguard.conf` - WireGuard config + QR code
+- `wireguard-wstunnel.conf` - WireGuard over WebSocket
+- `trusttunnel.txt` - TrustTunnel credentials (if enabled)
 - `dnstt-instructions.txt` - DNS tunnel instructions
-- `trusttunnel.txt` - TrustTunnel credentials (only if `ENABLE_TRUSTTUNNEL=true`)
-- `trusttunnel.json` - TrustTunnel config for clients
-- `cdn-vless-ws.txt` - CDN VLESS+WS link (only if `CDN_DOMAIN` is set)
-- `cdn-vless-ws-qr.png` - QR code for CDN link
 
-### Download via Admin Dashboard (Easiest)
+**Download Options:**
 
-The admin dashboard provides a simple web interface to download user bundles:
-
-1. Open `https://your-server:9443` in your browser
+**1. Admin Dashboard (Easiest):**
+1. Open `https://your-server:9443` in browser
 2. Login with username `admin` and your `ADMIN_PASSWORD`
-3. Scroll to the **User Bundles** section
-4. Click **Download** next to any user
+3. Click **Download** next to any user in the "User Bundles" section
 
-This works in both domain mode (Let's Encrypt cert) and domain-less mode (self-signed cert - accept the browser warning).
-
-### Create a Distributable Package
-
-Package a user's bundle into a single zip file:
-
+**2. Create a Zip Package:**
 ```bash
-# Via moav command
-moav user package joe
-
-# Creates: outputs/bundles/joe.zip
+moav user package user01
+# Creates: outputs/bundles/user01.zip
 ```
 
-Or via the interactive menu: **Users** → **Package user bundle**
-
-### Download via SCP
-
-Use SCP to securely download bundles from your server:
-
+**3. SCP Download:**
 ```bash
-# Download a single user's bundle folder
-scp -r root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/joe ./joe-bundle/
-
-# Download a packaged zip file
-scp root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/joe.zip ./
-
-# Download all bundles
-scp -r root@YOUR_SERVER_IP:/opt/moav/outputs/bundles/ ./all-bundles/
+# From your local machine
+scp root@YOUR_SERVER:/opt/moav/outputs/bundles/user01.zip ./
+# Or the whole folder
+scp -r root@YOUR_SERVER:/opt/moav/outputs/bundles/user01 ./user01-bundle/
 ```
 
-**Windows users** can use:
-- PowerShell: `scp -r root@SERVER:/opt/moav/outputs/bundles/joe ./joe-bundle/`
-- WinSCP (GUI): Connect to server, navigate to `/opt/moav/outputs/bundles/`
-- FileZilla (SFTP mode): Same as above
+### Step 8: Distribute to Users
 
-### Distribute Securely
+Send the bundle (or just the README.html + relevant protocol files) to users.
 
-**Recommended methods:**
-- **In-person** - USB drive, AirDrop, or show QR code directly
-- **Encrypted messaging** - Signal, WhatsApp (disappearing messages)
-- **Password-protected zip** - `zip -e joe-secure.zip joe/*`
+**Secure Distribution:**
+- **In-person** - Safest. Show QR code or AirDrop
+- **Signal** - Send files with disappearing messages
+- **Encrypted email** - PGP or ProtonMail-to-ProtonMail
 
 **Avoid:**
 - Unencrypted email
-- Public file sharing (Google Drive, Dropbox without encryption)
-- SMS/Telegram without encryption
+- Public file sharing links
+- SMS/Telegram regular chats
+
+Users open `README.html` in their browser for instructions and QR codes.
+
+---
+
+## Domain-less Mode
+
+Don't have a domain? MoaV can run with limited but useful services.
+
+**Available without domain:**
+| Service | Port | Description |
+|---------|------|-------------|
+| WireGuard | 51820/udp | Full VPN, works on most networks |
+| wstunnel | 8080/tcp | WireGuard over WebSocket (when UDP blocked) |
+| Admin | 9443/tcp | Dashboard with self-signed certificate |
+| Conduit | dynamic | Psiphon bandwidth donation |
+| Snowflake | dynamic | Tor bandwidth donation |
+
+**NOT available without domain:**
+- Reality, Trojan, Hysteria2 (require TLS certificates)
+- TrustTunnel (requires TLS)
+- CDN mode (requires Cloudflare domain)
+- DNS tunnel (requires NS delegation)
+
+**Setup Domain-less Mode:**
+```bash
+moav domainless
+# Or: run moav and leave domain empty when prompted
+```
+
+The admin dashboard uses a self-signed certificate - your browser will show a warning. Click "Advanced" → "Proceed" to access.
+
+**Adding a Domain Later:**
+
+If you later acquire a domain:
+
+```bash
+# 1. Configure DNS (Step 2 above)
+
+# 2. Update .env
+nano .env
+# Set DOMAIN=yourdomain.com
+# Set ACME_EMAIL=you@example.com
+# Set ENABLE_REALITY=true, etc.
+
+# 3. Re-run bootstrap
+moav bootstrap
+
+# 4. Rebuild and start
+docker compose --profile all build
+moav start
+
+# 5. Regenerate user bundles with new configs
+moav regenerate-users
+```
+
+---
+
+## CDN-Fronted Mode (Cloudflare)
+
+When direct connections to your server are blocked, route traffic through Cloudflare's CDN.
+
+```
+Client --HTTPS:443--> Cloudflare CDN --HTTP:2082--> Your Server
+```
+
+**How It Works:**
+- Cloudflare terminates TLS and forwards to your origin on port 2082
+- sing-box `vless-ws-in` inbound listens on port 2082 (plain HTTP)
+- Uses same user UUIDs as Reality (no extra credentials)
+- Client links only generated when `CDN_DOMAIN` is set
+
+**Setup:**
+
+1. **Create CDN Subdomain in Cloudflare:**
+   - Add A record: `cdn` → YOUR_SERVER_IP
+   - Set Proxy status: **Proxied** (orange cloud)
+   - Keep your main `@` record as **DNS only** (gray cloud)
+
+2. **Set Cloudflare SSL Mode:**
+   - SSL/TLS → Overview → Set to **Flexible**
+
+3. **Configure MoaV:**
+   ```bash
+   # In .env
+   CDN_DOMAIN=cdn.yourdomain.com
+   CDN_WS_PATH=/ws
+   PORT_CDN=2082
+   ```
+
+4. **Apply Changes:**
+   ```bash
+   # If already bootstrapped:
+   moav regenerate-users
+
+   # Or for new setup, just run bootstrap normally
+   ```
+
+5. **Open Firewall:**
+   ```bash
+   ufw allow 2082/tcp
+   ```
+
+User bundles will now include `cdn-vless-ws.txt` with Cloudflare-routed connection.
+
+---
 
 ## Managing Users
 
-**Easy way:**
+**List Users:**
 ```bash
-moav users              # List all users
-moav user add newuser   # Add a user
-moav user revoke user   # Revoke a user
+moav users
+# Or: moav user list
 ```
 
-**Manual scripts:**
-
-### Add a new user to all services
-
+**Add User:**
 ```bash
-./scripts/user-add.sh newusername
+moav user add newuser
+# Creates bundle in outputs/bundles/newuser/
 ```
 
-This adds the user to sing-box (Reality, Trojan, Hysteria2) and WireGuard, generates all config files, QR codes, and displays the WireGuard QR in the terminal.
-
-### Add to specific services only
-
+**Revoke User:**
 ```bash
-# Add only to sing-box (Reality, Trojan, Hysteria2)
-./scripts/singbox-user-add.sh newusername
-
-# Add only to WireGuard
-./scripts/wg-user-add.sh newusername
+moav user revoke baduser
+# Removes from all services, deletes bundle
 ```
 
-### Revoke a user
-
+**Package User Bundle:**
 ```bash
-# Revoke from all services
-./scripts/user-revoke.sh username
-
-# Revoke from specific services
-./scripts/singbox-user-revoke.sh username
-./scripts/wg-user-revoke.sh username
-
-# Keep the bundle folder when revoking
-./scripts/user-revoke.sh username --keep-bundle
+moav user package joe
+# Creates outputs/bundles/joe.zip
 ```
 
-### List all users
-
+**Add to Specific Services Only:**
 ```bash
-./scripts/user-list.sh
+./scripts/singbox-user-add.sh joe     # Reality, Trojan, Hysteria2, CDN
+./scripts/wg-user-add.sh joe          # WireGuard only
 ```
 
-## Bandwidth Donation Services
-
-MoaV includes two optional bandwidth donation services that help users in censored regions:
-
-### Psiphon Conduit
-
-Donates bandwidth to the Psiphon network to help users bypass censorship.
-
+**Revoke from Specific Services:**
 ```bash
-# Start Conduit
-docker compose --profile conduit up -d
-
-# View live traffic stats by country
-./scripts/conduit-stats.sh
-
-# Get Ryve deep link for mobile import
-./scripts/conduit-info.sh
+./scripts/singbox-user-revoke.sh joe
+./scripts/wg-user-revoke.sh joe
 ```
 
-Configure in `.env`:
-```bash
-CONDUIT_BANDWIDTH=200    # Mbps limit
-CONDUIT_MAX_CLIENTS=100  # Max concurrent clients
-```
+---
 
-### Tor Snowflake
-
-Donates bandwidth to the Tor network as a Snowflake proxy, helping Tor users bypass censorship.
+## Service Management
 
 ```bash
-# Start Snowflake
-docker compose --profile snowflake up -d
+# Status
+moav status
 
-# View logs
-docker compose logs -f snowflake
+# Start/Stop
+moav start              # Start all (uses DEFAULT_PROFILES from .env)
+moav start proxy admin  # Start specific profiles
+moav stop               # Stop all
+moav stop sing-box      # Stop specific service
+
+# Restart
+moav restart            # Restart all
+moav restart sing-box   # Restart specific service
+
+# Logs
+moav logs               # All logs (follow mode)
+moav logs sing-box      # Specific service
+moav logs -f conduit    # Follow specific service
+
+# Build
+moav build              # Build all containers
+moav build sing-box     # Build specific container
 ```
 
-Configure in `.env`:
-```bash
-SNOWFLAKE_BANDWIDTH=50   # Mbps limit
-SNOWFLAKE_CAPACITY=20    # Max concurrent clients
-```
+**Service Aliases:**
+- `conduit` → psiphon-conduit
+- `singbox` → sing-box
+- `wg` → wireguard
+- `dns` → dnstt
 
-**Note:** Both services can run simultaneously without conflicts.
-
-## Conduit Stats (Traffic by Country)
-
-If you're running Psiphon Conduit to donate bandwidth, you can view live traffic statistics:
-
-### Terminal Viewer
-
-```bash
-# Live terminal stats showing traffic by country
-./scripts/conduit-stats.sh
-```
-
-This shows:
-- Traffic FROM (peers connecting to you) - by country
-- Traffic TO (data sent to peers) - by country
-- Real-time updates every 15 seconds
-
-### Admin Dashboard
-
-The admin dashboard (`https://your-domain:9443` or `https://your-ip:9443` in domain-less mode) shows:
-- Service status and stats
-- Conduit traffic breakdown by country
-- User bundles with download links
-
-**Note:** In domain-less mode, the dashboard uses a self-signed certificate. Your browser will show a security warning - click "Advanced" → "Proceed" to access.
-
-### Get Ryve Deep Link
-
-To import your conduit into the Ryve app:
-
-```bash
-./scripts/conduit-info.sh
-# Or with custom name:
-./scripts/conduit-info.sh "My Conduit Name"
-```
-
-## Re-bootstrapping
-
-If you need to regenerate all keys and configs (e.g., after changing domain):
-
-```bash
-# Remove the bootstrap flag
-docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
-
-# Rebuild all images (if code changed)
-docker compose --profile all build --no-cache
-
-# Re-run bootstrap
-docker compose --profile setup run --rm bootstrap
-
-# Restart services
-docker compose --profile all down
-docker compose --profile all up -d
-```
-
-## Updating
-
-```bash
-cd /opt/moav
-git pull
-
-# Build all images (--profile all includes all services)
-docker compose --profile all build --no-cache
-
-docker compose --profile all down
-docker compose --profile all up -d
-```
-
-**Note:** Use `--profile all` to build/run everything, or specify individual profiles like `--profile proxy --profile admin`.
-
-## Testing New Features / Bug Fixes
-
-If you want to test a development branch or a specific bug fix before it's released:
-
-### Fresh Install from a Branch
-
-Install directly from a specific branch using the raw GitHub URL:
-
-```bash
-# Install from 'dev' branch
-curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/dev/site/install.sh | bash -s -- -b dev
-
-# Install from a feature branch
-curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/feature-xyz/site/install.sh | bash -s -- -b feature-xyz
-
-# Install from a pull request branch (replace with actual branch name)
-curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/fix-conduit-status/site/install.sh | bash -s -- -b fix-conduit-status
-```
-
-### Switch Existing Installation to a Branch
-
-If you already have MoaV installed:
-
-```bash
-cd /opt/moav
-
-# Fetch and switch to a branch
-git fetch origin
-git checkout dev
-git pull origin dev
-
-# Rebuild and restart
-docker compose --profile all build
-moav restart
-```
-
-### Switch Back to Main (Stable)
-
-```bash
-cd /opt/moav
-git checkout main
-git pull origin main
-
-# Rebuild and restart
-docker compose --profile all build
-moav restart
-```
-
-### Using Environment Variable
-
-You can also specify the branch via environment variable:
-
-```bash
-MOAV_BRANCH=dev curl -fsSL https://raw.githubusercontent.com/shayanb/MoaV/dev/site/install.sh | bash
-```
-
-**Note:** When testing development branches, back up your configuration first with `moav export` in case you need to rollback.
+---
 
 ## Server Migration
 
-MoaV includes built-in tools for exporting your entire configuration and migrating to a new server.
+Export your MoaV configuration and migrate to a new server.
 
-### Export Configuration
-
-Create a full backup of your MoaV installation:
-
+**Export:**
 ```bash
-# Export to timestamped file
-moav export
-
-# Or specify a filename
-moav export mybackup.tar.gz
-```
-
-The backup includes:
-- `.env` file (configuration)
-- All cryptographic keys (Reality, WireGuard, dnstt)
-- User credentials and configs
-- Generated user bundles
-
-**Security Note:** The backup contains private keys. Transfer securely and delete after import.
-
-### Import Configuration
-
-On a new server, after installing MoaV:
-
-```bash
-# Copy backup to new server
-scp moav-backup-*.tar.gz user@new-server:/opt/moav/
-
-# On new server
-cd /opt/moav
-moav import moav-backup-*.tar.gz
-```
-
-### Migrate IP Address
-
-When moving to a new server with a different IP:
-
-```bash
-# Update SERVER_IP and regenerate all user configs
-moav migrate-ip NEW_IP_ADDRESS
-
-# Example
-moav migrate-ip 203.0.113.50
-```
-
-This automatically:
-1. Updates `SERVER_IP` in `.env`
-2. Updates all user bundle configs (Reality, Trojan, Hysteria2, WireGuard)
-3. Regenerates QR codes (if qrencode is installed)
-
-### Full Migration Workflow
-
-```bash
-# === ON OLD SERVER ===
-cd /opt/moav
 moav export
 # Creates: moav-backup-YYYYMMDD_HHMMSS.tar.gz
+```
 
-# Transfer to new server
+Includes: `.env`, keys, user credentials, bundles.
+
+**Import on New Server:**
+```bash
+# 1. Install MoaV on new server (Steps 1-3)
+
+# 2. Copy backup to new server
 scp moav-backup-*.tar.gz root@NEW_SERVER:/opt/moav/
 
-# === ON NEW SERVER ===
-# 1. Install MoaV first (Step 1-2 from this guide)
+# 3. Import
 cd /opt/moav
-
-# 2. Import configuration
 moav import moav-backup-*.tar.gz
 
-# 3. Update to new IP (if IP changed)
+# 4. Update to new IP
 moav migrate-ip $(curl -s https://api.ipify.org)
 
-# 4. Update DNS records to point to new server IP
-# (See DNS.md)
+# 5. Update DNS to point to new server
 
-# 5. Start services
+# 6. Start services
 moav start
-
-# 6. Distribute updated configs to users
-moav user package user1
-moav user package user2
-# ... or regenerate all:
-for user in outputs/bundles/*/; do
-    username=$(basename "$user")
-    [[ "$username" != *-configs ]] && moav user package "$username"
-done
 ```
 
-### Interactive Migration Menu
-
-You can also use the interactive menu:
-
-```bash
-moav
-# Select: 8) Export/Import (migration)
-```
-
-This provides guided options for:
-- Export configuration backup
-- Import configuration backup
-- Migrate to new IP address
+---
 
 ## IPv6 Support
 
-MoaV supports IPv6 for all protocols. When enabled, user bundles will include both IPv4 and IPv6 connection options.
+MoaV supports dual-stack (IPv4 + IPv6). When enabled, user bundles include both IPv4 and IPv6 connection options.
 
-### How It Works
+**Enable:**
+1. Enable IPv6 on your VPS (usually in provider control panel)
+2. Verify: `curl -6 -s https://api6.ipify.org`
+3. If already set up, regenerate bundles: `moav regenerate-users`
 
-- **Auto-detection**: If `SERVER_IPV6` is empty in `.env`, MoaV automatically detects your server's public IPv6
-- **Dual-stack configs**: Users receive both IPv4 and IPv6 links/configs in their bundles
-- **Optional**: IPv6 is completely optional - everything works with IPv4 only
-
-### Enabling IPv6
-
-1. **Enable on your VPS**: Most providers (DigitalOcean, Hetzner, etc.) require enabling IPv6 in the control panel
-2. **Verify connectivity**:
-   ```bash
-   curl -6 -s https://api6.ipify.org
-   # Should return your public IPv6 address (e.g., 2400:xxxx:xxxx::xxxx)
-   ```
-3. **Regenerate user bundles** (if you enabled IPv6 after initial setup):
-   ```bash
-   moav regenerate-users
-   ```
-
-### Disabling IPv6
-
-To explicitly disable IPv6 even if your server has it:
-
+**Disable:**
 ```bash
 # In .env
 SERVER_IPV6=disabled
 ```
 
-### Is IPv6 Important for Censorship Bypass?
+**Note:** IPv6 is optional. Most censored regions have low IPv6 adoption, so it's a "nice to have" but not critical for circumvention.
 
-**Short answer: No, it's a "nice to have" but not critical.**
+---
 
-**When IPv6 might help:**
-- Some censors focus blocking efforts on IPv4 and have weaker IPv6 filtering
-- Provides a fallback if IPv4 gets specifically targeted
+## Bandwidth Donation (Conduit & Snowflake)
 
-**Why it's usually not critical:**
-- Most heavily censored countries (Iran, China, Russia) have low IPv6 adoption among end users
-- Many mobile networks and home ISPs in these regions don't support IPv6
-- Sophisticated censors that can block Reality/Trojan will likely block both IP versions
-- The **protocol matters more** than the IP version - Reality's camouflage defeats detection, not IPv4 vs IPv6
+Optionally donate bandwidth to help others bypass censorship.
 
-**Recommendation:** Don't worry about IPv6 unless you have users specifically reporting that IPv4 is blocked but IPv6 works (which is rare).
-
-### Checking IPv6 Status
-
+**Psiphon Conduit:**
 ```bash
-# Check if server has public IPv6
-ip -6 addr show scope global
+# Start
+moav start conduit
 
-# Test IPv6 connectivity
-curl -6 -s https://api6.ipify.org
+# View stats
+./scripts/conduit-stats.sh     # Live traffic by country
+./scripts/conduit-info.sh      # Ryve deep link
 
-# Check what's configured in MoaV
-grep SERVER_IPV6 /opt/moav/.env
+# Configure in .env:
+CONDUIT_BANDWIDTH=200    # Mbps limit
+CONDUIT_MAX_CLIENTS=100  # Max concurrent
 ```
 
-**Note:** Link-local addresses (`fe80::`) don't count - you need a global IPv6 address for internet connectivity.
+**Tor Snowflake:**
+```bash
+# Start
+moav start snowflake
+
+# View logs
+moav logs snowflake
+
+# Configure in .env:
+SNOWFLAKE_BANDWIDTH=50   # Mbps limit
+SNOWFLAKE_CAPACITY=20    # Max concurrent
+```
+
+Both can run simultaneously without conflicts.
+
+---
+
+## Updating MoaV
+
+```bash
+moav update
+# Or manually:
+cd /opt/moav
+git pull
+docker compose --profile all build
+moav restart
+```
+
+**Testing a Development Branch:**
+```bash
+cd /opt/moav
+git fetch origin
+git checkout dev
+git pull origin dev
+docker compose --profile all build
+moav restart
+
+# Return to stable:
+git checkout main
+git pull origin main
+docker compose --profile all build
+moav restart
+```
+
+---
+
+## Re-bootstrapping
+
+If you need to regenerate all keys and configs:
+
+```bash
+# Full reset (removes all keys and users)
+docker run --rm -v moav_moav_state:/state alpine rm -rf /state/.bootstrapped /state/keys /state/users
+
+# Re-bootstrap
+moav bootstrap
+
+# Restart
+moav restart
+```
+
+**Keep Certificates Only:**
+```bash
+# Just remove bootstrap flag
+docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
+
+# Re-bootstrap
+moav bootstrap
+```
+
+---
+
+## CLI Reference
+
+See [CLI.md](CLI.md) for complete command reference.
 
 ## Troubleshooting
 
-See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues and solutions.
 
-## Security Notes
+## Security
 
-See [OPSEC.md](OPSEC.md)
+See [OPSEC.md](OPSEC.md) for security best practices.

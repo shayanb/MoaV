@@ -140,6 +140,7 @@ docker compose --profile all up -d                 # شروع تمام سروی�
 | Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | اصلی، قابل اعتمادترین |
 | Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | سریع، کار می‌کند وقتی TCP محدود است |
 | Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | پشتیبان، از دامنه شما استفاده می‌کند |
+| CDN (VLESS+WS) | 443 از Cloudflare | ★★★★★ | ★★★☆☆ | وقتی IP سرور مسدود است |
 | TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 و QUIC، شبیه HTTPS |
 | WireGuard (مستقیم) | 51820/udp | ★★★☆☆ | ★★★★★ | VPN کامل، نصب ساده |
 | WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN وقتی UDP مسدود است |
@@ -312,18 +313,21 @@ moav logs conduit             # مشاهده لاگ‌های conduit
 
 | پلتفرم | اپلیکیشن‌های توصیه شده |
 |--------|----------------------|
-| iOS | Shadowrocket، Hiddify، WireGuard، Psiphon |
-| Android | v2rayNG، Hiddify، WireGuard، Psiphon |
-| macOS | NekoRay، WireGuard، Psiphon |
-| Windows | v2rayN، NekoRay، WireGuard، Psiphon |
+| iOS | Shadowrocket، Hiddify، WireGuard، TrustTunnel، Psiphon، Streisand |
+| Android | v2rayNG، Hiddify، WireGuard، TrustTunnel، Psiphon، NekoBox |
+| macOS | Hiddify، Streisand، WireGuard، TrustTunnel، Psiphon |
+| Windows | v2rayN، Hiddify، WireGuard، TrustTunnel، Psiphon |
+| Linux | Hiddify، sing-box، WireGuard، TrustTunnel |
 
 برای دستورالعمل‌های راه‌اندازی به [docs/CLIENTS.md](docs/CLIENTS.md) مراجعه کنید.
 
 ## مستندات
 
 - [راهنمای نصب](docs/SETUP.md) - دستورالعمل‌های کامل نصب
+- [مرجع CLI](docs/CLI.md) - تمام دستورات و گزینه‌های moav
 - [پیکربندی DNS](docs/DNS.md) - تنظیم رکوردهای DNS
 - [راه‌اندازی کلاینت](docs/CLIENTS.md) - نحوه اتصال از دستگاه‌ها
+- [نصب روی VPS](docs/DEPLOY.md) - نصب یک‌کلیکی روی سرور ابری
 - [عیب‌یابی](docs/TROUBLESHOOTING.md) - مشکلات رایج و راه‌حل‌ها
 - [راهنمای امنیت عملیاتی](docs/OPSEC.md) - بهترین روش‌های امنیتی
 
@@ -342,11 +346,13 @@ moav logs conduit             # مشاهده لاگ‌های conduit
 | 443/tcp | TCP | Reality (VLESS) | بله |
 | 443/udp | UDP | Hysteria2 | بله |
 | 8443/tcp | TCP | Trojan | بله |
-| 80/tcp | TCP | Certbot | بله |
+| 4443/tcp+udp | TCP+UDP | TrustTunnel | بله |
+| 2082/tcp | TCP | CDN WebSocket | بله (Cloudflare) |
 | 51820/udp | UDP | WireGuard | خیر |
 | 8080/tcp | TCP | wstunnel | خیر |
 | 9443/tcp | TCP | داشبورد ادمین | خیر |
 | 53/udp | UDP | تونل DNS | بله |
+| 80/tcp | TCP | Let's Encrypt | بله (هنگام نصب) |
 
 ### حالت بدون دامنه
 

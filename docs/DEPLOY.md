@@ -172,8 +172,11 @@ Before running the setup, make sure:
 
 1. **Domain configured**: Your domain's DNS A record points to your server's IP
 2. **Ports open**: Most VPS providers have all ports open by default, but verify:
-   - 443/tcp (Reality, Hysteria2)
+   - 443/tcp (Reality)
+   - 443/udp (Hysteria2)
    - 8443/tcp (Trojan)
+   - 4443/tcp+udp (TrustTunnel)
+   - 2082/tcp (CDN WebSocket, if using Cloudflare)
    - 51820/udp (WireGuard)
    - 80/tcp (Let's Encrypt verification)
 

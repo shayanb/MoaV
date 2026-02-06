@@ -14,6 +14,9 @@ Common issues and their solutions.
   - [Admin dashboard not accessible](#admin-dashboard-not-accessible)
   - [sing-box crashes](#sing-box-crashes)
   - [WireGuard connected but no traffic](#wireguard-connected-but-no-traffic)
+  - [Hysteria2 not working](#hysteria2-not-working)
+  - [TrustTunnel not connecting](#trusttunnel-not-connecting)
+  - [CDN VLESS+WS not working](#cdn-vlessws-not-working)
   - [DNS tunnel not working](#dns-tunnel-not-working)
 - [MoaV Test/Client Issues](#moav-testclient-issues)
 - [Client-Side Issues](#client-side-issues)
@@ -436,6 +439,47 @@ docker compose logs sing-box | grep -i hysteria
 # Test UDP connectivity (from another machine)
 nc -vuz YOUR_SERVER_IP 443
 ```
+
+### TrustTunnel not connecting
+
+**Check container is running:**
+```bash
+docker compose --profile trusttunnel ps
+docker compose logs trusttunnel
+```
+
+**Common issues:**
+
+1. **Port not open:**
+   ```bash
+   ufw allow 4443/tcp
+   ufw allow 4443/udp
+   ```
+
+2. **Certificate issue:**
+   - TrustTunnel uses the same Let's Encrypt certificate as other services
+   - If cert is missing, run `moav bootstrap` again
+
+3. **Client config error:**
+   - Verify credentials match `trusttunnel.txt` in user bundle
+   - Check `trusttunnel.toml` has correct domain/IP
+
+### CDN VLESS+WS not working
+
+**DNS lookup failure:**
+If you see `lookup cdn.yourdomain.com: operation was canceled`:
+1. Verify `cdn` subdomain exists in Cloudflare DNS
+2. Check it's set to **Proxied** (orange cloud)
+3. Wait for DNS propagation (up to 5 minutes)
+
+**Connection refused:**
+1. Verify port 2082 is open: `ufw allow 2082/tcp`
+2. Check sing-box is listening: `docker compose logs sing-box | grep vless-ws`
+
+**Cloudflare error (520, 521, etc.):**
+1. Set SSL/TLS mode to **Flexible** in Cloudflare dashboard
+2. Verify sing-box container is running
+3. Check sing-box config has `vless-ws-in` inbound on port 2082
 
 ### WireGuard connected but no traffic
 

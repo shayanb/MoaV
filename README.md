@@ -1,6 +1,6 @@
 # MoaV
 
-[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) 
+[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Version](https://img.shields.io/badge/version-1.2.4-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) 
 
 English | **[فارسی](README-fa.md)** 
 
@@ -118,6 +118,7 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 | Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | Primary, most reliable |
 | Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | Fast, works when TCP throttled |
 | Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
+| CDN (VLESS+WS) | 443 via Cloudflare | ★★★★★ | ★★★☆☆ | When server IP is blocked |
 | TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 & QUIC, looks like HTTPS |
 | WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | Full VPN, simple setup |
 | WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN when UDP is blocked |
@@ -239,18 +240,21 @@ moav logs conduit             # View conduit logs
 
 | Platform | Recommended Apps |
 |----------|------------------|
-| iOS | Shadowrocket, Hiddify, WireGuard, TrustTunnel, Psiphon |
-| Android | v2rayNG, Hiddify, WireGuard, TrustTunnel, Psiphon |
-| macOS | NekoRay, WireGuard, TrustTunnel, Psiphon |
-| Windows | v2rayN, NekoRay, WireGuard, TrustTunnel, Psiphon |
+| iOS | Shadowrocket, Hiddify, WireGuard, TrustTunnel, Psiphon, Streisand |
+| Android | v2rayNG, Hiddify, WireGuard, TrustTunnel, Psiphon, NekoBox |
+| macOS | Hiddify, Streisand, WireGuard, TrustTunnel, Psiphon |
+| Windows | v2rayN, Hiddify, WireGuard, TrustTunnel, Psiphon |
+| Linux | Hiddify, sing-box, WireGuard, TrustTunnel |
 
 See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 
 ## Documentation
 
 - [Setup Guide](docs/SETUP.md) - Complete installation instructions
+- [CLI Reference](docs/CLI.md) - All moav commands and options
 - [DNS Configuration](docs/DNS.md) - DNS records setup
 - [Client Setup](docs/CLIENTS.md) - How to connect from devices
+- [VPS Deployment](docs/DEPLOY.md) - One-click cloud deployment
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [OpSec Guide](docs/OPSEC.md) - Security best practices
 
@@ -268,12 +272,13 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 443/tcp | TCP | Reality (VLESS) | Yes |
 | 443/udp | UDP | Hysteria2 | Yes |
 | 8443/tcp | TCP | Trojan | Yes |
-| 80/tcp | TCP | Certbot | Yes |
+| 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
+| 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) |
 | 51820/udp | UDP | WireGuard | No |
 | 8080/tcp | TCP | wstunnel | No |
-| 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 53/udp | UDP | DNS tunnel | Yes |
+| 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
 ### Domain-less Mode
 
