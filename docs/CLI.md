@@ -89,11 +89,26 @@ Install `moav` command globally to `/usr/local/bin`.
 ```
 
 #### `moav uninstall`
-Remove the global `moav` command.
+Remove MoaV containers and global command.
 
 ```bash
-moav uninstall
+moav uninstall           # Remove containers, keep data (.env, keys, bundles)
+moav uninstall --wipe    # Remove EVERYTHING (fresh install ready)
 ```
+
+**Without `--wipe` (default):**
+- Stops and removes all Docker containers
+- Removes the global `moav` command
+- Preserves: `.env`, keys, certificates, user bundles, Docker volumes
+
+**With `--wipe`:**
+- Removes all Docker containers AND volumes
+- Removes `.env` and all generated configs
+- Removes all keys and certificates
+- Removes all user bundles
+- Removes the global `moav` command
+
+After `--wipe`, run `cp .env.example .env` and `./moav.sh` for a fresh setup.
 
 ---
 

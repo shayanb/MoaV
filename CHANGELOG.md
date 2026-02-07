@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-02-07
+
+### Added
+- **`moav uninstall` command** - Clean uninstallation with two modes:
+  - `moav uninstall` - Remove containers, keep data (.env, keys, bundles)
+  - `moav uninstall --wipe` - Complete removal including all configs, keys, and user data
+  - Optional Docker images cleanup prompt during --wipe
+  - Verbose output showing each file/directory being removed
+- **Unified service selection menu** - Beautiful table-based menu for start/stop/restart
+  - Consistent UI across all service operations
+  - "ALL" option highlighted as "(Recommended)" in green
+  - Shows v2ray app compatibility for proxy protocols
+- Logs menu "Last 100 lines + follow" option (shows tail then continues following)
+- Cloudflare Origin Rule documentation for CDN mode (required for port 2082 routing)
+
+### Changed
+- Service selection menu improvements:
+  - Proxy description: "Reality, Trojan, Hysteria2 (v2ray apps)"
+  - TrustTunnel description: "TrustTunnel VPN (HTTP/2 + QUIC)"
+  - Donation services: "Donate bandwidth via Psiphon/Tor"
+  - Cancel option dimmed to de-emphasize
+- Start/stop/restart now use unified menu instead of separate implementations
+- dnstt auto-dependency (adding proxy) only applies to start, not stop/restart operations
+
+### Fixed
+- **WireGuard key generation permissions warning** - Now uses `umask 077` to create private keys with secure permissions (owner-only read)
+- **Bootstrap missing python3** - Added python3 to Dockerfile.bootstrap for placeholder replacement
+- Stop/restart stopping extra services - Auto-adding proxy for dnstt now only happens during start
+
+### Documentation
+- Complete CLI.md reference with all moav commands and options
+- SETUP.md: Added "Uninstalling MoaV" section, expanded "Breaking Changes" guidance
+- TROUBLESHOOTING.md: Added "Breaking changes after update" section with solutions
+- DNS.md: Added Cloudflare Origin Rule setup for CDN mode (fixes 521 errors)
+- Updated uninstall documentation across all relevant docs
+
 ## [1.2.4] - 2026-02-06
 
 ### Added
@@ -246,7 +282,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.4...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.5...HEAD
+[1.2.5]: https://github.com/shayanb/MoaV/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/shayanb/MoaV/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/shayanb/MoaV/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/shayanb/MoaV/compare/v1.2.0...v1.2.2

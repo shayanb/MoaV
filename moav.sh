@@ -637,22 +637,199 @@ do_install() {
 }
 
 do_uninstall() {
-    if [[ ! -e "$INSTALL_PATH" ]]; then
-        warn "Not installed (no file at $INSTALL_PATH)"
+    local wipe=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --wipe)
+                wipe=true
+                shift
+                ;;
+            *)
+                error "Unknown option: $1"
+                echo "Usage: moav uninstall [--wipe]"
+                return 1
+                ;;
+        esac
+    done
+
+    echo ""
+    if [[ "$wipe" == "true" ]]; then
+        warn "This will COMPLETELY REMOVE MoaV including:"
+        echo "  - All Docker containers and volumes"
+        echo "  - All configuration files (.env, configs/)"
+        echo "  - All generated keys and certificates"
+        echo "  - All user bundles (outputs/)"
+        echo "  - Global 'moav' command"
+        echo ""
+        warn "This cannot be undone! All keys and user configs will be lost."
+    else
+        info "This will remove:"
+        echo "  - All Docker containers (data preserved in volumes)"
+        echo "  - Global 'moav' command"
+        echo ""
+        echo "Preserved: .env, keys, user bundles, volumes"
+        echo "Use --wipe to remove everything"
+    fi
+    echo ""
+
+    read -r -p "Continue? [y/N] " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        info "Cancelled"
         return 0
     fi
 
-    if [[ -L "$INSTALL_PATH" ]]; then
-        info "Removing symlink at $INSTALL_PATH"
-        if [[ -w "$(dirname "$INSTALL_PATH")" ]]; then
-            rm -f "$INSTALL_PATH"
-        else
-            sudo rm -f "$INSTALL_PATH"
+    echo ""
+
+    # Stop and remove containers
+    if command -v docker &>/dev/null && [[ -f "$SCRIPT_DIR/docker-compose.yml" ]]; then
+        info "Stopping Docker containers..."
+        cd "$SCRIPT_DIR"
+
+        # List running containers before removing
+        local containers
+        containers=$(docker compose --profile all ps -q 2>/dev/null || true)
+        if [[ -n "$containers" ]]; then
+            docker compose --profile all ps --format "  - {{.Name}}" 2>/dev/null || true
         fi
-        success "Uninstalled"
+
+        if [[ "$wipe" == "true" ]]; then
+            # Remove containers AND volumes
+            docker compose --profile all down -v --remove-orphans 2>/dev/null || true
+            echo "  Removed containers and volumes"
+        else
+            # Remove containers only, keep volumes
+            docker compose --profile all down --remove-orphans 2>/dev/null || true
+            echo "  Removed containers (volumes preserved)"
+        fi
+        success "Containers removed"
+    fi
+
+    # Wipe all generated files if --wipe
+    if [[ "$wipe" == "true" ]]; then
+        echo ""
+        info "Removing configuration files..."
+
+        # Remove .env
+        if [[ -f "$SCRIPT_DIR/.env" ]]; then
+            rm -f "$SCRIPT_DIR/.env"
+            echo "  - .env"
+        fi
+
+        # Remove generated sing-box config
+        if [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]]; then
+            rm -f "$SCRIPT_DIR/configs/sing-box/config.json"
+            echo "  - configs/sing-box/config.json"
+        fi
+
+        # Remove generated dnstt files
+        if ls "$SCRIPT_DIR/configs/dnstt/"*.key "$SCRIPT_DIR/configs/dnstt/server.conf" "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null | head -1 >/dev/null; then
+            rm -f "$SCRIPT_DIR/configs/dnstt/server.conf" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/dnstt/"*.key 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/dnstt/"*.key.hex 2>/dev/null
+            echo "  - configs/dnstt/*"
+        fi
+
+        # Remove generated WireGuard files
+        if [[ -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" ]] || [[ -d "$SCRIPT_DIR/configs/wireguard/wg_confs" ]]; then
+            rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf."* 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/wireguard/server.pub" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/wireguard/server.key" 2>/dev/null
+            rm -rf "$SCRIPT_DIR/configs/wireguard/wg_confs/" 2>/dev/null
+            rm -rf "$SCRIPT_DIR/configs/wireguard/coredns/" 2>/dev/null
+            rm -rf "$SCRIPT_DIR/configs/wireguard/templates/" 2>/dev/null
+            rm -rf "$SCRIPT_DIR/configs/wireguard/peer"* 2>/dev/null
+            echo "  - configs/wireguard/*"
+        fi
+
+        # Remove generated TrustTunnel files
+        if [[ -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" ]]; then
+            rm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml" 2>/dev/null
+            echo "  - configs/trusttunnel/*"
+        fi
+
+        # Remove outputs (bundles, keys)
+        if [[ -d "$SCRIPT_DIR/outputs" ]] && [[ -n "$(ls -A "$SCRIPT_DIR/outputs" 2>/dev/null | grep -v .gitkeep)" ]]; then
+            local bundle_count
+            bundle_count=$(find "$SCRIPT_DIR/outputs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+            find "$SCRIPT_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
+            echo "  - outputs/ ($bundle_count user bundles)"
+        fi
+
+        # Remove state directory (user credentials)
+        if [[ -d "$SCRIPT_DIR/state" ]]; then
+            local user_count
+            user_count=$(find "$SCRIPT_DIR/state/users" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+            rm -rf "$SCRIPT_DIR/state/" 2>/dev/null
+            echo "  - state/ ($user_count users)"
+        fi
+
+        # Remove certbot certificates
+        if [[ -d "$SCRIPT_DIR/certbot" ]]; then
+            rm -rf "$SCRIPT_DIR/certbot/" 2>/dev/null
+            echo "  - certbot/"
+        fi
+
+        success "Configuration files removed"
+
+        # Ask about Docker images
+        echo ""
+        local moav_images
+        moav_images=$(docker images --format "{{.Repository}}:{{.Tag}} ({{.Size}})" 2>/dev/null | grep -E "^moav-" || true)
+        if [[ -n "$moav_images" ]]; then
+            info "Docker images found:"
+            echo "$moav_images" | while read -r img; do
+                echo "  - $img"
+            done
+            echo ""
+            read -r -p "Also remove Docker images? [y/N] " remove_images
+            if [[ "$remove_images" =~ ^[Yy]$ ]]; then
+                info "Removing Docker images..."
+                docker images --format "{{.Repository}}" 2>/dev/null | grep -E "^moav-" | xargs -r docker rmi -f 2>/dev/null || true
+                success "Docker images removed"
+            else
+                echo "  Docker images kept (remove manually with: docker rmi \$(docker images -q 'moav-*'))"
+            fi
+        fi
+    fi
+
+    # Remove global symlink
+    if [[ -e "$INSTALL_PATH" ]]; then
+        echo ""
+        if [[ -L "$INSTALL_PATH" ]]; then
+            info "Removing global command..."
+            if [[ -w "$(dirname "$INSTALL_PATH")" ]]; then
+                rm -f "$INSTALL_PATH"
+            else
+                sudo rm -f "$INSTALL_PATH"
+            fi
+            echo "  - $INSTALL_PATH"
+            success "Global command removed"
+        else
+            warn "$INSTALL_PATH is not a symlink, not removing"
+        fi
+    fi
+
+    echo ""
+    if [[ "$wipe" == "true" ]]; then
+        success "MoaV completely uninstalled"
+        echo ""
+        echo "To reinstall:"
+        echo "  curl -fsSL moav.sh/install.sh | bash"
+        echo ""
+        echo "Or locally:"
+        echo "  cp .env.example .env && ./moav.sh"
     else
-        error "$INSTALL_PATH is not a symlink, not removing"
-        return 1
+        success "MoaV uninstalled (data preserved)"
+        echo ""
+        echo "To reinstall with existing data:"
+        echo "  ./moav.sh install"
+        echo "  moav start"
     fi
 }
 
@@ -1262,13 +1439,18 @@ show_status() {
 }
 
 # Display service selection menu and populate SELECTED_PROFILES array
-# Usage: select_profiles [save_to_env]
-#   save_to_env: if "save", updates DEFAULT_PROFILES in .env
+# Usage: select_profiles [mode]
+#   mode: "save" to update .env, "start" for start menu, "stop" for stop menu
 select_profiles() {
-    local save_to_env="${1:-}"
+    local mode="${1:-}"
     SELECTED_PROFILES=()
 
-    print_section "Select Services"
+    case "$mode" in
+        start)   print_section "Start Services" ;;
+        stop)    print_section "Stop Services" ;;
+        restart) print_section "Restart Services" ;;
+        *)       print_section "Select Services" ;;
+    esac
 
     # Read ENABLE_* settings to show disabled status
     local env_file="$SCRIPT_DIR/.env"
@@ -1301,27 +1483,27 @@ select_profiles() {
     local proxy_line wg_line dnstt_line trusttunnel_line admin_line
 
     if [[ "$proxy_enabled" == "true" ]]; then
-        proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 + decoy site       ${CYAN}│${NC}"
+        proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 (v2ray apps)       ${CYAN}│${NC}"
     else
         proxy_line="  ${CYAN}│${NC}  ${DIM}1   proxy        Reality, Trojan, Hysteria2 (disabled)${NC}        ${CYAN}│${NC}"
     fi
 
     if [[ "$wg_enabled" == "true" ]]; then
-        wg_line="  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN via WebSocket tunnel            ${CYAN}│${NC}"
+        wg_line="  ${CYAN}│${NC}  ${GREEN}2${NC}   wireguard    WireGuard VPN + WebSocket tunnel              ${CYAN}│${NC}"
     else
         wg_line="  ${CYAN}│${NC}  ${DIM}2   wireguard    WireGuard VPN (disabled)${NC}                      ${CYAN}│${NC}"
     fi
 
     if [[ "$dnstt_enabled" == "true" ]]; then
-        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${YELLOW}(last resort, slow)${NC}                ${CYAN}│${NC}"
+        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${DIM}(slow, last resort)${NC}                ${CYAN}│${NC}"
     else
-        dnstt_line="  ${CYAN}│${NC}  ${DIM}3   dnstt        DNS tunnel (disabled)${NC}                       ${CYAN}│${NC}"
+        dnstt_line="  ${CYAN}│${NC}  ${DIM}3   dnstt        DNS tunnel (disabled)${NC}                        ${CYAN}│${NC}"
     fi
 
     if [[ "$trusttunnel_enabled" == "true" ]]; then
-        trusttunnel_line="  ${CYAN}│${NC}  ${GREEN}4${NC}   trusttunnel  HTTP/2 + QUIC VPN (looks like HTTPS)           ${CYAN}│${NC}"
+        trusttunnel_line="  ${CYAN}│${NC}  ${GREEN}4${NC}   trusttunnel  TrustTunnel VPN (HTTP/2 + QUIC)               ${CYAN}│${NC}"
     else
-        trusttunnel_line="  ${CYAN}│${NC}  ${DIM}4   trusttunnel  HTTP/2 + QUIC VPN (disabled)${NC}                 ${CYAN}│${NC}"
+        trusttunnel_line="  ${CYAN}│${NC}  ${DIM}4   trusttunnel  TrustTunnel VPN (disabled)${NC}                    ${CYAN}│${NC}"
     fi
 
     if [[ "$admin_enabled" == "true" ]]; then
@@ -1340,11 +1522,11 @@ select_profiles() {
     echo -e "$trusttunnel_line"
     echo -e "$admin_line"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Psiphon bandwidth donation                    ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Tor Snowflake donation                        ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${WHITE}a${NC}   ALL          All enabled services                          ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${RED}0${NC}   Cancel       Exit without selecting                        ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Cancel${NC}       Exit without selecting                        ${CYAN}│${NC}"
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
@@ -1427,15 +1609,17 @@ select_profiles() {
     fi
 
     # dnstt requires sing-box (proxy profile) to forward traffic
-    # Auto-add proxy if dnstt is selected but proxy isn't
-    local has_dnstt=false has_proxy=false
-    for p in "${SELECTED_PROFILES[@]}"; do
-        [[ "$p" == "dnstt" ]] && has_dnstt=true
-        [[ "$p" == "proxy" ]] && has_proxy=true
-    done
-    if [[ "$has_dnstt" == "true" ]] && [[ "$has_proxy" == "false" ]]; then
-        info "dnstt requires proxy services - auto-adding proxy profile"
-        SELECTED_PROFILES+=("proxy")
+    # Auto-add proxy if dnstt is selected but proxy isn't (only for start operations)
+    if [[ "$mode" != "stop" ]] && [[ "$mode" != "restart" ]]; then
+        local has_dnstt=false has_proxy=false
+        for p in "${SELECTED_PROFILES[@]}"; do
+            [[ "$p" == "dnstt" ]] && has_dnstt=true
+            [[ "$p" == "proxy" ]] && has_proxy=true
+        done
+        if [[ "$has_dnstt" == "true" ]] && [[ "$has_proxy" == "false" ]]; then
+            info "dnstt requires proxy services - auto-adding proxy profile"
+            SELECTED_PROFILES+=("proxy")
+        fi
     fi
 
     if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
@@ -1450,7 +1634,7 @@ select_profiles() {
     done
 
     # Save to .env if requested
-    if [[ "$save_to_env" == "save" ]]; then
+    if [[ "$mode" == "save" ]]; then
         save_default_profiles
     fi
 
@@ -1494,34 +1678,11 @@ get_default_profiles() {
 }
 
 start_services() {
-    print_section "Start Services"
+    # Use the unified service selection menu
+    SELECTED_PROFILE_STRING=""
+    select_profiles "start" || return 1
 
-    echo "How would you like to start services?"
-    echo ""
-    echo -e "  ${WHITE}1)${NC} Start ALL services"
-    echo -e "  ${WHITE}2)${NC} Select specific services"
-    echo -e "  ${WHITE}0)${NC} Cancel"
-    echo ""
-
-    prompt "Choice: "
-    read -r choice < /dev/tty 2>/dev/null || choice=""
-
-    local profiles=""
-
-    case $choice in
-        1)
-            profiles="--profile all"
-            ;;
-        2)
-            SELECTED_PROFILE_STRING=""
-            select_profiles || return 1
-            profiles="$SELECTED_PROFILE_STRING"
-            ;;
-        0|*)
-            return 1
-            ;;
-    esac
-
+    local profiles="$SELECTED_PROFILE_STRING"
     if [[ -z "$profiles" ]]; then
         warn "No profiles selected"
         return 1
@@ -1562,134 +1723,70 @@ start_services() {
 }
 
 stop_services() {
-    print_section "Stop Services"
-
-    # Get running services
+    # Check if any services are running
     local running_services
     running_services=$(docker compose ps --services --filter "status=running" 2>/dev/null | sort)
 
     if [[ -z "$running_services" ]]; then
+        print_section "Stop Services"
         warn "No services are currently running"
         return 0
     fi
 
-    echo "Running services:"
+    # Use the unified service selection menu
+    SELECTED_PROFILE_STRING=""
+    select_profiles "stop" || return 1
+
+    local profiles="$SELECTED_PROFILE_STRING"
+    if [[ -z "$profiles" ]]; then
+        warn "No profiles selected"
+        return 1
+    fi
+
     echo ""
+    info "Stopping services..."
 
-    # Show status table
-    docker compose ps --filter "status=running" 2>/dev/null | head -20
-    echo ""
+    if [[ "$profiles" == "--profile all" ]]; then
+        docker compose --profile all stop
+    else
+        # Stop each selected profile
+        docker compose $profiles stop
+    fi
 
-    echo "Options:"
-    echo ""
-    echo -e "  ${WHITE}a)${NC} Stop ALL services"
-
-    # Build numbered list of services
-    local i=1
-    local services_array=()
-    while IFS= read -r svc; do
-        [[ -z "$svc" ]] && continue
-        services_array+=("$svc")
-        echo -e "  ${WHITE}$i)${NC} Stop $svc"
-        ((i++))
-    done <<< "$running_services"
-
-    echo -e "  ${WHITE}0)${NC} Cancel"
-    echo ""
-
-    prompt "Choice: "
-    read -r choice < /dev/tty 2>/dev/null || choice=""
-
-    case $choice in
-        a|A)
-            echo ""
-            info "Stopping all services..."
-            docker compose --profile all stop
-            success "All services stopped!"
-            ;;
-        0|"")
-            return 0
-            ;;
-        [1-9]*)
-            local idx=$((choice - 1))
-            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
-                local service="${services_array[$idx]}"
-                echo ""
-                info "Stopping $service..."
-                docker compose stop "$service"
-                success "$service stopped!"
-            else
-                warn "Invalid choice"
-            fi
-            ;;
-        *)
-            warn "Invalid choice"
-            ;;
-    esac
+    success "Services stopped!"
 }
 
 restart_services() {
-    print_section "Restart Services"
-
-    # Get running services
+    # Check if any services are running
     local running_services
     running_services=$(docker compose ps --services --filter "status=running" 2>/dev/null | sort)
 
     if [[ -z "$running_services" ]]; then
+        print_section "Restart Services"
         warn "No services are currently running"
         return 0
     fi
 
-    echo "Running services:"
+    # Use the unified service selection menu
+    SELECTED_PROFILE_STRING=""
+    select_profiles "restart" || return 1
+
+    local profiles="$SELECTED_PROFILE_STRING"
+    if [[ -z "$profiles" ]]; then
+        warn "No profiles selected"
+        return 1
+    fi
+
     echo ""
-    docker compose ps --filter "status=running" 2>/dev/null | head -20
-    echo ""
+    info "Restarting services..."
 
-    echo "Options:"
-    echo ""
-    echo -e "  ${WHITE}a)${NC} Restart ALL services"
+    if [[ "$profiles" == "--profile all" ]]; then
+        docker compose --profile all restart
+    else
+        docker compose $profiles restart
+    fi
 
-    local i=1
-    local services_array=()
-    while IFS= read -r svc; do
-        [[ -z "$svc" ]] && continue
-        services_array+=("$svc")
-        echo -e "  ${WHITE}$i)${NC} Restart $svc"
-        ((i++))
-    done <<< "$running_services"
-
-    echo -e "  ${WHITE}0)${NC} Cancel"
-    echo ""
-
-    prompt "Choice: "
-    read -r choice < /dev/tty 2>/dev/null || choice=""
-
-    case $choice in
-        a|A)
-            echo ""
-            info "Restarting all services..."
-            docker compose --profile all restart
-            success "All services restarted!"
-            ;;
-        0|"")
-            return 0
-            ;;
-        [1-9]*)
-            local idx=$((choice - 1))
-            if [[ $idx -ge 0 && $idx -lt ${#services_array[@]} ]]; then
-                local service="${services_array[$idx]}"
-                echo ""
-                info "Restarting $service..."
-                docker compose restart "$service"
-                success "$service restarted!"
-            else
-                warn "Invalid choice"
-            fi
-            ;;
-        *)
-            warn "Invalid choice"
-            ;;
-    esac
+    success "Services restarted!"
 }
 
 # Format Docker timestamps from ISO to readable format
@@ -1712,7 +1809,7 @@ view_logs() {
         echo "Options:"
         echo ""
         echo -e "  ${WHITE}a)${NC} All services (follow)"
-        echo -e "  ${WHITE}t)${NC} Last 100 lines (all services)"
+        echo -e "  ${WHITE}t)${NC} Last 100 lines + follow (all services)"
 
         if [[ -n "$all_services" ]]; then
             echo ""
@@ -1745,8 +1842,13 @@ view_logs() {
                 [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 ;;
             t|T)
-                docker compose --ansi always --profile all logs -t --tail=100 | format_log_timestamps
-                press_enter
+                echo ""
+                info "Showing last 100 lines + follow. Press Ctrl+C to return to menu."
+                echo ""
+                trap 'log_interrupted=true' INT
+                docker compose --ansi always --profile all logs -t --tail=100 -f 2>/dev/null | format_log_timestamps || true
+                trap - INT
+                [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 ;;
             0|"")
                 return 0
@@ -2170,7 +2272,7 @@ show_usage() {
     echo "  help, --help, -h      Show this help message"
     echo "  version, --version    Show version information"
     echo "  install               Install 'moav' command globally"
-    echo "  uninstall             Remove global 'moav' command"
+    echo "  uninstall [--wipe]    Remove containers and global command (--wipe removes all data)"
     echo "  update [-b BRANCH]    Update MoaV (git pull), optionally switch branch"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
@@ -3630,7 +3732,8 @@ main() {
             do_install
             ;;
         uninstall)
-            do_uninstall
+            shift
+            do_uninstall "$@"
             ;;
         update)
             shift

@@ -620,52 +620,100 @@ Both can run simultaneously without conflicts.
 
 ```bash
 moav update
-# Or manually:
+```
+
+Or manually:
+```bash
 cd /opt/moav
 git pull
 docker compose --profile all build
 moav restart
 ```
 
-**Testing a Development Branch:**
+### Breaking Changes
+
+Some updates include breaking changes that require regenerating configs. Check the [CHANGELOG](../CHANGELOG.md) for breaking change notices.
+
+**If an update has breaking changes:**
 ```bash
-cd /opt/moav
-git fetch origin
-git checkout dev
-git pull origin dev
-docker compose --profile all build
+# Option 1: Rebuild configs (keeps users, regenerates server config)
+moav config rebuild
 moav restart
 
+# Option 2: Fresh start (new keys, new users)
+moav uninstall --wipe
+cp .env.example .env
+nano .env  # Configure domain, email, password
+./moav.sh bootstrap
+```
+
+After breaking changes, you must redistribute new config bundles to all users.
+
+### Testing a Development Branch
+
+```bash
+moav update -b dev      # Switch to dev branch
+
 # Return to stable:
-git checkout main
-git pull origin main
-docker compose --profile all build
-moav restart
+moav update -b main
+```
+
+---
+
+## Uninstalling MoaV
+
+### Keep Data (Reinstall Later)
+
+Remove containers but preserve configuration for later:
+
+```bash
+moav uninstall
+```
+
+This removes:
+- All Docker containers
+- Global `moav` command
+
+Preserves: `.env`, keys, certificates, user bundles, Docker volumes
+
+To reinstall:
+```bash
+./moav.sh install
+moav start
+```
+
+### Complete Removal (Fresh Start)
+
+Remove everything for a completely fresh installation:
+
+```bash
+moav uninstall --wipe
+```
+
+This removes:
+- All Docker containers and volumes
+- `.env` and all generated configs
+- All keys and certificates
+- All user bundles
+
+To start fresh:
+```bash
+cp .env.example .env
+nano .env  # Configure domain, email, password
+./moav.sh
 ```
 
 ---
 
 ## Re-bootstrapping
 
-If you need to regenerate all keys and configs:
+If you need to regenerate keys without a full wipe:
 
 ```bash
-# Full reset (removes all keys and users)
-docker run --rm -v moav_moav_state:/state alpine rm -rf /state/.bootstrapped /state/keys /state/users
-
-# Re-bootstrap
-moav bootstrap
-
-# Restart
-moav restart
-```
-
-**Keep Certificates Only:**
-```bash
-# Just remove bootstrap flag
+# Remove bootstrap flag only
 docker run --rm -v moav_moav_state:/state alpine rm /state/.bootstrapped
 
-# Re-bootstrap
+# Re-run bootstrap
 moav bootstrap
 ```
 

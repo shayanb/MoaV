@@ -16,7 +16,8 @@ generate_wireguard_config() {
     # Generate server keys if not exist
     if [[ ! -f "$STATE_DIR/keys/wg-server.key" ]]; then
         log_info "Generating new WireGuard server keys..."
-        wg genkey > "$STATE_DIR/keys/wg-server.key"
+        # Use umask to ensure private key is only readable by owner
+        (umask 077 && wg genkey > "$STATE_DIR/keys/wg-server.key")
     fi
 
     # Always derive public key from private key to ensure consistency
