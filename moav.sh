@@ -1022,9 +1022,10 @@ cmd_update() {
             success "Already up to date (branch: $new_branch)"
         else
             success "Updated: $current_commit → $new_commit (branch: $new_branch)"
-            echo ""
-            echo -e "${YELLOW}Note:${NC} If containers have changed, run: ${WHITE}moav build${NC}"
         fi
+
+        # Check for component version updates
+        check_component_versions
     else
         error "Failed to update. Check your network connection or git status."
         echo ""
@@ -1033,6 +1034,108 @@ cmd_update() {
         echo "  - View git status: cd $install_dir && git status"
         echo "  - See docs: https://github.com/shayanb/MoaV/blob/main/docs/TROUBLESHOOTING.md#git-update-issues"
         return 1
+    fi
+}
+
+# Check if component versions in .env are outdated compared to .env.example
+check_component_versions() {
+    local env_file="$SCRIPT_DIR/.env"
+    local example_file="$SCRIPT_DIR/.env.example"
+
+    # Skip if .env doesn't exist
+    [[ ! -f "$env_file" ]] && return 0
+    [[ ! -f "$example_file" ]] && return 0
+
+    # List of version variables to check
+    local version_vars=(
+        "SINGBOX_VERSION"
+        "WSTUNNEL_VERSION"
+        "CONDUIT_VERSION"
+        "SNOWFLAKE_VERSION"
+        "TRUSTTUNNEL_VERSION"
+        "TRUSTTUNNEL_CLIENT_VERSION"
+    )
+
+    local updates_available=()
+    local services_to_rebuild=()
+
+    for var in "${version_vars[@]}"; do
+        local current_val example_val
+        current_val=$(grep "^${var}=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+        example_val=$(grep "^${var}=" "$example_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+
+        # Skip if either is empty
+        [[ -z "$current_val" || -z "$example_val" ]] && continue
+
+        # Check if versions differ
+        if [[ "$current_val" != "$example_val" ]]; then
+            updates_available+=("$var:$current_val:$example_val")
+
+            # Map version var to service name for rebuild command
+            case "$var" in
+                SINGBOX_VERSION) services_to_rebuild+=("sing-box") ;;
+                WSTUNNEL_VERSION) services_to_rebuild+=("wstunnel") ;;
+                CONDUIT_VERSION) services_to_rebuild+=("psiphon-conduit") ;;
+                SNOWFLAKE_VERSION) services_to_rebuild+=("snowflake") ;;
+                TRUSTTUNNEL_VERSION|TRUSTTUNNEL_CLIENT_VERSION)
+                    # Only add trusttunnel once
+                    if [[ ! " ${services_to_rebuild[*]} " =~ " trusttunnel " ]]; then
+                        services_to_rebuild+=("trusttunnel")
+                    fi
+                    ;;
+            esac
+        fi
+    done
+
+    # No updates available
+    [[ ${#updates_available[@]} -eq 0 ]] && return 0
+
+    echo ""
+    info "Component updates available:"
+    echo ""
+
+    for update in "${updates_available[@]}"; do
+        local var current new
+        var=$(echo "$update" | cut -d: -f1)
+        current=$(echo "$update" | cut -d: -f2)
+        new=$(echo "$update" | cut -d: -f3)
+        printf "  %-28s %s → ${GREEN}%s${NC}\n" "$var:" "$current" "$new"
+    done
+
+    echo ""
+    read -r -p "Update component versions in .env? [y/N] " update_versions
+
+    if [[ "$update_versions" =~ ^[Yy]$ ]]; then
+        for update in "${updates_available[@]}"; do
+            local var new
+            var=$(echo "$update" | cut -d: -f1)
+            new=$(echo "$update" | cut -d: -f3)
+
+            # Update the version in .env
+            if grep -q "^${var}=" "$env_file"; then
+                sed -i "s/^${var}=.*/${var}=${new}/" "$env_file"
+            else
+                # Add if not present
+                echo "${var}=${new}" >> "$env_file"
+            fi
+        done
+
+        success "Component versions updated in .env"
+        echo ""
+
+        # Show rebuild command
+        if [[ ${#services_to_rebuild[@]} -gt 0 ]]; then
+            local services_str="${services_to_rebuild[*]}"
+            echo -e "To apply updates, rebuild the affected containers:"
+            echo ""
+            echo -e "  ${WHITE}moav build ${services_str} --no-cache${NC}"
+            echo ""
+            echo -e "Or rebuild all: ${WHITE}moav build --no-cache${NC}"
+        fi
+    else
+        echo ""
+        echo "Versions not updated. To update later, compare:"
+        echo "  .env.example (new versions) vs .env (your versions)"
     fi
 }
 
@@ -2288,7 +2391,7 @@ show_usage() {
     echo "  user add NAME [-p]    Add a new user (--package creates zip with HTML guide)"
     echo "  user revoke NAME      Revoke a user"
     echo "  user package NAME     Create distributable zip for existing user"
-    echo "  build [SERVICE...]    Build services (default: all)"
+    echo "  build [SERVICE...] [--no-cache]  Build services (default: all)"
     echo "  test USERNAME         Test connectivity for a user"
     echo "  client                Client mode (test/connect)"
     echo ""
@@ -2313,7 +2416,7 @@ show_usage() {
     echo "  moav stop conduit              # Stop specific service"
     echo "  moav logs sing-box             # Follow sing-box logs (Ctrl+C to exit)"
     echo "  moav logs -n                   # Show last 100 lines without following"
-    echo "  moav build conduit             # Build specific service"
+    echo "  moav build conduit --no-cache  # Rebuild service without cache"
     echo "  moav profiles                  # Change default services"
     echo "  moav user add john             # Add user 'john'"
     echo "  moav user add john --package   # Add user and create zip bundle"
@@ -2818,15 +2921,26 @@ cmd_user() {
 }
 
 cmd_build() {
-    if [[ $# -eq 0 ]] || [[ "$1" == "all" ]]; then
-        info "Building all services..."
-        docker compose --profile all build
+    local no_cache=""
+    local services_args=()
+
+    # Parse arguments
+    for arg in "$@"; do
+        case "$arg" in
+            --no-cache) no_cache="--no-cache" ;;
+            *) services_args+=("$arg") ;;
+        esac
+    done
+
+    if [[ ${#services_args[@]} -eq 0 ]] || [[ "${services_args[0]}" == "all" ]]; then
+        info "Building all services${no_cache:+ (no cache)}..."
+        docker compose --profile all build $no_cache
         success "All services built!"
     else
         local services
-        services=$(resolve_services "$@")
-        info "Building: $services"
-        docker compose --profile all build $services
+        services=$(resolve_services "${services_args[@]}")
+        info "Building: $services${no_cache:+ (no cache)}"
+        docker compose --profile all build $no_cache $services
         success "Build complete!"
     fi
 }

@@ -15,10 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `moav uninstall --wipe` - Complete removal including all configs, keys, and user data
   - Optional Docker images cleanup prompt during --wipe
   - Verbose output showing each file/directory being removed
+- **Component version update checking** - `moav update` now compares versions:
+  - Compares .env with .env.example after git pull
+  - Shows available updates for sing-box, wstunnel, conduit, snowflake, trusttunnel
+  - Prompts to update versions in .env
+  - Shows rebuild command: `moav build <services> --no-cache`
 - **Unified service selection menu** - Beautiful table-based menu for start/stop/restart
   - Consistent UI across all service operations
   - "ALL" option highlighted as "(Recommended)" in green
   - Shows v2ray app compatibility for proxy protocols
+- `moav build --no-cache` flag for forcing container rebuilds
 - Logs menu "Last 100 lines + follow" option (shows tail then continues following)
 - Cloudflare Origin Rule documentation for CDN mode (required for port 2082 routing)
 
