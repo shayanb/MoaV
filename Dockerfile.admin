@@ -3,6 +3,9 @@ FROM python:3.12-alpine
 
 RUN apk add --no-cache tzdata
 
+# Create non-root user
+RUN addgroup -S admin && adduser -S -G admin -s /sbin/nologin admin
+
 WORKDIR /app
 
 COPY admin/requirements.txt /app/
@@ -10,10 +13,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY admin/ /app/
 COPY scripts/admin-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    chown -R admin:admin /app
 
 EXPOSE 8443
 
 ENV PYTHONUNBUFFERED=1
+
+# Run as non-root user
+USER admin
 
 ENTRYPOINT ["/entrypoint.sh"]

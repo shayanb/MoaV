@@ -13,4 +13,7 @@ RUN mkdir -p /etc/wireguard
 COPY scripts/wireguard-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Note: Requires privileged mode for kernel module management
+# Cannot be hardened further due to low-level network requirements
+
 ENTRYPOINT ["/entrypoint.sh"]

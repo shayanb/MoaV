@@ -24,4 +24,7 @@ COPY scripts/lib/ /app/lib/
 
 RUN chmod +x /app/*.sh
 
+# Note: Runs as root to create configs/keys with proper permissions
+# One-shot container, hardening via docker-compose (no-new-privileges, resource limits)
+
 ENTRYPOINT ["/app/bootstrap.sh"]

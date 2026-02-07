@@ -35,4 +35,7 @@ RUN chmod +x /entrypoint.sh
 # TrustTunnel port (HTTP/2 TCP + HTTP/3 QUIC/UDP)
 EXPOSE 4443/tcp 4443/udp
 
+# Note: Runs as root to read TLS certs from shared volume
+# Hardening applied via docker-compose (cap_drop, no-new-privileges, read_only, resource limits)
+
 ENTRYPOINT ["/entrypoint.sh"]
