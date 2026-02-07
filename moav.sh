@@ -776,6 +776,26 @@ do_uninstall() {
         fi
 
         success "Configuration files removed"
+
+        # Ask about Docker images
+        echo ""
+        local moav_images
+        moav_images=$(docker images --format "{{.Repository}}:{{.Tag}} ({{.Size}})" 2>/dev/null | grep -E "^moav-" || true)
+        if [[ -n "$moav_images" ]]; then
+            info "Docker images found:"
+            echo "$moav_images" | while read -r img; do
+                echo "  - $img"
+            done
+            echo ""
+            read -r -p "Also remove Docker images? [y/N] " remove_images
+            if [[ "$remove_images" =~ ^[Yy]$ ]]; then
+                info "Removing Docker images..."
+                docker images --format "{{.Repository}}" 2>/dev/null | grep -E "^moav-" | xargs -r docker rmi -f 2>/dev/null || true
+                success "Docker images removed"
+            else
+                echo "  Docker images kept (remove manually with: docker rmi \$(docker images -q 'moav-*'))"
+            fi
+        fi
     fi
 
     # Remove global symlink
