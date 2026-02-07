@@ -1789,7 +1789,7 @@ view_logs() {
         echo "Options:"
         echo ""
         echo -e "  ${WHITE}a)${NC} All services (follow)"
-        echo -e "  ${WHITE}t)${NC} Last 100 lines (all services)"
+        echo -e "  ${WHITE}t)${NC} Last 100 lines + follow (all services)"
 
         if [[ -n "$all_services" ]]; then
             echo ""
@@ -1822,8 +1822,13 @@ view_logs() {
                 [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 ;;
             t|T)
-                docker compose --ansi always --profile all logs -t --tail=100 | format_log_timestamps
-                press_enter
+                echo ""
+                info "Showing last 100 lines + follow. Press Ctrl+C to return to menu."
+                echo ""
+                trap 'log_interrupted=true' INT
+                docker compose --ansi always --profile all logs -t --tail=100 -f 2>/dev/null | format_log_timestamps || true
+                trap - INT
+                [[ "$log_interrupted" == "true" ]] && echo "" && info "Returning to log menu..."
                 ;;
             0|"")
                 return 0
