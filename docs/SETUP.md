@@ -466,6 +466,14 @@ moav users
 ```bash
 moav user add newuser
 # Creates bundle in outputs/bundles/newuser/
+
+# Add multiple users at once
+moav user add alice bob charlie
+
+# Batch create (auto-numbered)
+moav user add --batch 5                   # Creates user01..user05
+moav user add --batch 10 --prefix team    # Creates team01..team10
+moav user add --batch 5 -p                # With zip packages
 ```
 
 **Revoke User:**

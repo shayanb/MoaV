@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Batch user creation** - Create multiple users at once:
+  - `moav user add alice bob charlie` - Add multiple named users
+  - `moav user add --batch 5` - Create user01, user02, ..., user05
+  - `moav user add --batch 10 --prefix team` - Create team01..team10
+  - Smart numbering: skips existing users (if user01-03 exist, creates user04, user05)
+  - Services reload once at the end (not after each user) for efficiency
+  - `--package` flag works with batch mode
+
+### Fixed
+- **`moav user revoke` menu crash** - User list script was crashing when listing WireGuard peers after a user was revoked
+  - Fixed grep pattern to only extract usernames from [Peer] blocks
+  - Added proper error handling for missing peer IPs
+
 ## [1.2.5] - 2026-02-07
 
 ### Added

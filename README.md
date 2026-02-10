@@ -132,6 +132,8 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 # Using moav (recommended)
 moav user list            # List all users (or: moav users)
 moav user add joe         # Add user to all services
+moav user add alice bob   # Add multiple users
+moav user add --batch 5   # Batch create user01..user05
 moav user revoke joe      # Revoke user from all services
 ```
 
