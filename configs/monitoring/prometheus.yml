@@ -32,10 +32,6 @@ scrape_configs:
     static_configs:
       - targets: ['wireguard:9586']
 
-  # Snowflake native metrics (uses host networking)
-  - job_name: 'snowflake'
-    static_configs:
-      - targets: ['host.docker.internal:9999']
-    metrics_path: /internal/metrics
-    # Snowflake may not always be running - don't fail scrapes
-    scrape_timeout: 5s
+  # NOTE: Snowflake metrics not available - the proxy binds to localhost only
+  # and doesn't expose connection metrics without a geoip database.
+  # Snowflake donations still work, just without Prometheus metrics.
