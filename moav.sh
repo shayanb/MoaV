@@ -1627,6 +1627,7 @@ select_profiles() {
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   monitoring   Grafana + Prometheus observability            ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Cancel${NC}       Exit without selecting                        ${CYAN}│${NC}"
@@ -1685,9 +1686,10 @@ select_profiles() {
             SELECTED_PROFILES+=("admin")
         fi
 
-        # Always include donation services when selecting "all"
+        # Always include donation and monitoring services when selecting "all"
         SELECTED_PROFILES+=("conduit")
         SELECTED_PROFILES+=("snowflake")
+        SELECTED_PROFILES+=("monitoring")
 
         # If nothing enabled (shouldn't happen), fall back to donation-only
         if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
@@ -1707,6 +1709,7 @@ select_profiles() {
                 5) SELECTED_PROFILES+=("admin") ;;
                 6) SELECTED_PROFILES+=("conduit") ;;
                 7) SELECTED_PROFILES+=("snowflake") ;;
+                8) SELECTED_PROFILES+=("monitoring") ;;
             esac
         done
     fi
@@ -2605,7 +2608,7 @@ cmd_profiles() {
 
 cmd_start() {
     local profiles=""
-    local valid_profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake client all setup"
+    local valid_profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring client all setup"
 
     if [[ $# -eq 0 ]]; then
         # No arguments - check for DEFAULT_PROFILES in .env
@@ -2684,6 +2687,8 @@ resolve_profile() {
             echo "dnstt" ;;
         psiphon)
             echo "conduit" ;;
+        grafana|prometheus|metrics)
+            echo "monitoring" ;;
         *)
             echo "$profile" ;;
     esac

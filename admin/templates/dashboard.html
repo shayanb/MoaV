@@ -219,6 +219,7 @@
             <h1>MoaV Dashboard</h1>
             <div>
                 <span class="timestamp">{{ timestamp }}</span>
+                <a href="https://{{ request.host.split(':')[0] }}:9444" target="_blank" class="refresh-btn" style="margin-right: 0.5rem; background: #ff6600; text-decoration: none;">Grafana</a>
                 <button class="refresh-btn" onclick="location.reload()">Refresh</button>
             </div>
         </header>
@@ -238,22 +239,12 @@
 
         <div class="grid">
             <div class="card">
-                <div class="card-title">Active Connections</div>
-                <div class="card-value {% if total_connections > 0 %}success{% endif %}">
-                    {{ total_connections }}
-                </div>
-            </div>
-            <div class="card">
                 <div class="card-title">Total Upload</div>
                 <div class="card-value">{{ total_upload }}</div>
             </div>
             <div class="card">
                 <div class="card-title">Total Download</div>
                 <div class="card-value">{{ total_download }}</div>
-            </div>
-            <div class="card">
-                <div class="card-title">Memory Usage</div>
-                <div class="card-value">{{ memory_usage }}</div>
             </div>
             <div class="card">
                 <div class="card-title">Conduit</div>
@@ -300,34 +291,6 @@
                         {% endfor %}
                     </tbody>
                 </table>
-            </div>
-
-            <div class="card">
-                <h2>Active Connections</h2>
-                {% if user_stats %}
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Source IP</th>
-                            <th>Conn</th>
-                            <th>Upload</th>
-                            <th>Download</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ip, data in connection_stats.items() %}
-                        <tr>
-                            <td>{{ ip }}</td>
-                            <td>{{ data.connections }}</td>
-                            <td>{{ format_bytes(data.upload) }}</td>
-                            <td>{{ format_bytes(data.download) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <p style="color: var(--text-muted);">No active connections</p>
-                {% endif %}
             </div>
         </div>
 

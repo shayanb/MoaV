@@ -11,6 +11,8 @@ volumes:
   moav_state:
   moav_logs:
   moav_conduit:
+  moav_prometheus:
+  moav_grafana:
 
 services:
   # ===========================================================================
@@ -301,6 +303,140 @@ services:
       - TZ=${TZ:-UTC}
     profiles:
       - admin
+      - all
+
+  # ===========================================================================
+  # MONITORING: Prometheus + Grafana observability stack
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: moav-prometheus
+    restart: unless-stopped
+    networks:
+      - moav_net
+    expose:
+      - "9091"
+    volumes:
+      - ./configs/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - moav_prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.listen-address=:9091'
+      - '--web.enable-lifecycle'
+    environment:
+      - TZ=${TZ:-UTC}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - monitoring
+      - all
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: moav-grafana
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_GRAFANA:-9444}:3000"
+    volumes:
+      - ./configs/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./configs/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./configs/monitoring/grafana/provisioning/dashboards:/var/lib/grafana/dashboards:ro
+      - moav_grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - GF_SECURITY_ADMIN_USER=admin
+      - TZ=${TZ:-UTC}
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+      - all
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: moav-node-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    expose:
+      - "9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    environment:
+      - TZ=${TZ:-UTC}
+    profiles:
+      - monitoring
+      - all
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: moav-cadvisor
+    restart: unless-stopped
+    networks:
+      - moav_net
+    expose:
+      - "8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    environment:
+      - TZ=${TZ:-UTC}
+    profiles:
+      - monitoring
+      - all
+
+  clash-exporter:
+    image: ghcr.io/zxh326/clash-exporter:latest
+    container_name: moav-clash-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    expose:
+      - "2112"
+    environment:
+      - CLASH_HOST=moav-sing-box
+      - CLASH_PORT=9090
+      - CLASH_SECRET=${CLASH_API_SECRET:-}
+      - TZ=${TZ:-UTC}
+    command: ["-collectDestination"]
+    profiles:
+      - monitoring
+      - all
+
+  wireguard-exporter:
+    image: mindflavor/prometheus-wireguard-exporter:3.6.6
+    container_name: moav-wireguard-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    expose:
+      - "9586"
+    volumes:
+      - ./configs/wireguard:/etc/wireguard:ro
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PROMETHEUS_WIREGUARD_EXPORTER_PREPEND_SUDO=false
+      - TZ=${TZ:-UTC}
+    profiles:
+      - monitoring
       - all
 
   # ===========================================================================

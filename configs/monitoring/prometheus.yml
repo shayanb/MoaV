@@ -1,0 +1,41 @@
+# =============================================================================
+# Prometheus Configuration for MoaV Monitoring
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9091']
+
+  # Node Exporter - System metrics (CPU, RAM, disk, network)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # cAdvisor - Container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # sing-box via Clash Exporter
+  - job_name: 'clash'
+    static_configs:
+      - targets: ['clash-exporter:2112']
+
+  # WireGuard Exporter
+  - job_name: 'wireguard'
+    static_configs:
+      - targets: ['wireguard-exporter:9586']
+
+  # Snowflake native metrics (uses host networking)
+  - job_name: 'snowflake'
+    static_configs:
+      - targets: ['host.docker.internal:9999']
+    metrics_path: /internal/metrics
+    # Snowflake may not always be running - don't fail scrapes
+    scrape_timeout: 5s
