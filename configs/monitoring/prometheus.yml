@@ -27,10 +27,10 @@ scrape_configs:
     static_configs:
       - targets: ['clash-exporter:2112']
 
-  # WireGuard Exporter
+  # WireGuard Exporter (shares network with wireguard container)
   - job_name: 'wireguard'
     static_configs:
-      - targets: ['wireguard-exporter:9586']
+      - targets: ['wireguard:9586']
 
   # Snowflake native metrics (uses host networking)
   - job_name: 'snowflake'
