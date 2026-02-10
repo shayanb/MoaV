@@ -228,6 +228,15 @@ get_admin_url() {
     echo "https://${admin_host}:${admin_port}"
 }
 
+get_grafana_url() {
+    # Get Grafana URL using DOMAIN or SERVER_IP from .env
+    local grafana_port="${PORT_GRAFANA:-9444}"
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local server_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local grafana_host="${domain:-${server_ip:-localhost}}"
+    echo "https://${grafana_host}:${grafana_port}"
+}
+
 run_command() {
     local cmd="$1"
     local description="${2:-Running command}"
@@ -1822,6 +1831,12 @@ start_services() {
         # Show admin URL if admin was started
         if echo "$profiles" | grep -qE "admin|all"; then
             echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+        fi
+        # Show Grafana URL if monitoring was started
+        if echo "$profiles" | grep -qE "monitoring|all"; then
+            echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+        fi
+        if echo "$profiles" | grep -qE "admin|monitoring|all"; then
             echo ""
         fi
         show_log_help
@@ -2319,6 +2334,10 @@ main_menu() {
             if echo "$running" | grep -q "admin"; then
                 echo -e "  ${CYAN}↳${NC} Admin: ${CYAN}$(get_admin_url)${NC}"
             fi
+            # Show Grafana URL if grafana is running
+            if echo "$running" | grep -q "grafana"; then
+                echo -e "  ${CYAN}↳${NC} Grafana: ${CYAN}$(get_grafana_url)${NC}"
+            fi
         else
             echo -e "  ${DIM}○ No services running${NC}"
         fi
@@ -2670,6 +2689,12 @@ cmd_start() {
     # Show admin URL if admin was started
     if echo "$profiles" | grep -qE "admin|all"; then
         echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+    fi
+    # Show Grafana URL if monitoring was started
+    if echo "$profiles" | grep -qE "monitoring|all"; then
+        echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+    fi
+    if echo "$profiles" | grep -qE "admin|monitoring|all"; then
         echo ""
     fi
     docker compose $profiles ps
@@ -2704,6 +2729,10 @@ resolve_service() {
         ws|tunnel)                    echo "wstunnel" ;;
         dns)                          echo "dnstt" ;;
         snow|tor)                     echo "snowflake" ;;
+        # Monitoring profile uses pre-built images, nothing to build
+        monitoring|grafana|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter)
+            warn "Note: $svc uses pre-built images (nothing to build)"
+            echo "" ;;
         *)                            echo "$svc" ;;
     esac
 }
@@ -2792,11 +2821,18 @@ cmd_status() {
 
     show_status
 
-    # Show admin URL if admin is running
+    # Show admin and grafana URLs if running
     local running=$(get_running_services)
+    local show_urls=0
     if echo "$running" | grep -q "admin"; then
-        echo ""
+        [[ $show_urls -eq 0 ]] && echo ""
         echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+        show_urls=1
+    fi
+    if echo "$running" | grep -q "grafana"; then
+        [[ $show_urls -eq 0 ]] && echo ""
+        echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+        show_urls=1
     fi
 
     # Show CDN domain if configured
@@ -2944,6 +2980,12 @@ cmd_build() {
     else
         local services
         services=$(resolve_services "${services_args[@]}")
+        # Remove empty values and trim whitespace
+        services=$(echo "$services" | xargs)
+        if [[ -z "$services" ]]; then
+            info "No buildable services specified"
+            return 0
+        fi
         info "Building: $services${no_cache:+ (no cache)}"
         docker compose --profile all build $no_cache $services
         success "Build complete!"
