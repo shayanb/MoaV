@@ -13,6 +13,7 @@ volumes:
   moav_conduit:
   moav_prometheus:
   moav_grafana:
+  moav_snowflake_logs:
 
 services:
   # ===========================================================================
@@ -235,6 +236,8 @@ services:
     container_name: moav-snowflake
     restart: unless-stopped
     network_mode: host
+    volumes:
+      - moav_snowflake_logs:/var/log/snowflake
     environment:
       - TZ=${TZ:-UTC}
       - SNOWFLAKE_BANDWIDTH=${SNOWFLAKE_BANDWIDTH:-50}
@@ -244,6 +247,25 @@ services:
     profiles:
       - snowflake
       - all
+
+  # Snowflake Prometheus Exporter - parses snowflake logs for metrics
+  snowflake-exporter:
+    image: ghcr.io/mrdrache333/snowflake-prometheus-exporter:latest
+    container_name: moav-snowflake-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - moav_snowflake_logs:/var/log/snowflake:ro
+    environment:
+      - LOG_FILE=/var/log/snowflake/snowflake.log
+      - TZ=${TZ:-UTC}
+    expose:
+      - "8080"
+    depends_on:
+      - snowflake
+    profiles:
+      - snowflake
 
   # ===========================================================================
   # TRUSTTUNNEL: Modern VPN protocol (looks like HTTPS)
@@ -444,8 +466,8 @@ services:
     environment:
       - TZ=${TZ:-UTC}
     command:
-      - "-a"
-      - "0.0.0.0:9586"
+      - "-p"
+      - "9586"
       - "-n"
       - "/etc/wireguard/wg0.conf"
     profiles:

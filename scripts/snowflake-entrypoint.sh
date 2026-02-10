@@ -1,14 +1,19 @@
 #!/bin/sh
 # =============================================================================
-# Snowflake Proxy entrypoint with bandwidth limiting
+# Snowflake Proxy entrypoint with bandwidth limiting and logging
 # =============================================================================
 
 SNOWFLAKE_BANDWIDTH="${SNOWFLAKE_BANDWIDTH:-50}"
 SNOWFLAKE_CAPACITY="${SNOWFLAKE_CAPACITY:-20}"
+LOG_FILE="/var/log/snowflake/snowflake.log"
+
+# Ensure log directory exists
+mkdir -p /var/log/snowflake
 
 echo "[snowflake] Starting Tor Snowflake Proxy"
 echo "[snowflake] Bandwidth limit: ${SNOWFLAKE_BANDWIDTH} Mbps"
 echo "[snowflake] Max clients: ${SNOWFLAKE_CAPACITY}"
+echo "[snowflake] Log file: ${LOG_FILE}"
 
 # Set up bandwidth limiting using tc (traffic control)
 # This requires NET_ADMIN capability
@@ -44,8 +49,10 @@ setup_bandwidth_limit() {
 # Try to set up bandwidth limiting (requires NET_ADMIN)
 setup_bandwidth_limit || echo "[snowflake] Continuing without bandwidth limit"
 
-# Run the proxy with capacity limit
+# Run the proxy with verbose logging to file (for metrics exporter)
 echo "[snowflake] Starting proxy..."
 exec /bin/proxy \
     -capacity "${SNOWFLAKE_CAPACITY}" \
-    -summary-interval 1h
+    -summary-interval 1h \
+    -verbose \
+    -log "${LOG_FILE}"
