@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<<<<<<< Updated upstream
+=======
+### Added
+- **Monitoring Stack** - Optional Grafana + Prometheus observability (`monitoring` profile)
+  - Grafana dashboards on port 9444 (configurable via `PORT_GRAFANA`)
+  - Prometheus with 15-day retention (internal only, port 9091)
+  - Node Exporter for system metrics (CPU, RAM, disk, network)
+  - cAdvisor for container metrics (per-container CPU, memory, network)
+  - Clash Exporter for sing-box proxy metrics (connections, traffic)
+  - WireGuard Exporter for VPN peer statistics (peers, handshakes, traffic)
+  - Snowflake native metrics via `-metrics` flag
+  - Pre-built dashboards: System, Containers, sing-box, WireGuard
+  - Uses existing `ADMIN_PASSWORD` for Grafana authentication
+  - `moav start monitoring` or combine with other profiles
+- `PORT_GRAFANA` environment variable (default: 9444)
+- `ENABLE_MONITORING` toggle in .env
+- **Batch user creation** - Create multiple users at once:
+  - `moav user add alice bob charlie` - Add multiple named users
+  - `moav user add --batch 5` - Create user01, user02, ..., user05
+  - `moav user add --batch 10 --prefix team` - Create team01..team10
+  - Smart numbering: skips existing users (if user01-03 exist, creates user04, user05)
+  - Services reload once at the end (not after each user) for efficiency
+  - `--package` flag works with batch mode
+
+### Changed
+- Admin dashboard simplified (connection/memory metrics moved to Grafana):
+  - Removed Active Connections card
+  - Removed Memory Usage card
+  - Removed Active Connections table
+  - Added Grafana link button in header
+  - Kept: Conduit stats, User bundles, Service status, Total upload/download
+- Snowflake proxy now exposes native Prometheus metrics on port 9999
+
+### Fixed
+- **`moav user revoke` menu crash** - User list script was crashing when listing WireGuard peers after a user was revoked
+  - Fixed grep pattern to only extract usernames from [Peer] blocks
+  - Added proper error handling for missing peer IPs
+
+### Documentation
+- Added `docs/MONITORING.md` with complete monitoring stack guide
+- Documented: TrustTunnel and dnstt do not have metrics APIs (container metrics still available via cAdvisor)
+- Added "Apply .env changes" section to TROUBLESHOOTING.md explaining that containers must be recreated (not just restarted) to pick up `.env` changes
+
+>>>>>>> Stashed changes
 ## [1.2.5] - 2026-02-07
 
 ### Added

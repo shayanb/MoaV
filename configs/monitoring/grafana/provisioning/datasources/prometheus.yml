@@ -4,6 +4,11 @@
 
 apiVersion: 1
 
+# Delete any manually created datasources with these names
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
 datasources:
   - name: Prometheus
     type: prometheus
@@ -11,3 +16,5 @@ datasources:
     url: http://prometheus:9091
     isDefault: true
     editable: false
+    orgId: 1
+    uid: prometheus

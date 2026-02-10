@@ -337,6 +337,8 @@ services:
     image: grafana/grafana:10.4.1
     container_name: moav-grafana
     restart: unless-stopped
+    user: "0"
+    entrypoint: ["/bin/sh", "/scripts/grafana-entrypoint.sh"]
     networks:
       - moav_net
     ports:
@@ -345,7 +347,9 @@ services:
       - ./configs/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - ./configs/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./configs/monitoring/grafana/provisioning/dashboards:/var/lib/grafana/dashboards:ro
+      - ./scripts/grafana-entrypoint.sh:/scripts/grafana-entrypoint.sh:ro
       - moav_grafana:/var/lib/grafana
+      - moav_certs:/certs:ro
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - GF_SECURITY_ADMIN_USER=admin
@@ -415,7 +419,7 @@ services:
       - CLASH_PORT=9090
       - CLASH_SECRET=${CLASH_API_SECRET:-}
       - TZ=${TZ:-UTC}
-    command: ["-collectDestination"]
+    command: ["-collectDest"]
     profiles:
       - monitoring
       - all
@@ -433,8 +437,11 @@ services:
     cap_add:
       - NET_ADMIN
     environment:
-      - PROMETHEUS_WIREGUARD_EXPORTER_PREPEND_SUDO=false
       - TZ=${TZ:-UTC}
+    command:
+      - "--prepend_sudo=false"
+      - "-n"
+      - "wg0"
     profiles:
       - monitoring
       - all
