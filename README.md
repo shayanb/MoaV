@@ -240,7 +240,7 @@ moav logs conduit             # View conduit logs
 
 | Platform | Recommended Apps |
 |----------|------------------|
-| iOS | Shadowrocket, Hiddify, WireGuard, TrustTunnel, Psiphon, Streisand |
+| iOS | Streisand, Hiddify, WireGuard, TrustTunnel, Psiphon, Shadowrocket |
 | Android | v2rayNG, Hiddify, WireGuard, TrustTunnel, Psiphon, NekoBox |
 | macOS | Hiddify, Streisand, WireGuard, TrustTunnel, Psiphon |
 | Windows | v2rayN, Hiddify, WireGuard, TrustTunnel, Psiphon |
