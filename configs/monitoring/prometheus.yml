@@ -35,9 +35,9 @@ scrape_configs:
       - targets: ['wireguard:9586']
     scrape_timeout: 5s
 
-  # Snowflake Exporter - parses snowflake proxy logs
+  # Snowflake Exporter - parses snowflake proxy logs for metrics
   # NOTE: Only available when running with --profile snowflake
   - job_name: 'snowflake'
     static_configs:
       - targets: ['snowflake-exporter:8080']
-    scrape_timeout: 5s
+    scrape_timeout: 10s
