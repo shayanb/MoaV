@@ -258,8 +258,8 @@ services:
     volumes:
       - moav_snowflake_logs:/var/log/snowflake:ro
     environment:
-      - LOG_FILE=/var/log/snowflake/snowflake.log
       - TZ=${TZ:-UTC}
+    command: ["/var/log/snowflake/snowflake.log"]
     expose:
       - "8080"
     depends_on:
