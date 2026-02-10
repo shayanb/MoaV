@@ -44,14 +44,21 @@ echo ""
 # -----------------------------------------------------------------------------
 echo "=== WireGuard Peers ==="
 if [[ -f configs/wireguard/wg0.conf ]]; then
-    WG_PEERS=$(grep "^# " configs/wireguard/wg0.conf | grep -v "Peers are added" | sed 's/^# //' || true)
+    # Extract peer names: look for comments after [Peer] blocks
+    WG_PEERS=$(awk '/^\[Peer\]/{getline; if(/^# /){sub(/^# /,""); print}}' configs/wireguard/wg0.conf 2>/dev/null || true)
     if [[ -n "$WG_PEERS" ]]; then
+        WG_COUNT=0
         # Get IPs for each peer
         while IFS= read -r peer; do
-            IP=$(grep -A2 "# $peer\$" configs/wireguard/wg0.conf | grep "AllowedIPs" | awk '{print $3}' | sed 's/\/32//')
-            echo "  • $peer ($IP)"
+            [[ -z "$peer" ]] && continue
+            IP=$(grep -A2 "# $peer\$" configs/wireguard/wg0.conf 2>/dev/null | grep "AllowedIPs" | awk '{print $3}' | sed 's/\/32//' || echo "")
+            if [[ -n "$IP" ]]; then
+                echo "  • $peer ($IP)"
+            else
+                echo "  • $peer (no IP found)"
+            fi
+            ((WG_COUNT++)) || true
         done <<< "$WG_PEERS"
-        WG_COUNT=$(echo "$WG_PEERS" | wc -l | tr -d ' ')
         echo ""
         echo "  Total: $WG_COUNT peers"
     else
