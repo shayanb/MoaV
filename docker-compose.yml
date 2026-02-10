@@ -410,29 +410,25 @@ services:
     image: ghcr.io/zxh326/clash-exporter:latest
     container_name: moav-clash-exporter
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "/scripts/clash-exporter-entrypoint.sh"]
-    command: ["-collectDest"]
     networks:
       - moav_net
     expose:
       - "2112"
-    volumes:
-      - ./scripts/clash-exporter-entrypoint.sh:/scripts/clash-exporter-entrypoint.sh:ro
-      - moav_state:/state:ro
     environment:
       - CLASH_HOST=moav-sing-box:9090
+      - CLASH_TOKEN=${CLASH_API_SECRET:-}
       - TZ=${TZ:-UTC}
-    depends_on:
-      - sing-box
+    command: ["-collectDest"]
     profiles:
       - monitoring
       - all
 
+  # WireGuard Exporter - only runs with wireguard profile
+  # Shares network namespace to access wg0 interface
   wireguard-exporter:
     image: mindflavor/prometheus-wireguard-exporter:3.6.6
     container_name: moav-wireguard-exporter
     restart: unless-stopped
-    # Share network namespace with WireGuard to access wg0 interface
     network_mode: "service:wireguard"
     cap_add:
       - NET_ADMIN
@@ -442,11 +438,8 @@ services:
       - "--prepend_sudo=false"
       - "-n"
       - "wg0"
-    depends_on:
-      - wireguard
     profiles:
-      - monitoring
-      - all
+      - wireguard
 
   # ===========================================================================
   # BOOTSTRAP: First-run initialization
