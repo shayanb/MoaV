@@ -259,7 +259,7 @@ services:
       - moav_snowflake_logs:/var/log/snowflake:ro
     environment:
       - TZ=${TZ:-UTC}
-    command: ["/var/log/snowflake/snowflake.log"]
+    command: ["python", "/usr/src/app/main.py", "/var/log/snowflake/snowflake.log"]
     expose:
       - "8080"
     depends_on:
