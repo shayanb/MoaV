@@ -2,17 +2,23 @@
 set -euo pipefail
 
 # =============================================================================
-# Add a new user to ALL enabled services
-# Usage: ./scripts/user-add.sh <username> [--package]
+# Add user(s) to ALL enabled services
+# Usage: ./scripts/user-add.sh <username> [username2...] [options]
+#        ./scripts/user-add.sh --batch N [--prefix NAME] [options]
 #
 # Options:
-#   --package, -p   Create a distributable zip with HTML guide
+#   --package, -p     Create distributable zip with HTML guide for each user
+#   --batch N         Create N users with auto-generated names
+#   --prefix NAME     Prefix for batch usernames (default: "user")
+#
+# Examples:
+#   ./scripts/user-add.sh alice bob charlie
+#   ./scripts/user-add.sh --batch 5
+#   ./scripts/user-add.sh --batch 10 --prefix team --package
 #
 # This is the master script that calls individual service scripts:
 #   - singbox-user-add.sh (Reality, Trojan, Hysteria2)
 #   - wg-user-add.sh (WireGuard)
-#
-# For individual services, use the specific scripts directly.
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -21,8 +27,10 @@ cd "$SCRIPT_DIR/.."
 source scripts/lib/common.sh
 
 # Parse arguments
-USERNAME=""
+USERNAMES=()
 CREATE_PACKAGE=false
+BATCH_COUNT=0
+BATCH_PREFIX="user"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -30,24 +38,52 @@ while [[ $# -gt 0 ]]; do
             CREATE_PACKAGE=true
             shift
             ;;
+        --batch|-b)
+            BATCH_COUNT="${2:-0}"
+            shift 2
+            ;;
+        --prefix)
+            BATCH_PREFIX="${2:-user}"
+            shift 2
+            ;;
         -*)
             echo "Unknown option: $1"
             exit 1
             ;;
         *)
-            USERNAME="$1"
+            USERNAMES+=("$1")
             shift
             ;;
     esac
 done
 
-if [[ -z "$USERNAME" ]]; then
-    echo "Usage: $0 <username> [--package]"
+# Generate batch usernames if --batch was specified
+if [[ "$BATCH_COUNT" -gt 0 ]]; then
+    # Find the next available number for this prefix
+    START_NUM=1
+    while [[ -d "outputs/bundles/${BATCH_PREFIX}$(printf '%02d' $START_NUM)" ]]; do
+        ((START_NUM++))
+    done
+
+    for ((i=0; i<BATCH_COUNT; i++)); do
+        NUM=$((START_NUM + i))
+        USERNAMES+=("${BATCH_PREFIX}$(printf '%02d' $NUM)")
+    done
+fi
+
+if [[ ${#USERNAMES[@]} -eq 0 ]]; then
+    echo "Usage: $0 <username> [username2...] [--package]"
+    echo "       $0 --batch N [--prefix NAME] [--package]"
     echo ""
     echo "Options:"
-    echo "  --package, -p   Create a distributable zip with HTML guide"
+    echo "  --package, -p     Create distributable zip with HTML guide"
+    echo "  --batch N         Create N users with auto-generated names"
+    echo "  --prefix NAME     Prefix for batch usernames (default: \"user\")"
     echo ""
-    echo "This adds a user to ALL enabled services."
+    echo "Examples:"
+    echo "  $0 alice bob charlie        # Add three users"
+    echo "  $0 --batch 5                # Create user01, user02, ..., user05"
+    echo "  $0 --batch 10 --prefix team # Create team01, team02, ..., team10"
     echo ""
     echo "For individual services:"
     echo "  ./scripts/singbox-user-add.sh <username>  # Reality, Trojan, Hysteria2"
@@ -55,11 +91,24 @@ if [[ -z "$USERNAME" ]]; then
     exit 1
 fi
 
-# Validate username
-if [[ ! "$USERNAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-    log_error "Invalid username. Use only letters, numbers, underscores, and hyphens."
-    exit 1
+# Determine if we're in batch mode (multiple users)
+BATCH_MODE=false
+if [[ ${#USERNAMES[@]} -gt 1 ]]; then
+    BATCH_MODE=true
 fi
+
+# Validate all usernames first
+for USERNAME in "${USERNAMES[@]}"; do
+    if [[ ! "$USERNAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        log_error "Invalid username '$USERNAME'. Use only letters, numbers, underscores, and hyphens."
+        exit 1
+    fi
+    if [[ -d "outputs/bundles/$USERNAME" ]]; then
+        log_error "User '$USERNAME' already exists. Use a different name or revoke first."
+        log_error "To revoke: ./scripts/user-revoke.sh $USERNAME"
+        exit 1
+    fi
+done
 
 # Load environment
 if [[ -f .env ]]; then
@@ -68,54 +117,74 @@ if [[ -f .env ]]; then
     set +a
 fi
 
-# Check if user bundle already exists
-if [[ -d "outputs/bundles/$USERNAME" ]]; then
-    log_error "User '$USERNAME' already exists. Use a different name or revoke first."
-    log_error "To revoke: ./scripts/user-revoke.sh $USERNAME"
-    exit 1
+# Display batch info
+if [[ "$BATCH_MODE" == "true" ]]; then
+    log_info "========================================"
+    log_info "Batch creating ${#USERNAMES[@]} users"
+    log_info "========================================"
+    echo ""
+    echo "Users to create:"
+    for u in "${USERNAMES[@]}"; do
+        echo "  • $u"
+    done
+    echo ""
 fi
 
-OUTPUT_DIR="outputs/bundles/$USERNAME"
-mkdir -p "$OUTPUT_DIR"
-
-log_info "========================================"
-log_info "Adding user '$USERNAME' to all services"
-log_info "========================================"
-echo ""
-
-ERRORS=()
+# Track created users for summary
+CREATED_USERS=()
+FAILED_USERS=()
 
 # -----------------------------------------------------------------------------
-# Add to sing-box (Reality, Trojan, Hysteria2)
+# Create each user
 # -----------------------------------------------------------------------------
-if [[ -f "configs/sing-box/config.json" ]]; then
-    log_info "[1/2] Adding to sing-box (Reality, Trojan, Hysteria2)..."
-    if "$SCRIPT_DIR/singbox-user-add.sh" "$USERNAME"; then
-        log_info "✓ sing-box user added"
-    else
-        ERRORS+=("sing-box")
-        log_error "✗ Failed to add sing-box user"
+for USERNAME in "${USERNAMES[@]}"; do
+    OUTPUT_DIR="outputs/bundles/$USERNAME"
+    mkdir -p "$OUTPUT_DIR"
+
+    log_info "========================================"
+    log_info "Adding user '$USERNAME' to all services"
+    log_info "========================================"
+    echo ""
+
+    ERRORS=()
+
+    # Determine reload flag for sub-scripts
+    RELOAD_FLAG=""
+    if [[ "$BATCH_MODE" == "true" ]]; then
+        RELOAD_FLAG="--no-reload"
     fi
-else
-    log_info "[1/2] Skipping sing-box (not configured)"
-fi
 
-echo ""
-
-# -----------------------------------------------------------------------------
-# Add to WireGuard
-# -----------------------------------------------------------------------------
-if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]] && [[ -f "configs/wireguard/wg0.conf" ]]; then
-    log_info "[2/2] Adding to WireGuard..."
-    if "$SCRIPT_DIR/wg-user-add.sh" "$USERNAME"; then
-        log_info "✓ WireGuard peer added"
+    # -------------------------------------------------------------------------
+    # Add to sing-box (Reality, Trojan, Hysteria2)
+    # -------------------------------------------------------------------------
+    if [[ -f "configs/sing-box/config.json" ]]; then
+        log_info "[1/2] Adding to sing-box (Reality, Trojan, Hysteria2)..."
+        if "$SCRIPT_DIR/singbox-user-add.sh" "$USERNAME" $RELOAD_FLAG; then
+            log_info "✓ sing-box user added"
+        else
+            ERRORS+=("sing-box")
+            log_error "✗ Failed to add sing-box user"
+        fi
     else
-        ERRORS+=("wireguard")
-        log_error "✗ Failed to add WireGuard peer"
+        log_info "[1/2] Skipping sing-box (not configured)"
     fi
-else
-    log_info "[2/2] Skipping WireGuard (not enabled or not configured)"
-fi
+
+    echo ""
+
+    # -------------------------------------------------------------------------
+    # Add to WireGuard
+    # -------------------------------------------------------------------------
+    if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]] && [[ -f "configs/wireguard/wg0.conf" ]]; then
+        log_info "[2/2] Adding to WireGuard..."
+        if "$SCRIPT_DIR/wg-user-add.sh" "$USERNAME" $RELOAD_FLAG; then
+            log_info "✓ WireGuard peer added"
+        else
+            ERRORS+=("wireguard")
+            log_error "✗ Failed to add WireGuard peer"
+        fi
+    else
+        log_info "[2/2] Skipping WireGuard (not enabled or not configured)"
+    fi
 
 echo ""
 
@@ -310,37 +379,107 @@ else
     log_warn "Template not found: $TEMPLATE_FILE - skipping HTML guide"
 fi
 
-# -----------------------------------------------------------------------------
-# Summary
-# -----------------------------------------------------------------------------
-echo ""
-log_info "========================================"
-log_info "User '$USERNAME' creation complete!"
-log_info "========================================"
-echo ""
-log_info "Bundle location: $OUTPUT_DIR/"
-echo ""
-ls -la "$OUTPUT_DIR/"
-echo ""
+    # -------------------------------------------------------------------------
+    # Summary for this user
+    # -------------------------------------------------------------------------
+    echo ""
+    if [[ ${#ERRORS[@]} -gt 0 ]]; then
+        log_error "User '$USERNAME' failed: ${ERRORS[*]}"
+        FAILED_USERS+=("$USERNAME")
+    else
+        log_info "✓ User '$USERNAME' created successfully"
+        CREATED_USERS+=("$USERNAME")
+    fi
 
-if [[ ${#ERRORS[@]} -gt 0 ]]; then
-    log_error "Some services failed: ${ERRORS[*]}"
-    exit 1
+    # -------------------------------------------------------------------------
+    # Create package if requested
+    # -------------------------------------------------------------------------
+    if [[ "$CREATE_PACKAGE" == "true" ]]; then
+        log_info "Creating package for $USERNAME..."
+        if "$SCRIPT_DIR/user-package.sh" "$USERNAME"; then
+            log_info "✓ Package created: outputs/bundles/$USERNAME.zip"
+        else
+            log_error "✗ Failed to create package for $USERNAME"
+        fi
+    fi
+
+    echo ""
+done
+# End of user creation loop
+
+# -----------------------------------------------------------------------------
+# Reload services once (for batch mode)
+# -----------------------------------------------------------------------------
+if [[ "$BATCH_MODE" == "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
+    echo ""
+    log_info "========================================"
+    log_info "Reloading services..."
+    log_info "========================================"
+
+    # Reload sing-box
+    if [[ -f "configs/sing-box/config.json" ]]; then
+        if docker compose ps sing-box --status running &>/dev/null; then
+            log_info "Reloading sing-box..."
+            if docker compose exec -T sing-box sing-box reload 2>/dev/null; then
+                log_info "✓ sing-box reloaded"
+            else
+                log_info "Hot reload failed, restarting sing-box..."
+                docker compose restart sing-box
+            fi
+        fi
+    fi
+
+    # Reload WireGuard (needs to sync peers)
+    if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]] && [[ -f "configs/wireguard/wg0.conf" ]]; then
+        if docker compose ps wireguard --status running &>/dev/null; then
+            log_info "Syncing WireGuard peers..."
+            docker compose exec -T wireguard wg syncconf wg0 <(docker compose exec -T wireguard wg-quick strip wg0) 2>/dev/null || \
+                docker compose restart wireguard
+            log_info "✓ WireGuard synced"
+        fi
+    fi
+
+    # Reload TrustTunnel
+    if [[ -f "configs/trusttunnel/credentials.toml" ]]; then
+        if docker compose ps trusttunnel --status running &>/dev/null; then
+            log_info "Restarting TrustTunnel..."
+            docker compose restart trusttunnel
+            log_info "✓ TrustTunnel restarted"
+        fi
+    fi
 fi
 
 # -----------------------------------------------------------------------------
-# Create package if requested
+# Final Summary
 # -----------------------------------------------------------------------------
-if [[ "$CREATE_PACKAGE" == "true" ]]; then
-    echo ""
-    log_info "Creating distributable package..."
-    if "$SCRIPT_DIR/user-package.sh" "$USERNAME"; then
-        log_info "✓ Package created successfully"
-    else
-        log_error "✗ Failed to create package"
-        exit 1
-    fi
-else
-    log_info "Distribute the bundle securely to the user."
-    log_info "Tip: Use --package to create a zip with HTML guide"
+echo ""
+log_info "========================================"
+log_info "Batch Creation Summary"
+log_info "========================================"
+echo ""
+
+if [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
+    log_info "✓ Created ${#CREATED_USERS[@]} users:"
+    for u in "${CREATED_USERS[@]}"; do
+        echo "    • $u"
+    done
+fi
+
+if [[ ${#FAILED_USERS[@]} -gt 0 ]]; then
+    log_error "✗ Failed ${#FAILED_USERS[@]} users:"
+    for u in "${FAILED_USERS[@]}"; do
+        echo "    • $u"
+    done
+fi
+
+echo ""
+log_info "Bundles location: outputs/bundles/"
+
+if [[ "$CREATE_PACKAGE" != "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
+    log_info "Tip: Use --package to create zip files with HTML guides"
+fi
+
+# Exit with error if any users failed
+if [[ ${#FAILED_USERS[@]} -gt 0 ]]; then
+    exit 1
 fi

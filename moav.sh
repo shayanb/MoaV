@@ -2388,7 +2388,8 @@ show_usage() {
     echo "  logs [SERVICE...] [-n] View logs (default: all, follow mode, -n for no-follow)"
     echo "  users                 List all users"
     echo "  user list             List all users"
-    echo "  user add NAME [-p]    Add a new user (--package creates zip with HTML guide)"
+    echo "  user add NAME [NAME2...] [-p]  Add user(s) (--package creates zip)"
+    echo "  user add --batch N [--prefix P]  Create N users (e.g., user01, user02...)"
     echo "  user revoke NAME      Revoke a user"
     echo "  user package NAME     Create distributable zip for existing user"
     echo "  build [SERVICE...] [--no-cache]  Build services (default: all)"
@@ -2420,6 +2421,9 @@ show_usage() {
     echo "  moav profiles                  # Change default services"
     echo "  moav user add john             # Add user 'john'"
     echo "  moav user add john --package   # Add user and create zip bundle"
+    echo "  moav user add alice bob charlie  # Add multiple users"
+    echo "  moav user add --batch 5        # Create user01..user05"
+    echo "  moav user add --batch 10 --prefix team -p  # Create team01..team10 with packages"
     echo "  moav test joe                  # Test connectivity for user joe"
     echo "  moav test joe -v               # Test with verbose output for debugging"
     echo "  moav client connect joe        # Connect as user joe (exposes proxy)"
@@ -2866,27 +2870,51 @@ cmd_users() {
 
 cmd_user() {
     local action="${1:-}"
-    local username="${2:-}"
-    shift 2 2>/dev/null || shift $# # Shift past action and username to get extra args
+    shift 1 2>/dev/null || shift $# # Shift past action to get remaining args
 
     case "$action" in
         list|ls)
             list_users
             ;;
         add)
-            if [[ -z "$username" ]]; then
-                error "Usage: moav user add USERNAME [--package]"
+            # Check for batch mode or multiple usernames
+            if [[ "${1:-}" == "--batch" ]] || [[ "${1:-}" == "-b" ]]; then
+                # Batch mode - pass all args to script
+                if [[ -x "./scripts/user-add.sh" ]]; then
+                    ./scripts/user-add.sh "$@"
+                else
+                    error "User add script not found"
+                    exit 1
+                fi
+            elif [[ -z "${1:-}" ]]; then
+                error "Usage: moav user add USERNAME [USERNAME2...] [--package]"
+                error "       moav user add --batch N [--prefix NAME] [--package]"
                 exit 1
-            fi
-            if [[ ! "$username" =~ ^[a-zA-Z0-9_]+$ ]]; then
-                error "Username can only contain letters, numbers, and underscores"
-                exit 1
-            fi
-            if [[ -x "./scripts/user-add.sh" ]]; then
-                ./scripts/user-add.sh "$username" "$@"
             else
-                error "User add script not found"
-                exit 1
+                # Single or multiple usernames - validate each, then pass all to script
+                local usernames=()
+                local flags=()
+                for arg in "$@"; do
+                    if [[ "$arg" == --* ]] || [[ "$arg" == -* ]]; then
+                        flags+=("$arg")
+                    else
+                        if [[ ! "$arg" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+                            error "Invalid username '$arg'. Use only letters, numbers, underscores, and hyphens"
+                            exit 1
+                        fi
+                        usernames+=("$arg")
+                    fi
+                done
+                if [[ ${#usernames[@]} -eq 0 ]]; then
+                    error "No usernames provided"
+                    exit 1
+                fi
+                if [[ -x "./scripts/user-add.sh" ]]; then
+                    ./scripts/user-add.sh "${usernames[@]}" "${flags[@]}"
+                else
+                    error "User add script not found"
+                    exit 1
+                fi
             fi
             ;;
         revoke|rm|remove|delete)

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # =============================================================================
 # Add a new user to sing-box (Reality, Trojan, Hysteria2)
-# Usage: ./scripts/singbox-user-add.sh <username>
+# Usage: ./scripts/singbox-user-add.sh <username> [--no-reload]
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,10 +11,29 @@ cd "$SCRIPT_DIR/.."
 
 source scripts/lib/common.sh
 
-USERNAME="${1:-}"
+# Parse arguments
+USERNAME=""
+NO_RELOAD=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --no-reload)
+            NO_RELOAD=true
+            shift
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+        *)
+            USERNAME="$1"
+            shift
+            ;;
+    esac
+done
 
 if [[ -z "$USERNAME" ]]; then
-    echo "Usage: $0 <username>"
+    echo "Usage: $0 <username> [--no-reload]"
     echo "Example: $0 john"
     exit 1
 fi
@@ -293,24 +312,26 @@ EOF
     log_info "Generated TrustTunnel client config (toml + txt + json)"
 fi
 
-# Try to reload sing-box (hot reload)
-if docker compose ps sing-box --status running &>/dev/null; then
-    log_info "Reloading sing-box..."
-    if docker compose exec -T sing-box sing-box reload 2>/dev/null; then
-        log_info "sing-box reloaded successfully"
+# Try to reload sing-box (hot reload) unless --no-reload was passed
+if [[ "$NO_RELOAD" != "true" ]]; then
+    if docker compose ps sing-box --status running &>/dev/null; then
+        log_info "Reloading sing-box..."
+        if docker compose exec -T sing-box sing-box reload 2>/dev/null; then
+            log_info "sing-box reloaded successfully"
+        else
+            log_info "Hot reload failed, restarting sing-box..."
+            docker compose restart sing-box
+        fi
     else
-        log_info "Hot reload failed, restarting sing-box..."
-        docker compose restart sing-box
+        log_info "sing-box not running, config will apply on next start"
     fi
-else
-    log_info "sing-box not running, config will apply on next start"
-fi
 
-# Try to reload TrustTunnel (if running)
-if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
-    if docker compose ps trusttunnel --status running &>/dev/null; then
-        log_info "Restarting TrustTunnel to apply new credentials..."
-        docker compose restart trusttunnel
+    # Try to reload TrustTunnel (if running)
+    if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
+        if docker compose ps trusttunnel --status running &>/dev/null; then
+            log_info "Restarting TrustTunnel to apply new credentials..."
+            docker compose restart trusttunnel
+        fi
     fi
 fi
 

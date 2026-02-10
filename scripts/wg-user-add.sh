@@ -3,7 +3,7 @@ set -euo pipefail
 
 # =============================================================================
 # Add a new WireGuard peer
-# Usage: ./scripts/wg-user-add.sh <username>
+# Usage: ./scripts/wg-user-add.sh <username> [--no-reload]
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,10 +11,29 @@ cd "$SCRIPT_DIR/.."
 
 source scripts/lib/common.sh
 
-USERNAME="${1:-}"
+# Parse arguments
+USERNAME=""
+NO_RELOAD=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --no-reload)
+            NO_RELOAD=true
+            shift
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+        *)
+            USERNAME="$1"
+            shift
+            ;;
+    esac
+done
 
 if [[ -z "$USERNAME" ]]; then
-    echo "Usage: $0 <username>"
+    echo "Usage: $0 <username> [--no-reload]"
     echo "Example: $0 john"
     exit 1
 fi
@@ -257,19 +276,21 @@ EOF
 
 log_info "Generated wstunnel instructions"
 
-# Hot-add peer to running WireGuard if available
-if docker compose ps wireguard --status running &>/dev/null; then
-    log_info "Adding peer to running WireGuard..."
+# Hot-add peer to running WireGuard if available (unless --no-reload)
+if [[ "$NO_RELOAD" != "true" ]]; then
+    if docker compose ps wireguard --status running &>/dev/null; then
+        log_info "Adding peer to running WireGuard..."
 
-    # Use wg set to add peer dynamically
-    if docker compose exec -T wireguard wg set wg0 peer "$CLIENT_PUBLIC_KEY" allowed-ips "$ALLOWED_IPS" 2>/dev/null; then
-        log_info "Peer added to running WireGuard (hot reload)"
+        # Use wg set to add peer dynamically
+        if docker compose exec -T wireguard wg set wg0 peer "$CLIENT_PUBLIC_KEY" allowed-ips "$ALLOWED_IPS" 2>/dev/null; then
+            log_info "Peer added to running WireGuard (hot reload)"
+        else
+            log_info "Hot reload failed, you may need to restart WireGuard"
+            log_info "Run: docker compose --profile wireguard restart wireguard"
+        fi
     else
-        log_info "Hot reload failed, you may need to restart WireGuard"
-        log_info "Run: docker compose --profile wireguard restart wireguard"
+        log_info "WireGuard not running, config will apply on next start"
     fi
-else
-    log_info "WireGuard not running, config will apply on next start"
 fi
 
 # Display results
