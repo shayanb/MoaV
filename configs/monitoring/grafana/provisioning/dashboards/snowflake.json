@@ -19,67 +19,18 @@
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [
-            { "options": { "0": { "color": "red", "index": 0, "text": "Down" }, "1": { "color": "green", "index": 1, "text": "Up" } }, "type": "value" }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
-      "id": 1,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.4.1",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "clash_up",
-          "refId": "A"
-        }
-      ],
-      "title": "Status",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null }
             ]
-          },
-          "unit": "bytes"
+          }
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 0 },
-      "id": 2,
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -96,11 +47,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "clash_connection_upload_total",
+          "expr": "sum(tor_snowflake_proxy_connections_total)",
           "refId": "A"
         }
       ],
-      "title": "Total Upload",
+      "title": "Total Connections",
       "type": "stat"
     },
     {
@@ -119,13 +70,12 @@
             "steps": [
               { "color": "blue", "value": null }
             ]
-          },
-          "unit": "bytes"
+          }
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 0 },
-      "id": 3,
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -142,11 +92,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "clash_connection_download_total",
+          "expr": "count(count by (cc) (tor_snowflake_proxy_connections_total))",
           "refId": "A"
         }
       ],
-      "title": "Total Download",
+      "title": "Unique Countries",
       "type": "stat"
     },
     {
@@ -169,8 +119,8 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 0 },
-      "id": 4,
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -187,11 +137,11 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "clash_exporter_scrapes_total",
+          "expr": "sum(rate(tor_snowflake_proxy_connections_total[5m])) * 60",
           "refId": "A"
         }
       ],
-      "title": "Total Scrapes",
+      "title": "Connections/min",
       "type": "stat"
     },
     {
@@ -240,25 +190,15 @@
             "steps": [
               { "color": "green", "value": null }
             ]
-          },
-          "unit": "binBps"
-        },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "Upload" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Download" },
-            "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }]
           }
-        ]
+        },
+        "overrides": []
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 4 },
-      "id": 5,
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
+      "id": 4,
       "options": {
         "legend": {
-          "calcs": ["mean", "max", "sum"],
+          "calcs": ["sum"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -272,19 +212,67 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(clash_connection_upload_total[5m])",
-          "legendFormat": "Upload",
+          "expr": "sum(rate(tor_snowflake_proxy_connections_total[5m])) * 60",
+          "legendFormat": "Connections/min",
           "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(clash_connection_download_total[5m])",
-          "legendFormat": "Download",
-          "refId": "B"
         }
       ],
-      "title": "Traffic Rate",
+      "title": "Connection Rate Over Time",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 13 },
+      "id": 5,
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": ["value", "percent"]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "topk(10, sum by (cc) (tor_snowflake_proxy_connections_total))",
+          "legendFormat": "{{cc}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Connections by Country (Top 10)",
+      "type": "piechart"
     },
     {
       "datasource": {
@@ -302,25 +290,25 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": true,
+            "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -332,16 +320,15 @@
             "steps": [
               { "color": "green", "value": null }
             ]
-          },
-          "unit": "bytes"
+          }
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 13 },
       "id": 6,
       "options": {
         "legend": {
-          "calcs": ["lastNotNull"],
+          "calcs": ["sum"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -355,113 +342,29 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "clash_connection_upload_total",
-          "legendFormat": "Upload Total",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "clash_connection_download_total",
-          "legendFormat": "Download Total",
-          "refId": "B"
-        }
-      ],
-      "title": "Cumulative Traffic",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "sing-box container resource usage from cAdvisor",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
-      "id": 7,
-      "options": {
-        "legend": {
-          "calcs": ["mean", "max"],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "10.4.1",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "container_memory_usage_bytes{name=~\".*sing-box.*\"}",
-          "legendFormat": "Memory",
+          "expr": "topk(10, sum by (cc) (rate(tor_snowflake_proxy_connections_total[5m])))",
+          "legendFormat": "{{cc}}",
           "refId": "A"
         }
       ],
-      "title": "sing-box Container Memory",
+      "title": "Connection Rate by Country",
       "type": "timeseries"
     }
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["moav", "singbox", "proxy"],
+  "tags": ["moav", "snowflake", "tor"],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
-  "title": "MoaV - sing-box",
-  "uid": "moav-singbox",
+  "title": "MoaV - Snowflake",
+  "uid": "moav-snowflake",
   "version": 1,
   "weekStart": ""
 }

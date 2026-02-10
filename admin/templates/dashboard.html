@@ -219,7 +219,8 @@
             <h1>MoaV Dashboard</h1>
             <div>
                 <span class="timestamp">{{ timestamp }}</span>
-                <a href="https://{{ request.host.split(':')[0] }}:9444" target="_blank" class="refresh-btn" style="margin-right: 0.5rem; background: #ff6600; text-decoration: none;">Grafana</a>
+                <a id="grafana-link" href="#" target="_blank" class="refresh-btn" style="margin-right: 0.5rem; background: #ff6600; text-decoration: none;">Grafana</a>
+                <script>document.getElementById('grafana-link').href = 'https://' + location.hostname + ':9444';</script>
                 <button class="refresh-btn" onclick="location.reload()">Refresh</button>
             </div>
         </header>

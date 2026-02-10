@@ -47,7 +47,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(container_start_time_seconds{name=~\"moav-.*\"})",
+          "expr": "count(container_last_seen{id=~\"/docker/.+\"})",
           "refId": "A"
         }
       ],
@@ -93,7 +93,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(container_memory_usage_bytes{name=~\"moav-.*\"})",
+          "expr": "sum(container_memory_usage_bytes{id=~\"/docker/.+\"})",
           "refId": "A"
         }
       ],
@@ -139,7 +139,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"moav-.*\"}[5m])) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{id=~\"/docker/.+\"}[5m])) * 100",
           "refId": "A"
         }
       ],
@@ -185,7 +185,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(container_network_receive_bytes_total{name=~\"moav-.*\"}[5m])) + sum(rate(container_network_transmit_bytes_total{name=~\"moav-.*\"}[5m]))",
+          "expr": "sum(rate(container_network_receive_bytes_total{id=~\"/docker/.+\"}[5m])) + sum(rate(container_network_transmit_bytes_total{id=~\"/docker/.+\"}[5m]))",
           "refId": "A"
         }
       ],
@@ -261,8 +261,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "container_memory_usage_bytes{name=~\"moav-.*\"}",
-          "legendFormat": "{{name}}",
+          "expr": "container_memory_usage_bytes{id=~\"/docker/.+\"}",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
@@ -338,8 +338,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(container_cpu_usage_seconds_total{name=~\"moav-.*\"}[5m]) * 100",
-          "legendFormat": "{{name}}",
+          "expr": "rate(container_cpu_usage_seconds_total{id=~\"/docker/.+\"}[5m]) * 100",
+          "legendFormat": "{{id}}",
           "refId": "A"
         }
       ],
@@ -415,8 +415,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(container_network_receive_bytes_total{name=~\"moav-.*\"}[5m])",
-          "legendFormat": "{{name}} RX",
+          "expr": "rate(container_network_receive_bytes_total{id=~\"/docker/.+\"}[5m])",
+          "legendFormat": "{{id}} RX",
           "refId": "A"
         }
       ],
@@ -492,8 +492,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "rate(container_network_transmit_bytes_total{name=~\"moav-.*\"}[5m])",
-          "legendFormat": "{{name}} TX",
+          "expr": "rate(container_network_transmit_bytes_total{id=~\"/docker/.+\"}[5m])",
+          "legendFormat": "{{id}} TX",
           "refId": "A"
         }
       ],
