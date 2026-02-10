@@ -410,16 +410,20 @@ services:
     image: ghcr.io/zxh326/clash-exporter:latest
     container_name: moav-clash-exporter
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "/scripts/clash-exporter-entrypoint.sh"]
+    command: ["-collectDest"]
     networks:
       - moav_net
     expose:
       - "2112"
+    volumes:
+      - ./scripts/clash-exporter-entrypoint.sh:/scripts/clash-exporter-entrypoint.sh:ro
+      - moav_state:/state:ro
     environment:
-      - CLASH_HOST=moav-sing-box
-      - CLASH_PORT=9090
-      - CLASH_SECRET=${CLASH_API_SECRET:-}
+      - CLASH_HOST=moav-sing-box:9090
       - TZ=${TZ:-UTC}
-    command: ["-collectDest"]
+    depends_on:
+      - sing-box
     profiles:
       - monitoring
       - all
