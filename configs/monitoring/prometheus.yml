@@ -28,10 +28,9 @@ scrape_configs:
       - targets: ['clash-exporter:2112']
 
   # WireGuard Exporter (shares network with wireguard container)
+  # NOTE: Only available when running with --profile wireguard
+  # Example: docker compose --profile monitoring --profile wireguard up -d
   - job_name: 'wireguard'
     static_configs:
       - targets: ['wireguard:9586']
-
-  # NOTE: Snowflake metrics not available - the proxy binds to localhost only
-  # and doesn't expose connection metrics without a geoip database.
-  # Snowflake donations still work, just without Prometheus metrics.
+    scrape_timeout: 5s

@@ -437,14 +437,17 @@ services:
     container_name: moav-wireguard-exporter
     restart: unless-stopped
     network_mode: "service:wireguard"
+    volumes:
+      - ./configs/wireguard:/etc/wireguard:ro
     cap_add:
       - NET_ADMIN
     environment:
       - TZ=${TZ:-UTC}
     command:
-      - "--prepend_sudo=false"
+      - "-a"
+      - "0.0.0.0:9586"
       - "-n"
-      - "wg0"
+      - "/etc/wireguard/wg0.conf"
     profiles:
       - wireguard
 
