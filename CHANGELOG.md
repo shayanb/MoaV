@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed grep pattern to only extract usernames from [Peer] blocks
   - Added proper error handling for missing peer IPs
 
+### Documentation
+- Added "Apply .env changes" section to TROUBLESHOOTING.md explaining that containers must be recreated (not just restarted) to pick up `.env` changes
+
 ## [1.2.5] - 2026-02-07
 
 ### Added

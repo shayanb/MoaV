@@ -365,9 +365,8 @@ moav logs conduit             # مشاهده لاگ‌های conduit
 دستور `moav` را اجرا کنید و وقتی پرسیده شد "بدون دامنه" را انتخاب کنید، یا از `moav domainless` استفاده کنید.
 
 **VPS توصیه شده:**
-- Hetzner (آلمان/فنلاند)
-- DigitalOcean (فرانکفورت/آمستردام)
-- ...
+- VPS Price Trackers: [VPS-PRICES](https://vps-prices.com/)، [VPS Price Tracker](https://vpspricetracker.com/), [Cheap VPS Price Cheat Sheet](https://docs.google.com/spreadsheets/d/e/2PACX-1vTOC_THbM2RZzfRUhFCNp3SDXKdYDkfmccis4vxr7WtVIcPmXM-2lGKuZTBr8o_MIJ4XgIUYz1BmcqM/pubhtml)
+- [Time4VPS](https://www.time4vps.com/?affid=8471): 1 vCPU، 1GB RAM، IPv4، 3.99€/ماه 
 
 ## ساختار پروژه
 
