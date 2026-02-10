@@ -309,7 +309,7 @@ services:
   # MONITORING: Prometheus + Grafana observability stack
   # ===========================================================================
   prometheus:
-    image: prom/prometheus:v2.50.1
+    image: prom/prometheus:latest
     container_name: moav-prometheus
     restart: unless-stopped
     networks:
@@ -334,7 +334,7 @@ services:
       - all
 
   grafana:
-    image: grafana/grafana:10.4.1
+    image: grafana/grafana:latest
     container_name: moav-grafana
     restart: unless-stopped
     user: "0"
@@ -361,7 +361,7 @@ services:
       - all
 
   node-exporter:
-    image: prom/node-exporter:v1.7.0
+    image: prom/node-exporter:latest
     container_name: moav-node-exporter
     restart: unless-stopped
     networks:
@@ -384,7 +384,7 @@ services:
       - all
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:latest
     container_name: moav-cadvisor
     restart: unless-stopped
     networks:
@@ -431,8 +431,9 @@ services:
 
   # WireGuard Exporter - only runs with wireguard profile
   # Shares network namespace to access wg0 interface
+  # NOTE: For WireGuard metrics, run with: --profile wireguard --profile monitoring
   wireguard-exporter:
-    image: mindflavor/prometheus-wireguard-exporter:3.6.6
+    image: mindflavor/prometheus-wireguard-exporter:latest
     container_name: moav-wireguard-exporter
     restart: unless-stopped
     network_mode: "service:wireguard"

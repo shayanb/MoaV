@@ -49,4 +49,5 @@ echo "[snowflake] Starting proxy..."
 exec /bin/proxy \
     -capacity "${SNOWFLAKE_CAPACITY}" \
     -summary-interval 1h \
-    -metrics
+    -metrics \
+    -metrics-port 9999
