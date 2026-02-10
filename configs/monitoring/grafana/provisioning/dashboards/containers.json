@@ -31,7 +31,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "count(container_last_seen{name=~\"moav-.+\"})", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "count(container_last_seen{name=~\"moav-.+\"} > (time() - 60))", "refId": "A" }
       ],
       "title": "Running Containers",
       "type": "stat"
@@ -59,7 +59,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(container_memory_usage_bytes{name=~\"moav-.+\"})", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(max by (name) (container_memory_usage_bytes{name=~\"moav-.+\"}))", "refId": "A" }
       ],
       "title": "Total Memory",
       "type": "stat"
@@ -87,7 +87,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"moav-.+\"}[5m])) * 100", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(max by (name) (rate(container_cpu_usage_seconds_total{name=~\"moav-.+\"}[5m]))) * 100", "refId": "A" }
       ],
       "title": "Total CPU",
       "type": "stat"
@@ -115,7 +115,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(container_network_receive_bytes_total{name=~\"moav-.+\"})", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(max by (name) (container_network_receive_bytes_total{name=~\"moav-.+\"}))", "refId": "A" }
       ],
       "title": "Total Download",
       "type": "stat"
@@ -143,7 +143,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(container_network_transmit_bytes_total{name=~\"moav-.+\"})", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(max by (name) (container_network_transmit_bytes_total{name=~\"moav-.+\"}))", "refId": "A" }
       ],
       "title": "Total Upload",
       "type": "stat"
@@ -171,7 +171,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(container_network_receive_bytes_total{name=~\"moav-.+\"}[5m])) + sum(rate(container_network_transmit_bytes_total{name=~\"moav-.+\"}[5m]))", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(max by (name) (rate(container_network_receive_bytes_total{name=~\"moav-.+\"}[5m]))) + sum(max by (name) (rate(container_network_transmit_bytes_total{name=~\"moav-.+\"}[5m])))", "refId": "A" }
       ],
       "title": "Current I/O Rate",
       "type": "stat"
@@ -203,7 +203,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "container_memory_usage_bytes{name=~\"moav-.+\"}", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_memory_usage_bytes{name=~\"moav-.+\"})", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "Memory Usage by Container",
       "type": "timeseries"
@@ -235,7 +235,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(container_cpu_usage_seconds_total{name=~\"moav-.+\"}[5m]) * 100", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (rate(container_cpu_usage_seconds_total{name=~\"moav-.+\"}[5m])) * 100", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "CPU Usage by Container",
       "type": "timeseries"
@@ -267,7 +267,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(container_network_receive_bytes_total{name=~\"moav-.+\"}[5m])", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (rate(container_network_receive_bytes_total{name=~\"moav-.+\"}[5m]))", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "Download Rate by Container",
       "type": "timeseries"
@@ -299,7 +299,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(container_network_transmit_bytes_total{name=~\"moav-.+\"}[5m])", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (rate(container_network_transmit_bytes_total{name=~\"moav-.+\"}[5m]))", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "Upload Rate by Container",
       "type": "timeseries"
@@ -326,7 +326,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "container_memory_usage_bytes{name=~\"moav-.+\"}", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_memory_usage_bytes{name=~\"moav-.+\"})", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "Memory Distribution",
       "type": "piechart"
@@ -353,7 +353,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "container_network_receive_bytes_total{name=~\"moav-.+\"}", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_network_receive_bytes_total{name=~\"moav-.+\"})", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "Download Distribution",
       "type": "piechart"
@@ -380,7 +380,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "container_network_transmit_bytes_total{name=~\"moav-.+\"}", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_network_transmit_bytes_total{name=~\"moav-.+\"})", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "Upload Distribution",
       "type": "piechart"
@@ -397,12 +397,13 @@
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "Memory" }, "properties": [{ "id": "unit", "value": "bytes" }] },
-          { "matcher": { "id": "byName", "options": "CPU %" }, "properties": [{ "id": "unit", "value": "percent" }] },
-          { "matcher": { "id": "byName", "options": "Download" }, "properties": [{ "id": "unit", "value": "bytes" }] },
-          { "matcher": { "id": "byName", "options": "Upload" }, "properties": [{ "id": "unit", "value": "bytes" }] },
-          { "matcher": { "id": "byName", "options": "DL Rate" }, "properties": [{ "id": "unit", "value": "binBps" }] },
-          { "matcher": { "id": "byName", "options": "UL Rate" }, "properties": [{ "id": "unit", "value": "binBps" }] }
+          { "matcher": { "id": "byName", "options": "Memory" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "CPU %" }, "properties": [{ "id": "unit", "value": "percent" }, { "id": "custom.width", "value": 80 }] },
+          { "matcher": { "id": "byName", "options": "Download" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "Upload" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "DL Rate" }, "properties": [{ "id": "unit", "value": "binBps" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "UL Rate" }, "properties": [{ "id": "unit", "value": "binBps" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "Container" }, "properties": [{ "id": "custom.width", "value": 180 }] }
         ]
       },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
@@ -415,19 +416,19 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "container_memory_usage_bytes{name=~\"moav-.+\"}", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "Memory" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(container_cpu_usage_seconds_total{name=~\"moav-.+\"}[5m]) * 100", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "CPU" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "container_network_receive_bytes_total{name=~\"moav-.+\"}", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "Download" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "container_network_transmit_bytes_total{name=~\"moav-.+\"}", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "Upload" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(container_network_receive_bytes_total{name=~\"moav-.+\"}[5m])", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "DLRate" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(container_network_transmit_bytes_total{name=~\"moav-.+\"}[5m])", "format": "table", "instant": true, "legendFormat": "__auto", "refId": "ULRate" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_memory_usage_bytes{name=~\"moav-.+\"})", "format": "table", "instant": true, "refId": "Memory" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (rate(container_cpu_usage_seconds_total{name=~\"moav-.+\"}[5m])) * 100", "format": "table", "instant": true, "refId": "CPU" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_network_receive_bytes_total{name=~\"moav-.+\"})", "format": "table", "instant": true, "refId": "Download" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_network_transmit_bytes_total{name=~\"moav-.+\"})", "format": "table", "instant": true, "refId": "Upload" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (rate(container_network_receive_bytes_total{name=~\"moav-.+\"}[5m]))", "format": "table", "instant": true, "refId": "DLRate" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (rate(container_network_transmit_bytes_total{name=~\"moav-.+\"}[5m]))", "format": "table", "instant": true, "refId": "ULRate" }
       ],
       "title": "Container Summary Table",
       "transformations": [
-        { "id": "seriesToColumns", "options": { "byField": "name" } },
+        { "id": "merge", "options": {} },
         { "id": "organize", "options": {
-          "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "Time 4": true, "Time 5": true, "Time 6": true, "__name__": true, "__name__ 1": true, "__name__ 2": true, "__name__ 3": true, "__name__ 4": true, "__name__ 5": true, "id": true, "id 1": true, "id 2": true, "id 3": true, "id 4": true, "id 5": true, "image": true, "image 1": true, "image 2": true, "image 3": true, "image 4": true, "image 5": true, "instance": true, "instance 1": true, "instance 2": true, "instance 3": true, "instance 4": true, "instance 5": true, "job": true, "job 1": true, "job 2": true, "job 3": true, "job 4": true, "job 5": true, "cpu": true, "interface": true, "interface 1": true },
-          "indexByName": {},
+          "excludeByName": { "Time": true },
+          "indexByName": { "name": 0, "Value #Memory": 1, "Value #CPU": 2, "Value #Download": 3, "Value #Upload": 4, "Value #DLRate": 5, "Value #ULRate": 6 },
           "renameByName": { "Value #Memory": "Memory", "Value #CPU": "CPU %", "Value #Download": "Download", "Value #Upload": "Upload", "Value #DLRate": "DL Rate", "Value #ULRate": "UL Rate", "name": "Container" }
         }}
       ],
