@@ -399,9 +399,30 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - GF_SECURITY_ADMIN_USER=admin
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-}
       - TZ=${TZ:-UTC}
     depends_on:
       - prometheus
+    profiles:
+      - monitoring
+      - all
+
+  # Grafana Proxy - Routes grafana.${DOMAIN} through Cloudflare CDN for faster loading
+  # Uses port 2083 (Cloudflare-supported HTTPS port)
+  # Setup: Add DNS record grafana.yourdomain.xyz -> server IP (Cloudflare proxied, orange cloud)
+  grafana-proxy:
+    image: nginx:alpine
+    container_name: moav-grafana-proxy
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_GRAFANA_PROXY:-2083}:443"
+    volumes:
+      - ./configs/monitoring/nginx/grafana-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - moav_certs:/certs:ro
+    depends_on:
+      - grafana
     profiles:
       - monitoring
       - all
