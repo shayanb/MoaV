@@ -22,10 +22,16 @@ scrape_configs:
     static_configs:
       - targets: ['cadvisor:8080']
 
-  # sing-box via Clash Exporter
+  # sing-box via Clash Exporter (traffic metrics)
   - job_name: 'clash'
     static_configs:
       - targets: ['clash-exporter:2112']
+
+  # sing-box User Exporter (user connection metrics from logs)
+  - job_name: 'singbox-users'
+    static_configs:
+      - targets: ['singbox-user-exporter:9102']
+    scrape_timeout: 10s
 
   # WireGuard Exporter (shares network with wireguard container)
   # NOTE: Only available when running with --profile wireguard

@@ -29,7 +29,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "served_people", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(served_people)", "refId": "A" }
       ],
       "title": "People Served",
       "type": "stat"
@@ -57,7 +57,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "download_gb", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb)", "refId": "A" }
       ],
       "title": "Total Download",
       "type": "stat"
@@ -85,7 +85,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "upload_gb", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(upload_gb)", "refId": "A" }
       ],
       "title": "Total Upload",
       "type": "stat"
@@ -113,7 +113,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "download_gb + upload_gb", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb) + max(upload_gb)", "refId": "A" }
       ],
       "title": "Total Bandwidth",
       "type": "stat"
@@ -144,7 +144,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "served_people", "legendFormat": "People Served", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(served_people)", "legendFormat": "People Served", "refId": "A" }
       ],
       "title": "Connections Over Time",
       "type": "timeseries"
@@ -179,8 +179,8 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "download_gb", "legendFormat": "Download", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "upload_gb", "legendFormat": "Upload", "refId": "B" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb)", "legendFormat": "Download", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(upload_gb)", "legendFormat": "Upload", "refId": "B" }
       ],
       "title": "Bandwidth Over Time",
       "type": "timeseries"
@@ -207,12 +207,12 @@
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 13 },
       "id": 7,
       "options": {
-        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "download_gb + upload_gb", "legendFormat": "Total Bandwidth", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb) + max(upload_gb)", "legendFormat": "Total Bandwidth", "refId": "A" }
       ],
       "title": "Total Bandwidth Donated",
       "type": "timeseries"

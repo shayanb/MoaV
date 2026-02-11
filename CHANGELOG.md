@@ -5,6 +5,34 @@ All notable changes to MoaV will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-02-11
+
+### Added
+- **Conduit Exporter** - Custom Prometheus exporter for Psiphon Conduit metrics
+  - Parses `[STATS]` lines from conduit logs
+  - Exposes: connected/connecting clients, upload/download totals, uptime
+  - New Grafana dashboard: MoaV - Conduit
+- **Sing-box User Exporter** - Custom Prometheus exporter for user tracking
+  - Parses sing-box logs for `[username]` connection patterns
+  - Tracks active users (5-minute window), total users, per-user connections
+  - Protocol breakdown (Reality, Trojan, Hysteria2, etc.)
+  - Updated sing-box dashboard with user metrics table and protocol pie chart
+
+### Changed
+- **Monitoring intervals reduced** - Less CPU overhead
+  - cAdvisor housekeeping: 10s → 30s
+  - Prometheus scrape interval: 15s → 30s
+- **Snowflake dashboard fixed** - Deduplicated metrics using `max()` aggregation
+- **Container dashboard improved** - Network traffic now excludes monitoring containers
+  - Filters out: prometheus, grafana, cadvisor, node-exporter, all exporters
+  - Shows only actual proxy/service traffic
+- Snowflake/WireGuard exporters now only run with `monitoring` profile (not standalone)
+- Removed `docker compose ps` output after start commands (cleaner output)
+
+### Fixed
+- Conduit exporter no longer has cross-profile `depends_on` issue
+- Fixed duplicate metrics in Snowflake Grafana dashboard (3x values shown)
+
 ## [1.3.0] - 2026-02-10
 
 ### Added

@@ -239,8 +239,7 @@ services:
       - TZ=${TZ:-UTC}
     expose:
       - "9101"
-    depends_on:
-      - psiphon-conduit
+    # Note: No depends_on as conduit may not be running; exporter handles retry
     profiles:
       - monitoring
       - all
@@ -471,6 +470,26 @@ services:
       - CLASH_TOKEN=${CLASH_API_SECRET:-}
       - TZ=${TZ:-UTC}
     command: ["-collectDest"]
+    profiles:
+      - monitoring
+      - all
+
+  # Sing-box User Exporter - parses sing-box logs for user connection metrics
+  singbox-user-exporter:
+    build:
+      context: ./exporters/singbox
+      dockerfile: Dockerfile
+    container_name: moav-singbox-user-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    expose:
+      - "9102"
+    # Note: No depends_on as sing-box may not be running; exporter handles retry
     profiles:
       - monitoring
       - all
