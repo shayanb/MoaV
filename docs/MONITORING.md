@@ -123,6 +123,8 @@ ENABLE_MONITORING=true   # Set to false to disable
 
 ## Resource Usage
 
+> **Warning**: The monitoring stack nearly doubles MoaV's resource requirements. While MoaV alone runs on 1 vCPU / 1GB RAM, adding monitoring requires at least **2 vCPU / 2GB RAM** for stable operation.
+
 Approximate additional resources when monitoring is enabled:
 
 | Component | CPU | RAM | Disk |
@@ -136,7 +138,15 @@ Approximate additional resources when monitoring is enabled:
 | Snowflake Exporter | <0.1 cores | ~10 MB | - |
 | **Total** | **~0.5-1 cores** | **~400-900 MB** | **~1 GB/15 days** |
 
-**Recommended minimum**: 2 vCPU, 2 GB RAM when running monitoring alongside other services.
+### Minimum Requirements
+
+| Configuration | vCPU | RAM | Notes |
+|---------------|------|-----|-------|
+| MoaV only | 1 | 1 GB | Bare minimum |
+| MoaV + Monitoring | 2 | 2 GB | Recommended (for stats & monitoring) |
+| MoaV + Monitoring + All Profiles | 2 | 4 GB | Production recommended |
+
+**If you have only 1GB RAM**, do not enable monitoring - it could cause hangs and crashes.
 
 ## Security
 
@@ -158,47 +168,14 @@ Container-level metrics (CPU, memory, network) are still available for these ser
 
 ## Troubleshooting
 
-### Grafana shows "No Data"
+For monitoring-related issues, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#monitoring-issues).
 
-1. Check Prometheus is running:
-   ```bash
-   docker logs moav-prometheus
-   ```
-
-2. Verify targets are up - access Prometheus internally:
-   ```bash
-   docker exec moav-grafana wget -qO- http://prometheus:9091/api/v1/query?query=up
-   ```
-
-3. Ensure services are on the same Docker network (`moav_net`)
-
-### High memory usage from cAdvisor
-
-Limit cAdvisor resources in `docker-compose.yml`:
-```yaml
-cadvisor:
-  deploy:
-    resources:
-      limits:
-        memory: 256M
-```
-
-### Snowflake metrics showing zeros
-
-The Snowflake exporter parses log files for summary statistics. Summaries are logged every 5 minutes. If you just started Snowflake, wait for the first summary to appear:
-
-```bash
-# Check if summaries exist
-docker exec moav-snowflake cat /var/log/snowflake/snowflake.log | grep "In the"
-```
-
-### WireGuard exporter not starting
-
-The exporter needs read access to WireGuard config. Check:
-```bash
-docker logs moav-wireguard-exporter
-ls -la configs/wireguard/wg0.conf
-```
+Common issues covered:
+- System hangs after starting monitoring (RAM issues)
+- Grafana shows "No Data"
+- High memory usage from cAdvisor
+- Snowflake metrics showing zeros
+- WireGuard exporter not starting
 
 ## CLI Commands
 

@@ -1403,9 +1403,9 @@ show_status() {
 
     print_section "Service Status"
     echo ""
-    echo -e "  ${CYAN}┌─────────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
-    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}         ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
-    echo -e "  ${CYAN}├─────────────────┼───────────┼─────────────────────┼──────────────┼───────────┤${NC}"
+    echo -e "  ${CYAN}┌──────────────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
+    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}              ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├──────────────────────┼───────────┼─────────────────────┼──────────────┼───────────┤${NC}"
 
     # Track which services we've displayed
     declare -A displayed_services
@@ -1510,7 +1510,7 @@ show_status() {
                 name_color="${DIM}"
             fi
 
-            printf "  ${CYAN}│${NC} ${name_color}%-15s${NC} ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
                 "$display_name" "$status_display" "$last_run" "$uptime" "$ports"
         done <<< "$json_lines"
     fi
@@ -1526,12 +1526,12 @@ show_status() {
                 display_name="${service}*"
             fi
 
-            printf "  ${CYAN}│${NC} ${name_color}%-15s${NC} ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
                 "$display_name" "- never" "-" "-" "-"
         fi
     done <<< "$all_services"
 
-    echo -e "  ${CYAN}└─────────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
+    echo -e "  ${CYAN}└──────────────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
 
     # Show legend if there are disabled services
     local has_disabled=false
@@ -1636,7 +1636,8 @@ select_profiles() {
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   monitoring   Grafana + Prometheus observability            ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Cancel${NC}       Exit without selecting                        ${CYAN}│${NC}"
@@ -2730,10 +2731,9 @@ resolve_service() {
         ws|tunnel)                    echo "wstunnel" ;;
         dns)                          echo "dnstt" ;;
         snow|tor)                     echo "snowflake" ;;
-        # Monitoring profile uses pre-built images, nothing to build
-        monitoring|grafana|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter)
-            warn "Note: $svc uses pre-built images (nothing to build)"
-            echo "" ;;
+        # Monitoring services (pass through as-is)
+        grafana|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter)
+            echo "$svc" ;;
         *)                            echo "$svc" ;;
     esac
 }
@@ -2776,16 +2776,42 @@ cmd_stop() {
             success "All services stopped!"
         fi
     else
-        local services
-        services=$(resolve_services "${args[@]}")
-        if [[ "$remove_containers" == "true" ]]; then
-            info "Stopping and removing: $services"
-            docker compose rm -sf $services
+        # Check if argument is a profile name
+        local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
+        local profile_match=""
+        for p in $profiles; do
+            if [[ "${args[0]}" == "$p" ]]; then
+                profile_match="$p"
+                break
+            fi
+        done
+
+        if [[ -n "$profile_match" ]]; then
+            # Handle profile stop
+            if [[ "$remove_containers" == "true" ]]; then
+                info "Stopping and removing $profile_match profile..."
+                docker compose --profile "$profile_match" down
+            else
+                info "Stopping $profile_match profile..."
+                docker compose --profile "$profile_match" stop
+            fi
+            success "Profile $profile_match stopped!"
         else
-            info "Stopping: $services"
-            docker compose stop $services
+            local services
+            services=$(resolve_services "${args[@]}")
+            if [[ -z "$services" ]]; then
+                error "No valid services to stop"
+                return 1
+            fi
+            if [[ "$remove_containers" == "true" ]]; then
+                info "Stopping and removing: $services"
+                docker compose rm -sf $services
+            else
+                info "Stopping: $services"
+                docker compose stop $services
+            fi
+            success "Services stopped!"
         fi
-        success "Services stopped!"
     fi
 }
 
@@ -2795,11 +2821,32 @@ cmd_restart() {
         docker compose --profile all restart
         success "All services restarted!"
     else
-        local services
-        services=$(resolve_services "$@")
-        info "Restarting: $services"
-        docker compose restart $services
-        success "Services restarted!"
+        # Check if argument is a profile name (monitoring, snowflake, wireguard, etc.)
+        local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
+        local profile_match=""
+        for p in $profiles; do
+            if [[ "$1" == "$p" ]]; then
+                profile_match="$p"
+                break
+            fi
+        done
+
+        if [[ -n "$profile_match" ]]; then
+            # Handle profile restart - restart all services in that profile
+            info "Restarting $profile_match profile services..."
+            docker compose --profile "$profile_match" restart
+            success "Profile $profile_match restarted!"
+        else
+            local services
+            services=$(resolve_services "$@")
+            if [[ -z "$services" ]]; then
+                error "No valid services to restart"
+                return 1
+            fi
+            info "Restarting: $services"
+            docker compose restart $services
+            success "Services restarted!"
+        fi
     fi
 }
 

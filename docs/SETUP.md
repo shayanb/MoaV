@@ -625,6 +625,8 @@ Both can run simultaneously without conflicts.
 
 MoaV includes an optional monitoring stack for real-time observability.
 
+> **Warning**: The monitoring stack nearly doubles resource requirements. MoaV alone runs on 1 vCPU / 1 GB RAM, but adding monitoring requires at least **2 vCPU / 2 GB RAM**. On 1 GB RAM servers, monitoring will cause hangs and crashes.
+
 <!-- TODO: Screenshot of Grafana dashboard overview -->
 
 **Start monitoring:**

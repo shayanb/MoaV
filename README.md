@@ -266,7 +266,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 
 **Server:**
 - Debian 12, Ubuntu 22.04/24.04
-- 1 vCPU, 1GB RAM minimum
+- 1 vCPU, 1 GB RAM minimum (2 vCPU, 2 GB RAM if using monitoring)
 - Public IPv4
 - Domain name (optional - see Domain-less Mode below)
 
