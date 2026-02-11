@@ -28,12 +28,13 @@ metrics = {
 metrics_lock = threading.Lock()
 
 # Regex patterns for snowflake log parsing
-# "this proxy served 42 connections"
-CONNECTIONS_PATTERN = re.compile(r'served (\d+) connections?')
-# "Total bytes transferred: 123.4 MB down, 456.7 MB up"
-BYTES_PATTERN = re.compile(r'(\d+\.?\d*)\s*(B|KB|MB|GB|TB)\s*down.*?(\d+\.?\d*)\s*(B|KB|MB|GB|TB)\s*up', re.IGNORECASE)
-# Alternative format: "123 MB ↓ 456 MB ↑" or similar
-ALT_BYTES_PATTERN = re.compile(r'(\d+\.?\d*)\s*(B|KB|MB|GB|TB)\s*[↓⬇]\s*(\d+\.?\d*)\s*(B|KB|MB|GB|TB)\s*[↑⬆]', re.IGNORECASE)
+# "there were 33 completed successful connections"
+CONNECTIONS_PATTERN = re.compile(r'there were (\d+) completed')
+# "Traffic Relayed ↓ 4006 KB (1.11 KB/s), ↑ 1705 KB (0.47 KB/s)"
+# Note: ↓ is download (what users downloaded), ↑ is upload (what users uploaded)
+BYTES_PATTERN = re.compile(r'Traffic Relayed\s*↓\s*(\d+\.?\d*)\s*(B|KB|MB|GB|TB).*?↑\s*(\d+\.?\d*)\s*(B|KB|MB|GB|TB)', re.IGNORECASE)
+# Alternative: "123 MB down, 456 MB up"
+ALT_BYTES_PATTERN = re.compile(r'(\d+\.?\d*)\s*(B|KB|MB|GB|TB)\s*down.*?(\d+\.?\d*)\s*(B|KB|MB|GB|TB)\s*up', re.IGNORECASE)
 
 
 def convert_to_gb(value: float, unit: str) -> float:

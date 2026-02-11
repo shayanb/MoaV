@@ -49,10 +49,9 @@ setup_bandwidth_limit() {
 # Try to set up bandwidth limiting (requires NET_ADMIN)
 setup_bandwidth_limit || echo "[snowflake] Continuing without bandwidth limit"
 
-# Run the proxy with verbose logging to file (for metrics exporter)
+# Run the proxy with output tee'd to both stdout and log file (for metrics exporter)
 echo "[snowflake] Starting proxy..."
 exec /bin/proxy \
     -capacity "${SNOWFLAKE_CAPACITY}" \
     -summary-interval 1h \
-    -verbose \
-    -log "${LOG_FILE}"
+    -verbose 2>&1 | tee -a "${LOG_FILE}"
