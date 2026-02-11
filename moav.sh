@@ -1242,7 +1242,7 @@ run_bootstrap() {
         echo ""
         if confirm "Start services now?" "y"; then
             info "Starting services..."
-            docker compose --ansi always --progress plain $SELECTED_PROFILE_STRING up -d --remove-orphans
+            docker compose --progress plain $SELECTED_PROFILE_STRING up -d --remove-orphans
             echo ""
             success "Services started!"
             docker compose $SELECTED_PROFILE_STRING ps
@@ -1901,7 +1901,7 @@ start_services() {
     echo ""
     info "Building containers (if needed)..."
 
-    local cmd="docker compose --ansi always --progress plain $profiles up -d --remove-orphans"
+    local cmd="docker compose --progress plain $profiles up -d --remove-orphans"
 
     if run_command "$cmd" "Starting services"; then
         echo ""
@@ -2777,7 +2777,7 @@ cmd_start() {
     fi
 
     info "Starting services..."
-    docker compose --ansi always --progress plain $profiles up -d --remove-orphans
+    docker compose --progress plain $profiles up -d --remove-orphans
     success "Services started!"
     echo ""
     # Show admin URL if admin was started
