@@ -249,6 +249,7 @@ services:
       - all
 
   # Snowflake Prometheus Exporter - parses snowflake logs for metrics
+  # Only runs with monitoring profile (requires Prometheus to scrape)
   snowflake-exporter:
     image: ghcr.io/mrdrache333/snowflake-prometheus-exporter:latest
     container_name: moav-snowflake-exporter
@@ -265,7 +266,7 @@ services:
     depends_on:
       - snowflake
     profiles:
-      - snowflake
+      - monitoring
 
   # ===========================================================================
   # TRUSTTUNNEL: Modern VPN protocol (looks like HTTPS)
@@ -451,9 +452,8 @@ services:
       - monitoring
       - all
 
-  # WireGuard Exporter - only runs with wireguard profile
-  # Shares network namespace to access wg0 interface
-  # NOTE: For WireGuard metrics, run with: --profile wireguard --profile monitoring
+  # WireGuard Exporter - only runs with monitoring profile
+  # Shares network namespace to access wg0 interface (requires wireguard to be running)
   wireguard-exporter:
     image: mindflavor/prometheus-wireguard-exporter:latest
     container_name: moav-wireguard-exporter
@@ -471,7 +471,7 @@ services:
       - "-n"
       - "/etc/wireguard/wg0.conf"
     profiles:
-      - wireguard
+      - monitoring
 
   # ===========================================================================
   # BOOTSTRAP: First-run initialization
