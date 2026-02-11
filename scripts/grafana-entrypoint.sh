@@ -58,5 +58,34 @@ else
     export GF_SERVER_PROTOCOL=http
 fi
 
+# Test certificate readability and fall back to HTTP if not readable
+if [ -n "$GF_SERVER_CERT_KEY" ]; then
+    certs_ok=true
+    if [ -r "$GF_SERVER_CERT_KEY" ]; then
+        echo "[grafana] Key file readable: OK"
+    else
+        echo "[grafana] WARNING: Cannot read key file: $GF_SERVER_CERT_KEY"
+        ls -la "$GF_SERVER_CERT_KEY" 2>&1 || echo "[grafana] File does not exist"
+        certs_ok=false
+    fi
+    if [ -r "$GF_SERVER_CERT_FILE" ]; then
+        echo "[grafana] Cert file readable: OK"
+    else
+        echo "[grafana] WARNING: Cannot read cert file: $GF_SERVER_CERT_FILE"
+        ls -la "$GF_SERVER_CERT_FILE" 2>&1 || echo "[grafana] File does not exist"
+        certs_ok=false
+    fi
+
+    # Fall back to HTTP if certs aren't readable
+    if [ "$certs_ok" = "false" ]; then
+        echo "[grafana] Falling back to HTTP mode"
+        unset GF_SERVER_CERT_KEY
+        unset GF_SERVER_CERT_FILE
+        export GF_SERVER_PROTOCOL=http
+    fi
+fi
+
+echo "[grafana] Starting Grafana server (protocol: $GF_SERVER_PROTOCOL)..."
+
 # Run Grafana
 exec /run.sh
