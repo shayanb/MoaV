@@ -35,6 +35,13 @@ scrape_configs:
       - targets: ['wireguard:9586']
     scrape_timeout: 5s
 
+  # Conduit Exporter - parses Psiphon conduit logs for [STATS] metrics
+  # NOTE: Only available when running with --profile conduit
+  - job_name: 'conduit'
+    static_configs:
+      - targets: ['conduit-exporter:9101']
+    scrape_timeout: 10s
+
   # Snowflake Exporter - parses snowflake proxy logs for metrics
   # NOTE: Only available when running with --profile snowflake
   - job_name: 'snowflake'

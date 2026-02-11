@@ -223,6 +223,28 @@ services:
       - conduit
       - all
 
+  # Conduit Prometheus Exporter - parses conduit logs for [STATS] metrics
+  # Only runs with monitoring profile (requires Prometheus to scrape)
+  conduit-exporter:
+    build:
+      context: ./exporters/conduit
+      dockerfile: Dockerfile
+    container_name: moav-conduit-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    expose:
+      - "9101"
+    depends_on:
+      - psiphon-conduit
+    profiles:
+      - monitoring
+      - all
+
   # ===========================================================================
   # SNOWFLAKE: Tor Snowflake proxy (bandwidth donation)
   # Helps users bypass censorship via the Tor network
