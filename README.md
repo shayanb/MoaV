@@ -1,6 +1,6 @@
 # MoaV
 
-[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Version](https://img.shields.io/badge/version-1.2.5-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) 
+[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) 
 
 English | **[فارسی](README-fa.md)** 
 
@@ -17,6 +17,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 - **Home server ready** - Run on Raspberry Pi or any ARM64/x64 Linux as a personal VPN
 - **[Psiphon Conduit](https://github.com/Psiphon-Inc/conduit)** - Optional bandwidth donation to help others bypass censorship
 - **[Tor Snowflake](https://snowflake.torproject.org/)** - Optional bandwidth donation to help Tor users bypass censorship
+- **Monitoring** - Optional Grafana + Prometheus observability stack
 
 ## Quick Start
 
@@ -43,6 +44,7 @@ nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
 ./moav.sh
 ```
 
+<!-- TODO: Screenshot of moav.sh interactive menu terminal -->
 <img src="docs/assets/moav.sh.png" alt="MoaV Interactive Menu" width="350">
 
 **After installation, use `moav` from anywhere:**
@@ -153,6 +155,7 @@ User bundles are generated in `outputs/bundles/<username>/` containing:
 - README with connection instructions
 
 **Download bundles:**
+<!-- TODO: Screenshot of admin dashboard showing user bundles section -->
 - **Admin dashboard** - Visit `https://your-server:9443`, login, and download from "User Bundles" section
 - **SCP** - `scp root@SERVER:/opt/moav/outputs/bundles/username.zip ./`
 
@@ -170,7 +173,7 @@ moav logs conduit         # View specific service logs
 moav build                # Build/rebuild all containers
 ```
 
-**Profiles:** `proxy`, `wireguard`, `dnstt`, `trusttunnel`, `admin`, `conduit`, `snowflake`, `all`
+**Profiles:** `proxy`, `wireguard`, `dnstt`, `trusttunnel`, `admin`, `conduit`, `snowflake`, `monitoring`, `all`
 
 ## Server Migration
 
@@ -255,6 +258,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 - [DNS Configuration](docs/DNS.md) - DNS records setup
 - [Client Setup](docs/CLIENTS.md) - How to connect from devices
 - [VPS Deployment](docs/DEPLOY.md) - One-click cloud deployment
+- [Monitoring](docs/MONITORING.md) - Grafana + Prometheus observability
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [OpSec Guide](docs/OPSEC.md) - Security best practices
 
@@ -277,6 +281,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 51820/udp | UDP | WireGuard | No |
 | 8080/tcp | TCP | wstunnel | No |
 | 9443/tcp | TCP | Admin dashboard | No |
+| 9444/tcp | TCP | Grafana (monitoring) | No |
 | 53/udp | UDP | DNS tunnel | Yes |
 | 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 

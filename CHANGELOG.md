@@ -5,10 +5,8 @@ All notable changes to MoaV will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.0] - 2026-02-10
 
-<<<<<<< Updated upstream
-=======
 ### Added
 - **Monitoring Stack** - Optional Grafana + Prometheus observability (`monitoring` profile)
   - Grafana dashboards on port 9444 (configurable via `PORT_GRAFANA`)
@@ -17,8 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - cAdvisor for container metrics (per-container CPU, memory, network)
   - Clash Exporter for sing-box proxy metrics (connections, traffic)
   - WireGuard Exporter for VPN peer statistics (peers, handshakes, traffic)
-  - Snowflake native metrics via `-metrics` flag
-  - Pre-built dashboards: System, Containers, sing-box, WireGuard
+  - Snowflake Exporter for Tor donation metrics (people served, bandwidth donated)
+  - Pre-built dashboards: System, Containers, sing-box, WireGuard, Snowflake
   - Uses existing `ADMIN_PASSWORD` for Grafana authentication
   - `moav start monitoring` or combine with other profiles
 - `PORT_GRAFANA` environment variable (default: 9444)
@@ -38,7 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed Active Connections table
   - Added Grafana link button in header
   - Kept: Conduit stats, User bundles, Service status, Total upload/download
-- Snowflake proxy now exposes native Prometheus metrics on port 9999
 
 ### Fixed
 - **`moav user revoke` menu crash** - User list script was crashing when listing WireGuard peers after a user was revoked
@@ -50,7 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documented: TrustTunnel and dnstt do not have metrics APIs (container metrics still available via cAdvisor)
 - Added "Apply .env changes" section to TROUBLESHOOTING.md explaining that containers must be recreated (not just restarted) to pick up `.env` changes
 
->>>>>>> Stashed changes
 ## [1.2.5] - 2026-02-07
 
 ### Added
@@ -332,7 +328,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.5...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/shayanb/MoaV/compare/v1.2.5...v1.3.0
 [1.2.5]: https://github.com/shayanb/MoaV/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/shayanb/MoaV/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/shayanb/MoaV/compare/v1.2.2...v1.2.3

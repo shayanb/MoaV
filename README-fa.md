@@ -17,6 +17,7 @@
 - **قابل نصب در خانه** - اجرا روی Raspberry Pi یا هر سیستم لینوکس ARM64/x64 به عنوان VPN شخصی
 - **[Psiphon Conduit](https://github.com/Psiphon-Inc/conduit)** - اهدای پهنای باند اختیاری برای کمک به دیگران در عبور از سانسور
 - **[Tor Snowflake](https://snowflake.torproject.org/)** - اهدای پهنای باند اختیاری برای کمک به کاربران Tor در عبور از سانسور
+- **مانیتورینگ** - Grafana + Prometheus برای نظارت بر عملکرد سرور (اختیاری)
 
 ## شروع سریع
 

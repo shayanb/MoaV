@@ -2697,7 +2697,8 @@ cmd_start() {
     if echo "$profiles" | grep -qE "admin|monitoring|all"; then
         echo ""
     fi
-    docker compose $profiles ps
+    # Show container status (timeout to prevent hangs)
+    timeout 10 docker compose $profiles ps 2>/dev/null || true
 }
 
 # Resolve profile name aliases to actual docker-compose profile names

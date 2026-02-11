@@ -2,6 +2,8 @@
 
 Real-time observability for your MoaV deployment with Grafana dashboards.
 
+<!-- TODO: Screenshot of Grafana dashboard overview showing multiple panels -->
+
 ## Overview
 
 The monitoring profile provides:
@@ -11,7 +13,7 @@ The monitoring profile provides:
 - **cAdvisor** - Container metrics per service
 - **Clash Exporter** - sing-box proxy metrics via Clash API
 - **WireGuard Exporter** - VPN peer and traffic metrics
-- **Snowflake Metrics** - Native Tor Snowflake statistics
+- **Snowflake Exporter** - Tor donation metrics (people served, bandwidth donated)
 
 ## Quick Start
 
@@ -34,6 +36,9 @@ Login with username `admin` and the password you set in your `.env` file (`ADMIN
 ## Pre-built Dashboards
 
 ### MoaV - System
+
+<!-- TODO: Screenshot of System dashboard showing CPU/Memory gauges and graphs -->
+
 System-level metrics from Node Exporter:
 - CPU usage (gauge + time series)
 - Memory usage (gauge + time series)
@@ -43,15 +48,22 @@ System-level metrics from Node Exporter:
 - Uptime
 
 ### MoaV - Containers
+
+<!-- TODO: Screenshot of Containers dashboard showing per-container resource usage -->
+
 Per-container metrics from cAdvisor:
 - Running container count
 - Total memory and CPU usage
 - Memory usage by container (stacked)
 - CPU usage by container (stacked)
-- Network receive by container
-- Network transmit by container
+- Network download/upload by container
+- Distribution pie charts
+- Summary table with all metrics
 
 ### MoaV - sing-box
+
+<!-- TODO: Screenshot of sing-box dashboard showing connections and traffic -->
+
 Proxy metrics via Clash Exporter:
 - Active connections
 - Total upload/download traffic
@@ -61,12 +73,27 @@ Proxy metrics via Clash Exporter:
 - Connections by inbound type (pie chart)
 
 ### MoaV - WireGuard
+
+<!-- TODO: Screenshot of WireGuard dashboard showing peer metrics -->
+
 VPN metrics from WireGuard Exporter:
 - Total peers
 - Last handshake time
 - Total received/sent bytes
 - Traffic rate per peer
 - Peer details table (name, public key, allowed IPs, traffic, last handshake)
+
+### MoaV - Snowflake
+
+<!-- TODO: Screenshot of Snowflake dashboard showing donation metrics -->
+
+Tor donation metrics from Snowflake Exporter:
+- People served (total connections helped)
+- Total download bandwidth donated
+- Total upload bandwidth donated
+- Total bandwidth donated
+- Connections over time
+- Bandwidth over time
 
 ## Configuration
 
@@ -106,6 +133,7 @@ Approximate additional resources when monitoring is enabled:
 | cAdvisor | 0.1-0.3 cores | 50-150 MB | - |
 | Clash Exporter | <0.1 cores | ~30 MB | - |
 | WireGuard Exporter | <0.1 cores | ~10 MB | - |
+| Snowflake Exporter | <0.1 cores | ~10 MB | - |
 | **Total** | **~0.5-1 cores** | **~400-900 MB** | **~1 GB/15 days** |
 
 **Recommended minimum**: 2 vCPU, 2 GB RAM when running monitoring alongside other services.
@@ -115,7 +143,6 @@ Approximate additional resources when monitoring is enabled:
 - **Prometheus** is internal only (no external port exposed)
 - **Grafana** requires authentication via `ADMIN_PASSWORD`
 - All exporters expose metrics only to the internal Docker network
-- Snowflake metrics use host networking but only listen on localhost
 
 ## What's Not Included
 
@@ -140,7 +167,7 @@ Container-level metrics (CPU, memory, network) are still available for these ser
 
 2. Verify targets are up - access Prometheus internally:
    ```bash
-   docker exec moav-prometheus wget -qO- http://localhost:9091/api/v1/targets | jq '.data.activeTargets[] | {job: .labels.job, health: .health}'
+   docker exec moav-grafana wget -qO- http://prometheus:9091/api/v1/query?query=up
    ```
 
 3. Ensure services are on the same Docker network (`moav_net`)
@@ -156,19 +183,14 @@ cadvisor:
         memory: 256M
 ```
 
-### Snowflake metrics not showing
+### Snowflake metrics showing zeros
 
-Snowflake uses host networking, so Prometheus accesses it via `host.docker.internal:9999`. If metrics aren't appearing:
+The Snowflake exporter parses log files for summary statistics. Summaries are logged every 5 minutes. If you just started Snowflake, wait for the first summary to appear:
 
-1. Check Snowflake exposes metrics:
-   ```bash
-   curl http://localhost:9999/internal/metrics
-   ```
-
-2. Verify Docker supports `host.docker.internal`:
-   ```bash
-   docker run --rm alpine ping -c1 host.docker.internal
-   ```
+```bash
+# Check if summaries exist
+docker exec moav-snowflake cat /var/log/snowflake/snowflake.log | grep "In the"
+```
 
 ### WireGuard exporter not starting
 
@@ -192,7 +214,7 @@ moav logs prometheus
 moav logs grafana
 
 # Stop monitoring
-moav stop prometheus grafana node-exporter cadvisor clash-exporter wireguard-exporter
+moav stop prometheus grafana node-exporter cadvisor clash-exporter
 ```
 
 ## Customization
@@ -218,7 +240,7 @@ scrape_configs:
 
 Then reload Prometheus:
 ```bash
-docker exec moav-prometheus kill -HUP 1
+docker exec moav-prometheus wget -qO- --post-data='' http://localhost:9091/-/reload
 ```
 
 ## Architecture
@@ -234,15 +256,10 @@ docker exec moav-prometheus kill -HUP 1
                     │ (time-series│
                     │   storage)  │
                     └──────┬──────┘
-           ┌───────────────┼───────────────┐
-           │               │               │
-    ┌──────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
-    │ node-export │ │  cAdvisor   │ │clash-export │
-    │  (system)   │ │ (containers)│ │ (sing-box)  │
-    └─────────────┘ └─────────────┘ └─────────────┘
-           │               │               │
-    ┌──────▼──────┐ ┌──────▼──────┐
-    │  wg-export  │ │  snowflake  │
-    │ (wireguard) │ │  (native)   │
-    └─────────────┘ └─────────────┘
+       ┌───────────────────┼───────────────────┐
+       │         │         │         │         │
+┌──────▼──────┐ ┌▼────────┐ ┌▼────────┐ ┌▼────────┐ ┌▼────────┐
+│ node-export │ │cAdvisor │ │  clash  │ │   wg    │ │snowflake│
+│  (system)   │ │(contain)│ │(singbox)│ │(vpn)    │ │ (tor)   │
+└─────────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘
 ```
