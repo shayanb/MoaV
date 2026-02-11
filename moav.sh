@@ -2910,8 +2910,8 @@ cmd_restart() {
         info "Restarting all services..."
         docker compose --profile all restart
         success "All services restarted!"
-    else
-        # Check if argument is a profile name (monitoring, snowflake, wireguard, etc.)
+    elif [[ $# -eq 1 ]]; then
+        # Single argument - check if it's a profile name
         local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
         local profile_match=""
         for p in $profiles; do
@@ -2937,6 +2937,17 @@ cmd_restart() {
             docker compose restart $services
             success "Services restarted!"
         fi
+    else
+        # Multiple arguments - resolve all as service names
+        local services
+        services=$(resolve_services "$@")
+        if [[ -z "$services" ]]; then
+            error "No valid services to restart"
+            return 1
+        fi
+        info "Restarting: $services"
+        docker compose restart $services
+        success "Services restarted!"
     fi
 }
 
