@@ -237,6 +237,22 @@ get_grafana_url() {
     echo "https://${grafana_host}:${grafana_port}"
 }
 
+get_grafana_cdn_url() {
+    # Get Grafana CDN URL from GRAFANA_ROOT_URL (only if explicitly configured)
+    local grafana_root_url=$(grep -E '^GRAFANA_ROOT_URL=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$grafana_root_url" ]]; then
+        echo "$grafana_root_url"
+    fi
+}
+
+get_cdn_url() {
+    # Get CDN URL for VLESS+WS if CDN_DOMAIN is configured
+    local cdn_domain=$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$cdn_domain" ]]; then
+        echo "https://${cdn_domain}"
+    fi
+}
+
 run_command() {
     local cmd="$1"
     local description="${2:-Running command}"
@@ -1965,6 +1981,15 @@ start_services() {
         # Show Grafana URL if monitoring was started
         if echo "$profiles" | grep -qE "monitoring|all"; then
             echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+            local grafana_cdn=$(get_grafana_cdn_url)
+            if [[ -n "$grafana_cdn" ]]; then
+                echo -e "  ${CYAN}Grafana (CDN):${NC}   $grafana_cdn"
+            fi
+        fi
+        # Show CDN URL if configured
+        local cdn_url=$(get_cdn_url)
+        if [[ -n "$cdn_url" ]] && echo "$profiles" | grep -qE "proxy|all"; then
+            echo -e "  ${CYAN}CDN (VLESS+WS):${NC}  $cdn_url"
         fi
         if echo "$profiles" | grep -qE "admin|monitoring|all"; then
             echo ""
@@ -2792,7 +2817,7 @@ cmd_start() {
             if ! echo "$valid_profiles" | grep -qw "$resolved"; then
                 error "Invalid profile: $p"
                 echo "Valid profiles: $valid_profiles"
-                echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, dns→dnstt"
+                echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, dns→dnstt, grafana/grafana-proxy/grafana-cdn/prometheus→monitoring"
                 exit 1
             fi
             profiles+="--profile $resolved "
@@ -2842,8 +2867,17 @@ cmd_start() {
     # Show Grafana URL if monitoring was started
     if echo "$profiles" | grep -qE "monitoring|all"; then
         echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+        local grafana_cdn=$(get_grafana_cdn_url)
+        if [[ -n "$grafana_cdn" ]]; then
+            echo -e "  ${CYAN}Grafana (CDN):${NC}   $grafana_cdn"
+        fi
     fi
-    if echo "$profiles" | grep -qE "admin|monitoring|all"; then
+    # Show CDN URL if configured
+    local cdn_url=$(get_cdn_url)
+    if [[ -n "$cdn_url" ]] && echo "$profiles" | grep -qE "proxy|all"; then
+        echo -e "  ${CYAN}CDN (VLESS+WS):${NC}  $cdn_url"
+    fi
+    if echo "$profiles" | grep -qE "admin|monitoring|proxy|all"; then
         echo ""
     fi
 }
@@ -2860,7 +2894,7 @@ resolve_profile() {
             echo "dnstt" ;;
         psiphon)
             echo "conduit" ;;
-        grafana|prometheus|metrics)
+        grafana|grafana-proxy|grafana-cdn|prometheus|metrics)
             echo "monitoring" ;;
         *)
             echo "$profile" ;;
@@ -2877,7 +2911,8 @@ resolve_service() {
         ws|tunnel)                    echo "wstunnel" ;;
         dns)                          echo "dnstt" ;;
         snow|tor)                     echo "snowflake" ;;
-        # Monitoring services (pass through as-is)
+        # Monitoring services (pass through or resolve aliases)
+        grafana-cdn)                  echo "grafana-proxy" ;;
         grafana|grafana-proxy|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter|conduit-exporter|singbox-user-exporter)
             echo "$svc" ;;
         *)                            echo "$svc" ;;
@@ -3037,13 +3072,17 @@ cmd_status() {
     if echo "$running" | grep -q "grafana"; then
         [[ $show_urls -eq 0 ]] && echo ""
         echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+        local grafana_cdn=$(get_grafana_cdn_url)
+        if [[ -n "$grafana_cdn" ]]; then
+            echo -e "  ${CYAN}Grafana (CDN):${NC}   $grafana_cdn"
+        fi
         show_urls=1
     fi
 
-    # Show CDN domain if configured
-    local cdn_domain=$(grep -E '^CDN_DOMAIN=' "$SCRIPT_DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '"')
-    if [[ -n "$cdn_domain" ]]; then
-        echo -e "  ${CYAN}CDN Domain:${NC}      $cdn_domain"
+    # Show CDN URL if configured and proxy is running
+    local cdn_url=$(get_cdn_url)
+    if [[ -n "$cdn_url" ]] && echo "$running" | grep -q "sing-box"; then
+        echo -e "  ${CYAN}CDN (VLESS+WS):${NC}  $cdn_url"
     fi
 
     # Show default profiles
