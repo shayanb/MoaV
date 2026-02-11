@@ -1245,7 +1245,6 @@ run_bootstrap() {
             docker compose $SELECTED_PROFILE_STRING up -d --remove-orphans
             echo ""
             success "Services started!"
-            docker compose $SELECTED_PROFILE_STRING ps
         else
             echo ""
             info "You can start services later with: moav start"
@@ -2791,8 +2790,6 @@ cmd_start() {
     if echo "$profiles" | grep -qE "admin|monitoring|all"; then
         echo ""
     fi
-    # Show container status for all profiles (timeout to prevent hangs)
-    timeout 10 docker compose --profile all ps 2>/dev/null || true
 }
 
 # Resolve profile name aliases to actual docker-compose profile names
