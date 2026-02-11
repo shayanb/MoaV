@@ -1806,20 +1806,21 @@ ensure_clash_api_secret() {
     fi
 
     # Check if CLASH_API_SECRET is already set in .env (non-empty)
+    # Note: || true needed because set -o pipefail causes exit if grep finds nothing
     local current_secret
-    current_secret=$(grep "^CLASH_API_SECRET=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+    current_secret=$(grep "^CLASH_API_SECRET=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || true)
     if [[ -n "$current_secret" ]]; then
         return 0  # Already configured
     fi
 
     # Try to extract from state volume (created by bootstrap)
     local secret
-    secret=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/clash-api.env 2>/dev/null | grep "^CLASH_API_SECRET=" | cut -d'=' -f2)
+    secret=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/clash-api.env 2>/dev/null | grep "^CLASH_API_SECRET=" | cut -d'=' -f2 || true)
 
     if [[ -z "$secret" ]]; then
         # Try to extract from existing sing-box config.json
         if [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]]; then
-            secret=$(grep -o '"secret"[[:space:]]*:[[:space:]]*"[^"]*"' "$SCRIPT_DIR/configs/sing-box/config.json" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+            secret=$(grep -o '"secret"[[:space:]]*:[[:space:]]*"[^"]*"' "$SCRIPT_DIR/configs/sing-box/config.json" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
         fi
     fi
 
