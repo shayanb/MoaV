@@ -1796,6 +1796,7 @@ get_default_profiles() {
 
 # Ensure CLASH_API_SECRET is set in .env for monitoring
 # This is needed for clash-exporter to authenticate with sing-box Clash API
+# Returns: 0 = continue, 1 = skip monitoring (user declined when using 'all' profile)
 ensure_clash_api_secret() {
     local profiles="$1"
     local env_file="$SCRIPT_DIR/.env"
@@ -1811,6 +1812,19 @@ ensure_clash_api_secret() {
     current_secret=$(grep "^CLASH_API_SECRET=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || true)
     if [[ -n "$current_secret" ]]; then
         return 0  # Already configured
+    fi
+
+    # First-time monitoring setup
+    # If using 'all' profile, ask user if they want to enable monitoring (requires 2GB RAM)
+    if echo "$profiles" | grep -qE "\ball\b|--profile all"; then
+        echo ""
+        warn "Monitoring requires at least 2GB RAM to run properly."
+        echo "  The monitoring stack includes Grafana, Prometheus, and exporters."
+        echo ""
+        if ! confirm "Enable monitoring? (You can start it later with 'moav start monitoring')" "n"; then
+            info "Skipping monitoring. Starting other services..."
+            return 1  # Signal caller to skip monitoring
+        fi
     fi
 
     # Try to extract from state volume (created by bootstrap)
@@ -1842,13 +1856,14 @@ ensure_clash_api_secret() {
         warn "Could not find CLASH_API_SECRET. Clash exporter may not authenticate properly."
         echo "  If sing-box metrics show empty, run: moav bootstrap"
     fi
+    return 0
 }
 
 start_services() {
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "start"
-    local ret=$?
+    local ret=0
+    select_profiles "start" || ret=$?
     [[ $ret -eq 2 ]] && return 2  # User chose "Back"
     [[ $ret -ne 0 ]] && return 1
 
@@ -1875,7 +1890,13 @@ start_services() {
     fi
 
     # Ensure CLASH_API_SECRET is configured for monitoring
-    ensure_clash_api_secret "$profiles"
+    # Returns 1 if user declined monitoring when using 'all' profile
+    local skip_monitoring=0
+    ensure_clash_api_secret "$profiles" || skip_monitoring=1
+    if [[ $skip_monitoring -eq 1 ]]; then
+        # Replace 'all' with individual profiles excluding monitoring
+        profiles="--profile proxy --profile wireguard --profile dnstt --profile trusttunnel --profile admin --profile conduit --profile snowflake"
+    fi
 
     echo ""
     info "Building containers (if needed)..."
@@ -1914,8 +1935,8 @@ stop_services() {
 
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "stop"
-    local ret=$?
+    local ret=0
+    select_profiles "stop" || ret=$?
     [[ $ret -eq 2 ]] && return 2  # User chose "Back"
     [[ $ret -ne 0 ]] && return 1
 
@@ -1951,8 +1972,8 @@ restart_services() {
 
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "restart"
-    local ret=$?
+    local ret=0
+    select_profiles "restart" || ret=$?
     [[ $ret -eq 2 ]] && return 2  # User chose "Back"
     [[ $ret -ne 0 ]] && return 1
 
@@ -2426,9 +2447,9 @@ main_menu() {
         read -r choice < /dev/tty 2>/dev/null || choice=""
 
         case $choice in
-            1) { start_services; r=$?; [[ $r -ne 2 ]] && press_enter; true; } ;;
-            2) { stop_services; r=$?; [[ $r -ne 2 ]] && press_enter; true; } ;;
-            3) { restart_services; r=$?; [[ $r -ne 2 ]] && press_enter; true; } ;;
+            1) r=0; start_services || r=$?; [[ $r -eq 2 ]] || press_enter ;;
+            2) r=0; stop_services || r=$?; [[ $r -eq 2 ]] || press_enter ;;
+            3) r=0; restart_services || r=$?; [[ $r -eq 2 ]] || press_enter ;;
             4) show_status; press_enter ;;
             5) view_logs ;;  # view_logs has its own loop, no press_enter needed
             6) user_management ;;  # user_management has its own loop
@@ -2747,7 +2768,13 @@ cmd_start() {
     fi
 
     # Ensure CLASH_API_SECRET is configured for monitoring
-    ensure_clash_api_secret "$profiles"
+    # Returns 1 if user declined monitoring when using 'all' profile
+    local skip_monitoring=0
+    ensure_clash_api_secret "$profiles" || skip_monitoring=1
+    if [[ $skip_monitoring -eq 1 ]]; then
+        # Replace 'all' with individual profiles excluding monitoring
+        profiles="--profile proxy --profile wireguard --profile dnstt --profile trusttunnel --profile admin --profile conduit --profile snowflake"
+    fi
 
     info "Starting services..."
     docker compose $profiles up -d
