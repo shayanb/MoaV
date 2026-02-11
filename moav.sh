@@ -1794,6 +1794,55 @@ get_default_profiles() {
     fi
 }
 
+# Ensure CLASH_API_SECRET is set in .env for monitoring
+# This is needed for clash-exporter to authenticate with sing-box Clash API
+ensure_clash_api_secret() {
+    local profiles="$1"
+    local env_file="$SCRIPT_DIR/.env"
+
+    # Only needed if monitoring or all profile is being started
+    if ! echo "$profiles" | grep -qE "monitoring|all"; then
+        return 0
+    fi
+
+    # Check if CLASH_API_SECRET is already set in .env (non-empty)
+    local current_secret
+    current_secret=$(grep "^CLASH_API_SECRET=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+    if [[ -n "$current_secret" ]]; then
+        return 0  # Already configured
+    fi
+
+    # Try to extract from state volume (created by bootstrap)
+    local secret
+    secret=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/clash-api.env 2>/dev/null | grep "^CLASH_API_SECRET=" | cut -d'=' -f2)
+
+    if [[ -z "$secret" ]]; then
+        # Try to extract from existing sing-box config.json
+        if [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]]; then
+            secret=$(grep -o '"secret"[[:space:]]*:[[:space:]]*"[^"]*"' "$SCRIPT_DIR/configs/sing-box/config.json" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+        fi
+    fi
+
+    if [[ -n "$secret" ]]; then
+        info "Configuring CLASH_API_SECRET for monitoring..."
+        # Update .env file
+        if grep -q "^CLASH_API_SECRET=" "$env_file" 2>/dev/null; then
+            # Replace existing empty line
+            sed -i.bak "s/^CLASH_API_SECRET=.*/CLASH_API_SECRET=$secret/" "$env_file"
+            rm -f "$env_file.bak"
+        else
+            # Append to file
+            echo "" >> "$env_file"
+            echo "# Clash API secret for monitoring (auto-configured)" >> "$env_file"
+            echo "CLASH_API_SECRET=$secret" >> "$env_file"
+        fi
+        success "CLASH_API_SECRET configured"
+    else
+        warn "Could not find CLASH_API_SECRET. Clash exporter may not authenticate properly."
+        echo "  If sing-box metrics show empty, run: moav bootstrap"
+    fi
+}
+
 start_services() {
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
@@ -1823,6 +1872,9 @@ start_services() {
             return 1
         fi
     fi
+
+    # Ensure CLASH_API_SECRET is configured for monitoring
+    ensure_clash_api_secret "$profiles"
 
     echo ""
     info "Building containers (if needed)..."
@@ -2692,6 +2744,9 @@ cmd_start() {
             exit 1
         fi
     fi
+
+    # Ensure CLASH_API_SECRET is configured for monitoring
+    ensure_clash_api_secret "$profiles"
 
     info "Starting services..."
     docker compose $profiles up -d
