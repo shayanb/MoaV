@@ -267,6 +267,7 @@ services:
       - snowflake
     profiles:
       - monitoring
+      - all
 
   # ===========================================================================
   # TRUSTTUNNEL: Modern VPN protocol (looks like HTTPS)
@@ -472,6 +473,7 @@ services:
       - "/etc/wireguard/wg0.conf"
     profiles:
       - monitoring
+      - all
 
   # ===========================================================================
   # BOOTSTRAP: First-run initialization
