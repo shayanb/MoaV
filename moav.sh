@@ -2426,9 +2426,9 @@ main_menu() {
         read -r choice < /dev/tty 2>/dev/null || choice=""
 
         case $choice in
-            1) start_services; [[ $? -ne 2 ]] && press_enter ;;
-            2) stop_services; [[ $? -ne 2 ]] && press_enter ;;
-            3) restart_services; [[ $? -ne 2 ]] && press_enter ;;
+            1) { start_services; r=$?; [[ $r -ne 2 ]] && press_enter; true; } ;;
+            2) { stop_services; r=$?; [[ $r -ne 2 ]] && press_enter; true; } ;;
+            3) { restart_services; r=$?; [[ $r -ne 2 ]] && press_enter; true; } ;;
             4) show_status; press_enter ;;
             5) view_logs ;;  # view_logs has its own loop, no press_enter needed
             6) user_management ;;  # user_management has its own loop
