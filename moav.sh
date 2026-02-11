@@ -1510,7 +1510,8 @@ show_status() {
                 name_color="${DIM}"
             fi
 
-            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${status_color}%-12s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-15s ${CYAN}│${NC}\n" \
+            # Note: %-14s for status to account for 3-byte Unicode symbols (●○◐) displaying as 1 char
+            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${status_color}%-14s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-15s ${CYAN}│${NC}\n" \
                 "$display_name" "$status_display" "$last_run" "$uptime" "$ports"
         done <<< "$json_lines"
     fi
