@@ -495,24 +495,20 @@ services:
       - monitoring
       - all
 
-  # WireGuard Exporter - only runs with monitoring profile
-  # Shares network namespace to access wg0 interface (requires wireguard to be running)
+  # WireGuard Exporter - custom exporter using docker exec
   wireguard-exporter:
-    image: mindflavor/prometheus-wireguard-exporter:latest
+    build:
+      context: ./exporters/wireguard
+      dockerfile: Dockerfile
     container_name: moav-wireguard-exporter
     restart: unless-stopped
-    network_mode: "service:wireguard"
+    networks:
+      - moav_net
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./configs/wireguard:/etc/wireguard:ro
-    cap_add:
-      - NET_ADMIN
     environment:
       - TZ=${TZ:-UTC}
-    command:
-      - "-p"
-      - "9586"
-      - "-n"
-      - "/etc/wireguard/wg0.conf"
     profiles:
       - monitoring
       - all

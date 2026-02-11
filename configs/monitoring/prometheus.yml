@@ -33,13 +33,12 @@ scrape_configs:
       - targets: ['singbox-user-exporter:9102']
     scrape_timeout: 10s
 
-  # WireGuard Exporter (shares network with wireguard container)
+  # WireGuard Exporter - custom exporter using docker exec
   # NOTE: Only available when running with --profile wireguard
-  # Example: docker compose --profile monitoring --profile wireguard up -d
   - job_name: 'wireguard'
     static_configs:
-      - targets: ['wireguard:9586']
-    scrape_timeout: 5s
+      - targets: ['wireguard-exporter:9586']
+    scrape_timeout: 10s
 
   # Conduit Exporter - parses Psiphon conduit logs for [STATS] metrics
   # NOTE: Only available when running with --profile conduit
