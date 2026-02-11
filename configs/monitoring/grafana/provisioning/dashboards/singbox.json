@@ -297,9 +297,9 @@
       ],
       "title": "User Connections",
       "transformations": [
+        { "id": "filterFieldsByName", "options": { "include": { "names": ["user", "Value #Connections", "Value #Active"] } } },
         { "id": "merge", "options": {} },
         { "id": "organize", "options": {
-          "excludeByName": { "Time": true, "job": true, "instance": true },
           "indexByName": { "user": 0, "Value #Connections": 1, "Value #Active": 2 },
           "renameByName": { "Value #Connections": "Connections", "Value #Active": "Status", "user": "User" }
         }}
