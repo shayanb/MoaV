@@ -53,5 +53,5 @@ setup_bandwidth_limit || echo "[snowflake] Continuing without bandwidth limit"
 echo "[snowflake] Starting proxy..."
 exec /bin/proxy \
     -capacity "${SNOWFLAKE_CAPACITY}" \
-    -summary-interval 1h \
+    -summary-interval 90s \
     -verbose 2>&1 | tee -a "${LOG_FILE}"

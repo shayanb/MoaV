@@ -271,15 +271,16 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
-          "mappings": [
-            { "options": { "0": { "color": "red", "index": 0, "text": "Inactive" }, "1": { "color": "green", "index": 1, "text": "Active" } }, "type": "value" }
-          ],
+          "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": [
           { "matcher": { "id": "byName", "options": "Connections" }, "properties": [{ "id": "custom.width", "value": 100 }] },
-          { "matcher": { "id": "byName", "options": "Status" }, "properties": [{ "id": "custom.width", "value": 80 }] },
-          { "matcher": { "id": "byName", "options": "User" }, "properties": [{ "id": "custom.width", "value": 150 }] }
+          { "matcher": { "id": "byName", "options": "User" }, "properties": [{ "id": "custom.width", "value": 150 }] },
+          { "matcher": { "id": "byName", "options": "Status" }, "properties": [
+            { "id": "custom.width", "value": 80 },
+            { "id": "mappings", "value": [{ "options": { "0": { "color": "red", "index": 0, "text": "Inactive" }, "1": { "color": "green", "index": 1, "text": "Active" } }, "type": "value" }] }
+          ]}
         ]
       },
       "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
