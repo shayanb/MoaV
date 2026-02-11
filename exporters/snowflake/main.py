@@ -16,11 +16,11 @@ import time
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Metrics storage
+# Metrics storage (cumulative - we add to these, never replace)
 metrics = {
-    'served_people': 0,
-    'download_gb': 0.0,  # Note: This is what the proxy RECEIVES (from Tor/users)
-    'upload_gb': 0.0,    # Note: This is what the proxy SENDS (to Tor/users)
+    'served_people': 0,      # Total connections served (cumulative)
+    'download_gb': 0.0,      # Total GB downloaded (cumulative)
+    'upload_gb': 0.0,        # Total GB uploaded (cumulative)
     'last_update_timestamp': 0,
 }
 
@@ -51,14 +51,15 @@ def convert_to_gb(value: float, unit: str) -> float:
 
 
 def parse_log_line(line: str) -> bool:
-    """Parse a log line and update metrics. Returns True if metrics updated."""
+    """Parse a log line and ACCUMULATE metrics. Returns True if metrics updated."""
     updated = False
 
-    # Check for connections count
+    # Check for connections count - ACCUMULATE (add to total)
     conn_match = CONNECTIONS_PATTERN.search(line)
     if conn_match:
+        connections = int(conn_match.group(1))
         with metrics_lock:
-            metrics['served_people'] = int(conn_match.group(1))
+            metrics['served_people'] += connections  # Add, don't replace
             metrics['last_update_timestamp'] = time.time()
         updated = True
 
@@ -74,10 +75,9 @@ def parse_log_line(line: str) -> bool:
         up_unit = bytes_match.group(4)
 
         with metrics_lock:
-            # "down" in snowflake logs = bytes the proxy received/downloaded
-            # "up" in snowflake logs = bytes the proxy sent/uploaded
-            metrics['download_gb'] = convert_to_gb(down_value, down_unit)
-            metrics['upload_gb'] = convert_to_gb(up_value, up_unit)
+            # ACCUMULATE - add to running totals
+            metrics['download_gb'] += convert_to_gb(down_value, down_unit)
+            metrics['upload_gb'] += convert_to_gb(up_value, up_unit)
             metrics['last_update_timestamp'] = time.time()
         updated = True
 
@@ -122,7 +122,7 @@ def tail_log_file(log_path: str):
                 for line in f:
                     new_lines = True
                     if parse_log_line(line):
-                        print(f"Updated: served={metrics['served_people']}, "
+                        print(f"Total: served={metrics['served_people']}, "
                               f"down={metrics['download_gb']:.2f}GB, up={metrics['upload_gb']:.2f}GB")
 
                 last_position = f.tell()

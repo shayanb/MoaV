@@ -2822,7 +2822,7 @@ resolve_service() {
         dns)                          echo "dnstt" ;;
         snow|tor)                     echo "snowflake" ;;
         # Monitoring services (pass through as-is)
-        grafana|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter)
+        grafana|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter|conduit-exporter|singbox-user-exporter)
             echo "$svc" ;;
         *)                            echo "$svc" ;;
     esac
