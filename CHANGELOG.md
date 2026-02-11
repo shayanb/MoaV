@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Conduit exporter no longer has cross-profile `depends_on` issue
 - Fixed duplicate metrics in Snowflake Grafana dashboard (3x values shown)
+- **Snowflake exporter replaced** - Custom optimized version instead of third-party
+  - Fixes high CPU usage (20-90%) from inefficient log parsing
+  - Uses file position tracking instead of constant re-reading
+  - Adaptive sleep intervals (1s when active, 5s when idle)
+- **Snowflake dashboard labels fixed** - Now shows user perspective:
+  - "Users Downloaded" = bandwidth users received (was confusingly labeled "Upload")
+  - "Users Uploaded" = bandwidth users sent (was confusingly labeled "Download")
 
 ## [1.3.0] - 2026-02-10
 

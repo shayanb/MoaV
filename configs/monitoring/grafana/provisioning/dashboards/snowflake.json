@@ -57,9 +57,9 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb)", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(upload_gb)", "refId": "A" }
       ],
-      "title": "Total Download",
+      "title": "Users Downloaded",
       "type": "stat"
     },
     {
@@ -85,9 +85,9 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(upload_gb)", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb)", "refId": "A" }
       ],
-      "title": "Total Upload",
+      "title": "Users Uploaded",
       "type": "stat"
     },
     {
@@ -179,10 +179,10 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb)", "legendFormat": "Download", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(upload_gb)", "legendFormat": "Upload", "refId": "B" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(upload_gb)", "legendFormat": "Users Download", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb)", "legendFormat": "Users Upload", "refId": "B" }
       ],
-      "title": "Bandwidth Over Time",
+      "title": "User Bandwidth Over Time",
       "type": "timeseries"
     },
     {
