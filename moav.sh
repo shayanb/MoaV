@@ -454,6 +454,58 @@ check_prerequisites() {
                     else
                         warn "No email set - you can edit .env later"
                     fi
+
+                    # Detect server IP and show DNS template
+                    echo ""
+                    info "Detecting server IP..."
+                    local detected_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "YOUR_SERVER_IP")
+                    if [[ "$detected_ip" != "YOUR_SERVER_IP" ]]; then
+                        success "Detected IP: $detected_ip"
+                        # Save to .env
+                        if grep -q "^SERVER_IP=" .env 2>/dev/null; then
+                            sed -i "s|^SERVER_IP=.*|SERVER_IP=\"$detected_ip\"|" .env
+                        else
+                            echo "SERVER_IP=\"$detected_ip\"" >> .env
+                        fi
+                    fi
+                    echo ""
+
+                    # Show DNS configuration template
+                    echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
+                    echo -e "${WHITE}  DNS Configuration Required${NC}"
+                    echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
+                    echo ""
+                    echo "  Add these DNS records in your DNS provider (e.g., Cloudflare):"
+                    echo ""
+                    echo -e "  ${WHITE}Required Records:${NC}"
+                    printf "  %-8s %-12s %-20s %s\n" "Type" "Name" "Value" "Proxy"
+                    printf "  %-8s %-12s %-20s %s\n" "────" "────" "─────" "────"
+                    printf "  %-8s %-12s %-20s %s\n" "A" "@" "$detected_ip" "DNS only (gray)"
+                    echo ""
+                    echo -e "  ${WHITE}For DNS Tunnel (dnstt):${NC}"
+                    printf "  %-8s %-12s %-20s %s\n" "A" "dns" "$detected_ip" "DNS only (gray)"
+                    printf "  %-8s %-12s %-20s %s\n" "NS" "t" "dns.$input_domain" "-"
+                    echo ""
+                    echo -e "  ${WHITE}Optional - CDN Mode (Cloudflare proxied):${NC}"
+                    printf "  %-8s %-12s %-20s %s\n" "A" "cdn" "$detected_ip" "Proxied (orange)"
+                    printf "  %-8s %-12s %-20s %s\n" "A" "grafana" "$detected_ip" "Proxied (orange)"
+                    echo ""
+                    echo -e "  ${YELLOW}⚠ CDN Mode requires an Origin Rule in Cloudflare:${NC}"
+                    echo "    Rules → Origin Rules → Create rule"
+                    echo "    • Match: Hostname equals cdn.$input_domain"
+                    echo "    • Action: Destination Port → Rewrite to 2082"
+                    echo ""
+                    echo -e "  See docs/DNS.md for detailed instructions."
+                    echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
+                    echo ""
+
+                    # Ask user to confirm DNS is configured
+                    if ! confirm "Have you configured DNS records (or will do so now)?" "y"; then
+                        echo ""
+                        warn "DNS must be configured before services will work properly."
+                        echo "  You can configure DNS later and run 'moav bootstrap' again."
+                        echo ""
+                    fi
                 else
                     # No domain - warn about disabled services
                     echo ""
