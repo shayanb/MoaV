@@ -1403,9 +1403,9 @@ show_status() {
 
     print_section "Service Status"
     echo ""
-    echo -e "  ${CYAN}┌──────────────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
-    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}              ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
-    echo -e "  ${CYAN}├──────────────────────┼───────────┼─────────────────────┼──────────────┼───────────┤${NC}"
+    echo -e "  ${CYAN}┌──────────────────────┬──────────────┬─────────────────────┬──────────────┬─────────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}              ${CYAN}│${NC} ${WHITE}Status${NC}       ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}           ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├──────────────────────┼──────────────┼─────────────────────┼──────────────┼─────────────────┤${NC}"
 
     # Track which services we've displayed
     declare -A displayed_services
@@ -1510,7 +1510,7 @@ show_status() {
                 name_color="${DIM}"
             fi
 
-            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${status_color}%-12s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-15s ${CYAN}│${NC}\n" \
                 "$display_name" "$status_display" "$last_run" "$uptime" "$ports"
         done <<< "$json_lines"
     fi
@@ -1526,12 +1526,12 @@ show_status() {
                 display_name="${service}*"
             fi
 
-            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${DIM}%-12s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-15s ${CYAN}│${NC}\n" \
                 "$display_name" "- never" "-" "-" "-"
         fi
     done <<< "$all_services"
 
-    echo -e "  ${CYAN}└──────────────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
+    echo -e "  ${CYAN}└──────────────────────┴──────────────┴─────────────────────┴──────────────┴─────────────────┘${NC}"
 
     # Show legend if there are disabled services
     local has_disabled=false
@@ -1640,7 +1640,7 @@ select_profiles() {
     echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Cancel${NC}       Exit without selecting                        ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Back${NC}         Back to main menu                             ${CYAN}│${NC}"
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
@@ -1648,7 +1648,7 @@ select_profiles() {
     read -r choices < /dev/tty 2>/dev/null || choices=""
 
     if [[ "$choices" == "0" || -z "$choices" ]]; then
-        return 1
+        return 2  # Return 2 to signal "go back" vs 1 for error
     fi
 
     # Support both space and comma separators
@@ -1796,7 +1796,10 @@ get_default_profiles() {
 start_services() {
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "start" || return 1
+    select_profiles "start"
+    local ret=$?
+    [[ $ret -eq 2 ]] && return 2  # User chose "Back"
+    [[ $ret -ne 0 ]] && return 1
 
     local profiles="$SELECTED_PROFILE_STRING"
     if [[ -z "$profiles" ]]; then
@@ -1857,7 +1860,10 @@ stop_services() {
 
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "stop" || return 1
+    select_profiles "stop"
+    local ret=$?
+    [[ $ret -eq 2 ]] && return 2  # User chose "Back"
+    [[ $ret -ne 0 ]] && return 1
 
     local profiles="$SELECTED_PROFILE_STRING"
     if [[ -z "$profiles" ]]; then
@@ -1891,7 +1897,10 @@ restart_services() {
 
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "restart" || return 1
+    select_profiles "restart"
+    local ret=$?
+    [[ $ret -eq 2 ]] && return 2  # User chose "Back"
+    [[ $ret -ne 0 ]] && return 1
 
     local profiles="$SELECTED_PROFILE_STRING"
     if [[ -z "$profiles" ]]; then
@@ -2363,12 +2372,12 @@ main_menu() {
         read -r choice < /dev/tty 2>/dev/null || choice=""
 
         case $choice in
-            1) start_services; press_enter ;;
-            2) stop_services; press_enter ;;
-            3) restart_services; press_enter ;;
+            1) start_services; [[ $? -ne 2 ]] && press_enter ;;
+            2) stop_services; [[ $? -ne 2 ]] && press_enter ;;
+            3) restart_services; [[ $? -ne 2 ]] && press_enter ;;
             4) show_status; press_enter ;;
-            5) view_logs; press_enter ;;
-            6) user_management; press_enter ;;
+            5) view_logs ;;  # view_logs has its own loop, no press_enter needed
+            6) user_management ;;  # user_management has its own loop
             7) build_services; press_enter ;;
             8) migration_menu; press_enter ;;
             0|q|Q)
