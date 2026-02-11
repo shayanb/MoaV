@@ -414,12 +414,13 @@ services:
     image: nginx:alpine
     container_name: moav-grafana-proxy
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "/scripts/grafana-proxy-entrypoint.sh"]
     networks:
       - moav_net
     ports:
       - "${PORT_GRAFANA_PROXY:-2083}:443"
     volumes:
-      - ./configs/monitoring/nginx/grafana-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./scripts/grafana-proxy-entrypoint.sh:/scripts/grafana-proxy-entrypoint.sh:ro
       - moav_certs:/certs:ro
     depends_on:
       - grafana
