@@ -5,7 +5,82 @@ All notable changes to MoaV will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.3.1] - 2026-02-11
+
+### Added
+- **Conduit Exporter** - Custom Prometheus exporter for Psiphon Conduit metrics
+  - Parses `[STATS]` lines from conduit logs
+  - Exposes: connected/connecting clients, upload/download totals, uptime
+  - New Grafana dashboard: MoaV - Conduit
+- **Sing-box User Exporter** - Custom Prometheus exporter for user tracking
+  - Parses sing-box logs for `[username]` connection patterns
+  - Tracks active users (5-minute window), total users, per-user connections
+  - Protocol breakdown (Reality, Trojan, Hysteria2, etc.)
+  - Updated sing-box dashboard with user metrics table and protocol pie chart
+
+### Changed
+- **Monitoring intervals reduced** - Less CPU overhead
+  - cAdvisor housekeeping: 10s → 30s
+  - Prometheus scrape interval: 15s → 30s
+- **Snowflake dashboard fixed** - Deduplicated metrics using `max()` aggregation
+- **Container dashboard improved** - Network traffic now excludes monitoring containers
+  - Filters out: prometheus, grafana, cadvisor, node-exporter, all exporters
+  - Shows only actual proxy/service traffic
+- Snowflake/WireGuard exporters now only run with `monitoring` profile (not standalone)
+- Removed `docker compose ps` output after start commands (cleaner output)
+
+### Fixed
+- Conduit exporter no longer has cross-profile `depends_on` issue
+- Fixed duplicate metrics in Snowflake Grafana dashboard (3x values shown)
+- **Snowflake exporter replaced** - Custom optimized version instead of third-party
+  - Fixes high CPU usage (20-90%) from inefficient log parsing
+  - Uses file position tracking instead of constant re-reading
+  - Adaptive sleep intervals (1s when active, 5s when idle)
+- **Snowflake dashboard labels fixed** - Now shows user perspective:
+  - "Users Downloaded" = bandwidth users received (was confusingly labeled "Upload")
+  - "Users Uploaded" = bandwidth users sent (was confusingly labeled "Download")
+
+## [1.3.0] - 2026-02-10
+
+### Added
+- **Monitoring Stack** - Optional Grafana + Prometheus observability (`monitoring` profile)
+  - Grafana dashboards on port 9444 (configurable via `PORT_GRAFANA`)
+  - Prometheus with 15-day retention (internal only, port 9091)
+  - Node Exporter for system metrics (CPU, RAM, disk, network)
+  - cAdvisor for container metrics (per-container CPU, memory, network)
+  - Clash Exporter for sing-box proxy metrics (connections, traffic)
+  - WireGuard Exporter for VPN peer statistics (peers, handshakes, traffic)
+  - Snowflake Exporter for Tor donation metrics (people served, bandwidth donated)
+  - Pre-built dashboards: System, Containers, sing-box, WireGuard, Snowflake
+  - Uses existing `ADMIN_PASSWORD` for Grafana authentication
+  - `moav start monitoring` or combine with other profiles
+- `PORT_GRAFANA` environment variable (default: 9444)
+- `ENABLE_MONITORING` toggle in .env
+- **Batch user creation** - Create multiple users at once:
+  - `moav user add alice bob charlie` - Add multiple named users
+  - `moav user add --batch 5` - Create user01, user02, ..., user05
+  - `moav user add --batch 10 --prefix team` - Create team01..team10
+  - Smart numbering: skips existing users (if user01-03 exist, creates user04, user05)
+  - Services reload once at the end (not after each user) for efficiency
+  - `--package` flag works with batch mode
+
+### Changed
+- Admin dashboard simplified (connection/memory metrics moved to Grafana):
+  - Removed Active Connections card
+  - Removed Memory Usage card
+  - Removed Active Connections table
+  - Added Grafana link button in header
+  - Kept: Conduit stats, User bundles, Service status, Total upload/download
+
+### Fixed
+- **`moav user revoke` menu crash** - User list script was crashing when listing WireGuard peers after a user was revoked
+  - Fixed grep pattern to only extract usernames from [Peer] blocks
+  - Added proper error handling for missing peer IPs
+
+### Documentation
+- Added `docs/MONITORING.md` with complete monitoring stack guide
+- Documented: TrustTunnel and dnstt do not have metrics APIs (container metrics still available via cAdvisor)
+- Added "Apply .env changes" section to TROUBLESHOOTING.md explaining that containers must be recreated (not just restarted) to pick up `.env` changes
 
 ## [1.2.5] - 2026-02-07
 
@@ -288,7 +363,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.2.5...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/shayanb/MoaV/compare/v1.2.5...v1.3.0
 [1.2.5]: https://github.com/shayanb/MoaV/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/shayanb/MoaV/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/shayanb/MoaV/compare/v1.2.2...v1.2.3

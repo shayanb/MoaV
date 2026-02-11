@@ -53,6 +53,7 @@ Complete guide to deploy MoaV on a VPS or home server.
 | 51820/udp | UDP | WireGuard | No |
 | 8080/tcp | TCP | wstunnel | No |
 | 9443/tcp | TCP | Admin dashboard | No |
+| 9444/tcp | TCP | Grafana (monitoring) | No |
 | 53/udp | UDP | DNS tunnel | Yes |
 | 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
@@ -244,6 +245,7 @@ moav start all                   # Everything
 - `admin` - Admin dashboard
 - `conduit` - Psiphon bandwidth donation
 - `snowflake` - Tor bandwidth donation
+- `monitoring` - Grafana + Prometheus observability
 - `all` - Everything
 
 **Open Firewall Ports:**
@@ -269,6 +271,9 @@ ufw allow 53/udp
 
 # Admin
 ufw allow 9443/tcp
+
+# Monitoring (Grafana)
+ufw allow 9444/tcp
 ```
 
 **Verify Services:**
@@ -613,6 +618,35 @@ SNOWFLAKE_CAPACITY=20    # Max concurrent
 ```
 
 Both can run simultaneously without conflicts.
+
+---
+
+## Monitoring (Grafana + Prometheus)
+
+MoaV includes an optional monitoring stack for real-time observability.
+
+> **Warning**: The monitoring stack nearly doubles resource requirements. MoaV alone runs on 1 vCPU / 1 GB RAM, but adding monitoring requires at least **2 vCPU / 2 GB RAM**. On 1 GB RAM servers, monitoring will cause hangs and crashes.
+
+<!-- TODO: Screenshot of Grafana dashboard overview -->
+
+**Start monitoring:**
+```bash
+moav start monitoring proxy admin
+```
+
+**Access Grafana:**
+- URL: `https://your-server:9444`
+- Username: `admin`
+- Password: Your `ADMIN_PASSWORD` from `.env`
+
+**Pre-built dashboards:**
+- **System** - CPU, memory, disk, network (Node Exporter)
+- **Containers** - Per-container resource usage (cAdvisor)
+- **sing-box** - Proxy connections and traffic (Clash Exporter)
+- **WireGuard** - VPN peers and traffic
+- **Snowflake** - Tor donation metrics
+
+See [docs/MONITORING.md](MONITORING.md) for complete guide.
 
 ---
 

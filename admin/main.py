@@ -140,6 +140,7 @@ def check_service_status(name: str) -> str:
         "dnstt": "moav-dnstt",
         "conduit": "moav-conduit",
         "trusttunnel": "moav-trusttunnel",
+        "grafana": "moav-grafana",
     }
 
     # Snowflake uses host networking, can't check from inside container
@@ -323,6 +324,13 @@ def get_services_status():
             "profile": "snowflake",
             "status": check_service_status("snowflake")
         },
+        {
+            "name": "grafana",
+            "description": "Grafana monitoring",
+            "ports": "9444",
+            "profile": "monitoring",
+            "status": check_service_status("grafana")
+        },
     ]
     return services
 
@@ -335,17 +343,6 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
     services = get_services_status()
     update_info = await check_for_updates()
 
-    # Count active connections by source IP
-    user_stats = {}
-    for conn in stats.get("connections", []):
-        metadata = conn.get("metadata", {})
-        source_ip = metadata.get("sourceIP", "unknown")
-        if source_ip not in user_stats:
-            user_stats[source_ip] = {"connections": 0, "upload": 0, "download": 0}
-        user_stats[source_ip]["connections"] += 1
-        user_stats[source_ip]["upload"] += conn.get("upload", 0)
-        user_stats[source_ip]["download"] += conn.get("download", 0)
-
     # Get all users with their bundle info (no active status tracking)
     all_users = list_users()
 
@@ -354,11 +351,8 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
         "stats": stats,
         "conduit_stats": conduit_stats,
         "services": services,
-        "connection_stats": user_stats,
         "all_users": all_users,
         "format_bytes": format_bytes,
-        "total_connections": len(stats.get("connections", [])),
-        "memory_usage": format_bytes(stats.get("memory", 0)),
         "total_upload": format_bytes(stats["traffic"]["upload"]),
         "total_download": format_bytes(stats["traffic"]["download"]),
         "error": stats.get("error"),

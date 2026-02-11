@@ -17,6 +17,7 @@
 - **قابل نصب در خانه** - اجرا روی Raspberry Pi یا هر سیستم لینوکس ARM64/x64 به عنوان VPN شخصی
 - **[Psiphon Conduit](https://github.com/Psiphon-Inc/conduit)** - اهدای پهنای باند اختیاری برای کمک به دیگران در عبور از سانسور
 - **[Tor Snowflake](https://snowflake.torproject.org/)** - اهدای پهنای باند اختیاری برای کمک به کاربران Tor در عبور از سانسور
+- **مانیتورینگ** - Grafana + Prometheus برای نظارت بر عملکرد سرور (اختیاری)
 
 ## شروع سریع
 
@@ -222,7 +223,7 @@ moav build                # ساخت/بازسازی تمام کانتینرها
 
 </div>
 
-**پروفایل‌ها:** `proxy`، `wireguard`، `dnstt`، `trusttunnel`، `admin`، `conduit`، `snowflake`، `all`
+**پروفایل‌ها:** `proxy`، `wireguard`، `dnstt`، `trusttunnel`، `admin`، `conduit`، `snowflake`، `monitoring`، `all`
 
 **نام مستعار سرویس‌ها:** `conduit`←psiphon-conduit، `singbox`←sing-box، `wg`←wireguard، `dns`←dnstt
 
@@ -328,6 +329,7 @@ moav logs conduit             # مشاهده لاگ‌های conduit
 - [پیکربندی DNS](docs/DNS.md) - تنظیم رکوردهای DNS
 - [راه‌اندازی کلاینت](docs/CLIENTS.md) - نحوه اتصال از دستگاه‌ها
 - [نصب روی VPS](docs/DEPLOY.md) - نصب یک‌کلیکی روی سرور ابری
+- [مانیتورینگ](docs/MONITORING.md) - Grafana + Prometheus برای نظارت
 - [عیب‌یابی](docs/TROUBLESHOOTING.md) - مشکلات رایج و راه‌حل‌ها
 - [راهنمای امنیت عملیاتی](docs/OPSEC.md) - بهترین روش‌های امنیتی
 
@@ -335,7 +337,7 @@ moav logs conduit             # مشاهده لاگ‌های conduit
 
 **سرور:**
 - Debian 12، Ubuntu 22.04/24.04
-- حداقل 1 vCPU، 1GB RAM
+- حداقل 1 vCPU، 1 GB RAM (2 vCPU، 2 GB RAM برای مانیتورینگ)
 - IPv4 عمومی
 - نام دامنه (اختیاری - حالت بدون دامنه را ببینید)
 
@@ -351,6 +353,7 @@ moav logs conduit             # مشاهده لاگ‌های conduit
 | 51820/udp | UDP | WireGuard | خیر |
 | 8080/tcp | TCP | wstunnel | خیر |
 | 9443/tcp | TCP | داشبورد ادمین | خیر |
+| 9444/tcp | TCP | Grafana (مانیتورینگ) | خیر |
 | 53/udp | UDP | تونل DNS | بله |
 | 80/tcp | TCP | Let's Encrypt | بله (هنگام نصب) |
 

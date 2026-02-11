@@ -228,6 +228,15 @@ get_admin_url() {
     echo "https://${admin_host}:${admin_port}"
 }
 
+get_grafana_url() {
+    # Get Grafana URL using DOMAIN or SERVER_IP from .env
+    local grafana_port="${PORT_GRAFANA:-9444}"
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local server_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local grafana_host="${domain:-${server_ip:-localhost}}"
+    echo "https://${grafana_host}:${grafana_port}"
+}
+
 run_command() {
     local cmd="$1"
     local description="${2:-Running command}"
@@ -1233,10 +1242,9 @@ run_bootstrap() {
         echo ""
         if confirm "Start services now?" "y"; then
             info "Starting services..."
-            docker compose $SELECTED_PROFILE_STRING up -d
+            docker compose $SELECTED_PROFILE_STRING up -d --remove-orphans
             echo ""
             success "Services started!"
-            docker compose $SELECTED_PROFILE_STRING ps
         else
             echo ""
             info "You can start services later with: moav start"
@@ -1394,9 +1402,9 @@ show_status() {
 
     print_section "Service Status"
     echo ""
-    echo -e "  ${CYAN}┌─────────────────┬───────────┬─────────────────────┬──────────────┬───────────┐${NC}"
-    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}         ${CYAN}│${NC} ${WHITE}Status${NC}    ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}     ${CYAN}│${NC}"
-    echo -e "  ${CYAN}├─────────────────┼───────────┼─────────────────────┼──────────────┼───────────┤${NC}"
+    echo -e "  ${CYAN}┌──────────────────────┬──────────────┬─────────────────────┬──────────────┬─────────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC} ${WHITE}Service${NC}              ${CYAN}│${NC} ${WHITE}Status${NC}       ${CYAN}│${NC} ${WHITE}Last Run${NC}            ${CYAN}│${NC} ${WHITE}Uptime${NC}       ${CYAN}│${NC} ${WHITE}Ports${NC}           ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├──────────────────────┼──────────────┼─────────────────────┼──────────────┼─────────────────┤${NC}"
 
     # Track which services we've displayed
     declare -A displayed_services
@@ -1501,7 +1509,8 @@ show_status() {
                 name_color="${DIM}"
             fi
 
-            printf "  ${CYAN}│${NC} ${name_color}%-15s${NC} ${CYAN}│${NC} ${status_color}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+            # Note: %-14s for status to account for 3-byte Unicode symbols (●○◐) displaying as 1 char
+            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${status_color}%-14s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-15s ${CYAN}│${NC}\n" \
                 "$display_name" "$status_display" "$last_run" "$uptime" "$ports"
         done <<< "$json_lines"
     fi
@@ -1517,12 +1526,12 @@ show_status() {
                 display_name="${service}*"
             fi
 
-            printf "  ${CYAN}│${NC} ${name_color}%-15s${NC} ${CYAN}│${NC} ${DIM}%-9s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-9s ${CYAN}│${NC}\n" \
+            printf "  ${CYAN}│${NC} ${name_color}%-20s${NC} ${CYAN}│${NC} ${DIM}%-12s${NC} ${CYAN}│${NC} %-19s ${CYAN}│${NC} %-12s ${CYAN}│${NC} %-15s ${CYAN}│${NC}\n" \
                 "$display_name" "- never" "-" "-" "-"
         fi
     done <<< "$all_services"
 
-    echo -e "  ${CYAN}└─────────────────┴───────────┴─────────────────────┴──────────────┴───────────┘${NC}"
+    echo -e "  ${CYAN}└──────────────────────┴──────────────┴─────────────────────┴──────────────┴─────────────────┘${NC}"
 
     # Show legend if there are disabled services
     local has_disabled=false
@@ -1628,8 +1637,10 @@ select_profiles() {
     echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Cancel${NC}       Exit without selecting                        ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Back${NC}         Back to main menu                             ${CYAN}│${NC}"
     echo -e "  ${CYAN}└─────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
@@ -1637,7 +1648,7 @@ select_profiles() {
     read -r choices < /dev/tty 2>/dev/null || choices=""
 
     if [[ "$choices" == "0" || -z "$choices" ]]; then
-        return 1
+        return 2  # Return 2 to signal "go back" vs 1 for error
     fi
 
     # Support both space and comma separators
@@ -1685,9 +1696,10 @@ select_profiles() {
             SELECTED_PROFILES+=("admin")
         fi
 
-        # Always include donation services when selecting "all"
+        # Always include donation and monitoring services when selecting "all"
         SELECTED_PROFILES+=("conduit")
         SELECTED_PROFILES+=("snowflake")
+        SELECTED_PROFILES+=("monitoring")
 
         # If nothing enabled (shouldn't happen), fall back to donation-only
         if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
@@ -1707,6 +1719,7 @@ select_profiles() {
                 5) SELECTED_PROFILES+=("admin") ;;
                 6) SELECTED_PROFILES+=("conduit") ;;
                 7) SELECTED_PROFILES+=("snowflake") ;;
+                8) SELECTED_PROFILES+=("monitoring") ;;
             esac
         done
     fi
@@ -1780,10 +1793,78 @@ get_default_profiles() {
     fi
 }
 
+# Ensure CLASH_API_SECRET is set in .env for monitoring
+# This is needed for clash-exporter to authenticate with sing-box Clash API
+# Returns: 0 = continue, 1 = skip monitoring (user declined when using 'all' profile)
+ensure_clash_api_secret() {
+    local profiles="$1"
+    local env_file="$SCRIPT_DIR/.env"
+
+    # Only needed if monitoring or all profile is being started
+    if ! echo "$profiles" | grep -qE "monitoring|all"; then
+        return 0
+    fi
+
+    # Check if CLASH_API_SECRET is already set in .env (non-empty)
+    # Note: || true needed because set -o pipefail causes exit if grep finds nothing
+    local current_secret
+    current_secret=$(grep "^CLASH_API_SECRET=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || true)
+    if [[ -n "$current_secret" ]]; then
+        return 0  # Already configured
+    fi
+
+    # First-time monitoring setup
+    # If using 'all' profile, ask user if they want to enable monitoring (requires 2GB RAM)
+    if echo "$profiles" | grep -qE "\ball\b|--profile all"; then
+        echo ""
+        warn "Monitoring requires at least 2GB RAM to run properly."
+        echo "  The monitoring stack includes Grafana, Prometheus, and exporters."
+        echo ""
+        if ! confirm "Enable monitoring? (You can start it later with 'moav start monitoring')" "n"; then
+            info "Skipping monitoring. Starting other services..."
+            return 1  # Signal caller to skip monitoring
+        fi
+    fi
+
+    # Try to extract from state volume (created by bootstrap)
+    local secret
+    secret=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/clash-api.env 2>/dev/null | grep "^CLASH_API_SECRET=" | cut -d'=' -f2 || true)
+
+    if [[ -z "$secret" ]]; then
+        # Try to extract from existing sing-box config.json
+        if [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]]; then
+            secret=$(grep -o '"secret"[[:space:]]*:[[:space:]]*"[^"]*"' "$SCRIPT_DIR/configs/sing-box/config.json" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"$/\1/' || true)
+        fi
+    fi
+
+    if [[ -n "$secret" ]]; then
+        info "Configuring CLASH_API_SECRET for monitoring..."
+        # Update .env file
+        if grep -q "^CLASH_API_SECRET=" "$env_file" 2>/dev/null; then
+            # Replace existing empty line
+            sed -i.bak "s/^CLASH_API_SECRET=.*/CLASH_API_SECRET=$secret/" "$env_file"
+            rm -f "$env_file.bak"
+        else
+            # Append to file
+            echo "" >> "$env_file"
+            echo "# Clash API secret for monitoring (auto-configured)" >> "$env_file"
+            echo "CLASH_API_SECRET=$secret" >> "$env_file"
+        fi
+        success "CLASH_API_SECRET configured"
+    else
+        warn "Could not find CLASH_API_SECRET. Clash exporter may not authenticate properly."
+        echo "  If sing-box metrics show empty, run: moav bootstrap"
+    fi
+    return 0
+}
+
 start_services() {
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "start" || return 1
+    local ret=0
+    select_profiles "start" || ret=$?
+    [[ $ret -eq 2 ]] && return 2  # User chose "Back"
+    [[ $ret -ne 0 ]] && return 1
 
     local profiles="$SELECTED_PROFILE_STRING"
     if [[ -z "$profiles" ]]; then
@@ -1807,10 +1888,19 @@ start_services() {
         fi
     fi
 
+    # Ensure CLASH_API_SECRET is configured for monitoring
+    # Returns 1 if user declined monitoring when using 'all' profile
+    local skip_monitoring=0
+    ensure_clash_api_secret "$profiles" || skip_monitoring=1
+    if [[ $skip_monitoring -eq 1 ]]; then
+        # Replace 'all' with individual profiles excluding monitoring
+        profiles="--profile proxy --profile wireguard --profile dnstt --profile trusttunnel --profile admin --profile conduit --profile snowflake"
+    fi
+
     echo ""
     info "Building containers (if needed)..."
 
-    local cmd="docker compose $profiles up -d"
+    local cmd="docker compose $profiles up -d --remove-orphans"
 
     if run_command "$cmd" "Starting services"; then
         echo ""
@@ -1819,6 +1909,12 @@ start_services() {
         # Show admin URL if admin was started
         if echo "$profiles" | grep -qE "admin|all"; then
             echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+        fi
+        # Show Grafana URL if monitoring was started
+        if echo "$profiles" | grep -qE "monitoring|all"; then
+            echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+        fi
+        if echo "$profiles" | grep -qE "admin|monitoring|all"; then
             echo ""
         fi
         show_log_help
@@ -1838,7 +1934,10 @@ stop_services() {
 
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "stop" || return 1
+    local ret=0
+    select_profiles "stop" || ret=$?
+    [[ $ret -eq 2 ]] && return 2  # User chose "Back"
+    [[ $ret -ne 0 ]] && return 1
 
     local profiles="$SELECTED_PROFILE_STRING"
     if [[ -z "$profiles" ]]; then
@@ -1872,7 +1971,10 @@ restart_services() {
 
     # Use the unified service selection menu
     SELECTED_PROFILE_STRING=""
-    select_profiles "restart" || return 1
+    local ret=0
+    select_profiles "restart" || ret=$?
+    [[ $ret -eq 2 ]] && return 2  # User chose "Back"
+    [[ $ret -ne 0 ]] && return 1
 
     local profiles="$SELECTED_PROFILE_STRING"
     if [[ -z "$profiles" ]]; then
@@ -2316,6 +2418,10 @@ main_menu() {
             if echo "$running" | grep -q "admin"; then
                 echo -e "  ${CYAN}↳${NC} Admin: ${CYAN}$(get_admin_url)${NC}"
             fi
+            # Show Grafana URL if grafana is running
+            if echo "$running" | grep -q "grafana"; then
+                echo -e "  ${CYAN}↳${NC} Grafana: ${CYAN}$(get_grafana_url)${NC}"
+            fi
         else
             echo -e "  ${DIM}○ No services running${NC}"
         fi
@@ -2340,12 +2446,12 @@ main_menu() {
         read -r choice < /dev/tty 2>/dev/null || choice=""
 
         case $choice in
-            1) start_services; press_enter ;;
-            2) stop_services; press_enter ;;
-            3) restart_services; press_enter ;;
+            1) r=0; start_services || r=$?; [[ $r -eq 2 ]] || press_enter ;;
+            2) r=0; stop_services || r=$?; [[ $r -eq 2 ]] || press_enter ;;
+            3) r=0; restart_services || r=$?; [[ $r -eq 2 ]] || press_enter ;;
             4) show_status; press_enter ;;
-            5) view_logs; press_enter ;;
-            6) user_management; press_enter ;;
+            5) view_logs ;;  # view_logs has its own loop, no press_enter needed
+            6) user_management ;;  # user_management has its own loop
             7) build_services; press_enter ;;
             8) migration_menu; press_enter ;;
             0|q|Q)
@@ -2605,7 +2711,7 @@ cmd_profiles() {
 
 cmd_start() {
     local profiles=""
-    local valid_profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake client all setup"
+    local valid_profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring client all setup"
 
     if [[ $# -eq 0 ]]; then
         # No arguments - check for DEFAULT_PROFILES in .env
@@ -2660,16 +2766,30 @@ cmd_start() {
         fi
     fi
 
+    # Ensure CLASH_API_SECRET is configured for monitoring
+    # Returns 1 if user declined monitoring when using 'all' profile
+    local skip_monitoring=0
+    ensure_clash_api_secret "$profiles" || skip_monitoring=1
+    if [[ $skip_monitoring -eq 1 ]]; then
+        # Replace 'all' with individual profiles excluding monitoring
+        profiles="--profile proxy --profile wireguard --profile dnstt --profile trusttunnel --profile admin --profile conduit --profile snowflake"
+    fi
+
     info "Starting services..."
-    docker compose $profiles up -d
+    docker compose $profiles up -d --remove-orphans
     success "Services started!"
     echo ""
     # Show admin URL if admin was started
     if echo "$profiles" | grep -qE "admin|all"; then
         echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+    fi
+    # Show Grafana URL if monitoring was started
+    if echo "$profiles" | grep -qE "monitoring|all"; then
+        echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+    fi
+    if echo "$profiles" | grep -qE "admin|monitoring|all"; then
         echo ""
     fi
-    docker compose $profiles ps
 }
 
 # Resolve profile name aliases to actual docker-compose profile names
@@ -2684,6 +2804,8 @@ resolve_profile() {
             echo "dnstt" ;;
         psiphon)
             echo "conduit" ;;
+        grafana|prometheus|metrics)
+            echo "monitoring" ;;
         *)
             echo "$profile" ;;
     esac
@@ -2699,6 +2821,9 @@ resolve_service() {
         ws|tunnel)                    echo "wstunnel" ;;
         dns)                          echo "dnstt" ;;
         snow|tor)                     echo "snowflake" ;;
+        # Monitoring services (pass through as-is)
+        grafana|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter|conduit-exporter|singbox-user-exporter)
+            echo "$svc" ;;
         *)                            echo "$svc" ;;
     esac
 }
@@ -2741,16 +2866,42 @@ cmd_stop() {
             success "All services stopped!"
         fi
     else
-        local services
-        services=$(resolve_services "${args[@]}")
-        if [[ "$remove_containers" == "true" ]]; then
-            info "Stopping and removing: $services"
-            docker compose rm -sf $services
+        # Check if argument is a profile name
+        local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
+        local profile_match=""
+        for p in $profiles; do
+            if [[ "${args[0]}" == "$p" ]]; then
+                profile_match="$p"
+                break
+            fi
+        done
+
+        if [[ -n "$profile_match" ]]; then
+            # Handle profile stop
+            if [[ "$remove_containers" == "true" ]]; then
+                info "Stopping and removing $profile_match profile..."
+                docker compose --profile "$profile_match" down
+            else
+                info "Stopping $profile_match profile..."
+                docker compose --profile "$profile_match" stop
+            fi
+            success "Profile $profile_match stopped!"
         else
-            info "Stopping: $services"
-            docker compose stop $services
+            local services
+            services=$(resolve_services "${args[@]}")
+            if [[ -z "$services" ]]; then
+                error "No valid services to stop"
+                return 1
+            fi
+            if [[ "$remove_containers" == "true" ]]; then
+                info "Stopping and removing: $services"
+                docker compose rm -sf $services
+            else
+                info "Stopping: $services"
+                docker compose stop $services
+            fi
+            success "Services stopped!"
         fi
-        success "Services stopped!"
     fi
 }
 
@@ -2759,9 +2910,41 @@ cmd_restart() {
         info "Restarting all services..."
         docker compose --profile all restart
         success "All services restarted!"
+    elif [[ $# -eq 1 ]]; then
+        # Single argument - check if it's a profile name
+        local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
+        local profile_match=""
+        for p in $profiles; do
+            if [[ "$1" == "$p" ]]; then
+                profile_match="$p"
+                break
+            fi
+        done
+
+        if [[ -n "$profile_match" ]]; then
+            # Handle profile restart - restart all services in that profile
+            info "Restarting $profile_match profile services..."
+            docker compose --profile "$profile_match" restart
+            success "Profile $profile_match restarted!"
+        else
+            local services
+            services=$(resolve_services "$@")
+            if [[ -z "$services" ]]; then
+                error "No valid services to restart"
+                return 1
+            fi
+            info "Restarting: $services"
+            docker compose restart $services
+            success "Services restarted!"
+        fi
     else
+        # Multiple arguments - resolve all as service names
         local services
         services=$(resolve_services "$@")
+        if [[ -z "$services" ]]; then
+            error "No valid services to restart"
+            return 1
+        fi
         info "Restarting: $services"
         docker compose restart $services
         success "Services restarted!"
@@ -2787,11 +2970,18 @@ cmd_status() {
 
     show_status
 
-    # Show admin URL if admin is running
+    # Show admin and grafana URLs if running
     local running=$(get_running_services)
+    local show_urls=0
     if echo "$running" | grep -q "admin"; then
-        echo ""
+        [[ $show_urls -eq 0 ]] && echo ""
         echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+        show_urls=1
+    fi
+    if echo "$running" | grep -q "grafana"; then
+        [[ $show_urls -eq 0 ]] && echo ""
+        echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+        show_urls=1
     fi
 
     # Show CDN domain if configured
@@ -2939,6 +3129,12 @@ cmd_build() {
     else
         local services
         services=$(resolve_services "${services_args[@]}")
+        # Remove empty values and trim whitespace
+        services=$(echo "$services" | xargs)
+        if [[ -z "$services" ]]; then
+            info "No buildable services specified"
+            return 0
+        fi
         info "Building: $services${no_cache:+ (no cache)}"
         docker compose --profile all build $no_cache $services
         success "Build complete!"

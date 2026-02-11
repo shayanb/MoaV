@@ -19,6 +19,12 @@ Common issues and their solutions.
   - [TrustTunnel not connecting](#trusttunnel-not-connecting)
   - [CDN VLESS+WS not working](#cdn-vlessws-not-working)
   - [DNS tunnel not working](#dns-tunnel-not-working)
+- [Monitoring Issues](#monitoring-issues)
+  - [System hangs after starting monitoring](#system-hangs-after-starting-monitoring)
+  - [Grafana shows "No Data"](#grafana-shows-no-data)
+  - [High memory usage from cAdvisor](#high-memory-usage-from-cadvisor)
+  - [Snowflake metrics showing zeros](#snowflake-metrics-showing-zeros)
+  - [WireGuard exporter not starting](#wireguard-exporter-not-starting)
 - [MoaV Test/Client Issues](#moav-testclient-issues)
 - [Client-Side Issues](#client-side-issues)
 - [Network-Specific Issues](#network-specific-issues)
@@ -324,7 +330,7 @@ docker compose logs certbot
    # Build only proxy services
    docker compose --profile proxy build
 
-   # Available profiles: proxy, wireguard, dnstt, admin, conduit, snowflake, all
+   # Available profiles: proxy, wireguard, dnstt, trusttunnel, admin, conduit, snowflake, monitoring, all
    ```
 
 7. **Port already in use (8443 for Trojan):**
@@ -647,6 +653,98 @@ ufw allow 53/udp
 # or
 iptables -A INPUT -p udp --dport 53 -j ACCEPT
 ```
+
+---
+
+## Monitoring Issues
+
+> **Warning**: The monitoring stack nearly doubles MoaV's resource requirements. While MoaV alone runs on 1 vCPU / 1GB RAM, adding monitoring requires at least **2 vCPU / 2GB RAM** for stable operation.
+
+### System hangs after starting monitoring
+
+If your server hangs or becomes unresponsive after starting monitoring (especially the first time), you're likely running out of RAM.
+
+**Symptoms:**
+- SSH connection freezes
+- Commands stop responding
+- Server becomes unreachable
+
+**Solution 1: Recover and disable monitoring**
+
+If you can still SSH in (wait a few minutes):
+```bash
+# Stop all monitoring services
+docker compose --profile monitoring stop
+
+# Or stop individual heavy services
+docker stop moav-prometheus moav-grafana moav-cadvisor
+```
+
+If SSH is frozen, reboot via your VPS control panel, then:
+```bash
+cd /opt/moav
+# Don't start monitoring on boot
+moav start proxy admin  # Without monitoring
+```
+
+**Solution 2: Upgrade your server**
+
+Monitoring requires at least 2GB RAM. Upgrade your VPS to 2GB+ RAM before enabling monitoring.
+
+**Solution 3: Run lighter monitoring**
+
+If you must have metrics on 1GB RAM, disable the heaviest components:
+```bash
+# Start only essential monitoring (skip cAdvisor)
+docker compose --profile monitoring up -d prometheus grafana node-exporter clash-exporter
+
+# Stop cAdvisor if running (uses ~150MB)
+docker stop moav-cadvisor
+```
+
+### Grafana shows "No Data"
+
+1. Check Prometheus is running:
+   ```bash
+   docker logs moav-prometheus
+   ```
+
+2. Verify targets are up - access Prometheus internally:
+   ```bash
+   docker exec moav-grafana wget -qO- http://prometheus:9091/api/v1/query?query=up
+   ```
+
+3. Ensure services are on the same Docker network (`moav_net`)
+
+### High memory usage from cAdvisor
+
+Limit cAdvisor resources in `docker-compose.yml`:
+```yaml
+cadvisor:
+  deploy:
+    resources:
+      limits:
+        memory: 256M
+```
+
+### Snowflake metrics showing zeros
+
+The Snowflake exporter parses log files for summary statistics. Summaries are logged periodically. If you just started Snowflake, wait for the first summary to appear:
+
+```bash
+# Check if summaries exist
+docker exec moav-snowflake cat /var/log/snowflake/snowflake.log | grep "In the"
+```
+
+### WireGuard exporter not starting
+
+The exporter needs read access to WireGuard config. Check:
+```bash
+docker logs moav-wireguard-exporter
+ls -la configs/wireguard/wg0.conf
+```
+
+For complete monitoring documentation, see [MONITORING.md](MONITORING.md).
 
 ---
 
