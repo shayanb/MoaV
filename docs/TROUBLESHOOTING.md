@@ -1120,6 +1120,21 @@ docker compose --profile all down
 docker compose --profile all up -d --build
 ```
 
+### Apply .env changes
+
+**Important:** Docker caches environment variables at container creation time. Simply restarting a service does NOT pick up `.env` changes.
+
+```bash
+# WRONG - does NOT apply .env changes
+docker compose restart snowflake
+
+# CORRECT - recreates container with new .env values
+docker compose up -d --force-recreate snowflake
+
+# Or use moav (handles this automatically)
+moav stop snowflake && moav start snowflake
+```
+
 ### Check resource usage
 
 ```bash

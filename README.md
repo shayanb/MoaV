@@ -134,6 +134,8 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 # Using moav (recommended)
 moav user list            # List all users (or: moav users)
 moav user add joe         # Add user to all services
+moav user add alice bob   # Add multiple users
+moav user add --batch 5   # Batch create user01..user05
 moav user revoke joe      # Revoke user from all services
 ```
 
@@ -243,7 +245,7 @@ moav logs conduit             # View conduit logs
 
 | Platform | Recommended Apps |
 |----------|------------------|
-| iOS | Shadowrocket, Hiddify, WireGuard, TrustTunnel, Psiphon, Streisand |
+| iOS | Streisand, Hiddify, WireGuard, TrustTunnel, Psiphon, Shadowrocket |
 | Android | v2rayNG, Hiddify, WireGuard, TrustTunnel, Psiphon, NekoBox |
 | macOS | Hiddify, Streisand, WireGuard, TrustTunnel, Psiphon |
 | Windows | v2rayN, Hiddify, WireGuard, TrustTunnel, Psiphon |
@@ -296,9 +298,8 @@ Don't have a domain? MoaV can run in **domain-less mode** with:
 Run `moav` and select "No domain" when prompted, or use `moav domainless` to configure.
 
 **Recommended VPS:**
-- Hetzner (Germany/Finland)
-- DigitalOcean (Frankfurt/Amsterdam)
-- ...
+- VPS Price Trackers: [VPS-PRICES](https://vps-prices.com/)، [VPS Price Tracker](https://vpspricetracker.com/), [Cheap VPS Price Cheat Sheet](https://docs.google.com/spreadsheets/d/e/2PACX-1vTOC_THbM2RZzfRUhFCNp3SDXKdYDkfmccis4vxr7WtVIcPmXM-2lGKuZTBr8o_MIJ4XgIUYz1BmcqM/pubhtml)
+- [Time4VPS](https://www.time4vps.com/?affid=8471): 1 vCPU، 1GB RAM، IPv4، 3.99€/Month
 
 
 ## Project Structure

@@ -47,6 +47,7 @@ moav stop                 # Stop all services
 moav status               # Show service status
 moav logs                 # View logs (follow mode)
 moav user add NAME        # Add new user
+moav user add --batch 5   # Batch create 5 users
 moav user revoke NAME     # Revoke user
 moav test USERNAME        # Test connectivity
 ```
@@ -277,16 +278,33 @@ moav user list    # Same as above
 ```
 
 #### `moav user add`
-Add a new user to all services.
+Add one or more users to all services.
 
 ```bash
+# Single user
 moav user add john            # Add user 'john'
 moav user add john --package  # Add user and create zip bundle
 moav user add john -p         # Short form
+
+# Multiple users
+moav user add alice bob charlie           # Add three users
+moav user add alice bob charlie -p        # Add three users with zip packages
+
+# Batch mode (auto-numbered)
+moav user add --batch 5                   # Create user01, user02, ..., user05
+moav user add --batch 10 --prefix team    # Create team01, team02, ..., team10
+moav user add --batch 5 --prefix dev -p   # Create dev01..dev05 with packages
 ```
 
 **Options:**
 - `--package`, `-p` - Create distributable zip file with HTML guide
+- `--batch N`, `-b N` - Create N users with auto-generated names
+- `--prefix NAME` - Prefix for batch usernames (default: "user")
+
+**Batch mode features:**
+- Smart numbering: if user01-user03 exist, `--batch 2` creates user04, user05
+- Services reload once at the end (not after each user)
+- Shows progress for each user and summary at the end
 
 Creates bundle in `outputs/bundles/USERNAME/` containing:
 - Config files for all protocols
@@ -542,6 +560,12 @@ moav logs sing-box
 
 # Add new user
 moav user add alice
+
+# Add multiple users at once
+moav user add alice bob charlie
+
+# Batch create users (auto-numbered)
+moav user add --batch 10 --prefix team --package
 
 # Test user connectivity
 moav test alice
