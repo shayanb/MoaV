@@ -1311,10 +1311,27 @@ run_bootstrap() {
 
         echo ""
         if confirm "Start services now?" "y"; then
+            # Ensure CLASH_API_SECRET is configured for monitoring
+            local skip_monitoring=0
+            ensure_clash_api_secret "$SELECTED_PROFILE_STRING" || skip_monitoring=1
+            if [[ $skip_monitoring -eq 1 ]]; then
+                # Remove monitoring from selected profiles
+                SELECTED_PROFILE_STRING=$(echo "$SELECTED_PROFILE_STRING" | sed 's/--profile monitoring//g')
+            fi
+
             info "Starting services..."
             docker compose $SELECTED_PROFILE_STRING up -d --remove-orphans
             echo ""
             success "Services started!"
+
+            # Show URLs
+            if echo "$SELECTED_PROFILE_STRING" | grep -qE "admin|all"; then
+                echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+            fi
+            if echo "$SELECTED_PROFILE_STRING" | grep -qE "monitoring"; then
+                echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+            fi
+            echo ""
         else
             echo ""
             info "You can start services later with: moav start"
@@ -1766,10 +1783,41 @@ select_profiles() {
             SELECTED_PROFILES+=("admin")
         fi
 
-        # Always include donation and monitoring services when selecting "all"
+        # Always include donation services when selecting "all"
         SELECTED_PROFILES+=("conduit")
         SELECTED_PROFILES+=("snowflake")
-        SELECTED_PROFILES+=("monitoring")
+
+        # Check if monitoring should be included
+        local enable_monitoring=$(grep "^ENABLE_MONITORING=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
+        if [[ "$enable_monitoring" == "true" ]]; then
+            SELECTED_PROFILES+=("monitoring")
+        elif [[ "$enable_monitoring" != "false" ]]; then
+            # Not explicitly set - ask user
+            echo ""
+            warn "Monitoring stack (Grafana + Prometheus) requires at least 2GB RAM."
+            if confirm "Enable monitoring?" "n"; then
+                # Update .env to enable monitoring
+                if grep -q "^ENABLE_MONITORING=" "$env_file" 2>/dev/null; then
+                    sed -i.bak "s/^ENABLE_MONITORING=.*/ENABLE_MONITORING=true/" "$env_file"
+                    rm -f "$env_file.bak"
+                else
+                    # Add if not present
+                    echo "ENABLE_MONITORING=true" >> "$env_file"
+                fi
+                SELECTED_PROFILES+=("monitoring")
+                success "Monitoring enabled"
+            else
+                # Explicitly disable to avoid asking again
+                if grep -q "^ENABLE_MONITORING=" "$env_file" 2>/dev/null; then
+                    sed -i.bak "s/^ENABLE_MONITORING=.*/ENABLE_MONITORING=false/" "$env_file"
+                    rm -f "$env_file.bak"
+                else
+                    echo "ENABLE_MONITORING=false" >> "$env_file"
+                fi
+                info "Monitoring skipped. Enable later with: moav start monitoring"
+            fi
+        fi
+        # If explicitly false, don't include monitoring
 
         # If nothing enabled (shouldn't happen), fall back to donation-only
         if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
