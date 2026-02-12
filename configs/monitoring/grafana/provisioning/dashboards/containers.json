@@ -203,7 +203,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_memory_usage_bytes{name=~\"moav-.+\", name!~\"moav-(prometheus|grafana|cadvisor|node-exporter|clash-exporter|snowflake-exporter|wireguard-exporter|conduit-exporter|singbox-user-exporter)\"})", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_memory_usage_bytes{name=~\"moav-.+\"})", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "Memory Usage by Container",
       "type": "timeseries"
@@ -235,7 +235,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (rate(container_cpu_usage_seconds_total{name=~\"moav-.+\", name!~\"moav-(prometheus|grafana|cadvisor|node-exporter|clash-exporter|snowflake-exporter|wireguard-exporter|conduit-exporter|singbox-user-exporter)\"}[5m])) * 100", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (rate(container_cpu_usage_seconds_total{name=~\"moav-.+\"}[5m])) * 100", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "CPU Usage by Container",
       "type": "timeseries"
@@ -326,7 +326,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_memory_usage_bytes{name=~\"moav-.+\", name!~\"moav-(prometheus|grafana|cadvisor|node-exporter|clash-exporter|snowflake-exporter|wireguard-exporter|conduit-exporter|singbox-user-exporter)\"})", "legendFormat": "{{name}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (name) (container_memory_usage_bytes{name=~\"moav-.+\"})", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "title": "Memory Distribution",
       "type": "piechart"
