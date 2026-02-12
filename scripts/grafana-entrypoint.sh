@@ -1,55 +1,80 @@
 #!/bin/sh
 # =============================================================================
-# Grafana entrypoint with SSL certificate detection
+# Grafana entrypoint with SSL certificate detection and custom branding
 # =============================================================================
 
 echo "[grafana] Starting MoaV Grafana Dashboard"
 
-# Set dynamic app title (affects PWA name on phone)
-# Priority: GRAFANA_APP_TITLE > "MoaV - DOMAIN" > "MoaV - SERVER_IP" > "MoaV Monitoring"
+# Determine app title (for PWA name on phone home screen)
+# Priority: GRAFANA_APP_TITLE > "MoaV - DOMAIN" > "MoaV - SERVER_IP" > "MoaV"
 if [ -n "$GRAFANA_APP_TITLE" ]; then
-    export GF_BRANDING_APP_TITLE="$GRAFANA_APP_TITLE"
+    APP_TITLE="$GRAFANA_APP_TITLE"
 elif [ -n "$DOMAIN" ]; then
-    export GF_BRANDING_APP_TITLE="MoaV - ${DOMAIN}"
+    APP_TITLE="MoaV - ${DOMAIN}"
 elif [ -n "$SERVER_IP" ]; then
-    export GF_BRANDING_APP_TITLE="MoaV - ${SERVER_IP}"
+    APP_TITLE="MoaV - ${SERVER_IP}"
 else
-    export GF_BRANDING_APP_TITLE="MoaV Monitoring"
+    APP_TITLE="MoaV"
 fi
-echo "[grafana] App title: $GF_BRANDING_APP_TITLE"
+echo "[grafana] App title: $APP_TITLE"
 
-# Install MoaV branding (logo, favicon)
-if [ -d "/branding" ] && [ -f "/branding/logo.png" ]; then
-    echo "[grafana] Installing branding files..."
-    if cp /branding/logo.png /usr/share/grafana/public/img/moav_logo.png; then
-        echo "[grafana] Copied logo.png"
-    else
-        echo "[grafana] ERROR: Failed to copy logo.png"
-    fi
-    if cp /branding/favicon.png /usr/share/grafana/public/img/moav_favicon.png; then
-        echo "[grafana] Copied favicon.png"
-    else
-        echo "[grafana] ERROR: Failed to copy favicon.png"
-    fi
-    if cp /branding/favicon.ico /usr/share/grafana/public/img/moav_favicon.ico; then
-        echo "[grafana] Copied favicon.ico"
-    else
-        echo "[grafana] ERROR: Failed to copy favicon.ico"
-    fi
-
-    # Verify files exist
-    if [ -f "/usr/share/grafana/public/img/moav_logo.png" ]; then
-        echo "[grafana] MoaV branding installed successfully"
-    else
-        echo "[grafana] WARNING: Branding files not found after copy"
-    fi
+# Construct Grafana root URL from subdomain + domain
+if [ -n "$GRAFANA_SUBDOMAIN" ] && [ -n "$DOMAIN" ]; then
+    export GF_SERVER_ROOT_URL="https://${GRAFANA_SUBDOMAIN}.${DOMAIN}:2083/"
+    echo "[grafana] Root URL: $GF_SERVER_ROOT_URL"
 fi
 
-# Set branding env vars (must be done before exec, using URL paths)
-export GF_BRANDING_LOGIN_LOGO="/public/img/moav_logo.png"
-export GF_BRANDING_MENU_LOGO="/public/img/moav_favicon.png"
-export GF_BRANDING_FAV_ICON="/public/img/moav_favicon.ico"
-echo "[grafana] Branding env vars set"
+# =============================================================================
+# Install MoaV branding (Grafana OSS requires direct file replacement)
+# Note: GF_BRANDING_* env vars are Enterprise-only features
+# =============================================================================
+GRAFANA_IMG="/usr/share/grafana/public/img"
+GRAFANA_BUILD="/usr/share/grafana/public/build"
+
+if [ -d "/branding" ]; then
+    echo "[grafana] Installing MoaV branding..."
+
+    # Replace favicon (browser tab icon)
+    if [ -f "/branding/favicon.png" ]; then
+        cp /branding/favicon.png "$GRAFANA_IMG/fav32.png" && echo "[grafana] Replaced fav32.png"
+        cp /branding/favicon.png "$GRAFANA_IMG/apple-touch-icon.png" && echo "[grafana] Replaced apple-touch-icon.png"
+    fi
+
+    # Replace login page logo (Grafana uses grafana_icon.svg)
+    # Create an SVG wrapper that embeds the PNG as base64
+    if [ -f "/branding/logo.png" ]; then
+        # Get image dimensions (default to 100x100 if not determinable)
+        LOGO_B64=$(base64 -w0 /branding/logo.png 2>/dev/null || base64 /branding/logo.png)
+        cat > "$GRAFANA_IMG/grafana_icon.svg" << SVGEOF
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100">
+  <image width="100" height="100" xlink:href="data:image/png;base64,$LOGO_B64"/>
+</svg>
+SVGEOF
+        echo "[grafana] Created grafana_icon.svg from logo.png"
+    fi
+
+    # Replace app title in JavaScript bundles (affects browser tab and PWA name)
+    # This searches for the default "Grafana" title and replaces it
+    if [ -d "$GRAFANA_BUILD" ]; then
+        echo "[grafana] Patching app title to: $APP_TITLE"
+        # Find and replace AppTitle in JS bundles
+        for js_file in "$GRAFANA_BUILD"/*.js; do
+            if [ -f "$js_file" ]; then
+                # Replace various patterns where Grafana title appears
+                if grep -q '"AppTitle","Grafana"' "$js_file" 2>/dev/null; then
+                    sed -i "s/\"AppTitle\",\"Grafana\"/\"AppTitle\",\"$APP_TITLE\"/g" "$js_file"
+                    echo "[grafana] Patched AppTitle in $(basename "$js_file")"
+                fi
+                # Also try other common patterns
+                if grep -q 'title:"Grafana"' "$js_file" 2>/dev/null; then
+                    sed -i "s/title:\"Grafana\"/title:\"$APP_TITLE\"/g" "$js_file"
+                fi
+            fi
+        done
+    fi
+
+    echo "[grafana] MoaV branding installed"
+fi
 
 # Find SSL certificates (same logic as admin)
 find_certificates() {

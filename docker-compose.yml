@@ -400,12 +400,10 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-}
-      - GF_BRANDING_LOGIN_LOGO=/public/img/moav_logo.png
-      - GF_BRANDING_MENU_LOGO=/public/img/moav_favicon.png
-      - GF_BRANDING_FAV_ICON=/public/img/moav_favicon.ico
+      # Branding vars passed to entrypoint (direct file replacement, not GF_BRANDING_* which is Enterprise-only)
       - DOMAIN=${DOMAIN:-}
       - SERVER_IP=${SERVER_IP:-}
+      - GRAFANA_SUBDOMAIN=${GRAFANA_SUBDOMAIN:-}
       - GRAFANA_APP_TITLE=${GRAFANA_APP_TITLE:-}
       - TZ=${TZ:-UTC}
     depends_on:

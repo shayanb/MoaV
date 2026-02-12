@@ -238,18 +238,20 @@ get_grafana_url() {
 }
 
 get_grafana_cdn_url() {
-    # Get Grafana CDN URL from GRAFANA_ROOT_URL (only if explicitly configured)
-    local grafana_root_url=$(grep -E '^GRAFANA_ROOT_URL=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    if [[ -n "$grafana_root_url" ]]; then
-        echo "$grafana_root_url"
+    # Get Grafana CDN URL from GRAFANA_SUBDOMAIN + DOMAIN
+    local grafana_subdomain=$(grep -E '^GRAFANA_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$grafana_subdomain" ]] && [[ -n "$domain" ]]; then
+        echo "https://${grafana_subdomain}.${domain}:2083"
     fi
 }
 
 get_cdn_url() {
-    # Get CDN URL for VLESS+WS if CDN_DOMAIN is configured
-    local cdn_domain=$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    if [[ -n "$cdn_domain" ]]; then
-        echo "https://${cdn_domain}"
+    # Get CDN URL for VLESS+WS from CDN_SUBDOMAIN + DOMAIN
+    local cdn_subdomain=$(grep -E '^CDN_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$cdn_subdomain" ]] && [[ -n "$domain" ]]; then
+        echo "https://${cdn_subdomain}.${domain}"
     fi
 }
 
@@ -1871,6 +1873,23 @@ ensure_clash_api_secret() {
     # Only needed if monitoring or all profile is being started
     if ! echo "$profiles" | grep -qE "monitoring|all"; then
         return 0
+    fi
+
+    # Check if ENABLE_MONITORING is explicitly set to false
+    local enable_monitoring
+    enable_monitoring=$(grep "^ENABLE_MONITORING=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || true)
+    if [[ "$enable_monitoring" == "false" ]]; then
+        echo ""
+        warn "Monitoring is currently disabled in .env (ENABLE_MONITORING=false)"
+        if confirm "Enable monitoring?" "y"; then
+            # Update ENABLE_MONITORING to true in .env
+            sed -i.bak "s/^ENABLE_MONITORING=false/ENABLE_MONITORING=true/" "$env_file"
+            rm -f "$env_file.bak"
+            success "ENABLE_MONITORING set to true"
+        else
+            info "Skipping monitoring. Starting other services..."
+            return 1  # Signal caller to skip monitoring
+        fi
     fi
 
     # Check if CLASH_API_SECRET is already set in .env (non-empty)
