@@ -5,6 +5,19 @@
 
 echo "[grafana] Starting MoaV Grafana Dashboard"
 
+# Set dynamic app title (affects PWA name on phone)
+# Priority: GRAFANA_APP_TITLE > "MoaV - DOMAIN" > "MoaV - SERVER_IP" > "MoaV Monitoring"
+if [ -n "$GRAFANA_APP_TITLE" ]; then
+    export GF_BRANDING_APP_TITLE="$GRAFANA_APP_TITLE"
+elif [ -n "$DOMAIN" ]; then
+    export GF_BRANDING_APP_TITLE="MoaV - ${DOMAIN}"
+elif [ -n "$SERVER_IP" ]; then
+    export GF_BRANDING_APP_TITLE="MoaV - ${SERVER_IP}"
+else
+    export GF_BRANDING_APP_TITLE="MoaV Monitoring"
+fi
+echo "[grafana] App title: $GF_BRANDING_APP_TITLE"
+
 # Find SSL certificates (same logic as admin)
 find_certificates() {
     # Check for Let's Encrypt certificates first
@@ -86,6 +99,39 @@ if [ -n "$GF_SERVER_CERT_KEY" ]; then
 fi
 
 echo "[grafana] Starting Grafana server (protocol: $GF_SERVER_PROTOCOL)..."
+
+# Background task to star all MoaV dashboards after Grafana is ready
+star_dashboards() {
+    echo "[grafana] Waiting for Grafana to be ready..."
+    sleep 15  # Wait for Grafana to fully start
+
+    # Wait for Grafana API to be available (up to 60 seconds)
+    for i in $(seq 1 12); do
+        if wget -q -O /dev/null "http://localhost:3000/api/health" 2>/dev/null; then
+            break
+        fi
+        sleep 5
+    done
+
+    # Get admin password from env
+    ADMIN_PASS="${GF_SECURITY_ADMIN_PASSWORD:-admin}"
+    AUTH="admin:${ADMIN_PASS}"
+    API="http://localhost:3000/api"
+
+    # Star all MoaV dashboards
+    for uid in moav-system moav-containers moav-singbox moav-wireguard moav-snowflake moav-conduit; do
+        wget -q -O /dev/null --header="Content-Type: application/json" \
+            --post-data="" \
+            --auth-no-challenge \
+            --user="admin" --password="${ADMIN_PASS}" \
+            "${API}/user/stars/dashboard/uid/${uid}" 2>/dev/null && \
+            echo "[grafana] Starred dashboard: ${uid}"
+    done
+    echo "[grafana] Dashboard starring complete"
+}
+
+# Run starring in background
+star_dashboards &
 
 # Run Grafana
 exec /run.sh

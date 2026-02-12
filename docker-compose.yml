@@ -400,6 +400,9 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-}
+      - DOMAIN=${DOMAIN:-}
+      - SERVER_IP=${SERVER_IP:-}
+      - GRAFANA_APP_TITLE=${GRAFANA_APP_TITLE:-}
       - TZ=${TZ:-UTC}
     depends_on:
       - prometheus
