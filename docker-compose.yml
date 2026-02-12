@@ -393,6 +393,7 @@ services:
       - ./configs/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - ./configs/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./configs/monitoring/grafana/provisioning/dashboards:/var/lib/grafana/dashboards:ro
+      - ./site/assets:/branding:ro
       - ./scripts/grafana-entrypoint.sh:/scripts/grafana-entrypoint.sh:ro
       - moav_grafana:/var/lib/grafana
       - moav_certs:/certs:ro

@@ -18,6 +18,19 @@ else
 fi
 echo "[grafana] App title: $GF_BRANDING_APP_TITLE"
 
+# Install MoaV branding (logo, favicon)
+if [ -d "/branding" ] && [ -f "/branding/logo.png" ]; then
+    cp /branding/logo.png /usr/share/grafana/public/img/moav_logo.png 2>/dev/null
+    cp /branding/favicon.png /usr/share/grafana/public/img/moav_favicon.png 2>/dev/null
+    cp /branding/favicon.ico /usr/share/grafana/public/img/moav_favicon.ico 2>/dev/null
+    echo "[grafana] MoaV branding installed"
+
+    # Set branding env vars to use custom files
+    export GF_BRANDING_LOGIN_LOGO="public/img/moav_logo.png"
+    export GF_BRANDING_MENU_LOGO="public/img/moav_favicon.png"
+    export GF_BRANDING_FAV_ICON="public/img/moav_favicon.ico"
+fi
+
 # Find SSL certificates (same logic as admin)
 find_certificates() {
     # Check for Let's Encrypt certificates first
