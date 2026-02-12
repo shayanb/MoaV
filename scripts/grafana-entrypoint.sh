@@ -40,14 +40,16 @@ if [ -d "/branding" ] && [ -f "/branding/logo.png" ]; then
     # Verify files exist
     if [ -f "/usr/share/grafana/public/img/moav_logo.png" ]; then
         echo "[grafana] MoaV branding installed successfully"
-        # Set branding env vars to use custom files
-        export GF_BRANDING_LOGIN_LOGO="public/img/moav_logo.png"
-        export GF_BRANDING_MENU_LOGO="public/img/moav_favicon.png"
-        export GF_BRANDING_FAV_ICON="public/img/moav_favicon.ico"
     else
         echo "[grafana] WARNING: Branding files not found after copy"
     fi
 fi
+
+# Set branding env vars (must be done before exec, using URL paths)
+export GF_BRANDING_LOGIN_LOGO="/public/img/moav_logo.png"
+export GF_BRANDING_MENU_LOGO="/public/img/moav_favicon.png"
+export GF_BRANDING_FAV_ICON="/public/img/moav_favicon.ico"
+echo "[grafana] Branding env vars set"
 
 # Find SSL certificates (same logic as admin)
 find_certificates() {
