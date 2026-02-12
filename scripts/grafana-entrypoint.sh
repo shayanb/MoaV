@@ -20,15 +20,33 @@ echo "[grafana] App title: $GF_BRANDING_APP_TITLE"
 
 # Install MoaV branding (logo, favicon)
 if [ -d "/branding" ] && [ -f "/branding/logo.png" ]; then
-    cp /branding/logo.png /usr/share/grafana/public/img/moav_logo.png 2>/dev/null
-    cp /branding/favicon.png /usr/share/grafana/public/img/moav_favicon.png 2>/dev/null
-    cp /branding/favicon.ico /usr/share/grafana/public/img/moav_favicon.ico 2>/dev/null
-    echo "[grafana] MoaV branding installed"
+    echo "[grafana] Installing branding files..."
+    if cp /branding/logo.png /usr/share/grafana/public/img/moav_logo.png; then
+        echo "[grafana] Copied logo.png"
+    else
+        echo "[grafana] ERROR: Failed to copy logo.png"
+    fi
+    if cp /branding/favicon.png /usr/share/grafana/public/img/moav_favicon.png; then
+        echo "[grafana] Copied favicon.png"
+    else
+        echo "[grafana] ERROR: Failed to copy favicon.png"
+    fi
+    if cp /branding/favicon.ico /usr/share/grafana/public/img/moav_favicon.ico; then
+        echo "[grafana] Copied favicon.ico"
+    else
+        echo "[grafana] ERROR: Failed to copy favicon.ico"
+    fi
 
-    # Set branding env vars to use custom files
-    export GF_BRANDING_LOGIN_LOGO="public/img/moav_logo.png"
-    export GF_BRANDING_MENU_LOGO="public/img/moav_favicon.png"
-    export GF_BRANDING_FAV_ICON="public/img/moav_favicon.ico"
+    # Verify files exist
+    if [ -f "/usr/share/grafana/public/img/moav_logo.png" ]; then
+        echo "[grafana] MoaV branding installed successfully"
+        # Set branding env vars to use custom files
+        export GF_BRANDING_LOGIN_LOGO="public/img/moav_logo.png"
+        export GF_BRANDING_MENU_LOGO="public/img/moav_favicon.png"
+        export GF_BRANDING_FAV_ICON="public/img/moav_favicon.ico"
+    else
+        echo "[grafana] WARNING: Branding files not found after copy"
+    fi
 fi
 
 # Find SSL certificates (same logic as admin)
