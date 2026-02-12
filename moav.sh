@@ -544,11 +544,12 @@ check_prerequisites() {
                         domainless_mode=true
                         # Set default profiles to only include domain-less services (admin uses self-signed cert)
                         sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard admin conduit snowflake\"|" .env
-                        # Disable protocols that need domain (admin works with self-signed cert)
+                        # Disable all protocols that need domain (admin works with self-signed cert)
                         sed -i "s|^ENABLE_REALITY=.*|ENABLE_REALITY=false|" .env
                         sed -i "s|^ENABLE_TROJAN=.*|ENABLE_TROJAN=false|" .env
                         sed -i "s|^ENABLE_HYSTERIA2=.*|ENABLE_HYSTERIA2=false|" .env
                         sed -i "s|^ENABLE_DNSTT=.*|ENABLE_DNSTT=false|" .env
+                        sed -i "s|^ENABLE_TRUSTTUNNEL=.*|ENABLE_TRUSTTUNNEL=false|" .env
                         success "Domain-less mode enabled"
                         info "WireGuard, Admin (self-signed cert), Conduit, and Snowflake will be available"
                     else
