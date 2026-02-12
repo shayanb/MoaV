@@ -502,11 +502,11 @@ services:
       - all
 
   # Sing-box User Exporter - parses sing-box logs for user connection metrics
-  singbox-user-exporter:
+  singbox-exporter:
     build:
       context: ./exporters/singbox
       dockerfile: Dockerfile
-    container_name: moav-singbox-user-exporter
+    container_name: moav-singbox-exporter
     restart: unless-stopped
     networks:
       - moav_net
