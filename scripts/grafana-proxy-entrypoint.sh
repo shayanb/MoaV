@@ -78,7 +78,8 @@ server {
 
     # Caching for static assets
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        proxy_pass http://grafana:3000;
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -91,7 +92,8 @@ server {
 
     # WebSocket support for live updates
     location /api/live/ {
-        proxy_pass http://grafana:3000;
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -103,7 +105,8 @@ server {
 
     # Main proxy
     location / {
-        proxy_pass http://grafana:3000;
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
