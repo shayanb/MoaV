@@ -59,7 +59,8 @@
       "targets": [
         { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb)", "refId": "A" }
       ],
-      "title": "Users Downloaded",
+      "title": "Users Download",
+      "description": "Total data downloaded BY users through this proxy. Note: This is only the relayed payload - container metrics show higher values due to WebSocket/TLS overhead and broker connections.",
       "type": "stat"
     },
     {
@@ -87,7 +88,8 @@
       "targets": [
         { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(upload_gb)", "refId": "A" }
       ],
-      "title": "Users Uploaded",
+      "title": "Users Upload",
+      "description": "Total data uploaded BY users through this proxy. Note: This is only the relayed payload - container metrics show higher values due to WebSocket/TLS overhead and broker connections.",
       "type": "stat"
     },
     {
@@ -116,6 +118,7 @@
         { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(download_gb) + max(upload_gb)", "refId": "A" }
       ],
       "title": "Total Bandwidth",
+      "description": "Total user payload relayed. Container network metrics (in cAdvisor) will show ~15-20x higher values due to WebSocket framing, TLS encryption overhead, and broker signaling traffic.",
       "type": "stat"
     },
     {
