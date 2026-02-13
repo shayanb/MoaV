@@ -5,6 +5,25 @@ All notable changes to MoaV will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Local Image Building** - Build container images locally for regions with blocked registries
+  - `moav build --local` - builds commonly blocked images (cAdvisor, clash-exporter)
+  - `moav build --local SERVICE` - builds specific image (prometheus, grafana, etc.)
+  - `moav build --local all` - builds ALL external images locally
+  - Automatically updates .env to use local images
+  - Available images: cadvisor, clash-exporter, prometheus, grafana, node-exporter, nginx, certbot
+  - Supports users in Iran, Russia, etc. where gcr.io/ghcr.io/Docker Hub are blocked
+- **Configurable Container Images** - All external images now configurable via .env
+  - `IMAGE_PROMETHEUS`, `IMAGE_GRAFANA`, `IMAGE_NODE_EXPORTER`, `IMAGE_CADVISOR`, etc.
+  - Allows use of mirror registries when default registries are blocked
+
+### Changed
+- **Dockerfile Organization** - All Dockerfiles moved to `dockerfiles/` directory
+  - Cleaner root directory structure
+  - All docker compose commands work unchanged
+
 ## [1.3.3] - 2026-02-13
 
 ### Added

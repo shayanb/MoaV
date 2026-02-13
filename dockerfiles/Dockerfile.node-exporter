@@ -1,0 +1,32 @@
+# =============================================================================
+# Node Exporter - System metrics exporter (built from source)
+# Use this when Docker Hub is blocked in your region
+# =============================================================================
+# Build: docker build -f dockerfiles/Dockerfile.node-exporter -t moav-node-exporter:local .
+# =============================================================================
+
+FROM golang:1.22-alpine AS builder
+
+ARG NODE_EXPORTER_VERSION=1.7.0
+
+RUN apk add --no-cache git make bash
+
+WORKDIR /build
+RUN git clone --depth 1 --branch v${NODE_EXPORTER_VERSION} https://github.com/prometheus/node_exporter.git .
+
+# Build node_exporter
+RUN make build
+
+# =============================================================================
+# Runtime image
+# =============================================================================
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /build/node_exporter /bin/node_exporter
+
+USER nobody
+EXPOSE 9100
+
+ENTRYPOINT ["/bin/node_exporter"]

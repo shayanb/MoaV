@@ -1,0 +1,67 @@
+# =============================================================================
+# Grafana - Visualization platform (built from source)
+# Use this when Docker Hub is blocked in your region
+# =============================================================================
+# Build: docker build -f dockerfiles/Dockerfile.grafana -t moav-grafana:local .
+# Note: Grafana build requires significant resources (~2GB RAM, ~10 min)
+# =============================================================================
+
+FROM golang:1.22-alpine AS go-builder
+
+ARG GRAFANA_VERSION=10.4.1
+
+RUN apk add --no-cache git make bash
+
+WORKDIR /build
+RUN git clone --depth 1 --branch v${GRAFANA_VERSION} https://github.com/grafana/grafana.git .
+
+# Build Go backend only (frontend is pre-built in release)
+RUN make build-go
+
+# =============================================================================
+# Node.js build stage for frontend
+# =============================================================================
+FROM node:20-alpine AS node-builder
+
+WORKDIR /build
+COPY --from=go-builder /build /build
+
+RUN apk add --no-cache git python3 make g++
+
+# Install dependencies and build frontend
+RUN yarn install --immutable
+RUN yarn build
+
+# =============================================================================
+# Runtime image
+# =============================================================================
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata bash
+
+# Create grafana user
+RUN addgroup -S grafana && adduser -S grafana -G grafana
+
+# Copy Grafana binaries and assets
+COPY --from=go-builder /build/bin/linux-*/grafana* /usr/share/grafana/bin/
+COPY --from=node-builder /build/public /usr/share/grafana/public
+COPY --from=go-builder /build/conf /usr/share/grafana/conf
+
+# Setup directories
+RUN mkdir -p /var/lib/grafana /var/log/grafana /etc/grafana/provisioning && \
+    cp /usr/share/grafana/conf/defaults.ini /etc/grafana/grafana.ini && \
+    chown -R grafana:grafana /var/lib/grafana /var/log/grafana /etc/grafana
+
+WORKDIR /usr/share/grafana
+
+ENV GF_PATHS_CONFIG="/etc/grafana/grafana.ini" \
+    GF_PATHS_DATA="/var/lib/grafana" \
+    GF_PATHS_HOME="/usr/share/grafana" \
+    GF_PATHS_LOGS="/var/log/grafana" \
+    GF_PATHS_PLUGINS="/var/lib/grafana/plugins" \
+    GF_PATHS_PROVISIONING="/etc/grafana/provisioning"
+
+EXPOSE 3000
+
+USER grafana
+ENTRYPOINT ["/usr/share/grafana/bin/grafana", "server"]

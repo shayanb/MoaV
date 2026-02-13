@@ -214,6 +214,38 @@ Common issues covered:
 - Snowflake metrics showing zeros
 - WireGuard exporter not starting
 
+## Blocked Registries (Iran, Russia, etc.)
+
+If you're in a region where container registries are blocked (gcr.io, ghcr.io, Docker Hub), you can build images locally:
+
+```bash
+# Build commonly blocked images (cAdvisor from gcr.io, clash-exporter from ghcr.io)
+moav build --local
+
+# Build a specific image
+moav build --local prometheus
+
+# Build ALL external images locally (takes longer but avoids all registry pulls)
+moav build --local all
+```
+
+Available images for local build:
+- `cadvisor` - Container metrics (gcr.io) **← commonly blocked**
+- `clash-exporter` - Clash API exporter (ghcr.io) **← commonly blocked**
+- `prometheus` - Time-series database (Docker Hub)
+- `grafana` - Visualization dashboards (Docker Hub)
+- `node-exporter` - System metrics (Docker Hub)
+- `nginx` - Web server (Docker Hub)
+- `certbot` - Let's Encrypt client (Docker Hub)
+
+The build command automatically updates your `.env` to use the local images.
+
+Alternatively, configure mirror registries manually in `.env`:
+```bash
+IMAGE_CADVISOR=mirror.example.com/cadvisor/cadvisor:latest
+IMAGE_PROMETHEUS=mirror.example.com/prom/prometheus:latest
+```
+
 ## CLI Commands
 
 ```bash
@@ -222,6 +254,9 @@ moav start monitoring
 
 # Start with other profiles
 moav start monitoring proxy admin
+
+# Build images locally (for blocked registries)
+moav build --local
 
 # View monitoring logs
 moav logs prometheus

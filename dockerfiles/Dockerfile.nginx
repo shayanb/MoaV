@@ -1,0 +1,45 @@
+# =============================================================================
+# Nginx - Web server (built from Alpine packages)
+# Use this when Docker Hub is blocked in your region
+# =============================================================================
+# Build: docker build -f dockerfiles/Dockerfile.nginx -t moav-nginx:local .
+# =============================================================================
+
+FROM alpine:3.19
+
+RUN apk add --no-cache nginx tzdata
+
+# Create nginx user and directories
+RUN mkdir -p /run/nginx /var/lib/nginx /var/log/nginx && \
+    chown -R nginx:nginx /var/lib/nginx /var/log/nginx
+
+# Copy default config
+RUN echo 'worker_processes auto;' > /etc/nginx/nginx.conf && \
+    echo 'error_log /var/log/nginx/error.log warn;' >> /etc/nginx/nginx.conf && \
+    echo 'pid /run/nginx/nginx.pid;' >> /etc/nginx/nginx.conf && \
+    echo 'events { worker_connections 1024; }' >> /etc/nginx/nginx.conf && \
+    echo 'http {' >> /etc/nginx/nginx.conf && \
+    echo '    include /etc/nginx/mime.types;' >> /etc/nginx/nginx.conf && \
+    echo '    default_type application/octet-stream;' >> /etc/nginx/nginx.conf && \
+    echo '    sendfile on;' >> /etc/nginx/nginx.conf && \
+    echo '    keepalive_timeout 65;' >> /etc/nginx/nginx.conf && \
+    echo '    include /etc/nginx/http.d/*.conf;' >> /etc/nginx/nginx.conf && \
+    echo '}' >> /etc/nginx/nginx.conf
+
+# Default server config
+RUN mkdir -p /etc/nginx/http.d && \
+    echo 'server {' > /etc/nginx/http.d/default.conf && \
+    echo '    listen 80 default_server;' >> /etc/nginx/http.d/default.conf && \
+    echo '    root /usr/share/nginx/html;' >> /etc/nginx/http.d/default.conf && \
+    echo '    index index.html;' >> /etc/nginx/http.d/default.conf && \
+    echo '}' >> /etc/nginx/http.d/default.conf
+
+# Create default html directory
+RUN mkdir -p /usr/share/nginx/html && \
+    echo '<html><body><h1>Welcome to nginx!</h1></body></html>' > /usr/share/nginx/html/index.html
+
+EXPOSE 80
+
+STOPSIGNAL SIGQUIT
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,43 @@
+# =============================================================================
+# Prometheus - Time-series database (built from source)
+# Use this when Docker Hub is blocked in your region
+# =============================================================================
+# Build: docker build -f dockerfiles/Dockerfile.prometheus -t moav-prometheus:local .
+# =============================================================================
+
+FROM golang:1.22-alpine AS builder
+
+ARG PROMETHEUS_VERSION=2.51.0
+
+RUN apk add --no-cache git make bash curl nodejs npm
+
+WORKDIR /build
+RUN git clone --depth 1 --branch v${PROMETHEUS_VERSION} https://github.com/prometheus/prometheus.git .
+
+# Build Prometheus (skip UI build for faster compilation)
+RUN make build
+
+# =============================================================================
+# Runtime image
+# =============================================================================
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /build/prometheus /bin/prometheus
+COPY --from=builder /build/promtool /bin/promtool
+COPY --from=builder /build/documentation/examples/prometheus.yml /etc/prometheus/prometheus.yml
+COPY --from=builder /build/console_libraries/ /usr/share/prometheus/console_libraries/
+COPY --from=builder /build/consoles/ /usr/share/prometheus/consoles/
+
+RUN mkdir -p /prometheus && chown -R nobody:nobody /prometheus
+
+USER nobody
+EXPOSE 9090
+VOLUME ["/prometheus"]
+
+ENTRYPOINT ["/bin/prometheus"]
+CMD ["--config.file=/etc/prometheus/prometheus.yml", \
+     "--storage.tsdb.path=/prometheus", \
+     "--web.console.libraries=/usr/share/prometheus/console_libraries", \
+     "--web.console.templates=/usr/share/prometheus/consoles"]
