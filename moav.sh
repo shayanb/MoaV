@@ -3444,7 +3444,7 @@ build_local_images() {
         info "Building $service ($description)..."
         if docker build $no_cache -f "$dockerfile" -t "$image_tag" .; then
             success "$service built: $image_tag"
-            ((built_count++))
+            built_count=$((built_count + 1))
 
             # Update .env
             if [[ -f "$env_file" ]] && [[ -n "$env_var" ]]; then
