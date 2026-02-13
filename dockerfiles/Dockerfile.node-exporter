@@ -1,30 +1,23 @@
 # =============================================================================
-# Node Exporter - System metrics exporter (built from source)
+# Node Exporter - System metrics exporter (using pre-built binaries)
 # Use this when Docker Hub is blocked in your region
 # =============================================================================
 # Build: docker build -f dockerfiles/Dockerfile.node-exporter -t moav-node-exporter:local .
 # =============================================================================
 
-FROM golang:1.22-alpine AS builder
-
-ARG NODE_EXPORTER_VERSION=1.7.0
-
-RUN apk add --no-cache git make bash
-
-WORKDIR /build
-RUN git clone --depth 1 --branch v${NODE_EXPORTER_VERSION} https://github.com/prometheus/node_exporter.git .
-
-# Build node_exporter
-RUN make build
-
-# =============================================================================
-# Runtime image
-# =============================================================================
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates tzdata
+ARG NODE_EXPORTER_VERSION=1.7.0
+ARG TARGETARCH=amd64
 
-COPY --from=builder /build/node_exporter /bin/node_exporter
+RUN apk add --no-cache ca-certificates tzdata wget
+
+# Download pre-built node_exporter binary from GitHub releases
+RUN wget -q "https://github.com/prometheus/node_exporter/releases/download/v${NODE_EXPORTER_VERSION}/node_exporter-${NODE_EXPORTER_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/node_exporter.tar.gz && \
+    tar -xzf /tmp/node_exporter.tar.gz -C /tmp && \
+    mv /tmp/node_exporter-${NODE_EXPORTER_VERSION}.linux-${TARGETARCH}/node_exporter /bin/node_exporter && \
+    chmod +x /bin/node_exporter && \
+    rm -rf /tmp/*
 
 USER nobody
 EXPOSE 9100

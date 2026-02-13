@@ -1,36 +1,29 @@
 # =============================================================================
-# Prometheus - Time-series database (built from source)
+# Prometheus - Time-series database (using pre-built binaries)
 # Use this when Docker Hub is blocked in your region
 # =============================================================================
 # Build: docker build -f dockerfiles/Dockerfile.prometheus -t moav-prometheus:local .
 # =============================================================================
 
-FROM golang:1.22-alpine AS builder
-
-ARG PROMETHEUS_VERSION=2.51.0
-
-RUN apk add --no-cache git make bash curl nodejs npm
-
-WORKDIR /build
-RUN git clone --depth 1 --branch v${PROMETHEUS_VERSION} https://github.com/prometheus/prometheus.git .
-
-# Build Prometheus (skip UI build for faster compilation)
-RUN make build
-
-# =============================================================================
-# Runtime image
-# =============================================================================
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates tzdata
+ARG PROMETHEUS_VERSION=2.51.0
+ARG TARGETARCH=amd64
 
-COPY --from=builder /build/prometheus /bin/prometheus
-COPY --from=builder /build/promtool /bin/promtool
-COPY --from=builder /build/documentation/examples/prometheus.yml /etc/prometheus/prometheus.yml
-COPY --from=builder /build/console_libraries/ /usr/share/prometheus/console_libraries/
-COPY --from=builder /build/consoles/ /usr/share/prometheus/consoles/
+RUN apk add --no-cache ca-certificates tzdata wget
 
-RUN mkdir -p /prometheus && chown -R nobody:nobody /prometheus
+# Download pre-built Prometheus binary from GitHub releases
+RUN wget -q "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/prometheus.tar.gz && \
+    tar -xzf /tmp/prometheus.tar.gz -C /tmp && \
+    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/prometheus /bin/prometheus && \
+    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/promtool /bin/promtool && \
+    mkdir -p /etc/prometheus /usr/share/prometheus && \
+    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/prometheus.yml /etc/prometheus/ && \
+    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/console_libraries /usr/share/prometheus/ && \
+    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/consoles /usr/share/prometheus/ && \
+    rm -rf /tmp/*
+
+RUN mkdir -p /prometheus && chown -R nobody:nobody /prometheus /etc/prometheus
 
 USER nobody
 EXPOSE 9090

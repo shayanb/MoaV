@@ -3373,16 +3373,16 @@ cmd_build() {
     fi
 }
 
-# Map of services that can be built locally (service -> dockerfile, image_tag, env_var, description)
-# Format: "dockerfile|image_tag|env_var|description"
+# Map of services that can be built locally
+# Format: "dockerfile|image_tag|image_env_var|version_env_var|version_arg|description"
 declare -A LOCAL_BUILD_MAP=(
-    ["cadvisor"]="dockerfiles/Dockerfile.cadvisor|moav-cadvisor:local|IMAGE_CADVISOR|cAdvisor container metrics (gcr.io)"
-    ["clash-exporter"]="dockerfiles/Dockerfile.clash-exporter|moav-clash-exporter:local|IMAGE_CLASH_EXPORTER|Clash API exporter (ghcr.io)"
-    ["prometheus"]="dockerfiles/Dockerfile.prometheus|moav-prometheus:local|IMAGE_PROMETHEUS|Prometheus time-series DB"
-    ["grafana"]="dockerfiles/Dockerfile.grafana|moav-grafana:local|IMAGE_GRAFANA|Grafana dashboards"
-    ["node-exporter"]="dockerfiles/Dockerfile.node-exporter|moav-node-exporter:local|IMAGE_NODE_EXPORTER|Node system metrics"
-    ["nginx"]="dockerfiles/Dockerfile.nginx|moav-nginx:local|IMAGE_NGINX|Nginx web server"
-    ["certbot"]="dockerfiles/Dockerfile.certbot|moav-certbot:local|IMAGE_CERTBOT|Let's Encrypt client"
+    ["cadvisor"]="dockerfiles/Dockerfile.cadvisor|moav-cadvisor:local|IMAGE_CADVISOR|CADVISOR_VERSION|CADVISOR_VERSION|cAdvisor container metrics (gcr.io)"
+    ["clash-exporter"]="dockerfiles/Dockerfile.clash-exporter|moav-clash-exporter:local|IMAGE_CLASH_EXPORTER|CLASH_EXPORTER_VERSION|CLASH_EXPORTER_VERSION|Clash API exporter (ghcr.io)"
+    ["prometheus"]="dockerfiles/Dockerfile.prometheus|moav-prometheus:local|IMAGE_PROMETHEUS|PROMETHEUS_VERSION|PROMETHEUS_VERSION|Prometheus time-series DB"
+    ["grafana"]="dockerfiles/Dockerfile.grafana|moav-grafana:local|IMAGE_GRAFANA|GRAFANA_VERSION|GRAFANA_VERSION|Grafana dashboards"
+    ["node-exporter"]="dockerfiles/Dockerfile.node-exporter|moav-node-exporter:local|IMAGE_NODE_EXPORTER|NODE_EXPORTER_VERSION|NODE_EXPORTER_VERSION|Node system metrics"
+    ["nginx"]="dockerfiles/Dockerfile.nginx|moav-nginx:local|IMAGE_NGINX||NGINX_VERSION|Nginx web server"
+    ["certbot"]="dockerfiles/Dockerfile.certbot|moav-certbot:local|IMAGE_CERTBOT||CERTBOT_VERSION|Let's Encrypt client"
 )
 
 # Default services to build with --local (commonly blocked registries)
@@ -3444,8 +3444,8 @@ build_local_images() {
             continue
         fi
 
-        # Parse build info
-        IFS='|' read -r dockerfile image_tag env_var description <<< "$build_info"
+        # Parse build info (dockerfile|image_tag|image_env_var|version_env_var|version_arg|description)
+        IFS='|' read -r dockerfile image_tag image_env_var version_env_var version_arg description <<< "$build_info"
 
         # Check Dockerfile exists
         if [[ ! -f "$dockerfile" ]]; then
@@ -3453,14 +3453,24 @@ build_local_images() {
             continue
         fi
 
-        info "Building $service ($description)..."
-        if docker build $no_cache -f "$dockerfile" -t "$image_tag" .; then
+        # Get version from .env if available
+        local version_value=""
+        local build_args=""
+        if [[ -n "$version_env_var" ]] && [[ -f "$env_file" ]]; then
+            version_value=$(grep "^${version_env_var}=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || true)
+            if [[ -n "$version_value" ]] && [[ -n "$version_arg" ]]; then
+                build_args="--build-arg ${version_arg}=${version_value}"
+            fi
+        fi
+
+        info "Building $service ($description)${version_value:+ v$version_value}..."
+        if docker build $no_cache $build_args -f "$dockerfile" -t "$image_tag" .; then
             success "$service built: $image_tag"
             built_count=$((built_count + 1))
 
-            # Update .env
-            if [[ -f "$env_file" ]] && [[ -n "$env_var" ]]; then
-                update_env_var "$env_file" "$env_var" "$image_tag"
+            # Update .env to use local image
+            if [[ -f "$env_file" ]] && [[ -n "$image_env_var" ]]; then
+                update_env_var "$env_file" "$image_env_var" "$image_tag"
             fi
         else
             error "Failed to build $service"
