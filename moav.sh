@@ -2057,11 +2057,7 @@ start_services() {
                 echo -e "  ${CYAN}Grafana (CDN):${NC}   $grafana_cdn"
             fi
         fi
-        # Show CDN URL if configured
-        local cdn_url=$(get_cdn_url)
-        if [[ -n "$cdn_url" ]] && echo "$profiles" | grep -qE "proxy|all"; then
-            echo -e "  ${CYAN}CDN (VLESS+WS):${NC}  $cdn_url"
-        fi
+
         if echo "$profiles" | grep -qE "admin|monitoring|all"; then
             echo ""
         fi
@@ -2943,11 +2939,7 @@ cmd_start() {
             echo -e "  ${CYAN}Grafana (CDN):${NC}   $grafana_cdn"
         fi
     fi
-    # Show CDN URL if configured
-    local cdn_url=$(get_cdn_url)
-    if [[ -n "$cdn_url" ]] && echo "$profiles" | grep -qE "proxy|all"; then
-        echo -e "  ${CYAN}CDN (VLESS+WS):${NC}  $cdn_url"
-    fi
+
     if echo "$profiles" | grep -qE "admin|monitoring|proxy|all"; then
         echo ""
     fi
@@ -3150,11 +3142,6 @@ cmd_status() {
         show_urls=1
     fi
 
-    # Show CDN URL if configured and proxy is running
-    local cdn_url=$(get_cdn_url)
-    if [[ -n "$cdn_url" ]] && echo "$running" | grep -q "sing-box"; then
-        echo -e "  ${CYAN}CDN (VLESS+WS):${NC}  $cdn_url"
-    fi
 
     # Show default profiles
     local defaults
