@@ -2667,8 +2667,8 @@ show_usage() {
     echo "  user add --batch N [--prefix P]  Create N users (e.g., user01, user02...)"
     echo "  user revoke NAME      Revoke a user"
     echo "  user package NAME     Create distributable zip for existing user"
-    echo "  build [SERVICE...] [--no-cache]  Build services (default: all)"
-    echo "  build --local [SERVICE|all]     Build images locally (for blocked registries)"
+    echo "  build [SERVICE|PROFILE] [--no-cache]  Build services or profile"
+    echo "  build --local [SERVICE|all]          Build images locally (for blocked registries)"
     echo "  test USERNAME         Test connectivity for a user"
     echo "  client                Client mode (test/connect)"
     echo ""
@@ -2694,6 +2694,7 @@ show_usage() {
     echo "  moav logs sing-box             # Follow sing-box logs (Ctrl+C to exit)"
     echo "  moav logs -n                   # Show last 100 lines without following"
     echo "  moav build conduit --no-cache  # Rebuild service without cache"
+    echo "  moav build monitoring          # Build all services in monitoring profile"
     echo "  moav build --local             # Build blocked images (cadvisor, clash-exporter)"
     echo "  moav build --local prometheus  # Build specific image locally"
     echo "  moav build --local all         # Build ALL images locally"
@@ -3341,17 +3342,34 @@ cmd_build() {
         docker compose --profile all build $no_cache
         success "All services built!"
     else
-        local services
-        services=$(resolve_services "${services_args[@]}")
-        # Remove empty values and trim whitespace
-        services=$(echo "$services" | xargs)
-        if [[ -z "$services" ]]; then
-            info "No buildable services specified"
-            return 0
+        # Check if argument is a profile name
+        local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
+        local profile_match=""
+        for p in $profiles; do
+            if [[ "${services_args[0]}" == "$p" ]]; then
+                profile_match="$p"
+                break
+            fi
+        done
+
+        if [[ -n "$profile_match" ]]; then
+            # Build all services in the profile
+            info "Building $profile_match profile${no_cache:+ (no cache)}..."
+            docker compose --profile "$profile_match" build $no_cache
+            success "Profile $profile_match built!"
+        else
+            local services
+            services=$(resolve_services "${services_args[@]}")
+            # Remove empty values and trim whitespace
+            services=$(echo "$services" | xargs)
+            if [[ -z "$services" ]]; then
+                info "No buildable services specified"
+                return 0
+            fi
+            info "Building: $services${no_cache:+ (no cache)}"
+            docker compose --profile all build $no_cache $services
+            success "Build complete!"
         fi
-        info "Building: $services${no_cache:+ (no cache)}"
-        docker compose --profile all build $no_cache $services
-        success "Build complete!"
     fi
 }
 
