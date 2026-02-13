@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Cleaner root directory structure
   - All docker compose commands work unchanged
 
+### Fixed
+- **Uninstall --wipe** - Now removes external Docker images (prometheus, grafana, cadvisor, etc.)
+  - Previously only removed `moav-*` prefixed images
+  - Now shows both built and pulled images before removal
+
 ## [1.3.3] - 2026-02-13
 
 ### Added

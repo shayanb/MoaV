@@ -3378,7 +3378,7 @@ build_local_images() {
     local env_file=".env"
     local built_count=0
 
-    header "Building Local Images"
+    print_section "Building Local Images"
     echo ""
     echo "This builds images from source for regions where container registries are blocked."
     echo ""
