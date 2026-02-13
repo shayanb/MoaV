@@ -2696,8 +2696,8 @@ show_usage() {
     echo "  moav build conduit --no-cache  # Rebuild service without cache"
     echo "  moav build monitoring          # Build all services in monitoring profile"
     echo "  moav build --local             # Build blocked images (cadvisor, clash-exporter)"
-    echo "  moav build --local prometheus  # Build specific image locally"
-    echo "  moav build --local all         # Build ALL images locally"
+    echo "  moav build --local prometheus  # Build specific external image locally"
+    echo "  moav build --local all         # Build EVERYTHING locally (no registry pulls)"
     echo "  moav profiles                  # Change default services"
     echo "  moav user add john             # Add user 'john'"
     echo "  moav user add john --package   # Add user and create zip bundle"
@@ -3409,8 +3409,20 @@ build_local_images() {
             echo "  - $svc"
         done
     elif [[ "${services_to_build[0]}" == "all" ]]; then
+        # First, build all services that use docker-compose build
+        echo "Step 1: Building all docker-compose services..."
+        echo ""
+        if docker compose --profile all build $no_cache; then
+            success "Docker-compose services built!"
+        else
+            error "Failed to build some docker-compose services"
+        fi
+        echo ""
+
+        # Then build external images
+        echo "Step 2: Building external images locally..."
         services_to_build=("${!LOCAL_BUILD_MAP[@]}")
-        echo "Building ALL available local images:"
+        echo "Images to build:"
         for svc in "${services_to_build[@]}"; do
             echo "  - $svc"
         done

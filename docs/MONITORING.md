@@ -225,7 +225,7 @@ moav build --local
 # Build a specific image
 moav build --local prometheus
 
-# Build ALL external images locally (takes longer but avoids all registry pulls)
+# Build EVERYTHING locally (all services + all external images, no registry pulls)
 moav build --local all
 ```
 
