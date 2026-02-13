@@ -105,8 +105,13 @@ TTL: 300
 | A | dns | YOUR_IP | DNS only |
 | NS | t | dns.yourdomain.com | - |
 | A | cdn | YOUR_IP | **Proxied** (orange cloud) |
+| A | grafana | YOUR_IP | **Proxied** (orange cloud) |
 
-> The `cdn` record is optional — only needed if you want CDN-fronted VLESS+WS. All other records **must** be DNS only (gray cloud).
+> The `cdn` and `grafana` records are optional:
+> - `cdn` — Only needed if you want CDN-fronted VLESS+WS
+> - `grafana` — Only needed if you want faster Grafana loading via CDN (see [Monitoring Guide](MONITORING.md#cloudflare-cdn-for-faster-grafana-recommended))
+>
+> All other records **must** be DNS only (gray cloud).
 
 #### CDN Origin Rule (Required for CDN Mode)
 

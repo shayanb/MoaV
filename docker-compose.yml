@@ -393,15 +393,42 @@ services:
       - ./configs/monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - ./configs/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./configs/monitoring/grafana/provisioning/dashboards:/var/lib/grafana/dashboards:ro
+      - ./site/assets:/branding:ro
       - ./scripts/grafana-entrypoint.sh:/scripts/grafana-entrypoint.sh:ro
       - moav_grafana:/var/lib/grafana
       - moav_certs:/certs:ro
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - GF_SECURITY_ADMIN_USER=admin
+      # Branding vars passed to entrypoint (direct file replacement, not GF_BRANDING_* which is Enterprise-only)
+      - DOMAIN=${DOMAIN:-}
+      - SERVER_IP=${SERVER_IP:-}
+      - GRAFANA_SUBDOMAIN=${GRAFANA_SUBDOMAIN:-}
+      - GRAFANA_APP_TITLE=${GRAFANA_APP_TITLE:-}
       - TZ=${TZ:-UTC}
     depends_on:
       - prometheus
+    profiles:
+      - monitoring
+      - all
+
+  # Grafana Proxy - Routes grafana.${DOMAIN} through Cloudflare CDN for faster loading
+  # Uses port 2083 (Cloudflare-supported HTTPS port)
+  # Setup: Add DNS record grafana.yourdomain.xyz -> server IP (Cloudflare proxied, orange cloud)
+  grafana-proxy:
+    image: nginx:alpine
+    container_name: moav-grafana-proxy
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/scripts/grafana-proxy-entrypoint.sh"]
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_GRAFANA_PROXY:-2083}:443"
+    volumes:
+      - ./scripts/grafana-proxy-entrypoint.sh:/scripts/grafana-proxy-entrypoint.sh:ro
+      - moav_certs:/certs:ro
+    depends_on:
+      - grafana
     profiles:
       - monitoring
       - all
@@ -476,11 +503,11 @@ services:
       - all
 
   # Sing-box User Exporter - parses sing-box logs for user connection metrics
-  singbox-user-exporter:
+  singbox-exporter:
     build:
       context: ./exporters/singbox
       dockerfile: Dockerfile
-    container_name: moav-singbox-user-exporter
+    container_name: moav-singbox-exporter
     restart: unless-stopped
     networks:
       - moav_net

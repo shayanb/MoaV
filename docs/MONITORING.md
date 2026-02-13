@@ -104,6 +104,43 @@ Tor donation metrics from Snowflake Exporter:
 PORT_GRAFANA=9444    # External Grafana port (default: 9444)
 ```
 
+### Cloudflare CDN for Faster Grafana (Recommended)
+
+Grafana can be slow to load over high-latency connections due to large JS/CSS assets. You can use Cloudflare's CDN to cache static assets for much faster loading.
+
+**Step 1: Add DNS Record**
+
+In Cloudflare Dashboard, add:
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| A | grafana | YOUR_SERVER_IP | **Proxied** (orange cloud) |
+
+**Step 2: Configure Environment**
+
+Add to your `.env` file:
+```bash
+GRAFANA_ROOT_URL=https://grafana.yourdomain.xyz:2083
+```
+
+**Step 3: Restart Services**
+
+```bash
+moav restart grafana grafana-proxy
+```
+
+**Step 4: Access Grafana**
+
+Access via `https://grafana.yourdomain.xyz:2083` instead of `:9444`.
+
+> **Note:** Port 2083 is used because Cloudflare only proxies specific HTTPS ports (443, 2053, 2083, 2087, 2096, 8443). The `grafana-proxy` service handles SSL termination and caching headers.
+
+**Benefits:**
+- Static assets (JS, CSS, images) cached at Cloudflare edge
+- Gzip compression
+- Faster global access
+- WebSocket support for live dashboard updates
+
 ### Retention
 
 Prometheus retains data for **15 days** by default. To change this, modify the `--storage.tsdb.retention.time` flag in `docker-compose.yml`:
@@ -223,20 +260,29 @@ docker exec moav-prometheus wget -qO- --post-data='' http://localhost:9091/-/rel
 ## Architecture
 
 ```
-                    ┌─────────────┐
-                    │   Grafana   │ :9444 (external)
-                    │ (dashboards)│
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  Prometheus │ :9091 (internal)
-                    │ (time-series│
-                    │   storage)  │
-                    └──────┬──────┘
-       ┌───────────────────┼───────────────────┐
-       │         │         │         │         │
-┌──────▼──────┐ ┌▼────────┐ ┌▼────────┐ ┌▼────────┐ ┌▼────────┐
-│ node-export │ │cAdvisor │ │  clash  │ │   wg    │ │snowflake│
-│  (system)   │ │(contain)│ │(singbox)│ │(vpn)    │ │ (tor)   │
-└─────────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘
+               ┌─────────────────┐
+               │  Cloudflare CDN │ (optional, for faster loading)
+               └────────┬────────┘
+                        │
+         ┌──────────────┼──────────────┐
+         │              │              │
+         ▼              ▼              │
+┌─────────────┐  ┌─────────────┐       │
+│grafana-proxy│  │   Grafana   │◄──────┘
+│ :2083 (CDN) │  │ :9444 direct│
+└──────┬──────┘  └──────┬──────┘
+       │                │
+       └───────┬────────┘
+               │
+        ┌──────▼──────┐
+        │  Prometheus │ :9091 (internal)
+        │ (time-series│
+        │   storage)  │
+        └──────┬──────┘
+   ┌───────────┼───────────┬───────────┬───────────┐
+   │           │           │           │           │
+┌──▼────┐  ┌───▼───┐  ┌────▼───┐  ┌────▼───┐  ┌────▼────┐
+│ node  │  │cAdvsr │  │ clash  │  │  wg    │  │snowflake│
+│export │  │(contrs)│  │(singbx)│  │(vpn)   │  │ (tor)   │
+└───────┘  └───────┘  └────────┘  └────────┘  └─────────┘
 ```

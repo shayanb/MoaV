@@ -30,7 +30,7 @@ scrape_configs:
   # sing-box User Exporter (user connection metrics from logs)
   - job_name: 'singbox-users'
     static_configs:
-      - targets: ['singbox-user-exporter:9102']
+      - targets: ['singbox-exporter:9102']
     scrape_timeout: 10s
 
   # WireGuard Exporter - custom exporter using docker exec

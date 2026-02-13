@@ -237,6 +237,24 @@ get_grafana_url() {
     echo "https://${grafana_host}:${grafana_port}"
 }
 
+get_grafana_cdn_url() {
+    # Get Grafana CDN URL from GRAFANA_SUBDOMAIN + DOMAIN
+    local grafana_subdomain=$(grep -E '^GRAFANA_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$grafana_subdomain" ]] && [[ -n "$domain" ]]; then
+        echo "https://${grafana_subdomain}.${domain}:2083"
+    fi
+}
+
+get_cdn_url() {
+    # Get CDN URL for VLESS+WS from CDN_SUBDOMAIN + DOMAIN
+    local cdn_subdomain=$(grep -E '^CDN_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$cdn_subdomain" ]] && [[ -n "$domain" ]]; then
+        echo "https://${cdn_subdomain}.${domain}"
+    fi
+}
+
 run_command() {
     local cmd="$1"
     local description="${2:-Running command}"
@@ -454,6 +472,58 @@ check_prerequisites() {
                     else
                         warn "No email set - you can edit .env later"
                     fi
+
+                    # Detect server IP and show DNS template
+                    echo ""
+                    info "Detecting server IP..."
+                    local detected_ip=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo "YOUR_SERVER_IP")
+                    if [[ "$detected_ip" != "YOUR_SERVER_IP" ]]; then
+                        success "Detected IP: $detected_ip"
+                        # Save to .env
+                        if grep -q "^SERVER_IP=" .env 2>/dev/null; then
+                            sed -i "s|^SERVER_IP=.*|SERVER_IP=\"$detected_ip\"|" .env
+                        else
+                            echo "SERVER_IP=\"$detected_ip\"" >> .env
+                        fi
+                    fi
+                    echo ""
+
+                    # Show DNS configuration template
+                    echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
+                    echo -e "${WHITE}  DNS Configuration Required${NC}"
+                    echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
+                    echo ""
+                    echo "  Add these DNS records in your DNS provider (e.g., Cloudflare):"
+                    echo ""
+                    echo -e "  ${WHITE}Required Records:${NC}"
+                    printf "  %-8s %-12s %-20s %s\n" "Type" "Name" "Value" "Proxy"
+                    printf "  %-8s %-12s %-20s %s\n" "────" "────" "─────" "────"
+                    printf "  %-8s %-12s %-20s %s\n" "A" "@" "$detected_ip" "DNS only (gray)"
+                    echo ""
+                    echo -e "  ${WHITE}For DNS Tunnel (dnstt):${NC}"
+                    printf "  %-8s %-12s %-20s %s\n" "A" "dns" "$detected_ip" "DNS only (gray)"
+                    printf "  %-8s %-12s %-20s %s\n" "NS" "t" "dns.$input_domain" "-"
+                    echo ""
+                    echo -e "  ${WHITE}Optional - CDN Mode (Cloudflare proxied):${NC}"
+                    printf "  %-8s %-12s %-20s %s\n" "A" "cdn" "$detected_ip" "Proxied (orange)"
+                    printf "  %-8s %-12s %-20s %s\n" "A" "grafana" "$detected_ip" "Proxied (orange)"
+                    echo ""
+                    echo -e "  ${YELLOW}⚠ CDN Mode requires an Origin Rule in Cloudflare:${NC}"
+                    echo "    Rules → Origin Rules → Create rule"
+                    echo "    • Match: Hostname equals cdn.$input_domain"
+                    echo "    • Action: Destination Port → Rewrite to 2082"
+                    echo ""
+                    echo -e "  See docs/DNS.md for detailed instructions."
+                    echo -e "${CYAN}════════════════════════════════════════════════════════════════${NC}"
+                    echo ""
+
+                    # Ask user to confirm DNS is configured
+                    if ! confirm "Have you configured DNS records (or will do so now)?" "y"; then
+                        echo ""
+                        warn "DNS must be configured before services will work properly."
+                        echo "  You can configure DNS later and run 'moav bootstrap' again."
+                        echo ""
+                    fi
                 else
                     # No domain - warn about disabled services
                     echo ""
@@ -474,11 +544,15 @@ check_prerequisites() {
                         domainless_mode=true
                         # Set default profiles to only include domain-less services (admin uses self-signed cert)
                         sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard admin conduit snowflake\"|" .env
-                        # Disable protocols that need domain (admin works with self-signed cert)
-                        sed -i "s|^ENABLE_REALITY=.*|ENABLE_REALITY=false|" .env
-                        sed -i "s|^ENABLE_TROJAN=.*|ENABLE_TROJAN=false|" .env
-                        sed -i "s|^ENABLE_HYSTERIA2=.*|ENABLE_HYSTERIA2=false|" .env
-                        sed -i "s|^ENABLE_DNSTT=.*|ENABLE_DNSTT=false|" .env
+                        # Disable all protocols that need domain (admin works with self-signed cert)
+                        # Use grep to check if line exists, then sed to replace, or append if missing
+                        for var in ENABLE_REALITY ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_TRUSTTUNNEL; do
+                            if grep -q "^${var}=" .env 2>/dev/null; then
+                                sed -i "s|^${var}=.*|${var}=false|" .env
+                            else
+                                echo "${var}=false" >> .env
+                            fi
+                        done
                         success "Domain-less mode enabled"
                         info "WireGuard, Admin (self-signed cert), Conduit, and Snowflake will be available"
                     else
@@ -1241,10 +1315,27 @@ run_bootstrap() {
 
         echo ""
         if confirm "Start services now?" "y"; then
+            # Ensure CLASH_API_SECRET is configured for monitoring
+            local skip_monitoring=0
+            ensure_clash_api_secret "$SELECTED_PROFILE_STRING" || skip_monitoring=1
+            if [[ $skip_monitoring -eq 1 ]]; then
+                # Remove monitoring from selected profiles
+                SELECTED_PROFILE_STRING=$(echo "$SELECTED_PROFILE_STRING" | sed 's/--profile monitoring//g')
+            fi
+
             info "Starting services..."
             docker compose $SELECTED_PROFILE_STRING up -d --remove-orphans
             echo ""
             success "Services started!"
+
+            # Show URLs
+            if echo "$SELECTED_PROFILE_STRING" | grep -qE "admin|all"; then
+                echo -e "  ${CYAN}Admin Dashboard:${NC} $(get_admin_url)"
+            fi
+            if echo "$SELECTED_PROFILE_STRING" | grep -qE "monitoring"; then
+                echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+            fi
+            echo ""
         else
             echo ""
             info "You can start services later with: moav start"
@@ -1696,10 +1787,41 @@ select_profiles() {
             SELECTED_PROFILES+=("admin")
         fi
 
-        # Always include donation and monitoring services when selecting "all"
+        # Always include donation services when selecting "all"
         SELECTED_PROFILES+=("conduit")
         SELECTED_PROFILES+=("snowflake")
-        SELECTED_PROFILES+=("monitoring")
+
+        # Check if monitoring should be included
+        local enable_monitoring=$(grep "^ENABLE_MONITORING=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
+        if [[ "$enable_monitoring" == "true" ]]; then
+            SELECTED_PROFILES+=("monitoring")
+        elif [[ "$enable_monitoring" != "false" ]]; then
+            # Not explicitly set - ask user
+            echo ""
+            warn "Monitoring stack (Grafana + Prometheus) requires at least 2GB RAM."
+            if confirm "Enable monitoring?" "n"; then
+                # Update .env to enable monitoring
+                if grep -q "^ENABLE_MONITORING=" "$env_file" 2>/dev/null; then
+                    sed -i.bak "s/^ENABLE_MONITORING=.*/ENABLE_MONITORING=true/" "$env_file"
+                    rm -f "$env_file.bak"
+                else
+                    # Add if not present
+                    echo "ENABLE_MONITORING=true" >> "$env_file"
+                fi
+                SELECTED_PROFILES+=("monitoring")
+                success "Monitoring enabled"
+            else
+                # Explicitly disable to avoid asking again
+                if grep -q "^ENABLE_MONITORING=" "$env_file" 2>/dev/null; then
+                    sed -i.bak "s/^ENABLE_MONITORING=.*/ENABLE_MONITORING=false/" "$env_file"
+                    rm -f "$env_file.bak"
+                else
+                    echo "ENABLE_MONITORING=false" >> "$env_file"
+                fi
+                info "Monitoring skipped. Enable later with: moav start monitoring"
+            fi
+        fi
+        # If explicitly false, don't include monitoring
 
         # If nothing enabled (shouldn't happen), fall back to donation-only
         if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
@@ -1803,6 +1925,23 @@ ensure_clash_api_secret() {
     # Only needed if monitoring or all profile is being started
     if ! echo "$profiles" | grep -qE "monitoring|all"; then
         return 0
+    fi
+
+    # Check if ENABLE_MONITORING is explicitly set to false
+    local enable_monitoring
+    enable_monitoring=$(grep "^ENABLE_MONITORING=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || true)
+    if [[ "$enable_monitoring" == "false" ]]; then
+        echo ""
+        warn "Monitoring is currently disabled in .env (ENABLE_MONITORING=false)"
+        if confirm "Enable monitoring?" "y"; then
+            # Update ENABLE_MONITORING to true in .env
+            sed -i.bak "s/^ENABLE_MONITORING=false/ENABLE_MONITORING=true/" "$env_file"
+            rm -f "$env_file.bak"
+            success "ENABLE_MONITORING set to true"
+        else
+            info "Skipping monitoring. Starting other services..."
+            return 1  # Signal caller to skip monitoring
+        fi
     fi
 
     # Check if CLASH_API_SECRET is already set in .env (non-empty)
@@ -1913,7 +2052,12 @@ start_services() {
         # Show Grafana URL if monitoring was started
         if echo "$profiles" | grep -qE "monitoring|all"; then
             echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+            local grafana_cdn=$(get_grafana_cdn_url)
+            if [[ -n "$grafana_cdn" ]]; then
+                echo -e "  ${CYAN}Grafana (CDN):${NC}   $grafana_cdn"
+            fi
         fi
+
         if echo "$profiles" | grep -qE "admin|monitoring|all"; then
             echo ""
         fi
@@ -2740,7 +2884,7 @@ cmd_start() {
             if ! echo "$valid_profiles" | grep -qw "$resolved"; then
                 error "Invalid profile: $p"
                 echo "Valid profiles: $valid_profiles"
-                echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, dns→dnstt"
+                echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, dns→dnstt, grafana/grafana-proxy/grafana-cdn/prometheus→monitoring"
                 exit 1
             fi
             profiles+="--profile $resolved "
@@ -2790,8 +2934,13 @@ cmd_start() {
     # Show Grafana URL if monitoring was started
     if echo "$profiles" | grep -qE "monitoring|all"; then
         echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+        local grafana_cdn=$(get_grafana_cdn_url)
+        if [[ -n "$grafana_cdn" ]]; then
+            echo -e "  ${CYAN}Grafana (CDN):${NC}   $grafana_cdn"
+        fi
     fi
-    if echo "$profiles" | grep -qE "admin|monitoring|all"; then
+
+    if echo "$profiles" | grep -qE "admin|monitoring|proxy|all"; then
         echo ""
     fi
 }
@@ -2808,7 +2957,7 @@ resolve_profile() {
             echo "dnstt" ;;
         psiphon)
             echo "conduit" ;;
-        grafana|prometheus|metrics)
+        grafana|grafana-proxy|grafana-cdn|prometheus|metrics)
             echo "monitoring" ;;
         *)
             echo "$profile" ;;
@@ -2825,8 +2974,9 @@ resolve_service() {
         ws|tunnel)                    echo "wstunnel" ;;
         dns)                          echo "dnstt" ;;
         snow|tor)                     echo "snowflake" ;;
-        # Monitoring services (pass through as-is)
-        grafana|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter|conduit-exporter|singbox-user-exporter)
+        # Monitoring services (pass through or resolve aliases)
+        grafana-cdn)                  echo "grafana-proxy" ;;
+        grafana|grafana-proxy|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter|conduit-exporter|singbox-exporter)
             echo "$svc" ;;
         *)                            echo "$svc" ;;
     esac
@@ -2985,14 +3135,13 @@ cmd_status() {
     if echo "$running" | grep -q "grafana"; then
         [[ $show_urls -eq 0 ]] && echo ""
         echo -e "  ${CYAN}Grafana:${NC}         $(get_grafana_url)"
+        local grafana_cdn=$(get_grafana_cdn_url)
+        if [[ -n "$grafana_cdn" ]]; then
+            echo -e "  ${CYAN}Grafana (CDN):${NC}   $grafana_cdn"
+        fi
         show_urls=1
     fi
 
-    # Show CDN domain if configured
-    local cdn_domain=$(grep -E '^CDN_DOMAIN=' "$SCRIPT_DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '"')
-    if [[ -n "$cdn_domain" ]]; then
-        echo -e "  ${CYAN}CDN Domain:${NC}      $cdn_domain"
-    fi
 
     # Show default profiles
     local defaults

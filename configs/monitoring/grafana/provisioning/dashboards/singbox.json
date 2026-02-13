@@ -277,9 +277,10 @@
         "overrides": [
           { "matcher": { "id": "byName", "options": "Connections" }, "properties": [{ "id": "custom.width", "value": 100 }] },
           { "matcher": { "id": "byName", "options": "User" }, "properties": [{ "id": "custom.width", "value": 150 }] },
-          { "matcher": { "id": "byName", "options": "Status" }, "properties": [
+          { "matcher": { "id": "byName", "options": "Active" }, "properties": [
             { "id": "custom.width", "value": 80 },
-            { "id": "mappings", "value": [{ "options": { "0": { "color": "red", "index": 0, "text": "Inactive" }, "1": { "color": "green", "index": 1, "text": "Active" } }, "type": "value" }] }
+            { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+            { "id": "mappings", "value": [{ "options": { "0": { "color": "red", "index": 0, "text": "No" }, "1": { "color": "green", "index": 1, "text": "Yes" } }, "type": "value" }] }
           ]}
         ]
       },
@@ -293,16 +294,21 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "singbox_user_connections", "format": "table", "instant": true, "refId": "Connections" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "singbox_user_active", "format": "table", "instant": true, "refId": "Active" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "singbox_user_connections", "format": "table", "instant": true, "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "singbox_user_active", "format": "table", "instant": true, "refId": "B" }
       ],
       "title": "User Connections",
       "transformations": [
-        { "id": "filterFieldsByName", "options": { "include": { "names": ["user", "Value #Connections", "Value #Active"] } } },
-        { "id": "merge", "options": {} },
+        { "id": "joinByField", "options": { "byField": "user", "mode": "outer" } },
         { "id": "organize", "options": {
-          "indexByName": { "user": 0, "Value #Connections": 1, "Value #Active": 2 },
-          "renameByName": { "Value #Connections": "Connections", "Value #Active": "Status", "user": "User" }
+          "excludeByName": {
+            "Time": true, "Time 1": true, "Time 2": true,
+            "__name__": true, "__name__ 1": true, "__name__ 2": true,
+            "instance": true, "instance 1": true, "instance 2": true,
+            "job": true, "job 1": true, "job 2": true
+          },
+          "indexByName": { "User": 0, "Connections": 1, "Active": 2 },
+          "renameByName": { "Value #A": "Connections", "Value #B": "Active", "user": "User" }
         }}
       ],
       "type": "table"

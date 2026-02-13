@@ -1,0 +1,124 @@
+#!/bin/sh
+# =============================================================================
+# Grafana Proxy entrypoint - finds SSL certs and configures nginx
+# =============================================================================
+
+echo "[grafana-proxy] Starting Grafana CDN Proxy"
+
+# Find SSL certificates (same logic as other services)
+find_certificates() {
+    # Check for Let's Encrypt certificates first
+    for cert_dir in /certs/live/*/; do
+        if [ -d "$cert_dir" ]; then
+            key_path="${cert_dir}privkey.pem"
+            cert_path="${cert_dir}fullchain.pem"
+            if [ -f "$key_path" ] && [ -f "$cert_path" ]; then
+                echo "$key_path $cert_path"
+                return 0
+            fi
+        fi
+    done
+
+    # Fallback to self-signed certificate
+    if [ -f "/certs/selfsigned/privkey.pem" ] && [ -f "/certs/selfsigned/fullchain.pem" ]; then
+        echo "/certs/selfsigned/privkey.pem /certs/selfsigned/fullchain.pem"
+        return 0
+    fi
+
+    return 1
+}
+
+# Wait for certificates (up to 30 seconds)
+waited=0
+max_wait=30
+while [ $waited -lt $max_wait ]; do
+    certs=$(find_certificates)
+    if [ -n "$certs" ]; then
+        break
+    fi
+    echo "[grafana-proxy] Waiting for certificates..."
+    sleep 5
+    waited=$((waited + 5))
+done
+
+certs=$(find_certificates)
+if [ -z "$certs" ]; then
+    echo "[grafana-proxy] ERROR: No certificates found, cannot start"
+    exit 1
+fi
+
+key_file=$(echo "$certs" | cut -d' ' -f1)
+cert_file=$(echo "$certs" | cut -d' ' -f2)
+echo "[grafana-proxy] Using certificates:"
+echo "[grafana-proxy]   Key:  $key_file"
+echo "[grafana-proxy]   Cert: $cert_file"
+
+# Generate nginx config with correct certificate paths
+cat > /etc/nginx/conf.d/default.conf << EOF
+# Nginx reverse proxy for Grafana (auto-generated)
+# Routes grafana.\${DOMAIN} through Cloudflare to Grafana
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name grafana.*;
+
+    # SSL certificates
+    ssl_certificate $cert_file;
+    ssl_certificate_key $key_file;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
+
+    # Caching for static assets
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # Cache static assets
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # WebSocket support for live updates
+    location /api/live/ {
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Main proxy
+    location / {
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+EOF
+
+echo "[grafana-proxy] Configuration generated, starting nginx..."
+exec nginx -g "daemon off;"
