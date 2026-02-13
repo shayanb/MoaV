@@ -5,6 +5,43 @@ All notable changes to MoaV will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-02-13
+
+### Added
+- **Grafana CDN Proxy** - Access Grafana through Cloudflare CDN for faster loading
+  - New `grafana-proxy` nginx service on port 2083 (Cloudflare-supported HTTPS port)
+  - Configure with `GRAFANA_SUBDOMAIN` in .env (e.g., `grafana.yourdomain.com:2083`)
+  - Dynamic SSL certificate detection (Let's Encrypt or self-signed fallback)
+- **Grafana MoaV Branding** - Custom logo, favicon, and app title
+  - Replaces default Grafana branding with MoaV logo/favicon
+  - Dynamic app title: "MoaV - {DOMAIN}" or "MoaV - {SERVER_IP}" for PWA home screen
+  - Note: Uses file replacement since GF_BRANDING_* is Grafana Enterprise-only
+- **Dashboard Auto-Starring** - All MoaV dashboards automatically starred on Grafana startup
+- **Conduit Peak Clients** - New stat panel showing maximum concurrent clients in time range
+
+### Changed
+- **Subdomain Configuration** - Cleaner .env format for CDN settings
+  - `GRAFANA_ROOT_URL` → `GRAFANA_SUBDOMAIN` (just subdomain, URL constructed automatically)
+  - `CDN_DOMAIN` → `CDN_SUBDOMAIN` (just subdomain, URL constructed automatically)
+- **Monitoring Default** - `ENABLE_MONITORING` no longer set in .env.example
+  - Users are now prompted when selecting "all" services
+  - Prevents accidental monitoring on low-RAM servers
+- **Service URLs in output** - `moav start` now shows Grafana CDN URL and VLESS+WS CDN URL when configured
+
+### Fixed
+- **Domainless Mode** - Fixed bootstrap failing when running without a domain
+  - Now properly disables all TLS protocols including TrustTunnel
+  - Handles missing ENABLE_* vars in .env (adds them if not present)
+- **CLASH_API_SECRET Flow** - Fixed monitoring setup during bootstrap
+  - Secret is now properly copied from state volume to .env
+  - `ensure_clash_api_secret()` runs before starting services after bootstrap
+- **Entrypoint Permissions** - Added missing executable bit to entrypoint scripts
+  - Fixes "modified files" warning during `moav update`
+- **sing-box User Connections Table** - Fixed column display
+  - Shows: User, Connections, Active (in correct order)
+  - Hides metadata fields: __name__, instance, job
+- **Snowflake Bandwidth Clarification** - Added tooltips explaining why container metrics (cAdvisor) show higher values than Snowflake dashboard (WebSocket/TLS overhead, broker connections)
+
 ## [1.3.1] - 2026-02-11
 
 ### Added
