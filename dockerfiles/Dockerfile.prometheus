@@ -5,7 +5,8 @@
 # Build: docker build -f dockerfiles/Dockerfile.prometheus -t moav-prometheus:local .
 # =============================================================================
 
-FROM alpine:3.19
+ARG BASE_IMAGE=alpine:3.21
+FROM ${BASE_IMAGE}
 
 ARG PROMETHEUS_VERSION=2.51.0
 ARG TARGETARCH=amd64

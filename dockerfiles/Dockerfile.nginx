@@ -5,7 +5,8 @@
 # Build: docker build -f dockerfiles/Dockerfile.nginx -t moav-nginx:local .
 # =============================================================================
 
-FROM alpine:3.19
+ARG BASE_IMAGE=alpine:3.21
+FROM ${BASE_IMAGE}
 
 RUN apk add --no-cache nginx tzdata
 

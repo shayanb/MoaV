@@ -5,7 +5,8 @@
 # Build: docker build -f dockerfiles/Dockerfile.node-exporter -t moav-node-exporter:local .
 # =============================================================================
 
-FROM alpine:3.19
+ARG BASE_IMAGE=alpine:3.21
+FROM ${BASE_IMAGE}
 
 ARG NODE_EXPORTER_VERSION=1.7.0
 ARG TARGETARCH=amd64

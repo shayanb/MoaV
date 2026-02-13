@@ -5,6 +5,9 @@
 # Build: docker build -f Dockerfile.clash-exporter -t moav-clash-exporter:local .
 # =============================================================================
 
+# Global ARG for runtime base image (must be before first FROM)
+ARG BASE_IMAGE=alpine:3.21
+
 FROM golang:1.22-alpine AS builder
 
 ARG CLASH_EXPORTER_VERSION=0.0.4
@@ -20,7 +23,7 @@ RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o clash-exporter .
 # =============================================================================
 # Runtime image
 # =============================================================================
-FROM alpine:3.19
+FROM ${BASE_IMAGE}
 
 RUN apk add --no-cache ca-certificates
 

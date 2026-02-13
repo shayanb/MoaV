@@ -5,7 +5,8 @@
 # Build: docker build -f dockerfiles/Dockerfile.cadvisor -t moav-cadvisor:local .
 # =============================================================================
 
-FROM alpine:3.19
+ARG BASE_IMAGE=alpine:3.21
+FROM ${BASE_IMAGE}
 
 ARG CADVISOR_VERSION=0.49.1
 ARG TARGETARCH=amd64

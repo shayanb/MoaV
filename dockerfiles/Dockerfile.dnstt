@@ -9,7 +9,7 @@ RUN git clone https://www.bamsoftware.com/git/dnstt.git . && \
     cd dnstt-server && \
     go build -o /dnstt-server -trimpath -ldflags "-s -w" .
 
-FROM alpine:3.19
+FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata
 
