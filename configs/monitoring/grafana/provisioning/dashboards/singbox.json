@@ -301,8 +301,13 @@
       "transformations": [
         { "id": "joinByField", "options": { "byField": "user", "mode": "outer" } },
         { "id": "organize", "options": {
-          "excludeByName": { "Time": true, "Time 1": true, "Time 2": true },
-          "indexByName": {},
+          "excludeByName": {
+            "Time": true, "Time 1": true, "Time 2": true,
+            "__name__": true, "__name__ 1": true, "__name__ 2": true,
+            "instance": true, "instance 1": true, "instance 2": true,
+            "job": true, "job 1": true, "job 2": true
+          },
+          "indexByName": { "User": 0, "Connections": 1, "Active": 2 },
           "renameByName": { "Value #A": "Connections", "Value #B": "Active", "user": "User" }
         }}
       ],
