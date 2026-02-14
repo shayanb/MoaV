@@ -2960,6 +2960,21 @@ cmd_start() {
         profiles="--profile proxy --profile wireguard --profile dnstt --profile trusttunnel --profile admin --profile conduit --profile snowflake"
     fi
 
+    # Check port 53 if dnstt is being started
+    if echo "$profiles" | grep -qE "dnstt|all"; then
+        if ss -ulnp 2>/dev/null | grep -q ':53 ' || netstat -ulnp 2>/dev/null | grep -q ':53 '; then
+            echo ""
+            warn "Port 53 is in use (likely by systemd-resolved)"
+            echo "  dnstt requires port 53 to be free."
+            echo ""
+            if confirm "Disable systemd-resolved and configure direct DNS?" "y"; then
+                setup_dns_for_dnstt
+            else
+                warn "dnstt may fail to start. Run 'moav setup-dns' later to fix this."
+            fi
+        fi
+    fi
+
     info "Starting services..."
     docker compose $profiles up -d --remove-orphans
     success "Services started!"
