@@ -2901,8 +2901,15 @@ cmd_start() {
                 profiles+="--profile $p "
             done
         else
-            # No defaults set - use all
-            profiles="--profile all"
+            # No defaults set - show interactive menu
+            select_profiles "start"
+            if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
+                info "No services selected"
+                return 0
+            fi
+            for p in "${SELECTED_PROFILES[@]}"; do
+                profiles+="--profile $p "
+            done
         fi
     else
         for p in "$@"; do
