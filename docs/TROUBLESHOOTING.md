@@ -19,6 +19,9 @@ Common issues and their solutions.
   - [TrustTunnel not connecting](#trusttunnel-not-connecting)
   - [CDN VLESS+WS not working](#cdn-vlessws-not-working)
   - [DNS tunnel not working](#dns-tunnel-not-working)
+- [Registry/Build Issues](#registrybuild-issues)
+  - [Container registry blocked (gcr.io, ghcr.io)](#container-registry-blocked-gcrio-ghcrio)
+  - [Building images locally](#building-images-locally)
 - [Monitoring Issues](#monitoring-issues)
   - [System hangs after starting monitoring](#system-hangs-after-starting-monitoring)
   - [Grafana shows "No Data"](#grafana-shows-no-data)
@@ -653,6 +656,84 @@ ufw allow 53/udp
 # or
 iptables -A INPUT -p udp --dport 53 -j ACCEPT
 ```
+
+---
+
+## Registry/Build Issues
+
+### Container registry blocked (gcr.io, ghcr.io)
+
+In some regions (Iran, Russia, China), certain container registries are blocked:
+
+| Registry | Images Affected | Status |
+|----------|-----------------|--------|
+| `gcr.io` | cAdvisor | Often blocked |
+| `ghcr.io` | clash-exporter | Often blocked |
+| `docker.io` | Most base images | Usually works (mirrors available) |
+
+**Symptoms:**
+- `docker pull` hangs or times out
+- Build fails with "connection refused" or "timeout"
+- Monitoring stack won't start
+
+**Solution:** Build blocked images locally using `moav build --local`:
+
+```bash
+# Build commonly blocked images (gcr.io, ghcr.io)
+moav build --local
+
+# Build specific image
+moav build --local cadvisor
+moav build --local clash-exporter
+
+# Build ALL external images locally
+moav build --local all
+```
+
+### Building images locally
+
+MoaV can build monitoring stack images from source when registries are blocked.
+
+**Available images for local build:**
+
+| Image | Registry | Build Command |
+|-------|----------|---------------|
+| cAdvisor | gcr.io | `moav build --local cadvisor` |
+| clash-exporter | ghcr.io | `moav build --local clash-exporter` |
+| Prometheus | docker.io | `moav build --local prometheus` |
+| Grafana | docker.io | `moav build --local grafana` |
+| Node Exporter | docker.io | `moav build --local node-exporter` |
+| Nginx | docker.io | `moav build --local nginx` |
+| Certbot | docker.io | `moav build --local certbot` |
+
+**How it works:**
+1. Downloads pre-built binaries from GitHub releases (not blocked)
+2. Creates a local Docker image
+3. Updates `.env` to use the local image
+
+**Version control:**
+
+Set versions in `.env` before building:
+```bash
+# In .env
+PROMETHEUS_VERSION=3.5.1
+GRAFANA_VERSION=12.3.3
+NODE_EXPORTER_VERSION=1.10.2
+CADVISOR_VERSION=0.56.2
+CLASH_EXPORTER_VERSION=0.0.4
+```
+
+**Force rebuild:**
+```bash
+moav build --local --no-cache cadvisor
+```
+
+**Build everything locally (no registry pulls):**
+```bash
+moav build --local all
+```
+
+This builds both MoaV services and all external monitoring images.
 
 ---
 

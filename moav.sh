@@ -3463,14 +3463,6 @@ build_local_images() {
             fi
         fi
 
-        # Add BASE_IMAGE if specified in .env (for registry-blocked regions)
-        if [[ -f "$env_file" ]]; then
-            local base_image=$(grep "^BASE_IMAGE=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || true)
-            if [[ -n "$base_image" ]]; then
-                build_args="$build_args --build-arg BASE_IMAGE=${base_image}"
-            fi
-        fi
-
         info "Building $service ($description)${version_value:+ v$version_value}..."
         if docker build $no_cache $build_args -f "$dockerfile" -t "$image_tag" .; then
             success "$service built: $image_tag"
