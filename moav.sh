@@ -3331,19 +3331,13 @@ cmd_build() {
         esac
     done
 
-    # Handle --local: build images locally from Dockerfiles
-    if [[ "$build_local" == "true" ]]; then
-        build_local_images "$no_cache" "${services_args[@]}"
-        return $?
-    fi
-
-    # Check if .env exists for docker-compose builds
+    # Check if .env exists
     if [[ ! -f ".env" ]]; then
         echo ""
-        warn "No .env file found. Docker Compose will show warnings about missing variables."
+        warn "No .env file found. Build may fail or show warnings about missing variables."
         echo ""
         echo "  You have two options:"
-        echo "    1. Run ${CYAN}moav bootstrap${NC} first to set up configuration"
+        echo -e "    1. Run ${CYAN}moav bootstrap${NC} first to set up configuration"
         echo "    2. Copy .env.example to .env and configure manually"
         echo ""
         if ! confirm "Continue building anyway?" "n"; then
@@ -3352,6 +3346,12 @@ cmd_build() {
             return 0
         fi
         echo ""
+    fi
+
+    # Handle --local: build images locally from Dockerfiles
+    if [[ "$build_local" == "true" ]]; then
+        build_local_images "$no_cache" "${services_args[@]}"
+        return $?
     fi
 
     if [[ ${#services_args[@]} -eq 0 ]] || [[ "${services_args[0]}" == "all" ]]; then
