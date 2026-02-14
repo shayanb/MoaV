@@ -1,0 +1,26 @@
+# =============================================================================
+# cAdvisor - Container metrics exporter (using pre-built binaries)
+# Use this when gcr.io is blocked in your region
+# =============================================================================
+# Build: docker build -f dockerfiles/Dockerfile.cadvisor -t moav-cadvisor:local .
+# =============================================================================
+
+FROM alpine:3.21
+
+ARG CADVISOR_VERSION=0.49.1
+ARG TARGETARCH=amd64
+
+RUN apk add --no-cache \
+    ca-certificates \
+    libc6-compat \
+    device-mapper \
+    thin-provisioning-tools \
+    wget
+
+# Download pre-built cAdvisor binary from GitHub releases
+RUN wget -q "https://github.com/google/cadvisor/releases/download/v${CADVISOR_VERSION}/cadvisor-v${CADVISOR_VERSION}-linux-${TARGETARCH}" -O /usr/bin/cadvisor && \
+    chmod +x /usr/bin/cadvisor
+
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/bin/cadvisor", "-logtostderr"]

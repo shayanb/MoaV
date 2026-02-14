@@ -26,7 +26,7 @@ RUN git clone https://www.bamsoftware.com/git/dnstt.git /tmp/dnstt && \
 # =============================================================================
 # Final image - download pre-built binaries for correct architecture
 # =============================================================================
-FROM alpine:3.20
+FROM alpine:3.21
 
 # Architecture detection for multi-arch support
 ARG TARGETARCH

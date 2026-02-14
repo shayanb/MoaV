@@ -1,0 +1,28 @@
+# =============================================================================
+# Certbot - Let's Encrypt client (built from pip)
+# Use this when Docker Hub is blocked in your region
+# =============================================================================
+# Build: docker build -f dockerfiles/Dockerfile.certbot -t moav-certbot:local .
+# =============================================================================
+
+FROM python:3.12-alpine
+
+# Build deps for cryptography wheel
+RUN apk add --no-cache --virtual .build-deps \
+    gcc musl-dev libffi-dev openssl-dev cargo
+
+# Runtime deps
+RUN apk add --no-cache libffi openssl
+
+# Install certbot (standalone mode only - no plugins needed)
+RUN pip install --no-cache-dir certbot && \
+    apk del .build-deps && \
+    rm -rf /root/.cache /root/.cargo
+
+# Create directories
+RUN mkdir -p /etc/letsencrypt /var/lib/letsencrypt /var/log/letsencrypt
+
+VOLUME ["/etc/letsencrypt", "/var/lib/letsencrypt"]
+
+ENTRYPOINT ["certbot"]
+CMD ["--help"]

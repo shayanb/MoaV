@@ -214,7 +214,7 @@ if [[ ${#needs_install[@]} -gt 0 ]]; then
     echo -e "${YELLOW}Missing packages: ${needs_install[*]}${NC}"
     echo ""
 
-    if confirm "Install missing packages?"; then
+    if confirm "Install missing packages?" "y"; then
         echo ""
 
         for pkg in "${needs_install[@]}"; do

@@ -191,5 +191,14 @@ star_dashboards() {
 # Run starring in background
 star_dashboards &
 
-# Run Grafana
-exec /run.sh
+# Run Grafana (handle both official image and local build)
+if [[ -x /run.sh ]]; then
+    # Official grafana/grafana image
+    exec /run.sh
+elif [[ -x /usr/share/grafana/bin/grafana ]]; then
+    # Local build from Dockerfile.grafana
+    exec /usr/share/grafana/bin/grafana server
+else
+    echo "[grafana] ERROR: No grafana executable found"
+    exit 1
+fi

@@ -23,7 +23,7 @@ services:
   sing-box:
     build:
       context: .
-      dockerfile: Dockerfile.sing-box
+      dockerfile: dockerfiles/Dockerfile.sing-box
       args:
         SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.19}
     container_name: moav-sing-box
@@ -62,7 +62,7 @@ services:
   wstunnel:
     build:
       context: .
-      dockerfile: Dockerfile.wstunnel
+      dockerfile: dockerfiles/Dockerfile.wstunnel
       args:
         WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.2}
     container_name: moav-wstunnel
@@ -89,7 +89,7 @@ services:
   wireguard:
     build:
       context: .
-      dockerfile: Dockerfile.wireguard
+      dockerfile: dockerfiles/Dockerfile.wireguard
     container_name: moav-wireguard
     restart: unless-stopped
     networks:
@@ -118,7 +118,7 @@ services:
   dnstt:
     build:
       context: .
-      dockerfile: Dockerfile.dnstt
+      dockerfile: dockerfiles/Dockerfile.dnstt
     container_name: moav-dnstt
     restart: unless-stopped
     networks:
@@ -143,7 +143,7 @@ services:
   # CERTBOT: TLS certificate management
   # ===========================================================================
   certbot:
-    image: certbot/certbot:latest
+    image: ${IMAGE_CERTBOT:-certbot/certbot:latest}
     container_name: moav-certbot
     ports:
       - "80:80"
@@ -182,7 +182,7 @@ services:
   # DECOY: Static website (served by sing-box fallback)
   # ===========================================================================
   decoy:
-    image: nginx:alpine
+    image: ${IMAGE_NGINX:-nginx:alpine}
     container_name: moav-decoy
     restart: unless-stopped
     networks:
@@ -202,7 +202,7 @@ services:
   psiphon-conduit:
     build:
       context: .
-      dockerfile: Dockerfile.psiphon
+      dockerfile: dockerfiles/Dockerfile.psiphon
       args:
         CONDUIT_VERSION: ${CONDUIT_VERSION:-1.4.0}
     container_name: moav-conduit
@@ -251,7 +251,7 @@ services:
   snowflake:
     build:
       context: .
-      dockerfile: Dockerfile.snowflake
+      dockerfile: dockerfiles/Dockerfile.snowflake
       args:
         SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
     container_name: moav-snowflake
@@ -298,7 +298,7 @@ services:
   trusttunnel:
     build:
       context: .
-      dockerfile: Dockerfile.trusttunnel
+      dockerfile: dockerfiles/Dockerfile.trusttunnel
       args:
         TRUSTTUNNEL_VERSION: ${TRUSTTUNNEL_VERSION:-0.9.125}
     container_name: moav-trusttunnel
@@ -330,7 +330,7 @@ services:
   admin:
     build:
       context: .
-      dockerfile: Dockerfile.admin
+      dockerfile: dockerfiles/Dockerfile.admin
     container_name: moav-admin
     restart: unless-stopped
     networks:
@@ -355,7 +355,7 @@ services:
   # MONITORING: Prometheus + Grafana observability stack
   # ===========================================================================
   prometheus:
-    image: prom/prometheus:latest
+    image: ${IMAGE_PROMETHEUS:-prom/prometheus:latest}
     container_name: moav-prometheus
     restart: unless-stopped
     networks:
@@ -380,7 +380,7 @@ services:
       - all
 
   grafana:
-    image: grafana/grafana:latest
+    image: ${IMAGE_GRAFANA:-grafana/grafana:latest}
     container_name: moav-grafana
     restart: unless-stopped
     user: "0"
@@ -416,7 +416,7 @@ services:
   # Uses port 2083 (Cloudflare-supported HTTPS port)
   # Setup: Add DNS record grafana.yourdomain.xyz -> server IP (Cloudflare proxied, orange cloud)
   grafana-proxy:
-    image: nginx:alpine
+    image: ${IMAGE_NGINX:-nginx:alpine}
     container_name: moav-grafana-proxy
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/scripts/grafana-proxy-entrypoint.sh"]
@@ -434,7 +434,7 @@ services:
       - all
 
   node-exporter:
-    image: prom/node-exporter:latest
+    image: ${IMAGE_NODE_EXPORTER:-prom/node-exporter:latest}
     container_name: moav-node-exporter
     restart: unless-stopped
     networks:
@@ -457,7 +457,8 @@ services:
       - all
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
+    # Use IMAGE_CADVISOR env var, or build locally with: moav build --local
+    image: ${IMAGE_CADVISOR:-gcr.io/cadvisor/cadvisor:latest}
     container_name: moav-cadvisor
     restart: unless-stopped
     networks:
@@ -486,7 +487,8 @@ services:
       - all
 
   clash-exporter:
-    image: ghcr.io/zxh326/clash-exporter:latest
+    # Use IMAGE_CLASH_EXPORTER env var, or build locally with: moav build --local
+    image: ${IMAGE_CLASH_EXPORTER:-ghcr.io/zxh326/clash-exporter:latest}
     container_name: moav-clash-exporter
     restart: unless-stopped
     networks:
@@ -546,7 +548,7 @@ services:
   bootstrap:
     build:
       context: .
-      dockerfile: Dockerfile.bootstrap
+      dockerfile: dockerfiles/Dockerfile.bootstrap
     container_name: moav-bootstrap
     volumes:
       - ./configs:/configs
@@ -580,7 +582,7 @@ services:
   client:
     build:
       context: .
-      dockerfile: Dockerfile.client
+      dockerfile: dockerfiles/Dockerfile.client
       args:
         SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.19}
         WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.2}

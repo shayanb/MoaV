@@ -5,6 +5,38 @@ All notable changes to MoaV will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.3.4] - 2026-02-14
+
+### Added
+- **Local Image Building** - Build container images locally for regions with blocked registries
+  - `moav build --local` - builds commonly blocked images (cAdvisor, clash-exporter)
+  - `moav build --local SERVICE` - builds specific image (prometheus, grafana, etc.)
+  - `moav build --local all` - builds ALL images locally (docker-compose + external)
+  - Automatically updates .env to use local images
+  - Available images: cadvisor, clash-exporter, prometheus, grafana, node-exporter, nginx, certbot
+  - Uses pre-built binaries from GitHub releases (avoids compilation, works on 1GB servers)
+  - Version control via `.env` variables (PROMETHEUS_VERSION, GRAFANA_VERSION, etc.)
+- **Configurable Container Images** - All external images now configurable via .env
+  - `IMAGE_PROMETHEUS`, `IMAGE_GRAFANA`, `IMAGE_NODE_EXPORTER`, `IMAGE_CADVISOR`, etc.
+  - Allows use of mirror registries when default registries are blocked
+- **Registry Troubleshooting Guide** - New section in TROUBLESHOOTING.md for blocked registries
+
+### Changed
+- **Dockerfile Organization** - All Dockerfiles moved to `dockerfiles/` directory
+  - Cleaner root directory structure
+  - All docker compose commands work unchanged
+- **Alpine Base Image** - Updated all Dockerfiles to Alpine 3.21 (from 3.19/3.20)
+- **Profile Support for Build** - `moav build monitoring` now works (builds all monitoring services)
+
+### Fixed
+- **Uninstall --wipe** - Now properly removes all Docker images
+  - Fixed: images with non-default tags (e.g., `moav-nginx:local`) were not being removed
+  - Now removes external images (prometheus, grafana, cadvisor, etc.)
+  - Shows both built and pulled images before removal
+- **Build Counter Bug** - Fixed `moav build --local` stopping after first image due to `set -e` with arithmetic
+
 ## [1.3.3] - 2026-02-13
 
 ### Added

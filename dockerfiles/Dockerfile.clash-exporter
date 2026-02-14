@@ -1,0 +1,31 @@
+# =============================================================================
+# Clash Exporter - Prometheus exporter for Clash API (built from source)
+# Use this when ghcr.io is blocked in your region
+# =============================================================================
+# Build: docker build -f Dockerfile.clash-exporter -t moav-clash-exporter:local .
+# =============================================================================
+
+FROM golang:1.22-alpine AS builder
+
+ARG CLASH_EXPORTER_VERSION=0.0.4
+
+RUN apk add --no-cache git
+
+WORKDIR /build
+RUN git clone --depth 1 --branch v${CLASH_EXPORTER_VERSION} https://github.com/zxh326/clash-exporter.git .
+
+# Build clash-exporter
+RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o clash-exporter .
+
+# =============================================================================
+# Runtime image
+# =============================================================================
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /build/clash-exporter /usr/bin/clash-exporter
+
+EXPOSE 2112
+
+ENTRYPOINT ["/usr/bin/clash-exporter"]

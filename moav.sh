@@ -651,7 +651,7 @@ check_prerequisites() {
     # Offer to install globally if not already installed
     if ! is_installed; then
         echo ""
-        if confirm "Install 'moav' command globally? (run from anywhere)"; then
+        if confirm "Install 'moav' command globally? (run from anywhere)" "y"; then
             do_install
         fi
     fi
@@ -862,21 +862,46 @@ do_uninstall() {
 
         # Ask about Docker images
         echo ""
+
+        # External images used by MoaV (from docker-compose.yml)
+        local external_image_patterns="prom/prometheus|grafana/grafana|prom/node-exporter|gcr.io/cadvisor|ghcr.io/zxh326/clash-exporter|certbot/certbot|nginx:alpine"
+
+        # Find MoaV-built images (moav-* prefix)
         local moav_images
         moav_images=$(docker images --format "{{.Repository}}:{{.Tag}} ({{.Size}})" 2>/dev/null | grep -E "^moav-" || true)
-        if [[ -n "$moav_images" ]]; then
+
+        # Find external images used by MoaV
+        local external_images
+        external_images=$(docker images --format "{{.Repository}}:{{.Tag}} ({{.Size}})" 2>/dev/null | grep -E "^($external_image_patterns)" || true)
+
+        if [[ -n "$moav_images" ]] || [[ -n "$external_images" ]]; then
             info "Docker images found:"
-            echo "$moav_images" | while read -r img; do
-                echo "  - $img"
-            done
+
+            if [[ -n "$moav_images" ]]; then
+                echo "  Built images:"
+                echo "$moav_images" | while read -r img; do
+                    echo "    - $img"
+                done
+            fi
+
+            if [[ -n "$external_images" ]]; then
+                echo "  External images (pulled):"
+                echo "$external_images" | while read -r img; do
+                    echo "    - $img"
+                done
+            fi
+
             echo ""
             read -r -p "Also remove Docker images? [y/N] " remove_images
             if [[ "$remove_images" =~ ^[Yy]$ ]]; then
                 info "Removing Docker images..."
-                docker images --format "{{.Repository}}" 2>/dev/null | grep -E "^moav-" | xargs -r docker rmi -f 2>/dev/null || true
+                # Remove moav-* images (include tag for images like moav-nginx:local)
+                docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -E "^moav-" | xargs -r docker rmi -f 2>/dev/null || true
+                # Remove external images
+                docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -E "^($external_image_patterns)" | xargs -r docker rmi -f 2>/dev/null || true
                 success "Docker images removed"
             else
-                echo "  Docker images kept (remove manually with: docker rmi \$(docker images -q 'moav-*'))"
+                echo "  Docker images kept"
             fi
         fi
     fi
@@ -2642,7 +2667,8 @@ show_usage() {
     echo "  user add --batch N [--prefix P]  Create N users (e.g., user01, user02...)"
     echo "  user revoke NAME      Revoke a user"
     echo "  user package NAME     Create distributable zip for existing user"
-    echo "  build [SERVICE...] [--no-cache]  Build services (default: all)"
+    echo "  build [SERVICE|PROFILE] [--no-cache]  Build services or profile"
+    echo "  build --local [SERVICE|all]          Build images locally (for blocked registries)"
     echo "  test USERNAME         Test connectivity for a user"
     echo "  client                Client mode (test/connect)"
     echo ""
@@ -2668,6 +2694,10 @@ show_usage() {
     echo "  moav logs sing-box             # Follow sing-box logs (Ctrl+C to exit)"
     echo "  moav logs -n                   # Show last 100 lines without following"
     echo "  moav build conduit --no-cache  # Rebuild service without cache"
+    echo "  moav build monitoring          # Build all services in monitoring profile"
+    echo "  moav build --local             # Build blocked images (cadvisor, clash-exporter)"
+    echo "  moav build --local prometheus  # Build specific external image locally"
+    echo "  moav build --local all         # Build EVERYTHING locally (no registry pulls)"
     echo "  moav profiles                  # Change default services"
     echo "  moav user add john             # Add user 'john'"
     echo "  moav user add john --package   # Add user and create zip bundle"
@@ -2871,8 +2901,15 @@ cmd_start() {
                 profiles+="--profile $p "
             done
         else
-            # No defaults set - use all
-            profiles="--profile all"
+            # No defaults set - show interactive menu
+            select_profiles "start"
+            if [[ ${#SELECTED_PROFILES[@]} -eq 0 ]]; then
+                info "No services selected"
+                return 0
+            fi
+            for p in "${SELECTED_PROFILES[@]}"; do
+                profiles+="--profile $p "
+            done
         fi
     else
         for p in "$@"; do
@@ -2921,6 +2958,21 @@ cmd_start() {
     if [[ $skip_monitoring -eq 1 ]]; then
         # Replace 'all' with individual profiles excluding monitoring
         profiles="--profile proxy --profile wireguard --profile dnstt --profile trusttunnel --profile admin --profile conduit --profile snowflake"
+    fi
+
+    # Check port 53 if dnstt is being started
+    if echo "$profiles" | grep -qE "dnstt|all"; then
+        if ss -ulnp 2>/dev/null | grep -q ':53 ' || netstat -ulnp 2>/dev/null | grep -q ':53 '; then
+            echo ""
+            warn "Port 53 is in use (likely by systemd-resolved)"
+            echo "  dnstt requires port 53 to be free."
+            echo ""
+            if confirm "Disable systemd-resolved and configure direct DNS?" "y"; then
+                setup_dns_for_dnstt
+            else
+                warn "dnstt may fail to start. Run 'moav setup-dns' later to fix this."
+            fi
+        fi
     fi
 
     info "Starting services..."
@@ -3289,33 +3341,210 @@ cmd_user() {
 
 cmd_build() {
     local no_cache=""
+    local build_local=""
     local services_args=()
 
     # Parse arguments
     for arg in "$@"; do
         case "$arg" in
             --no-cache) no_cache="--no-cache" ;;
+            --local) build_local="true" ;;
             *) services_args+=("$arg") ;;
         esac
     done
+
+    # Check if .env exists
+    if [[ ! -f ".env" ]]; then
+        echo ""
+        warn "No .env file found. Build may fail or show warnings about missing variables."
+        echo ""
+        echo "  You have two options:"
+        echo -e "    1. Run ${CYAN}moav bootstrap${NC} first to set up configuration"
+        echo "    2. Copy .env.example to .env and configure manually"
+        echo ""
+        if ! confirm "Continue building anyway?" "n"; then
+            echo ""
+            info "Run 'moav bootstrap' or 'cp .env.example .env' first"
+            return 0
+        fi
+        echo ""
+    fi
+
+    # Handle --local: build images locally from Dockerfiles
+    if [[ "$build_local" == "true" ]]; then
+        build_local_images "$no_cache" "${services_args[@]}"
+        return $?
+    fi
 
     if [[ ${#services_args[@]} -eq 0 ]] || [[ "${services_args[0]}" == "all" ]]; then
         info "Building all services${no_cache:+ (no cache)}..."
         docker compose --profile all build $no_cache
         success "All services built!"
     else
-        local services
-        services=$(resolve_services "${services_args[@]}")
-        # Remove empty values and trim whitespace
-        services=$(echo "$services" | xargs)
-        if [[ -z "$services" ]]; then
-            info "No buildable services specified"
-            return 0
+        # Check if argument is a profile name
+        local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
+        local profile_match=""
+        for p in $profiles; do
+            if [[ "${services_args[0]}" == "$p" ]]; then
+                profile_match="$p"
+                break
+            fi
+        done
+
+        if [[ -n "$profile_match" ]]; then
+            # Build all services in the profile
+            info "Building $profile_match profile${no_cache:+ (no cache)}..."
+            docker compose --profile "$profile_match" build $no_cache
+            success "Profile $profile_match built!"
+        else
+            local services
+            services=$(resolve_services "${services_args[@]}")
+            # Remove empty values and trim whitespace
+            services=$(echo "$services" | xargs)
+            if [[ -z "$services" ]]; then
+                info "No buildable services specified"
+                return 0
+            fi
+            info "Building: $services${no_cache:+ (no cache)}"
+            docker compose --profile all build $no_cache $services
+            success "Build complete!"
         fi
-        info "Building: $services${no_cache:+ (no cache)}"
-        docker compose --profile all build $no_cache $services
-        success "Build complete!"
     fi
+}
+
+# Map of services that can be built locally
+# Format: "dockerfile|image_tag|image_env_var|version_env_var|version_arg|description"
+declare -A LOCAL_BUILD_MAP=(
+    ["cadvisor"]="dockerfiles/Dockerfile.cadvisor|moav-cadvisor:local|IMAGE_CADVISOR|CADVISOR_VERSION|CADVISOR_VERSION|cAdvisor container metrics (gcr.io)"
+    ["clash-exporter"]="dockerfiles/Dockerfile.clash-exporter|moav-clash-exporter:local|IMAGE_CLASH_EXPORTER|CLASH_EXPORTER_VERSION|CLASH_EXPORTER_VERSION|Clash API exporter (ghcr.io)"
+    ["prometheus"]="dockerfiles/Dockerfile.prometheus|moav-prometheus:local|IMAGE_PROMETHEUS|PROMETHEUS_VERSION|PROMETHEUS_VERSION|Prometheus time-series DB"
+    ["grafana"]="dockerfiles/Dockerfile.grafana|moav-grafana:local|IMAGE_GRAFANA|GRAFANA_VERSION|GRAFANA_VERSION|Grafana dashboards"
+    ["node-exporter"]="dockerfiles/Dockerfile.node-exporter|moav-node-exporter:local|IMAGE_NODE_EXPORTER|NODE_EXPORTER_VERSION|NODE_EXPORTER_VERSION|Node system metrics"
+    ["nginx"]="dockerfiles/Dockerfile.nginx|moav-nginx:local|IMAGE_NGINX||NGINX_VERSION|Nginx web server"
+    ["certbot"]="dockerfiles/Dockerfile.certbot|moav-certbot:local|IMAGE_CERTBOT||CERTBOT_VERSION|Let's Encrypt client"
+)
+
+# Default services to build with --local (commonly blocked registries)
+DEFAULT_LOCAL_BUILDS="cadvisor clash-exporter"
+
+# Build images locally for regions with blocked registries
+build_local_images() {
+    local no_cache="${1:-}"
+    shift
+    local services_to_build=("$@")
+    local env_file=".env"
+    local built_count=0
+
+    print_section "Building Local Images"
+    echo ""
+    echo "This builds images from source for regions where container registries are blocked."
+    echo ""
+
+    # If no services specified, use defaults (commonly blocked)
+    if [[ ${#services_to_build[@]} -eq 0 ]]; then
+        read -ra services_to_build <<< "$DEFAULT_LOCAL_BUILDS"
+        echo "Building default images (gcr.io/ghcr.io - commonly blocked):"
+        for svc in "${services_to_build[@]}"; do
+            echo "  - $svc"
+        done
+    elif [[ "${services_to_build[0]}" == "all" ]]; then
+        # First, build all services that use docker-compose build
+        echo "Step 1: Building all docker-compose services..."
+        echo ""
+        if docker compose --profile all build $no_cache; then
+            success "Docker-compose services built!"
+        else
+            error "Failed to build some docker-compose services"
+        fi
+        echo ""
+
+        # Then build external images
+        echo "Step 2: Building external images locally..."
+        services_to_build=("${!LOCAL_BUILD_MAP[@]}")
+        echo "Images to build:"
+        for svc in "${services_to_build[@]}"; do
+            echo "  - $svc"
+        done
+    else
+        echo "Building specified images:"
+        for svc in "${services_to_build[@]}"; do
+            echo "  - $svc"
+        done
+    fi
+    echo ""
+
+    # Build each service
+    for service in "${services_to_build[@]}"; do
+        local build_info="${LOCAL_BUILD_MAP[$service]}"
+
+        if [[ -z "$build_info" ]]; then
+            warn "Unknown service for local build: $service"
+            echo "Available services: ${!LOCAL_BUILD_MAP[*]}"
+            continue
+        fi
+
+        # Parse build info (dockerfile|image_tag|image_env_var|version_env_var|version_arg|description)
+        IFS='|' read -r dockerfile image_tag image_env_var version_env_var version_arg description <<< "$build_info"
+
+        # Check Dockerfile exists
+        if [[ ! -f "$dockerfile" ]]; then
+            error "Dockerfile not found: $dockerfile"
+            continue
+        fi
+
+        # Get version from .env if available
+        local version_value=""
+        local build_args=""
+        if [[ -n "$version_env_var" ]] && [[ -f "$env_file" ]]; then
+            version_value=$(grep "^${version_env_var}=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || true)
+            if [[ -n "$version_value" ]] && [[ -n "$version_arg" ]]; then
+                build_args="--build-arg ${version_arg}=${version_value}"
+            fi
+        fi
+
+        info "Building $service ($description)${version_value:+ v$version_value}..."
+        if docker build $no_cache $build_args -f "$dockerfile" -t "$image_tag" .; then
+            success "$service built: $image_tag"
+            built_count=$((built_count + 1))
+
+            # Update .env to use local image
+            if [[ -f "$env_file" ]] && [[ -n "$image_env_var" ]]; then
+                update_env_var "$env_file" "$image_env_var" "$image_tag"
+            fi
+        else
+            error "Failed to build $service"
+        fi
+        echo ""
+    done
+
+    if [[ $built_count -eq 0 ]]; then
+        error "No images were built successfully"
+        return 1
+    fi
+
+    success "$built_count local image(s) built successfully!"
+    echo ""
+    echo "Your .env has been updated to use the local images."
+    echo "Run 'moav start' to use them."
+    echo ""
+    echo "To see all available images for local build:"
+    echo "  moav build --local --list"
+}
+
+# Helper: update or add environment variable in .env
+update_env_var() {
+    local env_file="$1"
+    local var_name="$2"
+    local var_value="$3"
+
+    if grep -q "^${var_name}=" "$env_file" 2>/dev/null; then
+        sed -i.bak "s|^${var_name}=.*|${var_name}=${var_value}|" "$env_file"
+    elif grep -q "^# ${var_name}=" "$env_file" 2>/dev/null; then
+        sed -i.bak "s|^# ${var_name}=.*|${var_name}=${var_value}|" "$env_file"
+    else
+        echo "${var_name}=${var_value}" >> "$env_file"
+    fi
+    rm -f "$env_file.bak"
 }
 
 # =============================================================================
