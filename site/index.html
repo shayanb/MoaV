@@ -6,8 +6,8 @@
     <title>MoaV - Mother of all VPNs | Multi-Protocol Censorship Circumvention</title>
 
     <!-- Primary SEO Meta Tags -->
-    <meta name="description" content="MoaV (Mother of all VPNs) is a free, open-source censorship circumvention stack built for hostile network environments. Docker-based deployment of Reality, Trojan, Hysteria2, WireGuard, DNS tunneling, Psiphon Conduit, and Tor Snowflake for automatic protocol fallback. Internet freedom is a human right.">
-    <meta name="keywords" content="VPN, censorship circumvention, privacy, internet freedom, Reality protocol, VLESS, Trojan, Hysteria2, WireGuard, DNS tunnel, anti-censorship, proxy, sing-box, bypass firewall, GFW, psiphon, conduit, tor, snowflake, open source VPN, self-hosted VPN, Docker VPN, internet shutdown, digital rights, human rights">
+    <meta name="description" content="MoaV (Mother of all VPNs) is a free, open-source censorship circumvention stack built for hostile network environments. Docker-based deployment of Reality (VLESS), Trojan, Hysteria2, TrustTunnel, CDN WebSocket, WireGuard, DNS tunneling, Psiphon Conduit, and Tor Snowflake. Web admin dashboard, Grafana monitoring, and automatic protocol fallback. Internet freedom is a human right.">
+    <meta name="keywords" content="VPN, censorship circumvention, privacy, internet freedom, Reality protocol, VLESS, Trojan, Hysteria2, TrustTunnel, WireGuard, DNS tunnel, anti-censorship, proxy, sing-box, bypass firewall, GFW, psiphon, conduit, tor, snowflake, open source VPN, self-hosted VPN, Docker VPN, internet shutdown, digital rights, human rights, Cloudflare CDN, WebSocket tunnel, Grafana monitoring">
     <meta name="author" content="MoaV Contributors">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <link rel="canonical" href="https://moav.sh">
@@ -16,7 +16,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://moav.sh">
     <meta property="og:title" content="MoaV - Mother of all VPNs | Internet Freedom Stack">
-    <meta property="og:description" content="Open-source multi-protocol circumvention stack for hostile networks. One-command Docker deployment. Reality, Trojan, Hysteria2, WireGuard, DNS tunneling, Psiphon Conduit, and Tor Snowflake for automatic protocol fallback. Because internet access is a human right.">
+    <meta property="og:description" content="Open-source multi-protocol circumvention stack for hostile networks. One-command Docker deployment. Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, WireGuard, DNS tunneling, Psiphon Conduit, and Tor Snowflake. Web admin, Grafana monitoring, automatic protocol fallback. Internet access is a human right.">
     <meta property="og:image" content="https://moav.sh/assets/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -42,11 +42,11 @@
         "@type": "SoftwareApplication",
         "name": "MoaV",
         "alternateName": "Mother of all VPNs",
-        "description": "MoaV is a free, open-source multi-protocol censorship circumvention stack that deploys Reality (VLESS), Trojan, Hysteria2, WireGuard, Psiphon Conduit, Tor Snowflake, and DNS tunneling protocols. Designed for hostile network environments, it provides automatic protocol fallback, multi-user management, and stealth operation.",
+        "description": "MoaV is a free, open-source multi-protocol censorship circumvention stack that deploys Reality (VLESS), Trojan, Hysteria2, TrustTunnel, CDN WebSocket, WireGuard, Psiphon Conduit, Tor Snowflake, and DNS tunneling protocols. Designed for hostile network environments, it provides automatic protocol fallback, multi-user management, web admin dashboard, Grafana monitoring, and stealth operation. Single-command deployment with Docker Compose.",
         "url": "https://moav.sh",
         "applicationCategory": "NetworkApplication",
         "operatingSystem": "Linux, Docker",
-        "softwareVersion": "1.0.0",
+        "softwareVersion": "1.3.4",
         "license": "https://opensource.org/licenses/MIT",
         "isAccessibleForFree": true,
         "offers": {
@@ -58,15 +58,20 @@
             "Reality (VLESS) protocol - TLS camouflage",
             "Trojan protocol - HTTPS mimicry",
             "Hysteria2 - QUIC-based fast protocol",
-            "WireGuard - Full VPN mode",
+            "TrustTunnel - HTTP/2 and QUIC tunneling",
+            "CDN mode - VLESS over WebSocket via Cloudflare",
+            "WireGuard - Full VPN mode (direct and wstunnel)",
             "DNS Tunneling - Works when only DNS allowed",
-            "Tor/Snowflake integration",
-            "Multi-user credential management",
+            "Tor Snowflake - Donate bandwidth to Tor network",
+            "Psiphon Conduit - Donate bandwidth to Psiphon network",
+            "Grafana monitoring dashboard",
+            "Web admin panel with user management",
+            "Multi-user credential management with QR codes",
             "Automatic protocol fallback",
             "Docker Compose deployment",
             "Decoy website included"
         ],
-        "keywords": "VPN, censorship circumvention, privacy, Reality, Trojan, Hysteria2, WireGuard, DNS tunnel, proxy, anti-censorship",
+        "keywords": "VPN, censorship circumvention, privacy, Reality, Trojan, Hysteria2, TrustTunnel, WireGuard, DNS tunnel, proxy, anti-censorship, Cloudflare CDN, WebSocket, Grafana monitoring",
         "downloadUrl": "https://github.com/shayanb/MoaV",
         "installUrl": "https://moav.sh/install.sh",
         "codeRepository": "https://github.com/shayanb/MoaV",
@@ -106,7 +111,15 @@
                 "name": "Which VPN protocols does MoaV support?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "MoaV supports Reality (VLESS) on port 443/tcp, Hysteria2 on 443/udp, Trojan on 8443/tcp, WireGuard on 51820/udp (and via WebSocket on 8080/tcp), DNS tunneling on 53/udp, Psiphone Conduit, and Tor/Snowflake as fallback."
+                    "text": "MoaV supports Reality (VLESS) on 443/tcp, Hysteria2 on 443/udp, Trojan on 8443/tcp, TrustTunnel on 4443/tcp+udp, CDN mode (VLESS over WebSocket via Cloudflare), WireGuard on 51820/udp (and via WebSocket on 8080/tcp), DNS tunneling on 53/udp, Psiphon Conduit, and Tor Snowflake."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Does MoaV have an admin dashboard?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, MoaV includes a web-based admin dashboard on port 9443. It shows service status, user management, downloadable config bundles with QR codes, and traffic statistics. Optional Grafana monitoring is available on port 9444 for detailed metrics."
                 }
             },
             {
@@ -263,6 +276,29 @@
                     <span class="protocol-port">Tor Network</span>
                 </div>
 
+                <div class="protocol-card">
+                    <div class="protocol-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <h3>TrustTunnel</h3>
+                    <p>HTTP/2 and QUIC tunneling. Looks exactly like normal HTTPS traffic to deep packet inspection.</p>
+                    <span class="protocol-port">4443/tcp+udp</span>
+                </div>
+
+                <div class="protocol-card">
+                    <div class="protocol-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                        </svg>
+                    </div>
+                    <h3>CDN Mode (VLESS+WS)</h3>
+                    <p>Route through Cloudflare when server IP is blocked. WebSocket over CDN bypasses IP-based filtering.</p>
+                    <span class="protocol-port">443 via Cloudflare</span>
+                </div>
+
                 <div class="protocol-card protocol-card-cta">
                     <div class="protocol-icon">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -288,6 +324,11 @@
     <section class="why" id="why">
         <div class="container">
             <h2 class="section-title">Why MoaV?</h2>
+            <p class="section-subtitle">Internet access is a human right. MoaV exists because censorship shouldn't.</p>
+
+            <div class="why-intro">
+                <p>When governments shut down the internet, people lose access to news, banking, healthcare, and contact with family. MoaV provides <strong>multiple fallback protocols</strong> so when one is blocked, others keep working. Run your own server, share with trusted people, or donate bandwidth to help strangers worldwide through Psiphon and Tor.</p>
+            </div>
 
             <div class="why-grid">
                 <div class="why-card">
@@ -357,6 +398,28 @@
                     </div>
                     <h3>Open Source</h3>
                     <p>Fully transparent. Audit the code, contribute, or fork. MIT licensed.</p>
+                </div>
+
+                <div class="why-card">
+                    <div class="why-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 0 1 9-9"/>
+                        </svg>
+                    </div>
+                    <h3>Give Back</h3>
+                    <p>Donate bandwidth through Conduit and Snowflake. Your server helps strangers bypass censorship worldwide.</p>
+                </div>
+
+                <div class="why-card">
+                    <div class="why-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="2" y="7" width="20" height="14" rx="2"/>
+                            <path d="M16 7V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3"/>
+                            <circle cx="12" cy="14" r="3"/>
+                        </svg>
+                    </div>
+                    <h3>Self-Hosted Freedom</h3>
+                    <p>Your server, your rules. No third-party services, no subscriptions, no data collection. Full control.</p>
                 </div>
             </div>
         </div>
@@ -530,53 +593,123 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Demo Box 6: Admin Dashboard -->
+                <div class="demo-box" data-demo="admin">
+                    <div class="demo-header">
+                        <span class="demo-number">06</span>
+                        <h3>Admin Dashboard</h3>
+                    </div>
+                    <div class="demo-video-container">
+                        <video class="demo-video" autoplay muted loop playsinline data-src="demos/admin.webm">
+                            <source src="demos/admin.webm" type="video/webm">
+                        </video>
+                        <div class="demo-placeholder">
+                            <div class="placeholder-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                    <path d="M3 9h18"/>
+                                    <path d="M9 21V9"/>
+                                </svg>
+                            </div>
+                            <p>Web-based admin panel</p>
+                            <p class="demo-subtext">User management, QR codes, service status</p>
+                        </div>
+                        <div class="demo-overlay">
+                            <span class="expand-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                </svg>
+                            </span>
+                            <span class="expand-text">Click to enlarge</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Demo Box 7: Grafana Monitoring -->
+                <div class="demo-box" data-demo="monitoring">
+                    <div class="demo-header">
+                        <span class="demo-number">07</span>
+                        <h3>Grafana Monitoring</h3>
+                    </div>
+                    <div class="demo-video-container">
+                        <video class="demo-video" autoplay muted loop playsinline data-src="demos/monitoring.webm">
+                            <source src="demos/monitoring.webm" type="video/webm">
+                        </video>
+                        <div class="demo-placeholder">
+                            <div class="placeholder-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                    <path d="M3 3v18h18"/>
+                                    <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+                                </svg>
+                            </div>
+                            <p>Real-time metrics</p>
+                            <p class="demo-subtext">CPU, memory, traffic, connections</p>
+                        </div>
+                        <div class="demo-overlay">
+                            <span class="expand-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <polyline points="9 21 3 21 3 15"/>
+                                    <line x1="21" y1="3" x2="14" y2="10"/>
+                                    <line x1="3" y1="21" x2="10" y2="14"/>
+                                </svg>
+                            </span>
+                            <span class="expand-text">Click to enlarge</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Architecture Diagram -->
-            <!-- TODO: Add ASCII architecture diagram or visual representation showing:
-                 - Client connections
-                 - Protocol routing
-                 - Service mesh
-                 - The architecture from the docs
-            -->
             <div class="architecture-box">
                 <h3>Architecture Overview</h3>
                 <div class="demo-placeholder large">
                     <pre class="architecture-ascii">
-
-
-       ┌───────────────┐           ┌───────────────┐           ┌───────────────┐
-       │  Your Clients │           │ Psiphon Users │           │   Tor Users   │
-       │   (private)   │           │  (worldwide)  │           │  (worldwide)  │
-       └───────┬───────┘           └───────┬───────┘           └───────┬───────┘
-               │                           │                           │
-┌──────────────╪───────────────────────────╪───────────────────────────╪───────────┐
-│              |                 Restricted Internet                   |           │
-└──────────────╪───────────────────────────╪───────────────────────────╪───────────┘
-               │                           │                           │
-╔══════════════╪═══════════════════════════╪═══════════════════════════╪═══════════╗
-║              │                           │                           │           ║
-║     ┌────────┼──────────┐                │                           │           ║
-║     │        │          │                │                           │           ║
-║     ▼        ▼          ▼                ▼                           ▼           ║
-║ ┌─────────┐┌─────────┐┌─────────┐   ┌───────────────┐          ┌───────────────┐ ║
-║ │ Reality ││WireGuard││  DNS    │   │               │          │               │ ║
-║ │ 443/tcp ││51820/udp││ 53/udp  │   │    Conduit    │          │   Snowflake   │ ║
-║ │ Trojan  ││wstunnel │├─────────┤   │   (donate)    │          │   (donate)    │ ║
-║ │8443/tcp ││8080/tcp ││  dnstt  │   │   bandwidth   │          │   bandwidth   │ ║
-║ │Hysteria2│└────┬────┘└────┬────┘   └───────┬───────┘          └───────┬───────┘ ║
-║ │ 443/udp │     │          │                │                          │         ║
-║ ├─────────┤     │          │                │                          │         ║
-║ │ sing-box│     │          │                │                          │      M  ║
-║ └────┬────┘     │          │                │                          │      O  ║
-║      │          │          │                │                          │      A  ║
-║      │          │          │                │                          │      V  ║
-╚══════╪══════════╪══════════╪════════════════╪══════════════════════════╪═════════╝
-       │          │          │                │                          │
-       ▼          ▼          ▼                ▼                          ▼
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                                Open Internet                                     │
-└──────────────────────────────────────────────────────────────────────────────────┘
+                                                              ┌───────────────┐  ┌───────────────┐
+       ┌───────────────┐                                      │ Psiphon Users │  │   Tor Users   │
+       │  Your Clients │                                      │  (worldwide)  │  │  (worldwide)  │
+       │   (private)   │                                      └───────┬───────┘  └───────┬───────┘
+       └───────┬───────┘                                              │                  │
+               │                                                      │                  │
+               ├─────────────────┐                                    │                  │
+               │                 │ (when IP blocked)                  │                  │
+               │          ┌──────┴───────┐                            │                  │
+               │          │ Cloudflare   │                            │                  │
+               │          │  CDN (VLESS) │                            │                  │
+               │          └──────┬───────┘                            │                  │
+               │                 │                                    │                  │
+┌──────────────╪─────────────────╪────────────────────────────────────╪──────────────────╪─────────┐
+│              │                 │          Restricted Internet       │                  │         │
+└──────────────╪─────────────────╪────────────────────────────────────╪──────────────────╪─────────┘
+               │                 │                                    │                  │
+╔══════════════╪═════════════════╪════════════════════════════════════╪══════════════════╪═════════╗
+║              │                 │                                    │                  │         ║
+║     ┌────────┼─────────────────┼───────┐                            │                  │         ║
+║     │        │         │       │       │                            │                  │         ║
+║     ▼        ▼         ▼       ▼       ▼                            ▼                  ▼         ║
+║ ┌─────────┐┌─────────┐┌───────┐┌─────────┐                    ┌───────────┐      ┌───────────┐  ║
+║ │ Reality ││WireGuard││ Trust ││  DNS    │                    │           │      │           │  ║
+║ │ 443/tcp ││51820/udp││Tunnel ││ 53/udp  │                    │  Conduit  │      │ Snowflake │  ║
+║ │ Trojan  ││wstunnel ││4443/  │├─────────┤                    │  (donate  │      │  (donate  │  ║
+║ │8443/tcp ││8080/tcp ││tcp+udp││  dnstt  │                    │ bandwidth)│      │ bandwidth)│  ║
+║ │Hysteria2│└────┬────┘└───┬───┘└────┬────┘                    └─────┬─────┘      └─────┬─────┘  ║
+║ │ 443/udp │     │         │         │                               │                  │        ║
+║ │ CDN WS  │     │         │         │                               │                  │        ║
+║ │2082/tcp │     │         │         │    ┌────────────────────┐     │                  │     M  ║
+║ ├─────────┤     │         │         │    │ Grafana   :9444    │     │                  │     O  ║
+║ │ sing-box│     │         │         │    │ Prometheus         │     │                  │     A  ║
+║ └────┬────┘     │         │         │    └────────────────────┘     │                  │     V  ║
+║      │          │         │         │                               │                  │        ║
+╚══════╪══════════╪═════════╪═════════╪═══════════════════════════════╪══════════════════╪════════╝
+       │          │         │         │                               │                  │
+       ▼          ▼         ▼         ▼                               ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                        Open Internet                                            │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
                     </pre>
                 </div>
             </div>
@@ -587,45 +720,60 @@
     <section class="quickstart" id="quickstart">
         <div class="container">
             <h2 class="section-title">Quick Start</h2>
+            <p class="section-subtitle">From zero to running in minutes. Use the one-liner or manual setup.</p>
 
             <div class="steps">
                 <div class="step">
                     <div class="step-number">1</div>
                     <div class="step-content">
-                        <h3>Clone & Configure</h3>
+                        <h3>Install with One Command</h3>
                         <div class="code-block">
                             <div class="code-header">
                                 <span>Terminal</span>
                                 <button class="copy-btn" data-target="step1-code">Copy</button>
                             </div>
-                            <pre id="step1-code">git clone https://github.com/shayanb/MoaV.git
+                            <pre id="step1-code">curl -fsSL moav.sh/install.sh | bash</pre>
+                        </div>
+                        <p class="step-note">Installs Docker, clones MoaV, prompts for domain/email/password, and starts the interactive setup.</p>
+                        <details class="manual-install">
+                            <summary>Manual install (alternative)</summary>
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>Terminal</span>
+                                </div>
+                                <pre>git clone https://github.com/shayanb/MoaV.git
 cd MoaV
 cp .env.example .env
-nano .env  # Set DOMAIN, ACME_EMAIL</pre>
-                        </div>
+nano .env  # Set DOMAIN, ACME_EMAIL, ADMIN_PASSWORD
+./moav.sh</pre>
+                            </div>
+                        </details>
                     </div>
                 </div>
 
                 <div class="step">
                     <div class="step-number">2</div>
                     <div class="step-content">
-                        <h3>Run Setup</h3>
+                        <h3>Use the CLI</h3>
                         <div class="code-block">
                             <div class="code-header">
                                 <span>Terminal</span>
                                 <button class="copy-btn" data-target="step2-code">Copy</button>
                             </div>
-                            <pre id="step2-code">./moav.sh</pre>
+                            <pre id="step2-code">moav                   # Interactive menu
+moav start             # Start services
+moav user add joe      # Add a user
+moav update            # Update MoaV</pre>
                         </div>
-                        <p class="step-note">Follow the interactive wizard to bootstrap keys, certificates, and create your first user.</p>
+                        <p class="step-note">After installation, use <code>moav</code> from anywhere. Run <code>moav help</code> for all commands.</p>
                     </div>
                 </div>
 
                 <div class="step" id="clients">
                     <div class="step-number">3</div>
                     <div class="step-content">
-                        <h3>Share Configs & Connect</h3>
-                        <p>Scan the QR code or import configs with your favorite client app. The server also donates bandwidth to Psiphon and Tor through Conduit and Snowflake.</p>
+                        <h3>Download Configs & Connect</h3>
+                        <p>Download user bundles from the <strong>admin dashboard</strong> at <code>https://your-server:9443</code>, or scan QR codes directly from the terminal. Each bundle contains configs for all protocols.</p>
                         <div class="client-table">
                             <div class="client-row">
                                 <div class="client-platform"><span class="platform-icon">📱</span> iOS</div>
