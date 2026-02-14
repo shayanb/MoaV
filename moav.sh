@@ -895,8 +895,8 @@ do_uninstall() {
             read -r -p "Also remove Docker images? [y/N] " remove_images
             if [[ "$remove_images" =~ ^[Yy]$ ]]; then
                 info "Removing Docker images..."
-                # Remove moav-* images
-                docker images --format "{{.Repository}}" 2>/dev/null | grep -E "^moav-" | xargs -r docker rmi -f 2>/dev/null || true
+                # Remove moav-* images (include tag for images like moav-nginx:local)
+                docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -E "^moav-" | xargs -r docker rmi -f 2>/dev/null || true
                 # Remove external images
                 docker images --format "{{.Repository}}:{{.Tag}}" 2>/dev/null | grep -E "^($external_image_patterns)" | xargs -r docker rmi -f 2>/dev/null || true
                 success "Docker images removed"
