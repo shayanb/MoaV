@@ -13,14 +13,15 @@ ARG TARGETARCH=amd64
 RUN apk add --no-cache ca-certificates tzdata wget
 
 # Download pre-built Prometheus binary from GitHub releases
+# Note: Prometheus 3.x removed console_libraries/consoles, so we handle both versions
 RUN wget -q "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/prometheus.tar.gz && \
     tar -xzf /tmp/prometheus.tar.gz -C /tmp && \
     mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/prometheus /bin/prometheus && \
     mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/promtool /bin/promtool && \
     mkdir -p /etc/prometheus /usr/share/prometheus && \
     mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/prometheus.yml /etc/prometheus/ && \
-    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/console_libraries /usr/share/prometheus/ && \
-    mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/consoles /usr/share/prometheus/ && \
+    (mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/console_libraries /usr/share/prometheus/ 2>/dev/null || true) && \
+    (mv /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${TARGETARCH}/consoles /usr/share/prometheus/ 2>/dev/null || true) && \
     rm -rf /tmp/*
 
 RUN mkdir -p /prometheus && chown -R nobody:nobody /prometheus /etc/prometheus
@@ -31,6 +32,4 @@ VOLUME ["/prometheus"]
 
 ENTRYPOINT ["/bin/prometheus"]
 CMD ["--config.file=/etc/prometheus/prometheus.yml", \
-     "--storage.tsdb.path=/prometheus", \
-     "--web.console.libraries=/usr/share/prometheus/console_libraries", \
-     "--web.console.templates=/usr/share/prometheus/consoles"]
+     "--storage.tsdb.path=/prometheus"]

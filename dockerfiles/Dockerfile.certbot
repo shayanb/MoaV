@@ -7,21 +7,17 @@
 
 FROM python:3.12-alpine
 
-ARG CERTBOT_VERSION=2.9.0
+# Build deps for cryptography wheel
+RUN apk add --no-cache --virtual .build-deps \
+    gcc musl-dev libffi-dev openssl-dev cargo
 
-RUN apk add --no-cache \
-    gcc \
-    musl-dev \
-    libffi-dev \
-    openssl-dev \
-    cargo \
-    tzdata
+# Runtime deps
+RUN apk add --no-cache libffi openssl
 
-# Install certbot via pip
-RUN pip install --no-cache-dir certbot==${CERTBOT_VERSION}
-
-# Cleanup build dependencies
-RUN apk del gcc musl-dev libffi-dev openssl-dev cargo
+# Install certbot (standalone mode only - no plugins needed)
+RUN pip install --no-cache-dir certbot && \
+    apk del .build-deps && \
+    rm -rf /root/.cache /root/.cargo
 
 # Create directories
 RUN mkdir -p /etc/letsencrypt /var/lib/letsencrypt /var/log/letsencrypt

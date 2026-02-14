@@ -16,9 +16,10 @@ RUN apk add --no-cache ca-certificates tzdata bash wget
 RUN addgroup -S grafana && adduser -S grafana -G grafana
 
 # Download pre-built Grafana binary from GitHub releases
+# Note: Directory name varies by version (grafana-VERSION or grafana-vVERSION)
 RUN wget -q "https://dl.grafana.com/oss/release/grafana-${GRAFANA_VERSION}.linux-${TARGETARCH}.tar.gz" -O /tmp/grafana.tar.gz && \
     tar -xzf /tmp/grafana.tar.gz -C /tmp && \
-    mv /tmp/grafana-v${GRAFANA_VERSION} /usr/share/grafana && \
+    mv /tmp/grafana-*${GRAFANA_VERSION}* /usr/share/grafana && \
     rm -rf /tmp/*
 
 # Setup directories
