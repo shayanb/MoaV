@@ -4289,6 +4289,12 @@ cmd_regenerate_users() {
         echo -e "  Server IPv6: ${CYAN}$server_ipv6${NC}"
     fi
     echo -e "  Domain:      ${CYAN}${domain:-not set}${NC}"
+
+    # Show CDN domain if configured
+    local cdn_subdomain_preview=$(grep -E '^CDN_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -n "$cdn_subdomain_preview" && -n "$domain" ]]; then
+        echo -e "  CDN Domain:  ${CYAN}${cdn_subdomain_preview}.${domain}${NC}"
+    fi
     echo ""
 
     if ! confirm "Regenerate all user bundles?" "y"; then
@@ -4330,7 +4336,12 @@ cmd_regenerate_users() {
 
     info "Regenerating bundles..."
 
+    # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
     local cdn_domain=$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local cdn_subdomain=$(grep -E '^CDN_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    if [[ -z "$cdn_domain" && -n "$cdn_subdomain" && -n "$domain" ]]; then
+        cdn_domain="${cdn_subdomain}.${domain}"
+    fi
     local cdn_ws_path=$(grep -E '^CDN_WS_PATH=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     cdn_ws_path="${cdn_ws_path:-/ws}"
 
@@ -4351,6 +4362,7 @@ cmd_regenerate_users() {
             -e "SERVER_IP=$server_ip" \
             -e "SERVER_IPV6=$server_ipv6" \
             -e "DOMAIN=$domain" \
+            -e "CDN_SUBDOMAIN=$cdn_subdomain" \
             -e "CDN_DOMAIN=$cdn_domain" \
             -e "CDN_WS_PATH=$cdn_ws_path" \
             -e "ENABLE_REALITY=${enable_reality:-true}" \
