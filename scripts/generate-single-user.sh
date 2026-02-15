@@ -98,7 +98,12 @@ export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
-export CDN_DOMAIN="${CDN_DOMAIN:-}"
+# Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
+if [[ -z "${CDN_DOMAIN:-}" && -n "${CDN_SUBDOMAIN:-}" && -n "${DOMAIN:-}" ]]; then
+    export CDN_DOMAIN="${CDN_SUBDOMAIN}.${DOMAIN}"
+else
+    export CDN_DOMAIN="${CDN_DOMAIN:-}"
+fi
 export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
 
 # Load Hysteria2 obfuscation password if available

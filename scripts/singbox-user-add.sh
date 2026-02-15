@@ -200,8 +200,16 @@ if command -v qrencode &>/dev/null; then
     fi
 fi
 
-# Generate CDN VLESS+WS link (if CDN_DOMAIN is set)
+# Generate CDN VLESS+WS link (if CDN configured)
+# Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
 CDN_DOMAIN="${CDN_DOMAIN:-$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")}"
+if [[ -z "$CDN_DOMAIN" ]]; then
+    CDN_SUBDOMAIN="${CDN_SUBDOMAIN:-$(grep -E '^CDN_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")}"
+    DOMAIN_FROM_ENV="${DOMAIN:-$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")}"
+    if [[ -n "$CDN_SUBDOMAIN" && -n "$DOMAIN_FROM_ENV" ]]; then
+        CDN_DOMAIN="${CDN_SUBDOMAIN}.${DOMAIN_FROM_ENV}"
+    fi
+fi
 CDN_WS_PATH="${CDN_WS_PATH:-$(grep -E '^CDN_WS_PATH=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "/ws")}"
 CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
 

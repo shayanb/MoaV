@@ -571,6 +571,7 @@ services:
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
       - ENABLE_TRUSTTUNNEL=${ENABLE_TRUSTTUNNEL:-true}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
+      - CDN_SUBDOMAIN=${CDN_SUBDOMAIN:-}
       - CDN_DOMAIN=${CDN_DOMAIN:-}
       - CDN_WS_PATH=${CDN_WS_PATH:-/ws}
     profiles:
