@@ -3262,6 +3262,7 @@ cmd_users() {
 cmd_user() {
     local action="${1:-}"
     shift 1 2>/dev/null || shift $# # Shift past action to get remaining args
+    local username="${1:-}"
 
     case "$action" in
         list|ls)
