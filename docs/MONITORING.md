@@ -2,9 +2,7 @@
 
 Real-time observability for your MoaV deployment with Grafana dashboards.
 
-<video src="../site/demos/grafana-dashboards.webm" autoplay loop muted playsinline width="100%"></video>
-
-> *Grafana dashboards walkthrough - System, Containers, sing-box, WireGuard, and Snowflake panels*
+<a href="../site/demos/grafana-dashboards.webm"><img src="assets/grafana-dashboard.jpg" alt="Grafana Dashboards" width="30%"></a>
 
 ## Overview
 
