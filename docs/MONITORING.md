@@ -2,7 +2,7 @@
 
 Real-time observability for your MoaV deployment with Grafana dashboards.
 
-<a href="../site/demos/grafana-dashboards.webm"><img src="assets/grafana-dashboard.jpg" alt="Grafana Dashboards" width="30%"></a>
+<img src="assets/grafana-dashboard.jpg" alt="Grafana Dashboards" width="50%"> <a href="../site/demos/grafana-dashboards.webm">(demo video)</a>
 
 ## Overview
 

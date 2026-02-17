@@ -232,7 +232,7 @@ echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
 
 ### Step 6: Start Services
 
-<a href="../site/demos/services.webm"><img src="assets/service-management.jpg" alt="Service Status" width="30%"></a>
+<img src="assets/service-management.jpg" alt="Service Status" width="40%"> <a href="../site/demos/services.webm">(demo video)</a>
 
 ```bash
 # Start all services
@@ -292,7 +292,7 @@ docker compose ps
 
 ### Step 7: Download User Bundles
 
-<a href="../site/demos/admin-dashboard.webm"><img src="assets/admin-dashboard.jpg" alt="Admin Dashboard" width="30%"></a>
+<img src="assets/admin-dashboard.jpg" alt="Admin Dashboard" width="40%"> <a href="../site/demos/admin-dashboard.webm">(demo video)</a>
 
 User bundles are ready in `outputs/bundles/`:
 
@@ -644,7 +644,7 @@ MoaV includes an optional monitoring stack for real-time observability.
 
 > **Warning**: The monitoring stack nearly doubles resource requirements. MoaV alone runs on 1 vCPU / 1 GB RAM, but adding monitoring requires at least **2 vCPU / 2 GB RAM**. On 1 GB RAM servers, monitoring will cause hangs and crashes.
 
-<a href="../site/demos/grafana-dashboards.webm"><img src="assets/grafana-dashboard.jpg" alt="Grafana Dashboards" width="30%"></a>
+<img src="assets/grafana-dashboard.jpg" alt="Grafana Dashboards" width="40%"> <a href="../site/demos/grafana-dashboards.webm">(demo video)</a>
 
 **Start monitoring:**
 ```bash
