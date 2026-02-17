@@ -21,6 +21,8 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ## Quick Start
 
+<video src="site/demos/install.webm" autoplay loop muted playsinline width="100%"></video>
+
 **One-liner install** (recommended):
 
 ```bash

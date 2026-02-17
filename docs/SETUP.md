@@ -203,6 +203,8 @@ ENABLE_ADMIN_UI=true
 
 ### Step 5: Run Bootstrap
 
+<video src="../site/demos/setup.webm" autoplay loop muted playsinline width="100%"></video>
+
 Initialize MoaV (generates keys, obtains certificates, creates users):
 
 ```bash
@@ -231,6 +233,8 @@ echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" > /etc/resolv.conf
 ```
 
 ### Step 6: Start Services
+
+<video src="../site/demos/services.webm" autoplay loop muted playsinline width="100%"></video>
 
 ```bash
 # Start all services
@@ -289,6 +293,8 @@ docker compose ps
 ```
 
 ### Step 7: Download User Bundles
+
+<video src="../site/demos/admin-dashboard.webm" autoplay loop muted playsinline width="100%"></video>
 
 User bundles are ready in `outputs/bundles/`:
 
@@ -466,6 +472,8 @@ User bundles will now include `cdn-vless-ws.txt` with Cloudflare-routed connecti
 
 ## Managing Users
 
+<video src="../site/demos/users.webm" autoplay loop muted playsinline width="100%"></video>
+
 **List Users:**
 ```bash
 moav users
@@ -547,6 +555,8 @@ moav build sing-box     # Build specific container
 ---
 
 ## Server Migration
+
+<video src="../site/demos/server.webm" autoplay loop muted playsinline width="100%"></video>
 
 Export your MoaV configuration and migrate to a new server.
 
@@ -640,7 +650,7 @@ MoaV includes an optional monitoring stack for real-time observability.
 
 > **Warning**: The monitoring stack nearly doubles resource requirements. MoaV alone runs on 1 vCPU / 1 GB RAM, but adding monitoring requires at least **2 vCPU / 2 GB RAM**. On 1 GB RAM servers, monitoring will cause hangs and crashes.
 
-<!-- TODO: Screenshot of Grafana dashboard overview -->
+<video src="../site/demos/grafana-dashboards.webm" autoplay loop muted playsinline width="100%"></video>
 
 **Start monitoring:**
 ```bash

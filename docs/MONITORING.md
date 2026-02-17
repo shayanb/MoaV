@@ -2,7 +2,9 @@
 
 Real-time observability for your MoaV deployment with Grafana dashboards.
 
-<!-- TODO: Screenshot of Grafana dashboard overview showing multiple panels -->
+<video src="../site/demos/grafana-dashboards.webm" autoplay loop muted playsinline width="100%"></video>
+
+> *Grafana dashboards walkthrough - System, Containers, sing-box, WireGuard, and Snowflake panels*
 
 ## Overview
 
@@ -37,7 +39,7 @@ Login with username `admin` and the password you set in your `.env` file (`ADMIN
 
 ### MoaV - System
 
-<!-- TODO: Screenshot of System dashboard showing CPU/Memory gauges and graphs -->
+<!-- Screenshot: System dashboard (CPU/Memory gauges and graphs) -->
 
 System-level metrics from Node Exporter:
 - CPU usage (gauge + time series)
@@ -49,7 +51,7 @@ System-level metrics from Node Exporter:
 
 ### MoaV - Containers
 
-<!-- TODO: Screenshot of Containers dashboard showing per-container resource usage -->
+<!-- Screenshot: Containers dashboard (per-container resource usage) -->
 
 Per-container metrics from cAdvisor:
 - Running container count
@@ -62,7 +64,7 @@ Per-container metrics from cAdvisor:
 
 ### MoaV - sing-box
 
-<!-- TODO: Screenshot of sing-box dashboard showing connections and traffic -->
+<!-- Screenshot: sing-box dashboard (connections and traffic) -->
 
 Proxy metrics via Clash Exporter:
 - Active connections
@@ -74,7 +76,7 @@ Proxy metrics via Clash Exporter:
 
 ### MoaV - WireGuard
 
-<!-- TODO: Screenshot of WireGuard dashboard showing peer metrics -->
+<!-- Screenshot: WireGuard dashboard (peer metrics) -->
 
 VPN metrics from WireGuard Exporter:
 - Total peers
@@ -85,7 +87,7 @@ VPN metrics from WireGuard Exporter:
 
 ### MoaV - Snowflake
 
-<!-- TODO: Screenshot of Snowflake dashboard showing donation metrics -->
+<!-- Screenshot: Snowflake dashboard (donation metrics) -->
 
 Tor donation metrics from Snowflake Exporter:
 - People served (total connections helped)
