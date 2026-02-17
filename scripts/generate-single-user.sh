@@ -97,6 +97,8 @@ export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+export ENABLE_PAQET="${ENABLE_PAQET:-false}"
+export PORT_PAQET="${PORT_PAQET:-9999}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
 # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
 if [[ -z "${CDN_DOMAIN:-}" && -n "${CDN_SUBDOMAIN:-}" && -n "${DOMAIN:-}" ]]; then

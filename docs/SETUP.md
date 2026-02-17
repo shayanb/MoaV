@@ -249,6 +249,7 @@ moav start all                   # Everything
 - `wireguard` - WireGuard VPN + wstunnel
 - `dnstt` - DNS tunnel
 - `trusttunnel` - TrustTunnel VPN
+- `paqet` - Raw packet proxy (last resort, requires host network)
 - `admin` - Admin dashboard
 - `conduit` - Psiphon bandwidth donation
 - `snowflake` - Tor bandwidth donation
