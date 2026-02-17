@@ -325,7 +325,7 @@ section {
     color: var(--text-secondary);
     text-align: center;
     margin-bottom: 60px;
-    max-width: 600px;
+    max-width: 650px;
     margin-left: auto;
     margin-right: auto;
 }
@@ -484,6 +484,19 @@ section {
 
 .why {
     background: var(--bg-primary);
+}
+
+.why-intro {
+    max-width: 800px;
+    margin: 0 auto 48px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 17px;
+    line-height: 1.8;
+}
+
+.why-intro strong {
+    color: var(--accent-cyan);
 }
 
 .why-grid {
@@ -662,6 +675,13 @@ section {
 
 .demo-placeholder p {
     font-size: 14px;
+}
+
+.demo-placeholder .demo-subtext {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    opacity: 0.8;
 }
 
 /* Demo Modal */
@@ -857,6 +877,58 @@ body.modal-open {
 .step-note {
     font-size: 14px;
     color: var(--text-secondary);
+}
+
+.step-note code {
+    font-family: var(--font-mono);
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--accent-cyan);
+}
+
+/* Manual install collapsible section */
+.manual-install {
+    margin-top: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+}
+
+.manual-install summary {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    list-style: none;
+    transition: var(--transition);
+}
+
+.manual-install summary::-webkit-details-marker {
+    display: none;
+}
+
+.manual-install summary::before {
+    content: '+';
+    margin-right: 8px;
+    font-family: var(--font-mono);
+    color: var(--accent-purple);
+}
+
+.manual-install[open] summary::before {
+    content: '-';
+}
+
+.manual-install summary:hover {
+    color: var(--text-secondary);
+}
+
+.manual-install .code-block {
+    margin: 0;
+    border: none;
+    border-radius: 0;
 }
 
 /* Client Apps Table */
