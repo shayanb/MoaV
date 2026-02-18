@@ -18,6 +18,7 @@ This guide explains how to connect to MoaV from various devices.
 - [CDN VLESS+WS Setup (When IP Blocked)](#cdn-vlessws-setup-when-ip-blocked)
 - [TrustTunnel Setup](#trusttunnel-setup)
 - [DNS Tunnel Setup (Last Resort)](#dns-tunnel-setup-last-resort)
+- [Paqet Setup (Last Resort)](#paqet-setup-last-resort)
 - [Psiphon Setup](#psiphon-setup)
 - [About Psiphon Conduit (Server Feature)](#about-psiphon-conduit-server-feature)
 - [About Tor Snowflake (Server Feature)](#about-tor-snowflake-server-feature)
@@ -40,6 +41,7 @@ This guide explains how to connect to MoaV from various devices.
 | [WireGuard](https://www.wireguard.com/) (Direct) | 51820/udp | Full VPN mode, simple setup |
 | [WireGuard](https://www.wireguard.com/) + [wstunnel](https://github.com/erebe/wstunnel) | 8080/tcp | VPN wrapped in WebSocket |
 | [DNS Tunnel](https://www.bamsoftware.com/software/dnstt/) | 53/udp | Last resort, slow but hard to block |
+| [Paqet](https://github.com/hanselime/paqet) | 9999/tcp | Raw packet proxy, bypasses OS firewall |
 | [Psiphon](https://psiphon.ca/) | Various | Standalone app, uses Psiphon network |
 | [Tor](https://www.torproject.org/) (Snowflake) | Various | Uses Tor network |
 
@@ -140,7 +142,8 @@ Try these in order. If one doesn't work, try the next:
 7. **WireGuard (wstunnel)** - VPN wrapped in WebSocket, for restrictive networks (port 8080/tcp)
 8. **Tor (Snowflake)** - Uses Tor network (no server needed)
 9. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
-10. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
+10. **Paqet** - Raw packet proxy, bypasses OS firewall (port 9999/tcp, requires root)
+11. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
 
 ---
 
@@ -164,7 +167,7 @@ moav test user1
 moav test user1 --json
 ```
 
-The test checks: Reality, Trojan, Hysteria2, WireGuard (config validation), and dnstt.
+The test checks: Reality, Trojan, Hysteria2, WireGuard (config validation), dnstt, and Paqet.
 
 **Sample output:**
 ```
@@ -237,6 +240,7 @@ The client container includes:
 - **wireguard-go** - Userspace WireGuard implementation
 - **wstunnel** - WebSocket tunnel for WireGuard
 - **dnstt-client** - DNS tunnel client
+- **paqet** - Raw packet proxy (requires privileged mode)
 - **snowflake-client** - Tor Snowflake pluggable transport
 - **tor** - Tor daemon
 
@@ -583,6 +587,106 @@ See `dnstt-instructions.txt` in your bundle for detailed steps.
 1. Download dnstt-client from https://www.bamsoftware.com/software/dnstt/
 2. Run: `dnstt-client -doh https://1.1.1.1/dns-query -pubkey YOUR_KEY t.yourdomain.com 127.0.0.1:1080`
 3. Configure apps to use SOCKS5 proxy `127.0.0.1:1080`
+
+---
+
+## Paqet Setup (Last Resort)
+
+Paqet is a raw packet-level proxy that bypasses the OS TCP/IP stack using pcap. Use this when:
+- Other protocols are actively blocked
+- Deep packet inspection is defeating standard protocols
+- You need to operate below the firewall layer
+
+**Requirements:**
+- Root/administrator privileges
+- libpcap installed
+- NOT OpenVZ/LXC container (requires KVM, Xen, or bare metal)
+
+### Installation
+
+**Linux:**
+```bash
+# Install libpcap
+sudo apt install libpcap-dev  # Debian/Ubuntu
+sudo dnf install libpcap-devel  # Fedora/RHEL
+
+# Download paqet
+# From: https://github.com/hanselime/paqet/releases
+# Or build from source:
+go install github.com/hanselime/paqet/cmd/paqet@latest
+```
+
+**macOS:**
+```bash
+# libpcap is pre-installed
+# Download paqet binary or build from source
+```
+
+**Windows:**
+1. Install [Npcap](https://npcap.com) (required for raw packet access)
+2. Download paqet.exe from releases
+
+### Configuration
+
+Your bundle contains `paqet-client.yaml` and `paqet-instructions.txt`.
+
+**You must fill in YOUR network details:**
+
+1. Find your network interface:
+   ```bash
+   # Linux
+   ip a
+   # macOS
+   ifconfig
+   # Windows
+   Get-NetAdapter
+   ```
+
+2. Find your local IP:
+   ```bash
+   # Linux
+   ip -4 addr show eth0 | grep inet
+   # macOS
+   ifconfig en0 | grep inet
+   ```
+
+3. Find your gateway/router MAC:
+   ```bash
+   # Find gateway IP
+   ip route | grep default  # Linux
+   netstat -rn | grep default  # macOS
+
+   # Get MAC for gateway IP
+   arp -n GATEWAY_IP
+   ```
+
+4. Edit `paqet-client.yaml`:
+   ```yaml
+   network:
+     interface: "eth0"           # Your interface
+     ipv4:
+       addr: "192.168.1.100:0"   # Your local IP
+       router_mac: "aa:bb:cc:dd:ee:ff"  # Your gateway MAC
+   ```
+
+### Running
+
+```bash
+# Linux/macOS (requires root)
+sudo paqet run -c paqet-client.yaml
+
+# Windows (run as Administrator)
+paqet.exe run -c paqet-client.yaml
+```
+
+This creates a SOCKS5 proxy at `127.0.0.1:1080`.
+
+### Troubleshooting
+
+- **"permission denied"** - Run as root/admin
+- **"no route to host"** - Check gateway MAC address
+- **"pcap error"** - Install libpcap, verify interface name
+- **OpenVZ/LXC error** - Paqet requires KVM or bare metal (raw sockets not supported in containers)
 
 ---
 

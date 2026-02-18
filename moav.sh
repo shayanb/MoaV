@@ -836,6 +836,12 @@ do_uninstall() {
             echo "  - configs/trusttunnel/*"
         fi
 
+        # Remove generated Paqet files
+        if [[ -f "$SCRIPT_DIR/configs/paqet/server.yaml" ]]; then
+            rm -f "$SCRIPT_DIR/configs/paqet/server.yaml" 2>/dev/null
+            echo "  - configs/paqet/*"
+        fi
+
         # Remove outputs (bundles, keys)
         if [[ -d "$SCRIPT_DIR/outputs" ]] && [[ -n "$(ls -A "$SCRIPT_DIR/outputs" 2>/dev/null | grep -v .gitkeep)" ]]; then
             local bundle_count
@@ -1686,6 +1692,7 @@ select_profiles() {
     local wg_enabled=true
     local dnstt_enabled=true
     local trusttunnel_enabled=true
+    local paqet_enabled=false
     local admin_enabled=true
 
     if [[ -f "$env_file" ]]; then
@@ -1695,6 +1702,7 @@ select_profiles() {
         local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_paqet=$(grep "^ENABLE_PAQET=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
         local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
 
         # proxy is disabled if all three protocols are disabled
@@ -1704,11 +1712,12 @@ select_profiles() {
         [[ "$enable_wireguard" != "true" ]] && wg_enabled=false
         [[ "$enable_dnstt" != "true" ]] && dnstt_enabled=false
         [[ "$enable_trusttunnel" != "true" ]] && trusttunnel_enabled=false
+        [[ "$enable_paqet" == "true" ]] && paqet_enabled=true
         [[ "$enable_admin" != "true" ]] && admin_enabled=false
     fi
 
     # Build menu lines with disabled indicators
-    local proxy_line wg_line dnstt_line trusttunnel_line admin_line
+    local proxy_line wg_line dnstt_line trusttunnel_line paqet_line admin_line
 
     if [[ "$proxy_enabled" == "true" ]]; then
         proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 (v2ray apps)       ${CYAN}│${NC}"
@@ -1734,6 +1743,12 @@ select_profiles() {
         trusttunnel_line="  ${CYAN}│${NC}  ${DIM}4   trusttunnel  TrustTunnel VPN (disabled)${NC}                    ${CYAN}│${NC}"
     fi
 
+    if [[ "$paqet_enabled" == "true" ]]; then
+        paqet_line="  ${CYAN}│${NC}  ${YELLOW}9${NC}   paqet        Raw packet proxy ${DIM}(last resort, needs KVM)${NC}     ${CYAN}│${NC}"
+    else
+        paqet_line="  ${CYAN}│${NC}  ${DIM}9   paqet        Raw packet proxy (disabled)${NC}                   ${CYAN}│${NC}"
+    fi
+
     if [[ "$admin_enabled" == "true" ]]; then
         admin_line="  ${CYAN}│${NC}  ${GREEN}5${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
     else
@@ -1754,6 +1769,7 @@ select_profiles() {
     echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
+    echo -e "$paqet_line"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Back${NC}         Back to main menu                             ${CYAN}│${NC}"
@@ -1805,6 +1821,12 @@ select_profiles() {
         # trusttunnel profile
         if [[ "$enable_trusttunnel" == "true" ]]; then
             SELECTED_PROFILES+=("trusttunnel")
+        fi
+
+        # paqet profile
+        local enable_paqet=$(grep "^ENABLE_PAQET=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
+        if [[ "$enable_paqet" == "true" ]]; then
+            SELECTED_PROFILES+=("paqet")
         fi
 
         # admin profile
@@ -1867,6 +1889,7 @@ select_profiles() {
                 6) SELECTED_PROFILES+=("conduit") ;;
                 7) SELECTED_PROFILES+=("snowflake") ;;
                 8) SELECTED_PROFILES+=("monitoring") ;;
+                9) SELECTED_PROFILES+=("paqet") ;;
             esac
         done
     fi
@@ -2679,8 +2702,8 @@ show_usage() {
     echo "  regenerate-users      Regenerate all user bundles with current .env"
     echo "  setup-dns             Free port 53 for dnstt (disables systemd-resolved)"
     echo ""
-    echo "Profiles: proxy, wireguard, dnstt, trusttunnel, admin, conduit, snowflake, client, all"
-    echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, trusttunnel, admin, psiphon-conduit, snowflake"
+    echo "Profiles: proxy, wireguard, dnstt, trusttunnel, paqet, admin, conduit, snowflake, client, all"
+    echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, trusttunnel, paqet, admin, psiphon-conduit, snowflake"
     echo "Aliases:  proxy/singbox/reality→sing-box, wg→wireguard, dns→dnstt, conduit→psiphon-conduit"
     echo ""
     echo "Examples:"
@@ -2889,7 +2912,7 @@ cmd_profiles() {
 
 cmd_start() {
     local profiles=""
-    local valid_profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring client all setup"
+    local valid_profiles="proxy wireguard dnstt trusttunnel paqet admin conduit snowflake monitoring client all setup"
 
     if [[ $# -eq 0 ]]; then
         # No arguments - check for DEFAULT_PROFILES in .env
@@ -4353,6 +4376,8 @@ cmd_regenerate_users() {
     local enable_wireguard=$(grep -E '^ENABLE_WIREGUARD=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_dnstt=$(grep -E '^ENABLE_DNSTT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_trusttunnel=$(grep -E '^ENABLE_TRUSTTUNNEL=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_paqet=$(grep -E '^ENABLE_PAQET=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local port_paqet=$(grep -E '^PORT_PAQET=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
 
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
@@ -4372,6 +4397,8 @@ cmd_regenerate_users() {
             -e "ENABLE_WIREGUARD=${enable_wireguard:-true}" \
             -e "ENABLE_DNSTT=${enable_dnstt:-true}" \
             -e "ENABLE_TRUSTTUNNEL=${enable_trusttunnel:-true}" \
+            -e "ENABLE_PAQET=${enable_paqet:-false}" \
+            -e "PORT_PAQET=${port_paqet:-9999}" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true

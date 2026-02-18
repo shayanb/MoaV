@@ -198,6 +198,8 @@ export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+export ENABLE_PAQET="${ENABLE_PAQET:-false}"
+export PORT_PAQET="${PORT_PAQET:-9999}"
 # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
 if [[ -z "${CDN_DOMAIN:-}" && -n "${CDN_SUBDOMAIN:-}" && -n "${DOMAIN:-}" ]]; then
     export CDN_DOMAIN="${CDN_SUBDOMAIN}.${DOMAIN}"
@@ -205,6 +207,24 @@ else
     export CDN_DOMAIN="${CDN_DOMAIN:-}"
 fi
 export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
+
+# -----------------------------------------------------------------------------
+# Generate Paqet encryption key (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_PAQET:-false}" == "true" ]]; then
+    if [[ ! -f "$STATE_DIR/keys/paqet.key" ]]; then
+        log_info "Generating Paqet encryption key..."
+        PAQET_KEY=$(pwgen -s 32 1)
+        echo "$PAQET_KEY" > "$STATE_DIR/keys/paqet.key"
+        chmod 600 "$STATE_DIR/keys/paqet.key"
+    else
+        PAQET_KEY=$(cat "$STATE_DIR/keys/paqet.key")
+        log_info "Using existing Paqet encryption key"
+    fi
+    export PAQET_KEY
+else
+    PAQET_KEY=""
+fi
 
 # -----------------------------------------------------------------------------
 # Generate WireGuard server config (before creating users)

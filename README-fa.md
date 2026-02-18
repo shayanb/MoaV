@@ -8,7 +8,7 @@
 
 ## ویژگی‌ها
 
-- **پروتکل‌های متعدد** - Reality (VLESS)، Trojan، Hysteria2، TrustTunnel، WireGuard (مستقیم و wstunnel)، تونل DNS
+- **پروتکل‌های متعدد** - Reality (VLESS)، Trojan، Hysteria2، TrustTunnel، WireGuard (مستقیم و wstunnel)، Paqet، تونل DNS
 - **اولویت پنهان‌کاری** - تمام ترافیک شبیه HTTPS معمولی، WebSocket، یا DNS به نظر می‌رسد
 - **اعتبارنامه‌های جداگانه برای هر کاربر** - ایجاد، لغو و مدیریت کاربران به صورت مستقل
 - **نصب آسان** - مبتنی بر Docker Compose، راه‌اندازی با یک دستور
@@ -153,6 +153,7 @@ docker compose --profile all up -d                 # شروع تمام سروی�
 | TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 و QUIC، شبیه HTTPS |
 | WireGuard (مستقیم) | 51820/udp | ★★★☆☆ | ★★★★★ | VPN کامل، نصب ساده |
 | WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN وقتی UDP مسدود است |
+| Paqet | 9999/tcp | ★★★☆☆ | ★★★☆☆ | پکت خام، عبور از فایروال سیستم‌عامل |
 | تونل DNS | 53/udp | ★★★☆☆ | ★☆☆☆☆ | آخرین راه‌حل، سخت برای مسدود کردن |
 | Psiphon | - | ★★★★☆ | ★★★☆☆ | مستقل، نیازی به سرور ندارد |
 | Tor (Snowflake) | - | ★★★★☆ | ★★☆☆☆ | مستقل، از شبکه Tor استفاده می‌کند |

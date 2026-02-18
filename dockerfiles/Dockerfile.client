@@ -24,6 +24,16 @@ RUN git clone https://www.bamsoftware.com/git/dnstt.git /tmp/dnstt && \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 go build -o /dnstt-client . || touch /dnstt-client
 
 # =============================================================================
+# Builder stage - compile paqet (no official releases available)
+# =============================================================================
+FROM golang:1.23-alpine AS paqet-builder
+RUN apk add --no-cache git libpcap-dev gcc musl-dev
+ENV GOTOOLCHAIN=auto
+RUN git clone --depth 1 https://github.com/hanselime/paqet.git /src/paqet && \
+    cd /src/paqet && \
+    go build -o /paqet ./cmd || touch /paqet
+
+# =============================================================================
 # Final image - download pre-built binaries for correct architecture
 # =============================================================================
 FROM alpine:3.21
@@ -49,6 +59,7 @@ RUN apk add --no-cache \
     iproute2 \
     bind-tools \
     tor \
+    libpcap \
     && rm -rf /var/cache/apk/*
 
 # Architecture mapping helper script
@@ -98,6 +109,14 @@ RUN ARCH=$(cat /tmp/arch) && \
     chmod +x /usr/local/bin/snowflake-client && \
     echo "snowflake-client ${SNOWFLAKE_VERSION} installed (${ARCH})" || \
     echo "snowflake-client: download failed (optional, needed for Tor)"
+
+# paqet: copy built binary from builder (no official releases)
+COPY --from=paqet-builder /paqet /tmp/paqet-built
+RUN cp /tmp/paqet-built /usr/local/bin/paqet && \
+    chmod +x /usr/local/bin/paqet && \
+    echo "paqet: using locally built binary" || \
+    echo "paqet: build failed (optional)"
+RUN rm -f /tmp/paqet-built
 
 # dnstt-client: copy cross-compiled binary from builder
 COPY --from=dnstt-builder /dnstt-client /usr/local/bin/dnstt-client
