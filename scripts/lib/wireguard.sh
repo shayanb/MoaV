@@ -50,6 +50,7 @@ generate_wireguard_config() {
 Address = $server_addresses
 ListenPort = $WG_PORT
 PrivateKey = $server_private_key
+MTU = 1280
 PostUp = $postup_rules
 PostDown = $postdown_rules
 
@@ -130,6 +131,7 @@ wireguard_generate_client_config() {
 PrivateKey = $WG_PRIVATE_KEY
 Address = $client_addresses
 DNS = 1.1.1.1, 8.8.8.8
+MTU = 1280
 
 [Peer]
 PublicKey = $server_public_key
@@ -145,6 +147,7 @@ EOF
 PrivateKey = $WG_PRIVATE_KEY
 Address = $client_addresses
 DNS = 1.1.1.1, 2606:4700:4700::1111
+MTU = 1280
 
 [Peer]
 PublicKey = $server_public_key
@@ -162,6 +165,7 @@ EOF
 PrivateKey = $WG_PRIVATE_KEY
 Address = $client_addresses
 DNS = 1.1.1.1, 8.8.8.8
+MTU = 1280
 
 [Peer]
 PublicKey = $server_public_key
