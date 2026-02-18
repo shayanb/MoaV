@@ -195,8 +195,20 @@ for USERNAME in "${USERNAMES[@]}"; do
         log_info "[3/3] Adding to AmneziaWG..."
         (
             # Generate client keys (standard WG key format, compatible with AWG)
-            AWG_CLIENT_PRIVATE=$(wg genkey)
-            AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | wg pubkey)
+            # Use running container for key generation (host may not have wg/awg)
+            if docker compose ps amneziawg --status running &>/dev/null; then
+                AWG_CLIENT_PRIVATE=$(docker compose exec -T amneziawg awg genkey)
+                AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | docker compose exec -T amneziawg awg pubkey)
+            elif docker compose ps wireguard --status running &>/dev/null; then
+                AWG_CLIENT_PRIVATE=$(docker compose exec -T wireguard wg genkey)
+                AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | docker compose exec -T wireguard wg pubkey)
+            elif command -v wg &>/dev/null; then
+                AWG_CLIENT_PRIVATE=$(wg genkey)
+                AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | wg pubkey)
+            else
+                log_error "No wg/awg command available (install wireguard-tools or ensure amneziawg container is running)"
+                exit 1
+            fi
 
             # Count existing peers for IP assignment
             AWG_PEER_COUNT=$(grep -c '^\[Peer\]' "configs/amneziawg/awg0.conf" 2>/dev/null) || true
@@ -210,9 +222,8 @@ for USERNAME in "${USERNAMES[@]}"; do
                 AWG_CLIENT_IP_V6="fd00:cafe:dead::$((AWG_PEER_NUM + 1))"
             fi
 
-            # Save client credentials
-            mkdir -p "state/users/$USERNAME"
-            cat > "state/users/$USERNAME/amneziawg.env" <<CREDEOF
+            # Save client credentials to bundle dir (state/ is a Docker volume, not host-accessible)
+            cat > "$OUTPUT_DIR/amneziawg.env" <<CREDEOF
 AWG_PRIVATE_KEY=$AWG_CLIENT_PRIVATE
 AWG_PUBLIC_KEY=$AWG_CLIENT_PUBLIC
 AWG_CLIENT_IP=$AWG_CLIENT_IP
@@ -233,9 +244,17 @@ PublicKey = $AWG_CLIENT_PUBLIC
 AllowedIPs = $AWG_ALLOWED
 PEEREOF
 
-            # Generate client config
-            source "state/keys/amneziawg.env"
+            # Read obfuscation params and server key from the server config (bind mount)
             AWG_SERVER_PUB=$(cat "configs/amneziawg/server.pub")
+            AWG_JC=$(grep '^Jc' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_JMIN=$(grep '^Jmin' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_JMAX=$(grep '^Jmax' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_S1=$(grep '^S1' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_S2=$(grep '^S2' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_H1=$(grep '^H1' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_H2=$(grep '^H2' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_H3=$(grep '^H3' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_H4=$(grep '^H4' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
 
             AWG_ADDRESSES="$AWG_CLIENT_IP/32"
             if [[ -n "$AWG_CLIENT_IP_V6" ]]; then

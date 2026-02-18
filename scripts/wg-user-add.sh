@@ -311,12 +311,8 @@ echo "  - wireguard-wstunnel.conf (wstunnel mode - for restrictive networks)"
 echo "  - wireguard-instructions.txt (setup guide)"
 echo ""
 
-# Display QR code for DIRECT config (simple mode)
+# Generate QR images for user bundle
 if command -v qrencode &>/dev/null; then
-    echo "=== QR Code (Direct Mode - scan with WireGuard app) ==="
-    qrencode -t ANSIUTF8 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || true
-    echo ""
-    # Also save QR as image
     qrencode -o "$OUTPUT_DIR/wireguard-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null && \
         log_info "QR image saved to: $OUTPUT_DIR/wireguard-qr.png"
 

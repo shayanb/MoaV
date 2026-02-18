@@ -25,6 +25,13 @@ echo "[amneziawg] Peer count: $PEER_COUNT"
 # IP forwarding is set via docker-compose sysctls
 echo "[amneziawg] IP forwarding: $(cat /proc/sys/net/ipv4/ip_forward)"
 
+# Clean up stale interface from previous run (prevents "device or resource busy")
+if ip link show "$INTERFACE" > /dev/null 2>&1; then
+    echo "[amneziawg] Cleaning up stale $INTERFACE interface..."
+    ip link del "$INTERFACE" 2>/dev/null || true
+    sleep 1
+fi
+
 # Start amneziawg-go userspace daemon in background
 echo "[amneziawg] Starting amneziawg-go userspace daemon..."
 amneziawg-go "$INTERFACE" &
@@ -161,12 +168,18 @@ while true; do
     # Check if amneziawg-go process is still alive
     if ! kill -0 $AWG_PID 2>/dev/null; then
         echo "[amneziawg] amneziawg-go process died, restarting..."
+        ip link del "$INTERFACE" 2>/dev/null || true
+        sleep 1
         amneziawg-go "$INTERFACE" &
         AWG_PID=$!
-        sleep 1
-        echo "$PRIVATE_KEY" | awg set "$INTERFACE" $AWG_SET_ARGS 2>/dev/null || true
-        ip addr add "$ADDRESS" dev "$INTERFACE" 2>/dev/null || true
-        [ -n "$MTU" ] && ip link set "$INTERFACE" mtu "$MTU" 2>/dev/null || true
-        ip link set "$INTERFACE" up 2>/dev/null || true
+        sleep 2
+        if ip link show "$INTERFACE" > /dev/null 2>&1; then
+            echo "$PRIVATE_KEY" | awg set "$INTERFACE" $AWG_SET_ARGS 2>/dev/null || true
+            ip addr add "$ADDRESS" dev "$INTERFACE" 2>/dev/null || true
+            [ -n "$MTU" ] && ip link set "$INTERFACE" mtu "$MTU" 2>/dev/null || true
+            ip link set "$INTERFACE" up 2>/dev/null || true
+        else
+            echo "[amneziawg] Failed to recreate interface, will retry..."
+        fi
     fi
 done
