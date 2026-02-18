@@ -169,6 +169,29 @@
   export PORT_NEWPROTO="${PORT_NEWPROTO:-XXXX}"
   ```
 
+### 3d. `scripts/user-add.sh` (host-side user creation)
+
+> **Important:** `user-add.sh` runs on the host (via `moav user add`), separately from
+> `generate-single-user.sh` (which runs inside the bootstrap container). Both paths must
+> handle the new protocol.
+
+- [ ] Add peer/credential creation step (after WireGuard section ~line 177):
+  - Generate keys, calculate client IP, save credentials to `state/users/$USERNAME/`
+  - Append peer to server config (e.g., `configs/newproto/config.file`)
+  - Generate client config file + QR code in `$OUTPUT_DIR/`
+- [ ] Update step counters (`[1/N]`, `[2/N]`, etc.) to include new protocol
+- [ ] Add `CONFIG_NEWPROTO` reading in README.html section:
+  ```bash
+  CONFIG_NEWPROTO=$(cat "$OUTPUT_DIR/newproto.conf" 2>/dev/null || echo "")
+  ```
+- [ ] Add `QR_NEWPROTO_B64` generation and sed replacement:
+  ```bash
+  QR_NEWPROTO_B64=$(qr_to_base64 "$OUTPUT_DIR/newproto-qr.png")
+  sed -i.bak "s|{{QR_NEWPROTO}}|$QR_NEWPROTO_B64|g" "$OUTPUT_HTML"
+  ```
+- [ ] Add `replace_placeholder` call for `{{CONFIG_NEWPROTO}}`
+- [ ] Add service reload in batch mode section (after WireGuard reload)
+
 ---
 
 ## 4. CLI Tool (`moav.sh`)
@@ -441,5 +464,5 @@ configs/newproto/server.pub
 | Type | Count | Files |
 |------|-------|-------|
 | New files | 3-4 | Dockerfile, entrypoint, configs/.gitkeep, (templates) |
-| Modified files | 12-14 | docker-compose.yml, .env.example, moav.sh, bootstrap.sh, generate-user.sh, generate-single-user.sh, Dockerfile.client, client-connect.sh, client-test.sh, README.md, README-fa.md, SETUP.md, CLIENTS.md, TROUBLESHOOTING.md |
+| Modified files | 13-15 | docker-compose.yml, .env.example, .gitignore, moav.sh, bootstrap.sh, generate-user.sh, generate-single-user.sh, user-add.sh, Dockerfile.client, client-connect.sh, client-test.sh, README.md, README-fa.md, SETUP.md, CLIENTS.md, TROUBLESHOOTING.md |
 | **Total** | **15-18** | |
