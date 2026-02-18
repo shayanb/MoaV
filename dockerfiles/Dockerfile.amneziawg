@@ -6,7 +6,7 @@ RUN apk add --no-cache git
 
 RUN git clone https://github.com/amnezia-vpn/amneziawg-go.git /src && \
     cd /src && \
-    go build -ldflags '-linkmode external -extldflags "-fno-PIC -static"' -v -o /usr/bin/amneziawg-go
+    CGO_ENABLED=0 go build -o /usr/bin/amneziawg-go
 
 FROM alpine:3.21
 
