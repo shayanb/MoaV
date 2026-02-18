@@ -132,6 +132,12 @@ fi
 # Generate Reality keys if not provided (only if Reality is enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
+    # Load existing Reality keys from state if available
+    if [[ -f "$STATE_DIR/keys/reality.env" ]]; then
+        log_info "Loading existing Reality keys from state..."
+        source "$STATE_DIR/keys/reality.env"
+    fi
+
     if [[ -z "${REALITY_PRIVATE_KEY:-}" ]]; then
         log_info "Generating Reality keypair..."
         REALITY_KEYS=$(sing-box generate reality-keypair)
@@ -139,10 +145,13 @@ if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
         REALITY_PUBLIC_KEY=$(echo "$REALITY_KEYS" | grep "PublicKey" | awk '{print $2}')
     else
         REALITY_PUBLIC_KEY=$(sing-box generate reality-keypair --private-key "$REALITY_PRIVATE_KEY" 2>/dev/null | grep "PublicKey" | awk '{print $2}' || echo "")
+        log_info "Reality keypair already exists, skipping generation"
     fi
 
     if [[ -z "${REALITY_SHORT_ID:-}" ]]; then
         REALITY_SHORT_ID=$(openssl rand -hex 4)
+    else
+        log_info "Reality short ID already exists, skipping generation"
     fi
 
     # Save keys to state
@@ -163,15 +172,31 @@ fi
 # Generate Clash API secret (only if sing-box protocols are enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_REALITY:-true}" == "true" ]] || [[ "${ENABLE_TROJAN:-true}" == "true" ]] || [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]]; then
-    CLASH_API_SECRET=$(pwgen -s 32 1)
-    echo "CLASH_API_SECRET=$CLASH_API_SECRET" > "$STATE_DIR/keys/clash-api.env"
+    # Load existing secrets from state if available
+    if [[ -f "$STATE_DIR/keys/clash-api.env" ]]; then
+        source "$STATE_DIR/keys/clash-api.env"
+    fi
+
+    if [[ -z "${CLASH_API_SECRET:-}" ]]; then
+        CLASH_API_SECRET=$(pwgen -s 32 1)
+        log_info "Generated new Clash API secret"
+    else
+        log_info "Clash API secret already exists, skipping generation"
+    fi
 
     # Generate Hysteria2 obfuscation password (for bypassing QUIC blocking)
     if [[ -z "${HYSTERIA2_OBFS_PASSWORD:-}" ]]; then
         HYSTERIA2_OBFS_PASSWORD=$(pwgen -s 24 1)
         log_info "Generated Hysteria2 obfuscation password"
+    else
+        log_info "Hysteria2 obfuscation password already exists, skipping generation"
     fi
-    echo "HYSTERIA2_OBFS_PASSWORD=$HYSTERIA2_OBFS_PASSWORD" >> "$STATE_DIR/keys/clash-api.env"
+
+    # Save to state
+    cat > "$STATE_DIR/keys/clash-api.env" <<EOF
+CLASH_API_SECRET=$CLASH_API_SECRET
+HYSTERIA2_OBFS_PASSWORD=$HYSTERIA2_OBFS_PASSWORD
+EOF
 
     # Parse Reality target
     REALITY_TARGET_HOST=$(echo "${REALITY_TARGET:-dl.google.com:443}" | cut -d: -f1)
@@ -293,19 +318,26 @@ for i in $(seq -w 1 "$INITIAL_USERS"); do
         USER_ID="user$i"
         export IS_DEMO_USER="false"
     fi
-    USER_UUID=$(sing-box generate uuid)
-    USER_PASSWORD=$(pwgen -s 24 1)
 
-    log_info "Creating user: $USER_ID"
-
-    # Store user credentials
     mkdir -p "$STATE_DIR/users/$USER_ID"
-    cat > "$STATE_DIR/users/$USER_ID/credentials.env" <<EOF
+
+    # Load existing credentials if available, only generate if missing
+    if [[ -f "$STATE_DIR/users/$USER_ID/credentials.env" ]]; then
+        log_info "Loading existing credentials for user: $USER_ID"
+        source "$STATE_DIR/users/$USER_ID/credentials.env"
+    else
+        USER_UUID=$(sing-box generate uuid)
+        USER_PASSWORD=$(pwgen -s 24 1)
+        log_info "Creating new user: $USER_ID"
+
+        # Store user credentials
+        cat > "$STATE_DIR/users/$USER_ID/credentials.env" <<EOF
 USER_ID=$USER_ID
 USER_UUID=$USER_UUID
 USER_PASSWORD=$USER_PASSWORD
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
+    fi
 
     # Build JSON arrays for sing-box config
     [[ $i -gt 1 ]] && REALITY_USERS_JSON+=","
