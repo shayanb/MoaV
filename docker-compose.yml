@@ -299,6 +299,8 @@ services:
     build:
       context: .
       dockerfile: dockerfiles/Dockerfile.amneziawg
+      args:
+        AWGTOOLS_VERSION: ${AWGTOOLS_VERSION:-1.0.20250903}
     container_name: moav-amneziawg
     restart: unless-stopped
     networks:
@@ -619,6 +621,7 @@ services:
         WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.2}
         SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
         TRUSTTUNNEL_CLIENT_VERSION: ${TRUSTTUNNEL_CLIENT_VERSION:-0.99.105}
+        AWGTOOLS_VERSION: ${AWGTOOLS_VERSION:-1.0.20250903}
     container_name: moav-client
     volumes:
       - ./outputs/bundles:/bundles:ro

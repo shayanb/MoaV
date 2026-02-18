@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.5] - 2026-02-18
+
+### Added
+- **AmneziaWG protocol** - DPI-resistant WireGuard fork with packet-level obfuscation ([#48](https://github.com/shayanb/MoaV/issues/48))
+  - New `amneziawg` Docker service and profile (port 51821/udp)
+  - Userspace Go implementation (`amneziawg-go`) for Docker compatibility
+  - Random obfuscation parameters (Jc/Jmin/Jmax junk packets, S1/S2 padding, H1-H4 headers)
+  - Separate subnet (10.67.67.0/24) from WireGuard (10.66.66.0/24)
+  - Full client support: config generation, QR codes, client guide (EN/FA)
+  - `awg` alias for `moav start amneziawg`
+  - Client container includes `awg-tools` for AmneziaWG connections
+- **Protocol Integration Checklist** - Developer documentation for adding new protocols to MoaV
+- **Version Bump Checklist** - Developer documentation for release process
+
+### Fixed
+- **WireGuard MTU** - Added `MTU = 1280` to all WireGuard configs (server + client)
+  - Fixes poor upload speeds on mobile networks behind CGNAT (e.g., Iranian carriers)
+  - Applied to: direct, IPv6, and wstunnel-wrapped configs
+- Grafana local build edge case fix
+- DNS check before dnstt startup
+- First start profile selection fix
+- Bugfix [#38](https://github.com/shayanb/MoaV/issues/38)
+- Bugfix [#44](https://github.com/shayanb/MoaV/issues/44)
+- Local building bugfix
+
+### Changed
+- Default Snowflake/Conduit bandwidth lowered (due to high usage)
+- `awg-tools` updated to v1.0.20250903
+- Developer checklists moved to `docs/devdocs/`
+
 ## [1.3.4] - 2026-02-14
 
 ### Added
@@ -449,7 +479,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.5...HEAD
+[1.3.5]: https://github.com/shayanb/MoaV/compare/v1.3.4...v1.3.5
+[1.3.4]: https://github.com/shayanb/MoaV/compare/v1.3.3...v1.3.4
+[1.3.3]: https://github.com/shayanb/MoaV/compare/v1.3.1...v1.3.3
+[1.3.1]: https://github.com/shayanb/MoaV/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/shayanb/MoaV/compare/v1.2.5...v1.3.0
 [1.2.5]: https://github.com/shayanb/MoaV/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/shayanb/MoaV/compare/v1.2.3...v1.2.4
