@@ -163,23 +163,34 @@ cleanup() {
 trap cleanup SIGTERM SIGINT
 
 # Keep running
+KERNEL_MODE=0
 while true; do
     sleep 60
     # Check if amneziawg-go process is still alive
     if ! kill -0 $AWG_PID 2>/dev/null; then
-        echo "[amneziawg] amneziawg-go process died, restarting..."
-        ip link del "$INTERFACE" 2>/dev/null || true
-        sleep 1
-        amneziawg-go "$INTERFACE" &
-        AWG_PID=$!
-        sleep 2
+        # Process exited — check if interface is still up (kernel module took over)
         if ip link show "$INTERFACE" > /dev/null 2>&1; then
-            echo "$PRIVATE_KEY" | awg set "$INTERFACE" $AWG_SET_ARGS 2>/dev/null || true
-            ip addr add "$ADDRESS" dev "$INTERFACE" 2>/dev/null || true
-            [ -n "$MTU" ] && ip link set "$INTERFACE" mtu "$MTU" 2>/dev/null || true
-            ip link set "$INTERFACE" up 2>/dev/null || true
+            if [ "$KERNEL_MODE" = "0" ]; then
+                echo "[amneziawg] amneziawg-go exited but $INTERFACE is still up (kernel module active)"
+                echo "[amneziawg] Continuing in kernel mode — no userspace daemon needed"
+                KERNEL_MODE=1
+            fi
         else
-            echo "[amneziawg] Failed to recreate interface, will retry..."
+            # Interface is truly gone — try to restart
+            echo "[amneziawg] Interface $INTERFACE is down, restarting..."
+            sleep 1
+            amneziawg-go "$INTERFACE" &
+            AWG_PID=$!
+            sleep 2
+            if ip link show "$INTERFACE" > /dev/null 2>&1; then
+                echo "$PRIVATE_KEY" | awg set "$INTERFACE" $AWG_SET_ARGS 2>/dev/null || true
+                ip addr add "$ADDRESS" dev "$INTERFACE" 2>/dev/null || true
+                [ -n "$MTU" ] && ip link set "$INTERFACE" mtu "$MTU" 2>/dev/null || true
+                ip link set "$INTERFACE" up 2>/dev/null || true
+                KERNEL_MODE=0
+            else
+                echo "[amneziawg] Failed to recreate interface, will retry..."
+            fi
         fi
     fi
 done
