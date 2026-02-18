@@ -163,21 +163,24 @@ AWG_CLIENT_IP_V6=$client_ip_v6
 EOF
     fi
 
-    # Add peer to server config
+    # Add peer to server config (skip if already exists)
     local allowed_ips="$client_ip/32"
     if [[ -n "$client_ip_v6" ]]; then
         allowed_ips="$client_ip/32, $client_ip_v6/128"
     fi
 
-    cat >> "$AWG_CONFIG_DIR/awg0.conf" <<EOF
+    if grep -q "# $user_id$" "$AWG_CONFIG_DIR/awg0.conf" 2>/dev/null; then
+        log_info "AmneziaWG peer for $user_id already in config, skipping"
+    else
+        cat >> "$AWG_CONFIG_DIR/awg0.conf" <<EOF
 
 [Peer]
 # $user_id
 PublicKey = $client_public_key
 AllowedIPs = $allowed_ips
 EOF
-
-    log_info "Added AmneziaWG peer for $user_id (IP: $client_ip${client_ip_v6:+, IPv6: $client_ip_v6})"
+        log_info "Added AmneziaWG peer for $user_id (IP: $client_ip${client_ip_v6:+, IPv6: $client_ip_v6})"
+    fi
 }
 
 # Generate AmneziaWG client config
