@@ -576,6 +576,24 @@ services:
       - monitoring
       - all
 
+  # AmneziaWG Exporter - custom per-peer traffic metrics
+  amneziawg-exporter:
+    build:
+      context: ./exporters/amneziawg
+      dockerfile: Dockerfile
+    container_name: moav-amneziawg-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/amneziawg:/etc/amneziawg:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    profiles:
+      - monitoring
+      - all
+
   # ===========================================================================
   # BOOTSTRAP: First-run initialization
   # ===========================================================================
@@ -591,6 +609,7 @@ services:
       - ./docs:/docs:ro
       - moav_state:/state
       - moav_certs:/certs
+      - ./state:/host-state:ro    # Host state dir for users created via 'moav user add'
     environment:
       - DOMAIN=${DOMAIN}
       - SERVER_IP=${SERVER_IP:-}

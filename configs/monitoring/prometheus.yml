@@ -40,6 +40,13 @@ scrape_configs:
       - targets: ['wireguard-exporter:9586']
     scrape_timeout: 10s
 
+  # AmneziaWG Exporter - per-peer traffic metrics
+  # NOTE: Only available when running with --profile amneziawg
+  - job_name: 'amneziawg'
+    static_configs:
+      - targets: ['amneziawg-exporter:9587']
+    scrape_timeout: 10s
+
   # Conduit Exporter - parses Psiphon conduit logs for [STATS] metrics
   # NOTE: Only available when running with --profile conduit
   - job_name: 'conduit'

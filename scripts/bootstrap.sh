@@ -361,6 +361,106 @@ password = \"$USER_PASSWORD\"
     /app/generate-user.sh "$USER_ID"
 done
 
+# -----------------------------------------------------------------------------
+# Re-add existing users that were created via 'moav user add' (not in INITIAL_USERS)
+# On re-bootstrap, wg0.conf/awg0.conf are regenerated fresh with only INITIAL_USERS.
+# This loop picks up any additional users from state and re-adds their peers + configs.
+# -----------------------------------------------------------------------------
+PROCESSED_USERS=""
+# Build list of users already processed above
+for i in $(seq -w 1 "$INITIAL_USERS"); do
+    if [[ "$INITIAL_USERS" == "1" ]]; then
+        PROCESSED_USERS="demouser"
+    else
+        PROCESSED_USERS="$PROCESSED_USERS user$i"
+    fi
+done
+
+# Import users from host state dir (/host-state) into Docker volume (/state)
+# Users created via 'moav user add' write to host ./state/ which is mounted as /host-state.
+# The Docker volume /state only has users created by bootstrap. This step syncs them.
+IMPORT_COUNT=0
+if [[ -d "/host-state/users" ]]; then
+    for host_user_dir in /host-state/users/*/; do
+        [[ ! -d "$host_user_dir" ]] && continue
+        IMPORT_USER_ID=$(basename "$host_user_dir")
+
+        # Skip users already in Docker volume state
+        if [[ -d "$STATE_DIR/users/$IMPORT_USER_ID" ]]; then
+            continue
+        fi
+
+        # Skip users already processed in INITIAL_USERS loop
+        if echo " $PROCESSED_USERS " | grep -q " $IMPORT_USER_ID "; then
+            continue
+        fi
+
+        # Must have credentials to be a valid user
+        if [[ ! -f "/host-state/users/$IMPORT_USER_ID/credentials.env" ]]; then
+            continue
+        fi
+
+        log_info "Importing user from host state: $IMPORT_USER_ID"
+        mkdir -p "$STATE_DIR/users/$IMPORT_USER_ID"
+        cp -a "/host-state/users/$IMPORT_USER_ID/"* "$STATE_DIR/users/$IMPORT_USER_ID/" 2>/dev/null || true
+
+        # Also import AWG credentials from output bundle if not already in state
+        if [[ ! -f "$STATE_DIR/users/$IMPORT_USER_ID/amneziawg.env" ]] && \
+           [[ -f "/outputs/bundles/$IMPORT_USER_ID/amneziawg.env" ]]; then
+            cp "/outputs/bundles/$IMPORT_USER_ID/amneziawg.env" \
+               "$STATE_DIR/users/$IMPORT_USER_ID/amneziawg.env"
+        fi
+
+        ((IMPORT_COUNT++)) || true
+    done
+fi
+
+if [[ $IMPORT_COUNT -gt 0 ]]; then
+    log_info "Imported $IMPORT_COUNT users from host state into Docker volume"
+fi
+
+EXTRA_USER_COUNT=0
+for user_dir in "$STATE_DIR"/users/*/; do
+    [[ ! -d "$user_dir" ]] && continue
+    EXTRA_USER_ID=$(basename "$user_dir")
+
+    # Skip users already processed in INITIAL_USERS loop
+    if echo " $PROCESSED_USERS " | grep -q " $EXTRA_USER_ID "; then
+        continue
+    fi
+
+    # Must have credentials to be a valid user
+    if [[ ! -f "$STATE_DIR/users/$EXTRA_USER_ID/credentials.env" ]]; then
+        continue
+    fi
+
+    log_info "Re-adding existing user: $EXTRA_USER_ID"
+    source "$STATE_DIR/users/$EXTRA_USER_ID/credentials.env"
+
+    # Add to sing-box JSON arrays (need comma separator)
+    REALITY_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"uuid\":\"$USER_UUID\",\"flow\":\"xtls-rprx-vision\"}"
+    TROJAN_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"password\":\"$USER_PASSWORD\"}"
+    HYSTERIA2_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"password\":\"$USER_PASSWORD\"}"
+    VLESS_WS_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"uuid\":\"$USER_UUID\"}"
+
+    TRUSTTUNNEL_CREDENTIALS+="[[client]]
+username = \"$EXTRA_USER_ID\"
+password = \"$USER_PASSWORD\"
+
+"
+
+    # Regenerate user bundle (adds WG/AWG peers via guards + generates configs)
+    export USER_ID="$EXTRA_USER_ID"
+    export IS_DEMO_USER="false"
+    /app/generate-user.sh "$EXTRA_USER_ID"
+
+    ((EXTRA_USER_COUNT++)) || true
+done
+
+if [[ $EXTRA_USER_COUNT -gt 0 ]]; then
+    log_info "Re-added $EXTRA_USER_COUNT existing users from previous sessions"
+fi
+
 REALITY_USERS_JSON+="]"
 TROJAN_USERS_JSON+="]"
 HYSTERIA2_USERS_JSON+="]"
