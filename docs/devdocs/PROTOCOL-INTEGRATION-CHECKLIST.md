@@ -423,7 +423,72 @@ configs/newproto/server.pub
 
 ---
 
-## 8. Verification
+## 8. Grafana Monitoring (Optional)
+
+> Before building anything, research existing community/official Prometheus exporters for the
+> protocol. Present options to the team (official exporter, custom exporter, or both) with
+> trade-offs (maintenance burden, metric granularity, resource usage).
+
+### 8a. Research & Decision
+
+- [ ] Search GitHub for `<protocol-name> prometheus exporter` or `<protocol-name> exporter`
+- [ ] Check if the protocol's official project provides an exporter
+- [ ] Document options found and present to team:
+  - **Official/community exporter:** What metrics? Docker image available? Dependencies (Redis, etc.)?
+  - **Custom exporter (our pattern):** What data can we scrape? (`docker exec`, log parsing, API?)
+  - **Both:** Does combining official + custom give meaningfully better coverage?
+- [ ] Decide on approach based on: metric coverage, maintenance, resource usage
+
+### 8b. Exporter(s) — `exporters/newproto/` (NEW DIRECTORY)
+
+- [ ] If custom exporter: create `exporters/newproto/main.py` + `Dockerfile`
+  - Follow pattern from `exporters/wireguard/` (docker exec + parsing) or `exporters/conduit/` (log tailing)
+  - Use metric prefix `newproto_` for all custom metrics
+  - Port: pick next available (check existing: 9100, 9101, 9102, 9351, 9586, 9587)
+- [ ] If official exporter: use pre-built Docker image in docker-compose.yml
+
+### 8c. `docker-compose.yml` — Add exporter service(s)
+
+- [ ] Add under monitoring section (after `wireguard-exporter` block):
+  ```yaml
+  newproto-exporter:
+    build:                            # or image: for official
+      context: ./exporters/newproto
+      dockerfile: Dockerfile
+    container_name: moav-newproto-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/newproto:/etc/newproto:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    profiles:
+      - monitoring
+      - all
+  ```
+
+### 8d. `configs/monitoring/prometheus.yml` — Add scrape job(s)
+
+- [ ] Add scrape config:
+  ```yaml
+  - job_name: 'newproto'
+    static_configs:
+      - targets: ['newproto-exporter:PORT']
+    scrape_timeout: 10s
+  ```
+
+### 8e. Grafana Dashboard — `configs/monitoring/grafana/provisioning/dashboards/newproto.json` (NEW FILE)
+
+- [ ] Create dashboard JSON following existing pattern (see `wireguard.json`)
+- [ ] Include: stat panels (top row), time series charts (traffic rate), table (peer/connection details)
+- [ ] Set `"uid": "moav-newproto"` and `"title": "MoaV - NewProto"`
+- [ ] Tags: `["moav", "newproto", "vpn"]`
+
+---
+
+## 9. Verification
 
 - [ ] `bash -n moav.sh` — syntax check passes
 - [ ] `docker compose config --profiles newproto` — compose config valid
