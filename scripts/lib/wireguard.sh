@@ -69,29 +69,40 @@ wireguard_add_peer() {
     local user_id="$1"
     local peer_num="$2"
 
-    # Generate client keys
     local client_private_key
     local client_public_key
-    client_private_key=$(wg genkey)
-    client_public_key=$(echo "$client_private_key" | wg pubkey)
-
-    # Calculate client IP (IPv4)
-    local client_ip="10.66.66.$((peer_num + 1))"
-
-    # Calculate client IPv6 if server has IPv6
+    local client_ip
     local client_ip_v6=""
-    if [[ -n "${SERVER_IPV6:-}" ]]; then
-        # Use peer number as the last segment of IPv6 address
-        client_ip_v6="fd00:cafe:beef::$((peer_num + 1))"
-    fi
 
-    # Save client credentials
-    cat > "$STATE_DIR/users/$user_id/wireguard.env" <<EOF
+    # Load existing client keys if available, only generate if missing
+    if [[ -f "$STATE_DIR/users/$user_id/wireguard.env" ]]; then
+        source "$STATE_DIR/users/$user_id/wireguard.env"
+        client_private_key="$WG_PRIVATE_KEY"
+        client_public_key="$WG_PUBLIC_KEY"
+        client_ip="$WG_CLIENT_IP"
+        client_ip_v6="${WG_CLIENT_IP_V6:-}"
+        log_info "Loaded existing WireGuard keys for $user_id"
+    else
+        # Generate new client keys
+        client_private_key=$(wg genkey)
+        client_public_key=$(echo "$client_private_key" | wg pubkey)
+
+        # Calculate client IP (IPv4)
+        client_ip="10.66.66.$((peer_num + 1))"
+
+        # Calculate client IPv6 if server has IPv6
+        if [[ -n "${SERVER_IPV6:-}" ]]; then
+            client_ip_v6="fd00:cafe:beef::$((peer_num + 1))"
+        fi
+
+        # Save client credentials
+        cat > "$STATE_DIR/users/$user_id/wireguard.env" <<EOF
 WG_PRIVATE_KEY=$client_private_key
 WG_PUBLIC_KEY=$client_public_key
 WG_CLIENT_IP=$client_ip
 WG_CLIENT_IP_V6=$client_ip_v6
 EOF
+    fi
 
     # Add peer to server config
     local allowed_ips="$client_ip/32"

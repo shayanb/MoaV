@@ -128,28 +128,40 @@ amneziawg_add_peer() {
     local user_id="$1"
     local peer_num="$2"
 
-    # Generate client keys (standard WG key format, compatible with AWG)
     local client_private_key
     local client_public_key
-    client_private_key=$(wg genkey)
-    client_public_key=$(echo "$client_private_key" | wg pubkey)
-
-    # Calculate client IP (IPv4)
-    local client_ip="10.67.67.$((peer_num + 1))"
-
-    # Calculate client IPv6 if server has IPv6
+    local client_ip
     local client_ip_v6=""
-    if [[ -n "${SERVER_IPV6:-}" ]]; then
-        client_ip_v6="fd00:cafe:dead::$((peer_num + 1))"
-    fi
 
-    # Save client credentials
-    cat > "$STATE_DIR/users/$user_id/amneziawg.env" <<EOF
+    # Load existing client keys if available, only generate if missing
+    if [[ -f "$STATE_DIR/users/$user_id/amneziawg.env" ]]; then
+        source "$STATE_DIR/users/$user_id/amneziawg.env"
+        client_private_key="$AWG_PRIVATE_KEY"
+        client_public_key="$AWG_PUBLIC_KEY"
+        client_ip="$AWG_CLIENT_IP"
+        client_ip_v6="${AWG_CLIENT_IP_V6:-}"
+        log_info "Loaded existing AmneziaWG keys for $user_id"
+    else
+        # Generate client keys (standard WG key format, compatible with AWG)
+        client_private_key=$(wg genkey)
+        client_public_key=$(echo "$client_private_key" | wg pubkey)
+
+        # Calculate client IP (IPv4)
+        client_ip="10.67.67.$((peer_num + 1))"
+
+        # Calculate client IPv6 if server has IPv6
+        if [[ -n "${SERVER_IPV6:-}" ]]; then
+            client_ip_v6="fd00:cafe:dead::$((peer_num + 1))"
+        fi
+
+        # Save client credentials
+        cat > "$STATE_DIR/users/$user_id/amneziawg.env" <<EOF
 AWG_PRIVATE_KEY=$client_private_key
 AWG_PUBLIC_KEY=$client_public_key
 AWG_CLIENT_IP=$client_ip
 AWG_CLIENT_IP_V6=$client_ip_v6
 EOF
+    fi
 
     # Add peer to server config
     local allowed_ips="$client_ip/32"
