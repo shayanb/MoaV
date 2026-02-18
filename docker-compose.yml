@@ -292,6 +292,34 @@ services:
       - all
 
   # ===========================================================================
+  # AMNEZIAWG: DPI-resistant WireGuard fork
+  # Obfuscated WireGuard that defeats deep packet inspection
+  # ===========================================================================
+  amneziawg:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.amneziawg
+    container_name: moav-amneziawg
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_AMNEZIAWG:-51821}:51821/udp"
+    volumes:
+      - ./configs/amneziawg:/etc/amneziawg
+      - /lib/modules:/lib/modules:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+    profiles:
+      - amneziawg
+      - all
+
+  # ===========================================================================
   # TRUSTTUNNEL: Modern VPN protocol (looks like HTTPS)
   # HTTP/2 + HTTP/3 (QUIC) transport, indistinguishable from regular web traffic
   # ===========================================================================
@@ -570,6 +598,8 @@ services:
       - ENABLE_WIREGUARD=${ENABLE_WIREGUARD:-true}
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
       - ENABLE_TRUSTTUNNEL=${ENABLE_TRUSTTUNNEL:-true}
+      - ENABLE_AMNEZIAWG=${ENABLE_AMNEZIAWG:-true}
+      - PORT_AMNEZIAWG=${PORT_AMNEZIAWG:-51821}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
       - CDN_SUBDOMAIN=${CDN_SUBDOMAIN:-}
       - CDN_DOMAIN=${CDN_DOMAIN:-}

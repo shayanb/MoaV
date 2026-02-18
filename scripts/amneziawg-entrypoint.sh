@@ -1,0 +1,172 @@
+#!/bin/sh
+
+# =============================================================================
+# AmneziaWG entrypoint - brings up AmneziaWG using awg commands
+# Based on WireGuard entrypoint, adapted for AmneziaWG interface/tools
+# =============================================================================
+
+CONFIG_FILE="/etc/amneziawg/awg0.conf"
+INTERFACE="awg0"
+
+echo "[amneziawg] Starting AmneziaWG..."
+
+# Check if config exists
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "[amneziawg] ERROR: Config file not found at $CONFIG_FILE"
+    echo "[amneziawg] Run bootstrap first to generate AmneziaWG configuration"
+    exit 1
+fi
+
+# Show config info (without private keys)
+echo "[amneziawg] Config file: $CONFIG_FILE"
+PEER_COUNT=$(grep -c '^\[Peer\]' "$CONFIG_FILE" || echo 0)
+echo "[amneziawg] Peer count: $PEER_COUNT"
+
+# IP forwarding is set via docker-compose sysctls
+echo "[amneziawg] IP forwarding: $(cat /proc/sys/net/ipv4/ip_forward)"
+
+# Start amneziawg-go userspace daemon in background
+echo "[amneziawg] Starting amneziawg-go userspace daemon..."
+amneziawg-go "$INTERFACE" &
+AWG_PID=$!
+sleep 1
+
+# Verify interface was created
+if ! ip link show "$INTERFACE" > /dev/null 2>&1; then
+    echo "[amneziawg] ERROR: Failed to create interface $INTERFACE"
+    exit 1
+fi
+
+# Parse config file - use cut -f2- to preserve = in base64 keys
+PRIVATE_KEY=$(grep -i 'PrivateKey' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+ADDRESS=$(grep -i 'Address' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+LISTEN_PORT=$(grep -i 'ListenPort' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+MTU=$(grep -i 'MTU' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+
+# Parse AmneziaWG obfuscation params
+JC=$(grep -i '^Jc' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+JMIN=$(grep -i '^Jmin' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+JMAX=$(grep -i '^Jmax' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+S1=$(grep -i '^S1' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+S2=$(grep -i '^S2' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+H1=$(grep -i '^H1' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+H2=$(grep -i '^H2' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+H3=$(grep -i '^H3' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+H4=$(grep -i '^H4' "$CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d ' \t\r\n')
+
+echo "[amneziawg] Address: $ADDRESS"
+echo "[amneziawg] Listen port: $LISTEN_PORT"
+echo "[amneziawg] MTU: ${MTU:-default}"
+echo "[amneziawg] Obfuscation: Jc=$JC S1=$S1 S2=$S2 H1=$H1 H2=$H2 H3=$H3 H4=$H4"
+
+# Build awg set command with obfuscation params
+AWG_SET_ARGS="private-key /dev/stdin listen-port $LISTEN_PORT"
+[ -n "$JC" ] && AWG_SET_ARGS="$AWG_SET_ARGS jc $JC"
+[ -n "$JMIN" ] && AWG_SET_ARGS="$AWG_SET_ARGS jmin $JMIN"
+[ -n "$JMAX" ] && AWG_SET_ARGS="$AWG_SET_ARGS jmax $JMAX"
+[ -n "$S1" ] && AWG_SET_ARGS="$AWG_SET_ARGS s1 $S1"
+[ -n "$S2" ] && AWG_SET_ARGS="$AWG_SET_ARGS s2 $S2"
+[ -n "$H1" ] && AWG_SET_ARGS="$AWG_SET_ARGS h1 $H1"
+[ -n "$H2" ] && AWG_SET_ARGS="$AWG_SET_ARGS h2 $H2"
+[ -n "$H3" ] && AWG_SET_ARGS="$AWG_SET_ARGS h3 $H3"
+[ -n "$H4" ] && AWG_SET_ARGS="$AWG_SET_ARGS h4 $H4"
+
+# Set private key and obfuscation params
+echo "$PRIVATE_KEY" | awg set "$INTERFACE" $AWG_SET_ARGS
+
+# Add peers from config
+echo "[amneziawg] Adding peers..."
+IN_PEER=0
+PEER_PUBKEY=""
+PEER_ALLOWED=""
+
+while IFS= read -r line || [ -n "$line" ]; do
+    # Trim whitespace
+    line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+    # Skip empty lines and comments
+    [ -z "$line" ] && continue
+    echo "$line" | grep -q '^#' && continue
+
+    # Check for [Peer] section
+    if echo "$line" | grep -qi '^\[Peer\]'; then
+        # Add previous peer if exists
+        if [ -n "$PEER_PUBKEY" ] && [ -n "$PEER_ALLOWED" ]; then
+            echo "[amneziawg]   Adding peer: ${PEER_PUBKEY:0:20}..."
+            awg set "$INTERFACE" peer "$PEER_PUBKEY" allowed-ips "$PEER_ALLOWED"
+        fi
+        IN_PEER=1
+        PEER_PUBKEY=""
+        PEER_ALLOWED=""
+        continue
+    fi
+
+    # Check for [Interface] section (exit peer mode)
+    if echo "$line" | grep -qi '^\[Interface\]'; then
+        IN_PEER=0
+        continue
+    fi
+
+    # Parse peer settings
+    if [ "$IN_PEER" = "1" ]; then
+        if echo "$line" | grep -qi '^PublicKey'; then
+            PEER_PUBKEY=$(echo "$line" | cut -d'=' -f2- | tr -d ' \t\r\n')
+        elif echo "$line" | grep -qi '^AllowedIPs'; then
+            PEER_ALLOWED=$(echo "$line" | cut -d'=' -f2- | tr -d ' \t\r\n')
+        fi
+    fi
+done < "$CONFIG_FILE"
+
+# Add last peer if exists
+if [ -n "$PEER_PUBKEY" ] && [ -n "$PEER_ALLOWED" ]; then
+    echo "[amneziawg]   Adding peer: ${PEER_PUBKEY:0:20}..."
+    awg set "$INTERFACE" peer "$PEER_PUBKEY" allowed-ips "$PEER_ALLOWED"
+fi
+
+# Set interface address and MTU, then bring up
+echo "[amneziawg] Setting address $ADDRESS..."
+ip addr add "$ADDRESS" dev "$INTERFACE"
+[ -n "$MTU" ] && ip link set "$INTERFACE" mtu "$MTU"
+ip link set "$INTERFACE" up
+
+# Set up NAT and forwarding
+echo "[amneziawg] Setting up NAT and forwarding..."
+iptables -A FORWARD -i "$INTERFACE" -j ACCEPT
+iptables -A FORWARD -o "$INTERFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -t nat -A POSTROUTING -o eth+ -j MASQUERADE
+
+# Show interface status
+echo "[amneziawg] Interface status:"
+awg show "$INTERFACE"
+ip addr show "$INTERFACE"
+
+# Keep container running and monitor
+echo "[amneziawg] AmneziaWG is running. Monitoring..."
+
+# Trap SIGTERM to gracefully shutdown
+cleanup() {
+    echo "[amneziawg] Shutting down..."
+    iptables -D FORWARD -i "$INTERFACE" -j ACCEPT 2>/dev/null || true
+    iptables -D FORWARD -o "$INTERFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
+    iptables -t nat -D POSTROUTING -o eth+ -j MASQUERADE 2>/dev/null || true
+    ip link del "$INTERFACE" 2>/dev/null || true
+    kill $AWG_PID 2>/dev/null || true
+    exit 0
+}
+trap cleanup SIGTERM SIGINT
+
+# Keep running
+while true; do
+    sleep 60
+    # Check if amneziawg-go process is still alive
+    if ! kill -0 $AWG_PID 2>/dev/null; then
+        echo "[amneziawg] amneziawg-go process died, restarting..."
+        amneziawg-go "$INTERFACE" &
+        AWG_PID=$!
+        sleep 1
+        echo "$PRIVATE_KEY" | awg set "$INTERFACE" $AWG_SET_ARGS 2>/dev/null || true
+        ip addr add "$ADDRESS" dev "$INTERFACE" 2>/dev/null || true
+        [ -n "$MTU" ] && ip link set "$INTERFACE" mtu "$MTU" 2>/dev/null || true
+        ip link set "$INTERFACE" up 2>/dev/null || true
+    fi
+done

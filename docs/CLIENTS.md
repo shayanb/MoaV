@@ -14,6 +14,7 @@ This guide explains how to connect to MoaV from various devices.
 - [macOS Setup](#macos-setup)
 - [Windows Setup](#windows-setup)
 - [WireGuard Setup](#wireguard-setup)
+- [AmneziaWG Setup](#amneziawg-setup)
 - [Hysteria2 Setup](#hysteria2-setup)
 - [CDN VLESS+WS Setup (When IP Blocked)](#cdn-vlessws-setup-when-ip-blocked)
 - [TrustTunnel Setup](#trusttunnel-setup)
@@ -38,6 +39,7 @@ This guide explains how to connect to MoaV from various devices.
 | CDN (VLESS+WS) | 443 via Cloudflare | When server IP is blocked |
 | [TrustTunnel](https://trusttunnel.org/) | 4443/tcp+udp | HTTP/2 & QUIC, looks like HTTPS |
 | [WireGuard](https://www.wireguard.com/) (Direct) | 51820/udp | Full VPN mode, simple setup |
+| [AmneziaWG](https://github.com/amnezia-vpn/amneziawg-linux-kernel-module) | 51821/udp | Obfuscated WireGuard, defeats DPI |
 | [WireGuard](https://www.wireguard.com/) + [wstunnel](https://github.com/erebe/wstunnel) | 8080/tcp | VPN wrapped in WebSocket |
 | [DNS Tunnel](https://www.bamsoftware.com/software/dnstt/) | 53/udp | Last resort, slow but hard to block |
 | [Psiphon](https://psiphon.ca/) | Various | Standalone app, uses Psiphon network |
@@ -59,6 +61,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Onion Browser](https://apps.apple.com/us/app/onion-browser/id519296448) | Tor | [App Store (Free)](https://apps.apple.com/us/app/onion-browser/id519296448) |
 | [Psiphon](https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909) | Psiphon | [App Store (Free)](https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909) |
 | [WireGuard](https://apps.apple.com/us/app/wireguard/id1441195209) | WireGuard | [App Store (Free)](https://apps.apple.com/us/app/wireguard/id1441195209) |
+| [Amnezia VPN](https://apps.apple.com/app/amnezia-vpn/id1600529900) | AmneziaWG | [App Store (Free)](https://apps.apple.com/app/amnezia-vpn/id1600529900) |
 | [TrustTunnel](https://apps.apple.com/app/trusttunnel/id6478890498) | TrustTunnel | [App Store (Free)](https://apps.apple.com/app/trusttunnel/id6478890498) |
 
 #### Android
@@ -75,6 +78,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Play Store](https://play.google.com/store/apps/details?id=org.torproject.torbrowser) / [Official](https://www.torproject.org/download/) |
 | [Psiphon](https://psiphon.ca/) | Psiphon | [Play Store](https://play.google.com/store/apps/details?id=com.psiphon3) / [APK](https://psiphon.ca/en/download.html) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [Play Store](https://play.google.com/store/apps/details?id=com.wireguard.android) |
+| [Amnezia VPN](https://play.google.com/store/apps/details?id=org.amnezia.vpn) | AmneziaWG | [Play Store](https://play.google.com/store/apps/details?id=org.amnezia.vpn) |
 | [TrustTunnel](https://trusttunnel.org/) | TrustTunnel | [Play Store](https://play.google.com/store/apps/details?id=org.trusttunnel.app) / [GitHub](https://github.com/TrustTunnel/TrustTunnelClient) |
 
 #### Windows
@@ -89,6 +93,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [Psiphon](https://psiphon.ca/) | Psiphon | [Official](https://psiphon.ca/en/download.html) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [Official](https://www.wireguard.com/install/) |
+| [Amnezia VPN](https://github.com/amnezia-vpn/amnezia-client/releases) | AmneziaWG | [GitHub](https://github.com/amnezia-vpn/amnezia-client/releases) |
 | [TrustTunnel](https://trusttunnel.org/) | TrustTunnel | [GitHub](https://github.com/TrustTunnel/TrustTunnelClient/releases) |
 
 #### macOS
@@ -104,6 +109,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [Psiphon](https://psiphon.ca/) | Psiphon | [App Store (Apple Silicon)](https://apps.apple.com/us/app/psiphon/id1276263909) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [App Store](https://apps.apple.com/us/app/wireguard/id1451685025) |
+| [Amnezia VPN](https://github.com/amnezia-vpn/amnezia-client/releases) | AmneziaWG | [GitHub](https://github.com/amnezia-vpn/amnezia-client/releases) |
 | [TrustTunnel](https://trusttunnel.org/) | TrustTunnel | [GitHub](https://github.com/TrustTunnel/TrustTunnelClient/releases) |
 
 #### Linux
@@ -117,6 +123,7 @@ This guide explains how to connect to MoaV from various devices.
 | [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/mihomo-party-org/mihomo-party/releases) |
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [Official](https://www.wireguard.com/install/) |
+| [Amnezia VPN](https://github.com/amnezia-vpn/amnezia-client/releases) | AmneziaWG | [GitHub](https://github.com/amnezia-vpn/amnezia-client/releases) |
 | [TrustTunnel](https://trusttunnel.org/) | TrustTunnel | [GitHub](https://github.com/TrustTunnel/TrustTunnelClient/releases) |
 | **MoaV Client** | All MoaV protocols | Built-in (Docker) |
 
@@ -474,6 +481,24 @@ sudo wg-quick up ./wireguard-wstunnel.conf
 wstunnel on mobile requires additional apps or rooted devices. For most users, try other protocols (Reality, Hysteria2) instead if direct WireGuard is blocked.
 
 **Note:** Replace `YOUR_SERVER_IP` with your actual server IP address.
+
+---
+
+## AmneziaWG Setup
+
+AmneziaWG is a DPI-resistant fork of WireGuard that obfuscates packet headers and sizes to bypass deep packet inspection.
+
+**Your config files:**
+- `amneziawg.conf` - AmneziaWG client configuration (includes obfuscation parameters)
+
+### Mobile Apps (iOS/Android)
+1. Install **Amnezia VPN** ([iOS](https://apps.apple.com/app/amnezia-vpn/id1600529900) / [Android](https://play.google.com/store/apps/details?id=org.amnezia.vpn))
+2. Tap "+" and scan the QR code or import `amneziawg.conf`
+3. Enable the connection
+
+### Desktop
+- **Windows:** Download [AmneziaWG Client](https://github.com/amnezia-vpn/amneziawg-windows-client/releases), import `amneziawg.conf`
+- **macOS/Linux:** Install [Amnezia VPN](https://github.com/amnezia-vpn/amnezia-client/releases) or use `awg-quick up amneziawg.conf`
 
 ---
 

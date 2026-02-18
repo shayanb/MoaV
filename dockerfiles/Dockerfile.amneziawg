@@ -1,0 +1,38 @@
+# AmneziaWG - DPI-resistant WireGuard fork
+# Uses userspace Go implementation (amneziawg-go) for Docker compatibility
+FROM golang:1.23-alpine AS builder
+
+RUN apk add --no-cache git
+
+RUN git clone https://github.com/amnezia-vpn/amneziawg-go.git /src && \
+    cd /src && \
+    go build -ldflags '-linkmode external -extldflags "-fno-PIC -static"' -v -o /usr/bin/amneziawg-go
+
+FROM alpine:3.21
+
+ARG AWGTOOLS_VERSION=1.0.20250901
+
+RUN apk add --no-cache \
+    iproute2 \
+    iptables \
+    ip6tables \
+    bash \
+    curl \
+    jq
+
+# Install awg-tools (awg, awg-quick)
+RUN cd /usr/bin && \
+    wget -qO awg-tools.zip "https://github.com/amnezia-vpn/amneziawg-tools/releases/download/v${AWGTOOLS_VERSION}/alpine-3.19-amneziawg-tools.zip" && \
+    unzip -j awg-tools.zip && \
+    rm -f awg-tools.zip && \
+    chmod +x /usr/bin/awg /usr/bin/awg-quick
+
+COPY --from=builder /usr/bin/amneziawg-go /usr/bin/amneziawg-go
+
+# Create config directory
+RUN mkdir -p /etc/amneziawg
+
+COPY scripts/amneziawg-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

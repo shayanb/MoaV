@@ -8,6 +8,7 @@ set -euo pipefail
 
 source /app/lib/common.sh
 source /app/lib/wireguard.sh
+source /app/lib/amneziawg.sh
 source /app/lib/dnstt.sh
 
 # Default state directory if not set
@@ -364,6 +365,24 @@ if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# Generate AmneziaWG config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_AMNEZIAWG:-true}" == "true" ]]; then
+    # Count existing peers to determine next IP (peer 1 = 10.67.67.2, etc.)
+    AWG_PEER_COUNT=$(grep -c '^\[Peer\]' "$AWG_CONFIG_DIR/awg0.conf" 2>/dev/null) || true
+    AWG_PEER_COUNT=${AWG_PEER_COUNT:-0}
+    AWG_PEER_NUM=$((AWG_PEER_COUNT + 1))
+    amneziawg_add_peer "$USER_ID" "$AWG_PEER_NUM"
+    amneziawg_generate_client_config "$USER_ID" "$OUTPUT_DIR"
+    qrencode -o "$OUTPUT_DIR/amneziawg-qr.png" -s 6 -r "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || true
+    # IPv6 QR code if available
+    if [[ -n "${SERVER_IPV6:-}" ]] && [[ -f "$OUTPUT_DIR/amneziawg-ipv6.conf" ]]; then
+        qrencode -o "$OUTPUT_DIR/amneziawg-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/amneziawg-ipv6.conf" 2>/dev/null || true
+    fi
+    log_info "  - AmneziaWG config generated (obfuscated WireGuard${SERVER_IPV6:+ + ipv6})"
+fi
+
+# -----------------------------------------------------------------------------
 # Generate dnstt instructions (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_DNSTT:-true}" == "true" ]]; then
@@ -385,6 +404,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_CDN=$(cat "$OUTPUT_DIR/cdn-vless-ws.txt" 2>/dev/null | tr -d '\n' || echo "")
     CONFIG_WIREGUARD=$(cat "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || echo "")
     CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
+    CONFIG_AMNEZIAWG=$(cat "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || echo "")
 
     # Get dnstt info
     DNSTT_DOMAIN="${DNSTT_SUBDOMAIN:-t}.${DOMAIN}"
@@ -406,6 +426,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_CDN_B64=$(qr_to_base64 "$OUTPUT_DIR/cdn-vless-ws-qr.png")
     QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
+    QR_AMNEZIAWG_B64=$(qr_to_base64 "$OUTPUT_DIR/amneziawg-qr.png")
 
     GENERATED_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -463,6 +484,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{QR_CDN}}|$QR_CDN_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_AMNEZIAWG}}|$QR_AMNEZIAWG_B64|g" "$OUTPUT_HTML"
 
     # Python-based placeholder replacement - handles special chars and multiline safely
     replace_placeholder() {
@@ -520,6 +542,13 @@ with open(filepath, 'w') as f:
         replace_placeholder "{{CONFIG_WIREGUARD_WSTUNNEL}}" "$CONFIG_WIREGUARD_WSTUNNEL"
     else
         replace_placeholder "{{CONFIG_WIREGUARD_WSTUNNEL}}" "No WireGuard-wstunnel config available"
+    fi
+
+    # AmneziaWG config is multiline
+    if [[ -n "$CONFIG_AMNEZIAWG" ]]; then
+        replace_placeholder "{{CONFIG_AMNEZIAWG}}" "$CONFIG_AMNEZIAWG"
+    else
+        replace_placeholder "{{CONFIG_AMNEZIAWG}}" "No AmneziaWG config available"
     fi
 
     log_info "  - README.html generated"

@@ -345,6 +345,34 @@
   - Certificate check (if TLS)
   - Client config verification
 
+### 6f. `docs/client-guide-template.html` (User Bundle README)
+
+The HTML guide template generates per-user `README.html` files in each user's bundle.
+It has **two language sections** (English and Farsi) that must both be updated.
+
+- [ ] **English TOC**: Add entry with appropriate number and badge
+- [ ] **English protocol section**: Add full section with:
+  - Protocol header (name, badge, port)
+  - Description paragraph
+  - "When to use" guidance box
+  - Download links for client apps (iOS, Android, Windows, macOS, Linux)
+  - QR code section: `<img src="data:image/png;base64,{{QR_NEWPROTO}}">`
+  - Config box: `<div class="config-value multiline">{{CONFIG_NEWPROTO}}</div>`
+- [ ] **English apps table**: Add app rows per platform, update `rowspan` values
+- [ ] **Farsi TOC**: Mirror English TOC with Farsi text and numbering (۱, ۲, ۳...)
+- [ ] **Farsi protocol section**: Mirror English section with Farsi text, RTL-compatible
+- [ ] **Farsi apps table**: Mirror English apps table updates
+- [ ] **Renumber**: If inserting mid-list, update all subsequent section numbers in both languages
+- [ ] **`scripts/generate-user.sh`**: Add template variable replacements:
+  ```bash
+  CONFIG_NEWPROTO=$(cat "$OUTPUT_DIR/newproto.conf" 2>/dev/null || echo "")
+  QR_NEWPROTO_B64=$(qr_to_base64 "$OUTPUT_DIR/newproto-qr.png")
+  sed -i "s|{{QR_NEWPROTO}}|$QR_NEWPROTO_B64|g" "$OUTPUT_HTML"
+  replace_placeholder "{{CONFIG_NEWPROTO}}" "$CONFIG_NEWPROTO"
+  ```
+
+**Badge types available:** `badge-primary` (green), `badge-secondary` (blue), `badge-fallback` (orange), `badge-standalone` (purple)
+
 ---
 
 ## 7. Verification

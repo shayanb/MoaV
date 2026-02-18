@@ -748,6 +748,161 @@ test_wireguard() {
     fi
 }
 
+# Test AmneziaWG (AmneziaWireGuard - obfuscated WireGuard)
+# Note: AmneziaWG uses TUN interface (full VPN), not SOCKS proxy
+test_amneziawg() {
+    log_info "Testing AmneziaWG (config validation)..."
+
+    local config_file=""
+    local detail=""
+
+    # Find AmneziaWG config
+    for f in "$CONFIG_DIR"/amneziawg.conf; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+    if [[ -z "$config_file" ]]; then
+        for f in "$CONFIG_DIR"/amneziawg*.conf; do
+            [[ -f "$f" ]] && config_file="$f" && break
+        done
+    fi
+
+    if [[ -z "$config_file" ]]; then
+        detail="No AmneziaWG config found in bundle"
+        log_warn "$detail"
+        RESULTS[amneziawg]="skip"
+        DETAILS[amneziawg]="$detail"
+        return
+    fi
+
+    log_debug "Using config: $config_file"
+
+    # Validate config structure (similar to WireGuard format)
+    if ! grep -q "\[Interface\]" "$config_file" || ! grep -q "\[Peer\]" "$config_file"; then
+        detail="Invalid AmneziaWG config format"
+        log_error "$detail"
+        RESULTS[amneziawg]="fail"
+        DETAILS[amneziawg]="$detail"
+        return
+    fi
+
+    # Extract endpoint info for reachability test
+    local endpoint=$(grep -i "Endpoint" "$config_file" | head -1 | sed 's/^[^=]*=[[:space:]]*//' | tr -d ' \t\r')
+
+    if [[ -z "$endpoint" ]]; then
+        detail="No Endpoint found in AmneziaWG config"
+        log_error "$detail"
+        RESULTS[amneziawg]="fail"
+        DETAILS[amneziawg]="$detail"
+        return
+    fi
+
+    # Parse endpoint - handle both IPv4 and IPv6
+    local server_ip="" port=""
+    if echo "$endpoint" | grep -q '^\['; then
+        # IPv6: [addr]:port format
+        server_ip=$(echo "$endpoint" | sed 's/^\[\([^]]*\)\].*/\1/')
+        port=$(echo "$endpoint" | sed -n 's/.*\]:\([0-9]*\).*/\1/p')
+    else
+        # IPv4: host:port format
+        server_ip="${endpoint%:*}"
+        port="${endpoint##*:}"
+    fi
+
+    [[ -z "$port" ]] && port="51820"
+    log_debug "Parsed: server_ip=$server_ip port=$port"
+
+    # Check if awg-quick or awg binary exists
+    local can_full_test=true
+    if ! command -v awg-quick >/dev/null 2>&1 && ! command -v awg >/dev/null 2>&1; then
+        log_debug "awg-quick / awg not available"
+        can_full_test=false
+    elif [[ ! -c /dev/net/tun ]]; then
+        log_debug "TUN device not available (/dev/net/tun not found or not a character device)"
+        can_full_test=false
+    fi
+
+    if [[ "$can_full_test" != "true" ]]; then
+        log_debug "Full VPN test not possible, testing endpoint reachability..."
+
+        # AmneziaWG uses UDP, test reachability via nc or ping
+        local reachable=false
+        if nc -z -w 3 -u "$server_ip" "$port" 2>/dev/null; then
+            reachable=true
+        else
+            # Fall back to ping to check basic host reachability
+            if echo "$server_ip" | grep -q ':'; then
+                ping -6 -c 1 -W 2 "$server_ip" >/dev/null 2>&1 && reachable=true
+            else
+                host "$server_ip" >/dev/null 2>&1 && reachable=true
+                ping -c 1 -W 2 "$server_ip" >/dev/null 2>&1 && reachable=true
+            fi
+        fi
+
+        if [[ "$reachable" == "true" ]]; then
+            log_success "AmneziaWG config valid, endpoint reachable: $endpoint"
+            RESULTS[amneziawg]="pass"
+            DETAILS[amneziawg]="Config valid, endpoint ${server_ip}:${port} reachable (awg-quick not available for full VPN test)"
+        else
+            log_warn "AmneziaWG config valid, but endpoint not reachable: $endpoint"
+            RESULTS[amneziawg]="warn"
+            DETAILS[amneziawg]="Config valid, endpoint ${server_ip}:${port} not reachable (may be blocked)"
+        fi
+        return
+    fi
+
+    # Full test with awg-quick
+    log_debug "Starting AmneziaWG tunnel with awg-quick..."
+    local error_log="$TEMP_DIR/amneziawg-error.log"
+    local test_config="$TEMP_DIR/amneziawg-test.conf"
+    cp "$config_file" "$test_config"
+
+    awg-quick up "$test_config" 2>"$error_log"
+    local awg_exit=$?
+
+    if [[ $awg_exit -ne 0 ]]; then
+        detail="awg-quick failed to bring up interface"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
+            detail="AmneziaWG error: $error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[amneziawg]="fail"
+        DETAILS[amneziawg]="$detail"
+        rm -f "$test_config"
+        return
+    fi
+
+    log_debug "AmneziaWG interface up, testing connectivity..."
+
+    # Test connectivity directly (traffic goes through TUN interface)
+    if curl -sf --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        local exit_ip=""
+        exit_ip=$(curl -sf --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "AmneziaWG VPN connection successful (exit IP: $exit_ip)"
+            RESULTS[amneziawg]="pass"
+            DETAILS[amneziawg]="Connected via AmneziaWG VPN, exit IP: $exit_ip"
+        else
+            log_success "AmneziaWG VPN connection successful"
+            RESULTS[amneziawg]="pass"
+            DETAILS[amneziawg]="Connected via AmneziaWG VPN"
+        fi
+    else
+        detail="VPN connection test failed"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[amneziawg]="fail"
+        DETAILS[amneziawg]="$detail"
+    fi
+
+    awg-quick down "$test_config" 2>/dev/null || true
+    rm -f "$test_config"
+}
+
 # Test dnstt (DNS tunnel)
 test_dnstt() {
     log_info "Testing dnstt (DNS tunnel)..."
@@ -1130,7 +1285,7 @@ output_json() {
 EOF
 
     local first=true
-    for protocol in reality trojan hysteria2 wireguard dnstt trusttunnel; do
+    for protocol in reality trojan hysteria2 wireguard amneziawg dnstt trusttunnel; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             [[ "$first" != "true" ]] && echo ","
             first=false
@@ -1161,7 +1316,7 @@ output_human() {
     echo ""
     echo "───────────────────────────────────────────────────────────────"
 
-    for protocol in reality trojan hysteria2 wireguard dnstt trusttunnel; do
+    for protocol in reality trojan hysteria2 wireguard amneziawg dnstt trusttunnel; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             local status="${RESULTS[$protocol]}"
             local detail="${DETAILS[$protocol]:-}"
@@ -1199,6 +1354,7 @@ main() {
     test_trojan
     test_hysteria2
     test_wireguard
+    test_amneziawg
     test_dnstt
     test_trusttunnel
 

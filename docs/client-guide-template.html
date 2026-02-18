@@ -588,10 +588,11 @@
                 <li><a href="#en" onclick="scrollToSection('trojan-en')">3. Trojan <span class="toc-badge badge-secondary">Backup</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('cdn-en')">4. CDN VLESS+WS <span class="toc-badge badge-secondary">IP Blocked?</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('wireguard-en')">5. WireGuard <span class="toc-badge badge-secondary">Full VPN</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('trusttunnel-en')">6. TrustTunnel <span class="toc-badge badge-secondary">Stealth VPN</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">7. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('tor-en')">8. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('psiphon-en')">9. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('amneziawg-en')">6. AmneziaWG <span class="toc-badge badge-secondary">Anti-DPI</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('trusttunnel-en')">7. TrustTunnel <span class="toc-badge badge-secondary">Stealth VPN</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">8. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('tor-en')">9. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('psiphon-en')">10. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('apps-en')">Recommended Apps</a></li>
             </ul>
         </div>
@@ -824,11 +825,62 @@
             </div>
         </div>
 
+        <!-- AmneziaWG -->
+        <div class="protocol-section" id="amneziawg-en">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>6. AmneziaWG</h2>
+                    <span class="protocol-badge badge-secondary">Anti-DPI</span>
+                </div>
+                <span class="protocol-port">Port 51821/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">DPI-resistant WireGuard fork. Obfuscates WireGuard packets to defeat deep packet inspection. Same performance, invisible to censors.</p>
+
+                <div class="extra-section">
+                    <h4>When to use AmneziaWG</h4>
+                    <ul>
+                        <li>Standard WireGuard is blocked or throttled</li>
+                        <li>Mobile carriers detect and limit WireGuard traffic</li>
+                        <li>You need a full VPN with DPI evasion</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>Download AmneziaWG Client</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/amnezia-vpn/id1600529900" target="_blank">Amnezia VPN on App Store</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=org.amnezia.vpn" target="_blank">Amnezia VPN on Play Store</a></li>
+                        <li><strong>Windows:</strong> <a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases" target="_blank">AmneziaWG Client</a></li>
+                        <li><strong>macOS/Linux:</strong> <a href="https://github.com/amnezia-vpn/amnezia-client/releases" target="_blank">Amnezia VPN</a> or <code>awg-quick</code> CLI</li>
+                    </ul>
+                </div>
+
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_AMNEZIAWG}}" alt="AmneziaWG QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR not available<br>Use config below';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install <strong>Amnezia VPN</strong> app for your platform</li>
+                            <li>Tap "+" then scan the QR code or import the .conf file</li>
+                            <li>Enable the connection</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>AmneziaWG Config File (save as .conf)</h4>
+                    <div class="config-value multiline">{{CONFIG_AMNEZIAWG}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- TrustTunnel -->
         <div class="protocol-section" id="trusttunnel-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>6. TrustTunnel</h2>
+                    <h2>7. TrustTunnel</h2>
                     <span class="protocol-badge badge-secondary">Stealth VPN</span>
                 </div>
                 <span class="protocol-port">Port 4443/tcp+udp</span>
@@ -891,7 +943,7 @@
         <div class="protocol-section" id="dns-tunnel-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>7. DNS Tunnel</h2>
+                    <h2>8. DNS Tunnel</h2>
                     <span class="protocol-badge badge-fallback">Last Resort</span>
                 </div>
                 <span class="protocol-port">Port 53/udp</span>
@@ -944,7 +996,7 @@
         <div class="protocol-section" id="tor-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>8. Tor</h2>
+                    <h2>9. Tor</h2>
                     <span class="protocol-badge badge-standalone">Standalone</span>
                 </div>
                 <span class="protocol-port">Various</span>
@@ -981,7 +1033,7 @@
         <div class="protocol-section" id="psiphon-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>9. Psiphon</h2>
+                    <h2>10. Psiphon</h2>
                     <span class="protocol-badge badge-standalone">Standalone</span>
                 </div>
                 <span class="protocol-port">Various</span>
@@ -1032,7 +1084,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td rowspan="7"><span class="platform-icon">📱</span>iOS</td>
+                        <td rowspan="8"><span class="platform-icon">📱</span>iOS</td>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (Free)</td>
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
@@ -1049,6 +1101,10 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://apps.apple.com/app/amnezia-vpn/id1600529900" target="_blank">Amnezia VPN</a> (Free)</td>
+                        <td class="protocols">AmneziaWG, WireGuard</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://apps.apple.com/app/trusttunnel/id6740670603" target="_blank">TrustTunnel</a> (Free)</td>
                         <td class="protocols">TrustTunnel</td>
                     </tr>
@@ -1061,7 +1117,7 @@
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
-                        <td rowspan="6"><span class="platform-icon">🤖</span>Android</td>
+                        <td rowspan="7"><span class="platform-icon">🤖</span>Android</td>
                         <td><a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -1072,6 +1128,10 @@
                     <tr>
                         <td><a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a></td>
                         <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=org.amnezia.vpn" target="_blank">Amnezia VPN</a></td>
+                        <td class="protocols">AmneziaWG, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://play.google.com/store/apps/details?id=com.AnyVPN.trusttunnel" target="_blank">TrustTunnel</a></td>
@@ -1086,7 +1146,7 @@
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="5"><span class="platform-icon">🪟</span>Windows</td>
+                        <td rowspan="6"><span class="platform-icon">🪟</span>Windows</td>
                         <td><a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -1099,6 +1159,10 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases" target="_blank">AmneziaWG</a></td>
+                        <td class="protocols">AmneziaWG</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
                         <td class="protocols">TrustTunnel</td>
                     </tr>
@@ -1107,7 +1171,7 @@
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="6"><span class="platform-icon">🍎</span>macOS</td>
+                        <td rowspan="7"><span class="platform-icon">🍎</span>macOS</td>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (Free)</td>
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
@@ -1124,6 +1188,10 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://github.com/amnezia-vpn/amnezia-client/releases" target="_blank">Amnezia VPN</a></td>
+                        <td class="protocols">AmneziaWG, WireGuard</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
                         <td class="protocols">TrustTunnel</td>
                     </tr>
@@ -1132,13 +1200,17 @@
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="4"><span class="platform-icon">🐧</span>Linux</td>
+                        <td rowspan="5"><span class="platform-icon">🐧</span>Linux</td>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
                     <tr>
                         <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
                         <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/amnezia-vpn/amnezia-client/releases" target="_blank">Amnezia VPN</a></td>
+                        <td class="protocols">AmneziaWG, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
@@ -1177,10 +1249,11 @@
                 <li><a href="#fa" onclick="scrollToSection('trojan-fa')">۳. Trojan <span class="toc-badge badge-secondary">پشتیبان</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('cdn-fa')">۴. CDN VLESS+WS <span class="toc-badge badge-secondary">IP مسدود؟</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('wireguard-fa')">۵. WireGuard <span class="toc-badge badge-secondary">VPN کامل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('trusttunnel-fa')">۶. TrustTunnel <span class="toc-badge badge-secondary">VPN مخفی</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۷. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۸. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۹. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('amneziawg-fa')">۶. AmneziaWG <span class="toc-badge badge-secondary">ضد فیلتر</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('trusttunnel-fa')">۷. TrustTunnel <span class="toc-badge badge-secondary">VPN مخفی</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۸. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۹. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۱۰. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('apps-fa')">اپلیکیشن‌ها</a></li>
             </ul>
         </div>
@@ -1413,11 +1486,62 @@
             </div>
         </div>
 
+        <!-- AmneziaWG -->
+        <div class="protocol-section" id="amneziawg-fa">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۶. AmneziaWG</h2>
+                    <span class="protocol-badge badge-secondary">ضد فیلتر</span>
+                </div>
+                <span class="protocol-port">پورت 51821/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">نسخه ضد فیلتر WireGuard. بسته‌های WireGuard را مبهم‌سازی می‌کند تا از بازرسی عمیق بسته‌ها عبور کند. همان عملکرد، نامرئی برای سانسورگرها.</p>
+
+                <div class="extra-section">
+                    <h4>چه زمانی از AmneziaWG استفاده کنید</h4>
+                    <ul>
+                        <li>WireGuard معمولی مسدود یا کند شده</li>
+                        <li>اپراتورهای موبایل ترافیک WireGuard را شناسایی می‌کنند</li>
+                        <li>به VPN کامل با دور زدن DPI نیاز دارید</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>دانلود کلاینت AmneziaWG</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/amnezia-vpn/id1600529900" target="_blank">Amnezia VPN در App Store</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=org.amnezia.vpn" target="_blank">Amnezia VPN در Play Store</a></li>
+                        <li><strong>Windows:</strong> <a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases" target="_blank">کلاینت AmneziaWG</a></li>
+                        <li><strong>macOS/Linux:</strong> <a href="https://github.com/amnezia-vpn/amnezia-client/releases" target="_blank">Amnezia VPN</a></li>
+                    </ul>
+                </div>
+
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_AMNEZIAWG}}" alt="QR Code AmneziaWG" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR در دسترس نیست<br>از کانفیگ زیر استفاده کنید';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li>اپ <strong>Amnezia VPN</strong> را برای پلتفرم خود نصب کنید</li>
+                            <li>روی "+" بزنید و کد QR را اسکن کنید یا فایل .conf را وارد کنید</li>
+                            <li>اتصال را فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>فایل کانفیگ AmneziaWG (ذخیره با پسوند .conf)</h4>
+                    <div class="config-value multiline">{{CONFIG_AMNEZIAWG}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- TrustTunnel -->
         <div class="protocol-section" id="trusttunnel-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۶. TrustTunnel</h2>
+                    <h2>۷. TrustTunnel</h2>
                     <span class="protocol-badge badge-secondary">VPN مخفی</span>
                 </div>
                 <span class="protocol-port">پورت 4443/tcp+udp</span>
@@ -1480,7 +1604,7 @@
         <div class="protocol-section" id="dns-tunnel-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۷. تونل DNS</h2>
+                    <h2>۸. تونل DNS</h2>
                     <span class="protocol-badge badge-fallback">آخرین راه‌حل</span>
                 </div>
                 <span class="protocol-port">پورت 53/udp</span>
@@ -1531,7 +1655,7 @@
         <div class="protocol-section" id="tor-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۸. Tor</h2>
+                    <h2>۹. Tor</h2>
                     <span class="protocol-badge badge-standalone">مستقل</span>
                 </div>
                 <span class="protocol-port">مختلف</span>
@@ -1559,7 +1683,7 @@
         <div class="protocol-section" id="psiphon-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۹. Psiphon</h2>
+                    <h2>۱۰. Psiphon</h2>
                     <span class="protocol-badge badge-standalone">مستقل</span>
                 </div>
                 <span class="protocol-port">مختلف</span>
@@ -1591,7 +1715,7 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td rowspan="7"><span class="platform-icon">📱</span>iOS</td>
+                        <td rowspan="8"><span class="platform-icon">📱</span>iOS</td>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
@@ -1608,6 +1732,10 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://apps.apple.com/app/amnezia-vpn/id1600529900" target="_blank">Amnezia VPN</a></td>
+                        <td class="protocols">AmneziaWG, WireGuard</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://apps.apple.com/app/trusttunnel/id6740670603" target="_blank">TrustTunnel</a></td>
                         <td class="protocols">TrustTunnel</td>
                     </tr>
@@ -1620,7 +1748,7 @@
                         <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
                     </tr>
                     <tr>
-                        <td rowspan="5"><span class="platform-icon">🤖</span>Android</td>
+                        <td rowspan="6"><span class="platform-icon">🤖</span>Android</td>
                         <td><a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -1633,6 +1761,10 @@
                         <td class="protocols">WireGuard</td>
                     </tr>
                     <tr>
+                        <td><a href="https://play.google.com/store/apps/details?id=org.amnezia.vpn" target="_blank">Amnezia VPN</a></td>
+                        <td class="protocols">AmneziaWG, WireGuard</td>
+                    </tr>
+                    <tr>
                         <td><a href="https://play.google.com/store/apps/details?id=com.AnyVPN.trusttunnel" target="_blank">TrustTunnel</a></td>
                         <td class="protocols">TrustTunnel</td>
                     </tr>
@@ -1641,13 +1773,17 @@
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="4"><span class="platform-icon">🪟</span>Windows</td>
+                        <td rowspan="5"><span class="platform-icon">🪟</span>Windows</td>
                         <td><a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
                     <tr>
                         <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
                         <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases" target="_blank">AmneziaWG</a></td>
+                        <td class="protocols">AmneziaWG</td>
                     </tr>
                     <tr>
                         <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>
@@ -1658,7 +1794,7 @@
                         <td class="protocols">Tor</td>
                     </tr>
                     <tr>
-                        <td rowspan="5"><span class="platform-icon">🍎</span>macOS</td>
+                        <td rowspan="6"><span class="platform-icon">🍎</span>macOS</td>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
                         <td class="protocols">Reality, Trojan, Hysteria2</td>
                     </tr>
@@ -1669,6 +1805,10 @@
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a></td>
                         <td class="protocols">WireGuard</td>
+                    </tr>
+                    <tr>
+                        <td><a href="https://github.com/amnezia-vpn/amnezia-client/releases" target="_blank">Amnezia VPN</a></td>
+                        <td class="protocols">AmneziaWG, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://github.com/TrustTunnel/TrustTunnel/releases" target="_blank">TrustTunnel</a></td>

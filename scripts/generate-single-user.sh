@@ -7,6 +7,7 @@ set -euo pipefail
 
 source /app/lib/common.sh
 source /app/lib/wireguard.sh
+source /app/lib/amneziawg.sh
 source /app/lib/dnstt.sh
 
 USER_ID="${1:-}"
@@ -86,6 +87,43 @@ EOF
     fi
 fi
 
+# Add to AmneziaWG config
+AWG_CONFIG="/configs/amneziawg/awg0.conf"
+if [[ -f "$AWG_CONFIG" ]]; then
+    # Check if user already exists
+    if grep -q "# $USER_ID" "$AWG_CONFIG" 2>/dev/null; then
+        log_info "User $USER_ID already exists in AmneziaWG"
+    else
+        # Generate client keys
+        AWG_CLIENT_PRIVATE=$(wg genkey)
+        AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | wg pubkey)
+
+        # Count existing peers for IP assignment
+        AWG_PEER_COUNT=$(grep -c '^\[Peer\]' "$AWG_CONFIG" 2>/dev/null) || true
+        AWG_PEER_COUNT=${AWG_PEER_COUNT:-0}
+        AWG_PEER_NUM=$((AWG_PEER_COUNT + 1))
+        AWG_CLIENT_IP="10.67.67.$((AWG_PEER_NUM + 1))"
+
+        # Save client credentials
+        cat > "$STATE_DIR/users/$USER_ID/amneziawg.env" <<EOF
+AWG_PRIVATE_KEY=$AWG_CLIENT_PRIVATE
+AWG_PUBLIC_KEY=$AWG_CLIENT_PUBLIC
+AWG_CLIENT_IP=$AWG_CLIENT_IP
+AWG_CLIENT_IP_V6=
+EOF
+
+        # Append peer to server config
+        cat >> "$AWG_CONFIG" <<EOF
+
+[Peer]
+# $USER_ID
+PublicKey = $AWG_CLIENT_PUBLIC
+AllowedIPs = $AWG_CLIENT_IP/32
+EOF
+        log_info "Added $USER_ID to AmneziaWG config"
+    fi
+fi
+
 # Generate bundle
 export STATE_DIR
 export USER_ID USER_UUID USER_PASSWORD
@@ -94,6 +132,7 @@ export SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 https://api.ipify.org)}"
 export DOMAIN="${DOMAIN:-}"
 export REALITY_TARGET="${REALITY_TARGET:-dl.google.com:443}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
+export ENABLE_AMNEZIAWG="${ENABLE_AMNEZIAWG:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"

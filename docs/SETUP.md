@@ -38,7 +38,7 @@ Complete guide to deploy MoaV on a VPS or home server.
 
 **Domain (Optional but Recommended):**
 - Required for: Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, DNS tunnel
-- Not required for: WireGuard, Admin dashboard, Conduit, Snowflake
+- Not required for: WireGuard, AmneziaWG, Admin dashboard, Conduit, Snowflake
 - See [Domain-less Mode](#domain-less-mode) if you don't have a domain
 
 **Ports to Open:**
@@ -51,6 +51,7 @@ Complete guide to deploy MoaV on a VPS or home server.
 | 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
 | 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) |
 | 51820/udp | UDP | WireGuard | No |
+| 51821/udp | UDP | AmneziaWG | No |
 | 8080/tcp | TCP | wstunnel | No |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 9444/tcp | TCP | Grafana (monitoring) | No |
@@ -247,6 +248,7 @@ moav start all                   # Everything
 **Available Profiles:**
 - `proxy` - Reality, Trojan, Hysteria2, CDN (sing-box + decoy)
 - `wireguard` - WireGuard VPN + wstunnel
+- `amneziawg` - AmneziaWG (obfuscated WireGuard)
 - `dnstt` - DNS tunnel
 - `trusttunnel` - TrustTunnel VPN
 - `admin` - Admin dashboard
@@ -272,6 +274,9 @@ ufw allow 2082/tcp   # CDN WebSocket
 # WireGuard
 ufw allow 51820/udp  # Direct
 ufw allow 8080/tcp   # wstunnel
+
+# AmneziaWG
+ufw allow 51821/udp   # Obfuscated WireGuard
 
 # DNS tunnel
 ufw allow 53/udp
@@ -309,6 +314,7 @@ ls outputs/bundles/
 - `cdn-vless-ws.txt` - CDN share link (if CDN_DOMAIN set)
 - `wireguard.conf` - WireGuard config + QR code
 - `wireguard-wstunnel.conf` - WireGuard over WebSocket
+- `amneziawg.conf` - AmneziaWG config (if enabled)
 - `trusttunnel.txt` - TrustTunnel credentials (if enabled)
 - `dnstt-instructions.txt` - DNS tunnel instructions
 
@@ -359,6 +365,7 @@ Don't have a domain? MoaV can run with limited but useful services.
 | Service | Port | Description |
 |---------|------|-------------|
 | WireGuard | 51820/udp | Full VPN, works on most networks |
+| AmneziaWG | 51821/udp | Obfuscated WireGuard, defeats DPI |
 | wstunnel | 8080/tcp | WireGuard over WebSocket (when UDP blocked) |
 | Admin | 9443/tcp | Dashboard with self-signed certificate |
 | Conduit | dynamic | Psiphon bandwidth donation |
