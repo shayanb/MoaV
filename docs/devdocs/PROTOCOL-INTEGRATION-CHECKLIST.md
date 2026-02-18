@@ -375,7 +375,32 @@ It has **two language sections** (English and Farsi) that must both be updated.
 
 ---
 
-## 7. Verification
+## 7. `.gitignore` — Exclude Generated Config Files
+
+Any config files generated at runtime (by bootstrap or entrypoint) must be added to `.gitignore`, otherwise `moav update` will warn about "local changes detected" and block the update.
+
+Add entries following the existing pattern in `.gitignore`:
+
+```gitignore
+# NewProto generated files
+configs/newproto/config-file.conf
+configs/newproto/server.pub
+```
+
+**What to ignore:** Any file created by bootstrap/entrypoint that lives in `configs/newproto/` but is NOT a `.gitkeep` or template file.
+
+**Reference — existing patterns:**
+| Protocol | Ignored files |
+|----------|--------------|
+| sing-box | `configs/sing-box/config.json` |
+| WireGuard | `configs/wireguard/wg0.conf`, `server.pub`, `server.key`, `wg_confs/`, `peer*/` |
+| AmneziaWG | `configs/amneziawg/awg0.conf`, `server.pub` |
+| dnstt | `configs/dnstt/server.conf`, `server.pub`, `*.key`, `*.key.hex` |
+| TrustTunnel | `configs/trusttunnel/vpn.toml`, `hosts.toml`, `credentials.toml` |
+
+---
+
+## 8. Verification
 
 - [ ] `bash -n moav.sh` — syntax check passes
 - [ ] `docker compose config --profiles newproto` — compose config valid
