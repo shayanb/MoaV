@@ -64,6 +64,10 @@ configs/wireguard/coredns/
 configs/wireguard/templates/
 configs/wireguard/peer*/
 
+# AmneziaWG generated files
+configs/amneziawg/awg0.conf
+configs/amneziawg/server.pub
+
 # TrustTunnel generated files (keep .template files)
 configs/trusttunnel/vpn.toml
 configs/trusttunnel/hosts.toml

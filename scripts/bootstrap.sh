@@ -9,6 +9,7 @@ set -euo pipefail
 source /app/lib/common.sh
 source /app/lib/sing-box.sh
 source /app/lib/wireguard.sh
+source /app/lib/amneziawg.sh
 source /app/lib/dnstt.sh
 
 log_info "Starting MoaV bootstrap..."
@@ -196,6 +197,7 @@ export ENABLE_REALITY="${ENABLE_REALITY:-true}"
 export ENABLE_TROJAN="${ENABLE_TROJAN:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
+export ENABLE_AMNEZIAWG="${ENABLE_AMNEZIAWG:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
 # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
@@ -223,6 +225,28 @@ if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then
             log_error "WireGuard key mismatch! Fixing..."
             echo "$DERIVED_PUB" > "/configs/wireguard/server.pub"
             echo "$DERIVED_PUB" > "$STATE_DIR/keys/wg-server.pub"
+            log_info "Fixed server.pub to match private key"
+        fi
+    fi
+fi
+
+# -----------------------------------------------------------------------------
+# Generate AmneziaWG server config (before creating users)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_AMNEZIAWG:-true}" == "true" ]]; then
+    log_info "Generating AmneziaWG server configuration..."
+    generate_amneziawg_config
+
+    # Verify keys are consistent
+    if [[ -f "$STATE_DIR/keys/awg-server.key" ]] && [[ -f "/configs/amneziawg/server.pub" ]]; then
+        DERIVED_PUB=$(cat "$STATE_DIR/keys/awg-server.key" | wg pubkey)
+        SAVED_PUB=$(cat "/configs/amneziawg/server.pub")
+        if [[ "$DERIVED_PUB" == "$SAVED_PUB" ]]; then
+            log_info "AmneziaWG keys verified: public key matches private key"
+        else
+            log_error "AmneziaWG key mismatch! Fixing..."
+            echo "$DERIVED_PUB" > "/configs/amneziawg/server.pub"
+            echo "$DERIVED_PUB" > "$STATE_DIR/keys/awg-server.pub"
             log_info "Fixed server.pub to match private key"
         fi
     fi

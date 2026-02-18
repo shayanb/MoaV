@@ -17,6 +17,7 @@ Common issues and their solutions.
   - [WireGuard connected but no traffic](#wireguard-connected-but-no-traffic)
   - [Hysteria2 not working](#hysteria2-not-working)
   - [TrustTunnel not connecting](#trusttunnel-not-connecting)
+  - [AmneziaWG not connecting](#amneziawg-not-connecting)
   - [CDN VLESS+WS not working](#cdn-vlessws-not-working)
   - [DNS tunnel not working](#dns-tunnel-not-working)
 - [Registry/Build Issues](#registrybuild-issues)
@@ -511,6 +512,29 @@ docker compose logs trusttunnel
 3. **Client config error:**
    - Verify credentials match `trusttunnel.txt` in user bundle
    - Check `trusttunnel.toml` has correct domain/IP
+
+### AmneziaWG not connecting
+
+**Check container is running:**
+```bash
+docker compose --profile amneziawg ps
+docker compose logs amneziawg
+```
+
+**Common issues:**
+
+1. **Port not open:**
+   ```bash
+   ufw allow 51821/udp
+   ```
+
+2. **Config mismatch:**
+   - Obfuscation parameters (S1, S2, H1-H4) must match between server and client
+   - Re-download the user bundle if parameters are wrong
+
+3. **awg-quick not found (client):**
+   - Install awg-tools from https://github.com/amnezia-vpn/amneziawg-tools/releases
+   - Or use the Amnezia VPN app which includes built-in support
 
 ### CDN VLESS+WS not working
 

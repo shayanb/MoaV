@@ -158,7 +158,7 @@ for USERNAME in "${USERNAMES[@]}"; do
     # Add to sing-box (Reality, Trojan, Hysteria2)
     # -------------------------------------------------------------------------
     if [[ -f "configs/sing-box/config.json" ]]; then
-        log_info "[1/2] Adding to sing-box (Reality, Trojan, Hysteria2)..."
+        log_info "[1/3] Adding to sing-box (Reality, Trojan, Hysteria2)..."
         if "$SCRIPT_DIR/singbox-user-add.sh" "$USERNAME" $RELOAD_FLAG; then
             log_info "✓ sing-box user added"
         else
@@ -166,7 +166,7 @@ for USERNAME in "${USERNAMES[@]}"; do
             log_error "✗ Failed to add sing-box user"
         fi
     else
-        log_info "[1/2] Skipping sing-box (not configured)"
+        log_info "[1/3] Skipping sing-box (not configured)"
     fi
 
     echo ""
@@ -175,7 +175,7 @@ for USERNAME in "${USERNAMES[@]}"; do
     # Add to WireGuard
     # -------------------------------------------------------------------------
     if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]] && [[ -f "configs/wireguard/wg0.conf" ]]; then
-        log_info "[2/2] Adding to WireGuard..."
+        log_info "[2/3] Adding to WireGuard..."
         if "$SCRIPT_DIR/wg-user-add.sh" "$USERNAME" $RELOAD_FLAG; then
             log_info "✓ WireGuard peer added"
         else
@@ -183,7 +183,142 @@ for USERNAME in "${USERNAMES[@]}"; do
             log_error "✗ Failed to add WireGuard peer"
         fi
     else
-        log_info "[2/2] Skipping WireGuard (not enabled or not configured)"
+        log_info "[2/3] Skipping WireGuard (not enabled or not configured)"
+    fi
+
+    echo ""
+
+    # -------------------------------------------------------------------------
+    # Add to AmneziaWG
+    # -------------------------------------------------------------------------
+    if [[ "${ENABLE_AMNEZIAWG:-true}" == "true" ]] && [[ -f "configs/amneziawg/awg0.conf" ]]; then
+        log_info "[3/3] Adding to AmneziaWG..."
+        (
+            # Generate client keys (standard WG key format, compatible with AWG)
+            # Use running container for key generation (host may not have wg/awg)
+            if docker compose ps amneziawg --status running &>/dev/null; then
+                AWG_CLIENT_PRIVATE=$(docker compose exec -T amneziawg awg genkey)
+                AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | docker compose exec -T amneziawg awg pubkey)
+            elif docker compose ps wireguard --status running &>/dev/null; then
+                AWG_CLIENT_PRIVATE=$(docker compose exec -T wireguard wg genkey)
+                AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | docker compose exec -T wireguard wg pubkey)
+            elif command -v wg &>/dev/null; then
+                AWG_CLIENT_PRIVATE=$(wg genkey)
+                AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | wg pubkey)
+            else
+                log_error "No wg/awg command available (install wireguard-tools or ensure amneziawg container is running)"
+                exit 1
+            fi
+
+            # Count existing peers for IP assignment
+            AWG_PEER_COUNT=$(grep -c '^\[Peer\]' "configs/amneziawg/awg0.conf" 2>/dev/null) || true
+            AWG_PEER_COUNT=${AWG_PEER_COUNT:-0}
+            AWG_PEER_NUM=$((AWG_PEER_COUNT + 1))
+            AWG_CLIENT_IP="10.67.67.$((AWG_PEER_NUM + 1))"
+
+            # Calculate client IPv6 if server has IPv6
+            AWG_CLIENT_IP_V6=""
+            if [[ -n "${SERVER_IPV6:-}" ]]; then
+                AWG_CLIENT_IP_V6="fd00:cafe:dead::$((AWG_PEER_NUM + 1))"
+            fi
+
+            # Save client credentials to bundle dir (state/ is a Docker volume, not host-accessible)
+            cat > "$OUTPUT_DIR/amneziawg.env" <<CREDEOF
+AWG_PRIVATE_KEY=$AWG_CLIENT_PRIVATE
+AWG_PUBLIC_KEY=$AWG_CLIENT_PUBLIC
+AWG_CLIENT_IP=$AWG_CLIENT_IP
+AWG_CLIENT_IP_V6=$AWG_CLIENT_IP_V6
+CREDEOF
+
+            # Add peer to server config
+            AWG_ALLOWED="$AWG_CLIENT_IP/32"
+            if [[ -n "$AWG_CLIENT_IP_V6" ]]; then
+                AWG_ALLOWED="$AWG_CLIENT_IP/32, $AWG_CLIENT_IP_V6/128"
+            fi
+
+            cat >> "configs/amneziawg/awg0.conf" <<PEEREOF
+
+[Peer]
+# $USERNAME
+PublicKey = $AWG_CLIENT_PUBLIC
+AllowedIPs = $AWG_ALLOWED
+PEEREOF
+
+            # Read obfuscation params and server key from the server config (bind mount)
+            AWG_SERVER_PUB=$(cat "configs/amneziawg/server.pub")
+            AWG_JC=$(grep '^Jc' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_JMIN=$(grep '^Jmin' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_JMAX=$(grep '^Jmax' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_S1=$(grep '^S1' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_S2=$(grep '^S2' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_H1=$(grep '^H1' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_H2=$(grep '^H2' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_H3=$(grep '^H3' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+            AWG_H4=$(grep '^H4' "configs/amneziawg/awg0.conf" | head -1 | awk '{print $3}')
+
+            AWG_ADDRESSES="$AWG_CLIENT_IP/32"
+            if [[ -n "$AWG_CLIENT_IP_V6" ]]; then
+                AWG_ADDRESSES="$AWG_CLIENT_IP/32, $AWG_CLIENT_IP_V6/128"
+            fi
+
+            cat > "$OUTPUT_DIR/amneziawg.conf" <<CONFEOF
+[Interface]
+PrivateKey = $AWG_CLIENT_PRIVATE
+Address = $AWG_ADDRESSES
+DNS = 1.1.1.1, 8.8.8.8
+MTU = 1280
+Jc = $AWG_JC
+Jmin = $AWG_JMIN
+Jmax = $AWG_JMAX
+S1 = $AWG_S1
+S2 = $AWG_S2
+H1 = $AWG_H1
+H2 = $AWG_H2
+H3 = $AWG_H3
+H4 = $AWG_H4
+
+[Peer]
+PublicKey = $AWG_SERVER_PUB
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = ${SERVER_IP}:${PORT_AMNEZIAWG:-51821}
+PersistentKeepalive = 25
+CONFEOF
+
+            # Generate QR code
+            qrencode -o "$OUTPUT_DIR/amneziawg-qr.png" -s 6 -r "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || true
+
+            # IPv6 endpoint config
+            if [[ -n "${SERVER_IPV6:-}" ]]; then
+                cat > "$OUTPUT_DIR/amneziawg-ipv6.conf" <<CONFEOF
+[Interface]
+PrivateKey = $AWG_CLIENT_PRIVATE
+Address = $AWG_ADDRESSES
+DNS = 1.1.1.1, 2606:4700:4700::1111
+MTU = 1280
+Jc = $AWG_JC
+Jmin = $AWG_JMIN
+Jmax = $AWG_JMAX
+S1 = $AWG_S1
+S2 = $AWG_S2
+H1 = $AWG_H1
+H2 = $AWG_H2
+H3 = $AWG_H3
+H4 = $AWG_H4
+
+[Peer]
+PublicKey = $AWG_SERVER_PUB
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = [${SERVER_IPV6}]:${PORT_AMNEZIAWG:-51821}
+PersistentKeepalive = 25
+CONFEOF
+                qrencode -o "$OUTPUT_DIR/amneziawg-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/amneziawg-ipv6.conf" 2>/dev/null || true
+            fi
+        ) && log_info "✓ AmneziaWG peer added" || {
+            ERRORS+=("amneziawg")
+            log_error "✗ Failed to add AmneziaWG peer"
+        }
+    else
+        log_info "[3/3] Skipping AmneziaWG (not enabled or not configured)"
     fi
 
 echo ""
@@ -248,6 +383,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_CDN=$(cat "$OUTPUT_DIR/cdn-vless-ws.txt" 2>/dev/null | tr -d '\n' || echo "")
     CONFIG_WIREGUARD=$(cat "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || echo "")
     CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
+    CONFIG_AMNEZIAWG=$(cat "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || echo "")
 
     # Get CDN domain from .env
     CDN_DOMAIN="${CDN_DOMAIN:-$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")}"
@@ -280,6 +416,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_TROJAN_B64=$(qr_to_base64 "$OUTPUT_DIR/trojan-qr.png")
     QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
+    QR_AMNEZIAWG_B64=$(qr_to_base64 "$OUTPUT_DIR/amneziawg-qr.png")
 
     # Copy template
     cp "$TEMPLATE_FILE" "$OUTPUT_HTML"
@@ -326,6 +463,7 @@ with open(filepath, 'w') as f:
     sed -i.bak "s|{{QR_TROJAN}}|$QR_TROJAN_B64|g" "$OUTPUT_HTML"
     sed -i.bak "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
     sed -i.bak "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
+    sed -i.bak "s|{{QR_AMNEZIAWG}}|$QR_AMNEZIAWG_B64|g" "$OUTPUT_HTML"
 
     if [[ -n "$CONFIG_REALITY" ]]; then
         replace_placeholder "{{CONFIG_REALITY}}" "$CONFIG_REALITY"
@@ -369,6 +507,13 @@ with open(filepath, 'w') as f:
         replace_placeholder "{{CONFIG_WIREGUARD_WSTUNNEL}}" "$CONFIG_WIREGUARD_WSTUNNEL"
     else
         replace_placeholder "{{CONFIG_WIREGUARD_WSTUNNEL}}" "No WireGuard-wstunnel config available"
+    fi
+
+    # AmneziaWG config (multiline)
+    if [[ -n "$CONFIG_AMNEZIAWG" ]]; then
+        replace_placeholder "{{CONFIG_AMNEZIAWG}}" "$CONFIG_AMNEZIAWG"
+    else
+        replace_placeholder "{{CONFIG_AMNEZIAWG}}" "No AmneziaWG config available"
     fi
 
     # Clean up backup files
@@ -436,6 +581,15 @@ if [[ "$BATCH_MODE" == "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
             docker compose exec -T wireguard wg syncconf wg0 <(docker compose exec -T wireguard wg-quick strip wg0) 2>/dev/null || \
                 docker compose restart wireguard
             log_info "✓ WireGuard synced"
+        fi
+    fi
+
+    # Reload AmneziaWG
+    if [[ "${ENABLE_AMNEZIAWG:-true}" == "true" ]] && [[ -f "configs/amneziawg/awg0.conf" ]]; then
+        if docker compose ps amneziawg --status running &>/dev/null; then
+            log_info "Restarting AmneziaWG..."
+            docker compose restart amneziawg
+            log_info "✓ AmneziaWG restarted"
         fi
     fi
 

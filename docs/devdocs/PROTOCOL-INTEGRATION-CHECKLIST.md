@@ -169,6 +169,29 @@
   export PORT_NEWPROTO="${PORT_NEWPROTO:-XXXX}"
   ```
 
+### 3d. `scripts/user-add.sh` (host-side user creation)
+
+> **Important:** `user-add.sh` runs on the host (via `moav user add`), separately from
+> `generate-single-user.sh` (which runs inside the bootstrap container). Both paths must
+> handle the new protocol.
+
+- [ ] Add peer/credential creation step (after WireGuard section ~line 177):
+  - Generate keys, calculate client IP, save credentials to `state/users/$USERNAME/`
+  - Append peer to server config (e.g., `configs/newproto/config.file`)
+  - Generate client config file + QR code in `$OUTPUT_DIR/`
+- [ ] Update step counters (`[1/N]`, `[2/N]`, etc.) to include new protocol
+- [ ] Add `CONFIG_NEWPROTO` reading in README.html section:
+  ```bash
+  CONFIG_NEWPROTO=$(cat "$OUTPUT_DIR/newproto.conf" 2>/dev/null || echo "")
+  ```
+- [ ] Add `QR_NEWPROTO_B64` generation and sed replacement:
+  ```bash
+  QR_NEWPROTO_B64=$(qr_to_base64 "$OUTPUT_DIR/newproto-qr.png")
+  sed -i.bak "s|{{QR_NEWPROTO}}|$QR_NEWPROTO_B64|g" "$OUTPUT_HTML"
+  ```
+- [ ] Add `replace_placeholder` call for `{{CONFIG_NEWPROTO}}`
+- [ ] Add service reload in batch mode section (after WireGuard reload)
+
 ---
 
 ## 4. CLI Tool (`moav.sh`)
@@ -345,9 +368,62 @@
   - Certificate check (if TLS)
   - Client config verification
 
+### 6f. `docs/client-guide-template.html` (User Bundle README)
+
+The HTML guide template generates per-user `README.html` files in each user's bundle.
+It has **two language sections** (English and Farsi) that must both be updated.
+
+- [ ] **English TOC**: Add entry with appropriate number and badge
+- [ ] **English protocol section**: Add full section with:
+  - Protocol header (name, badge, port)
+  - Description paragraph
+  - "When to use" guidance box
+  - Download links for client apps (iOS, Android, Windows, macOS, Linux)
+  - QR code section: `<img src="data:image/png;base64,{{QR_NEWPROTO}}">`
+  - Config box: `<div class="config-value multiline">{{CONFIG_NEWPROTO}}</div>`
+- [ ] **English apps table**: Add app rows per platform, update `rowspan` values
+- [ ] **Farsi TOC**: Mirror English TOC with Farsi text and numbering (۱, ۲, ۳...)
+- [ ] **Farsi protocol section**: Mirror English section with Farsi text, RTL-compatible
+- [ ] **Farsi apps table**: Mirror English apps table updates
+- [ ] **Renumber**: If inserting mid-list, update all subsequent section numbers in both languages
+- [ ] **`scripts/generate-user.sh`**: Add template variable replacements:
+  ```bash
+  CONFIG_NEWPROTO=$(cat "$OUTPUT_DIR/newproto.conf" 2>/dev/null || echo "")
+  QR_NEWPROTO_B64=$(qr_to_base64 "$OUTPUT_DIR/newproto-qr.png")
+  sed -i "s|{{QR_NEWPROTO}}|$QR_NEWPROTO_B64|g" "$OUTPUT_HTML"
+  replace_placeholder "{{CONFIG_NEWPROTO}}" "$CONFIG_NEWPROTO"
+  ```
+
+**Badge types available:** `badge-primary` (green), `badge-secondary` (blue), `badge-fallback` (orange), `badge-standalone` (purple)
+
 ---
 
-## 7. Verification
+## 7. `.gitignore` — Exclude Generated Config Files
+
+Any config files generated at runtime (by bootstrap or entrypoint) must be added to `.gitignore`, otherwise `moav update` will warn about "local changes detected" and block the update.
+
+Add entries following the existing pattern in `.gitignore`:
+
+```gitignore
+# NewProto generated files
+configs/newproto/config-file.conf
+configs/newproto/server.pub
+```
+
+**What to ignore:** Any file created by bootstrap/entrypoint that lives in `configs/newproto/` but is NOT a `.gitkeep` or template file.
+
+**Reference — existing patterns:**
+| Protocol | Ignored files |
+|----------|--------------|
+| sing-box | `configs/sing-box/config.json` |
+| WireGuard | `configs/wireguard/wg0.conf`, `server.pub`, `server.key`, `wg_confs/`, `peer*/` |
+| AmneziaWG | `configs/amneziawg/awg0.conf`, `server.pub` |
+| dnstt | `configs/dnstt/server.conf`, `server.pub`, `*.key`, `*.key.hex` |
+| TrustTunnel | `configs/trusttunnel/vpn.toml`, `hosts.toml`, `credentials.toml` |
+
+---
+
+## 8. Verification
 
 - [ ] `bash -n moav.sh` — syntax check passes
 - [ ] `docker compose config --profiles newproto` — compose config valid
@@ -388,5 +464,5 @@
 | Type | Count | Files |
 |------|-------|-------|
 | New files | 3-4 | Dockerfile, entrypoint, configs/.gitkeep, (templates) |
-| Modified files | 12-14 | docker-compose.yml, .env.example, moav.sh, bootstrap.sh, generate-user.sh, generate-single-user.sh, Dockerfile.client, client-connect.sh, client-test.sh, README.md, README-fa.md, SETUP.md, CLIENTS.md, TROUBLESHOOTING.md |
+| Modified files | 13-15 | docker-compose.yml, .env.example, .gitignore, moav.sh, bootstrap.sh, generate-user.sh, generate-single-user.sh, user-add.sh, Dockerfile.client, client-connect.sh, client-test.sh, README.md, README-fa.md, SETUP.md, CLIENTS.md, TROUBLESHOOTING.md |
 | **Total** | **15-18** | |

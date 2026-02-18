@@ -828,6 +828,13 @@ do_uninstall() {
             echo "  - configs/wireguard/*"
         fi
 
+        # Remove generated AmneziaWG files
+        if [[ -f "$SCRIPT_DIR/configs/amneziawg/awg0.conf" ]]; then
+            rm -f "$SCRIPT_DIR/configs/amneziawg/awg0.conf" 2>/dev/null
+            rm -f "$SCRIPT_DIR/configs/amneziawg/server.pub" 2>/dev/null
+            echo "  - configs/amneziawg/*"
+        fi
+
         # Remove generated TrustTunnel files
         if [[ -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" ]]; then
             rm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
@@ -1685,6 +1692,7 @@ select_profiles() {
     local proxy_enabled=true
     local wg_enabled=true
     local dnstt_enabled=true
+    local amneziawg_enabled=true
     local trusttunnel_enabled=true
     local admin_enabled=true
 
@@ -1693,6 +1701,7 @@ select_profiles() {
         local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_amneziawg=$(grep "^ENABLE_AMNEZIAWG=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
@@ -1702,13 +1711,14 @@ select_profiles() {
             proxy_enabled=false
         fi
         [[ "$enable_wireguard" != "true" ]] && wg_enabled=false
+        [[ "$enable_amneziawg" != "true" ]] && amneziawg_enabled=false
         [[ "$enable_dnstt" != "true" ]] && dnstt_enabled=false
         [[ "$enable_trusttunnel" != "true" ]] && trusttunnel_enabled=false
         [[ "$enable_admin" != "true" ]] && admin_enabled=false
     fi
 
     # Build menu lines with disabled indicators
-    local proxy_line wg_line dnstt_line trusttunnel_line admin_line
+    local proxy_line wg_line amneziawg_line dnstt_line trusttunnel_line admin_line
 
     if [[ "$proxy_enabled" == "true" ]]; then
         proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 (v2ray apps)       ${CYAN}│${NC}"
@@ -1722,22 +1732,28 @@ select_profiles() {
         wg_line="  ${CYAN}│${NC}  ${DIM}2   wireguard    WireGuard VPN (disabled)${NC}                      ${CYAN}│${NC}"
     fi
 
-    if [[ "$dnstt_enabled" == "true" ]]; then
-        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}3${NC}   dnstt        DNS tunnel ${DIM}(slow, last resort)${NC}                ${CYAN}│${NC}"
+    if [[ "$amneziawg_enabled" == "true" ]]; then
+        amneziawg_line="  ${CYAN}│${NC}  ${GREEN}3${NC}   amneziawg    AmneziaWG (obfuscated WireGuard)               ${CYAN}│${NC}"
     else
-        dnstt_line="  ${CYAN}│${NC}  ${DIM}3   dnstt        DNS tunnel (disabled)${NC}                        ${CYAN}│${NC}"
+        amneziawg_line="  ${CYAN}│${NC}  ${DIM}3   amneziawg    AmneziaWG (disabled)${NC}                         ${CYAN}│${NC}"
+    fi
+
+    if [[ "$dnstt_enabled" == "true" ]]; then
+        dnstt_line="  ${CYAN}│${NC}  ${YELLOW}4${NC}   dnstt        DNS tunnel ${DIM}(slow, last resort)${NC}                ${CYAN}│${NC}"
+    else
+        dnstt_line="  ${CYAN}│${NC}  ${DIM}4   dnstt        DNS tunnel (disabled)${NC}                        ${CYAN}│${NC}"
     fi
 
     if [[ "$trusttunnel_enabled" == "true" ]]; then
-        trusttunnel_line="  ${CYAN}│${NC}  ${GREEN}4${NC}   trusttunnel  TrustTunnel VPN (HTTP/2 + QUIC)               ${CYAN}│${NC}"
+        trusttunnel_line="  ${CYAN}│${NC}  ${GREEN}5${NC}   trusttunnel  TrustTunnel VPN (HTTP/2 + QUIC)               ${CYAN}│${NC}"
     else
-        trusttunnel_line="  ${CYAN}│${NC}  ${DIM}4   trusttunnel  TrustTunnel VPN (disabled)${NC}                    ${CYAN}│${NC}"
+        trusttunnel_line="  ${CYAN}│${NC}  ${DIM}5   trusttunnel  TrustTunnel VPN (disabled)${NC}                    ${CYAN}│${NC}"
     fi
 
     if [[ "$admin_enabled" == "true" ]]; then
-        admin_line="  ${CYAN}│${NC}  ${GREEN}5${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
+        admin_line="  ${CYAN}│${NC}  ${GREEN}6${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
     else
-        admin_line="  ${CYAN}│${NC}  ${DIM}5   admin        Stats dashboard (disabled)${NC}                   ${CYAN}│${NC}"
+        admin_line="  ${CYAN}│${NC}  ${DIM}6   admin        Stats dashboard (disabled)${NC}                   ${CYAN}│${NC}"
     fi
 
     echo ""
@@ -1746,14 +1762,15 @@ select_profiles() {
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "$proxy_line"
     echo -e "$wg_line"
+    echo -e "$amneziawg_line"
     echo -e "$dnstt_line"
     echo -e "$trusttunnel_line"
     echo -e "$admin_line"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}6${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}9${NC}   monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Back${NC}         Back to main menu                             ${CYAN}│${NC}"
@@ -1780,6 +1797,7 @@ select_profiles() {
         local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_amneziawg=$(grep "^ENABLE_AMNEZIAWG=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
@@ -1795,6 +1813,11 @@ select_profiles() {
         # wireguard profile
         if [[ "$enable_wireguard" == "true" ]]; then
             SELECTED_PROFILES+=("wireguard")
+        fi
+
+        # amneziawg profile
+        if [[ "$enable_amneziawg" == "true" ]]; then
+            SELECTED_PROFILES+=("amneziawg")
         fi
 
         # dnstt profile
@@ -1861,12 +1884,13 @@ select_profiles() {
             case $choice in
                 1) SELECTED_PROFILES+=("proxy") ;;
                 2) SELECTED_PROFILES+=("wireguard") ;;
-                3) SELECTED_PROFILES+=("dnstt") ;;
-                4) SELECTED_PROFILES+=("trusttunnel") ;;
-                5) SELECTED_PROFILES+=("admin") ;;
-                6) SELECTED_PROFILES+=("conduit") ;;
-                7) SELECTED_PROFILES+=("snowflake") ;;
-                8) SELECTED_PROFILES+=("monitoring") ;;
+                3) SELECTED_PROFILES+=("amneziawg") ;;
+                4) SELECTED_PROFILES+=("dnstt") ;;
+                5) SELECTED_PROFILES+=("trusttunnel") ;;
+                6) SELECTED_PROFILES+=("admin") ;;
+                7) SELECTED_PROFILES+=("conduit") ;;
+                8) SELECTED_PROFILES+=("snowflake") ;;
+                9) SELECTED_PROFILES+=("monitoring") ;;
             esac
         done
     fi
@@ -2679,9 +2703,9 @@ show_usage() {
     echo "  regenerate-users      Regenerate all user bundles with current .env"
     echo "  setup-dns             Free port 53 for dnstt (disables systemd-resolved)"
     echo ""
-    echo "Profiles: proxy, wireguard, dnstt, trusttunnel, admin, conduit, snowflake, client, all"
-    echo "Services: sing-box, decoy, wstunnel, wireguard, dnstt, trusttunnel, admin, psiphon-conduit, snowflake"
-    echo "Aliases:  proxy/singbox/reality→sing-box, wg→wireguard, dns→dnstt, conduit→psiphon-conduit"
+    echo "Profiles: proxy, wireguard, amneziawg, dnstt, trusttunnel, admin, conduit, snowflake, client, all"
+    echo "Services: sing-box, decoy, wstunnel, wireguard, amneziawg, dnstt, trusttunnel, admin, psiphon-conduit, snowflake"
+    echo "Aliases:  proxy/singbox/reality→sing-box, wg→wireguard, awg→amneziawg, dns→dnstt, conduit→psiphon-conduit"
     echo ""
     echo "Examples:"
     echo "  moav                           # Interactive menu"
@@ -2889,7 +2913,7 @@ cmd_profiles() {
 
 cmd_start() {
     local profiles=""
-    local valid_profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring client all setup"
+    local valid_profiles="proxy wireguard amneziawg dnstt trusttunnel admin conduit snowflake monitoring client all setup"
 
     if [[ $# -eq 0 ]]; then
         # No arguments - check for DEFAULT_PROFILES in .env
@@ -2921,7 +2945,7 @@ cmd_start() {
             if ! echo "$valid_profiles" | grep -qw "$resolved"; then
                 error "Invalid profile: $p"
                 echo "Valid profiles: $valid_profiles"
-                echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, dns→dnstt, grafana/grafana-proxy/grafana-cdn/prometheus→monitoring"
+                echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, awg→amneziawg, dns→dnstt, grafana/grafana-proxy/grafana-cdn/prometheus→monitoring"
                 exit 1
             fi
             profiles+="--profile $resolved "
@@ -3005,6 +3029,8 @@ resolve_profile() {
             echo "proxy" ;;
         wg)
             echo "wireguard" ;;
+        awg)
+            echo "amneziawg" ;;
         dns)
             echo "dnstt" ;;
         psiphon)
@@ -4351,6 +4377,7 @@ cmd_regenerate_users() {
     local enable_trojan=$(grep -E '^ENABLE_TROJAN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_hysteria2=$(grep -E '^ENABLE_HYSTERIA2=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_wireguard=$(grep -E '^ENABLE_WIREGUARD=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_amneziawg=$(grep -E '^ENABLE_AMNEZIAWG=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_dnstt=$(grep -E '^ENABLE_DNSTT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_trusttunnel=$(grep -E '^ENABLE_TRUSTTUNNEL=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
 
@@ -4370,6 +4397,7 @@ cmd_regenerate_users() {
             -e "ENABLE_TROJAN=${enable_trojan:-true}" \
             -e "ENABLE_HYSTERIA2=${enable_hysteria2:-true}" \
             -e "ENABLE_WIREGUARD=${enable_wireguard:-true}" \
+            -e "ENABLE_AMNEZIAWG=${enable_amneziawg:-true}" \
             -e "ENABLE_DNSTT=${enable_dnstt:-true}" \
             -e "ENABLE_TRUSTTUNNEL=${enable_trusttunnel:-true}" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then

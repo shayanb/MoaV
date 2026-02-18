@@ -24,7 +24,7 @@ TEST_TIMEOUT="${TEST_TIMEOUT:-10}"
 
 # Protocol priority for auto mode
 # Note: psiphon excluded - requires embedded server list, not supported in client mode
-PROTOCOL_PRIORITY=(reality hysteria2 trojan trusttunnel wireguard tor dnstt)
+PROTOCOL_PRIORITY=(reality hysteria2 trojan trusttunnel wireguard amneziawg tor dnstt)
 
 # State
 CURRENT_PID=""
@@ -478,6 +478,61 @@ connect_wireguard() {
     fi
 }
 
+# Connect using AmneziaWG (full VPN via awg-quick)
+# Note: AmneziaWG is a full VPN (TUN-based), not a proxy
+# It routes all container traffic through the VPN tunnel
+connect_amneziawg() {
+    local config_file=""
+
+    for f in "$CONFIG_DIR"/amneziawg.conf; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+
+    if [[ -z "$config_file" ]]; then
+        log_error "No AmneziaWG config found (looking for amneziawg.conf in $CONFIG_DIR)"
+        return 1
+    fi
+
+    if ! command -v awg-quick >/dev/null 2>&1; then
+        log_error "awg-quick not available"
+        log_info "AmneziaWG tools not installed in this container"
+        return 1
+    fi
+
+    # Check for TUN device
+    if [[ ! -e /dev/net/tun ]]; then
+        log_error "/dev/net/tun not available - container needs NET_ADMIN capability"
+        return 1
+    fi
+
+    log_info "Starting AmneziaWG VPN..."
+    log_info "Note: AmneziaWG is a full VPN - all container traffic will be tunneled"
+
+    # Bring up the AmneziaWG interface
+    if ! awg-quick up "$config_file" 2>&1; then
+        log_error "awg-quick up failed"
+        return 1
+    fi
+
+    CURRENT_PROTOCOL="amneziawg"
+
+    # Wait for interface to come up
+    sleep 5
+
+    # Test connection directly (traffic goes through TUN, not via SOCKS5)
+    if curl -sf --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        EXIT_IP=$(curl -sf --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
+        log_success "AmneziaWG VPN connected (exit IP: ${EXIT_IP:-unknown})"
+        return 0
+    else
+        log_warn "Connection test failed for AmneziaWG"
+        awg-quick down "$config_file" 2>/dev/null || true
+        CURRENT_PROTOCOL=""
+        return 1
+    fi
+}
+
 # Connect using dnstt
 connect_dnstt() {
     local config_file=""
@@ -761,6 +816,12 @@ connect_auto() {
                     return 0
                 fi
                 ;;
+            amneziawg)
+                if connect_amneziawg; then
+                    log_success "Connected via AmneziaWG"
+                    return 0
+                fi
+                ;;
             trusttunnel)
                 if connect_trusttunnel; then
                     log_success "Connected via TrustTunnel"
@@ -823,6 +884,9 @@ main() {
             ;;
         wireguard)
             connect_wireguard && connected=true
+            ;;
+        amneziawg)
+            connect_amneziawg && connected=true
             ;;
         trusttunnel)
             connect_trusttunnel && connected=true
