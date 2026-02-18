@@ -609,6 +609,7 @@ services:
       - ./docs:/docs:ro
       - moav_state:/state
       - moav_certs:/certs
+      - ./state:/host-state:ro    # Host state dir for users created via 'moav user add'
     environment:
       - DOMAIN=${DOMAIN}
       - SERVER_IP=${SERVER_IP:-}

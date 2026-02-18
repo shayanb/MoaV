@@ -222,13 +222,16 @@ for USERNAME in "${USERNAMES[@]}"; do
                 AWG_CLIENT_IP_V6="fd00:cafe:dead::$((AWG_PEER_NUM + 1))"
             fi
 
-            # Save client credentials to bundle dir (state/ is a Docker volume, not host-accessible)
+            # Save client credentials to bundle dir and host state dir
             cat > "$OUTPUT_DIR/amneziawg.env" <<CREDEOF
 AWG_PRIVATE_KEY=$AWG_CLIENT_PRIVATE
 AWG_PUBLIC_KEY=$AWG_CLIENT_PUBLIC
 AWG_CLIENT_IP=$AWG_CLIENT_IP
 AWG_CLIENT_IP_V6=$AWG_CLIENT_IP_V6
 CREDEOF
+            # Also save to host state dir for bootstrap sync
+            mkdir -p "./state/users/$USERNAME" 2>/dev/null || true
+            cp "$OUTPUT_DIR/amneziawg.env" "./state/users/$USERNAME/amneziawg.env" 2>/dev/null || true
 
             # Add peer to server config
             AWG_ALLOWED="$AWG_CLIENT_IP/32"
@@ -534,6 +537,19 @@ fi
     else
         log_info "✓ User '$USERNAME' created successfully"
         CREATED_USERS+=("$USERNAME")
+    fi
+
+    # -------------------------------------------------------------------------
+    # Sync credentials to Docker volume (for bootstrap persistence)
+    # user-add.sh writes to host ./state/, but bootstrap reads from Docker volume.
+    # -------------------------------------------------------------------------
+    if [[ ${#ERRORS[@]} -eq 0 ]] && [[ -d "./state/users/$USERNAME" ]]; then
+        docker run --rm \
+            -v moav_moav_state:/state \
+            -v "$(pwd)/state/users/$USERNAME:/host-user:ro" \
+            alpine sh -c "mkdir -p /state/users/$USERNAME && cp -a /host-user/* /state/users/$USERNAME/" \
+            2>/dev/null && log_info "✓ Synced credentials to Docker volume" \
+            || log_warn "Could not sync to Docker volume (bootstrap will import on next run)"
     fi
 
     # -------------------------------------------------------------------------
