@@ -408,7 +408,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
 
     # Get dnstt info
     DNSTT_DOMAIN="${DNSTT_SUBDOMAIN:-t}.${DOMAIN}"
-    DNSTT_PUBKEY=$(cat "$STATE_DIR/keys/dnstt-server.pub" 2>/dev/null || echo "")
+    DNSTT_PUBKEY=$(cat "$STATE_DIR/keys/dnstt-server.pub.hex" 2>/dev/null || echo "")
 
     # Convert QR images to base64
     qr_to_base64() {
