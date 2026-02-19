@@ -9,10 +9,7 @@ RUN apk add --no-cache \
     jq \
     curl \
     openssl \
-    && apk add --no-cache \
-    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
-    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
-    qrencode
+    libqrencode-tools
 
 WORKDIR /app
 
