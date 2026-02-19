@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.6] - 2026-02-19
+
+### Added
+- **Admin Dashboard User Creation** - Create users directly from the web dashboard
+  - "Create User" button in User Bundles section with collapsible form
+  - Single user creation by username
+  - Batch mode with checkbox: enter username + count to create `name_01`, `name_02`, etc.
+  - Real-time script output log with dismiss button
+  - Auto-refresh paused during user creation to prevent timeouts on batch operations
+  - Scalable timeout: 60s per user in batch mode
+- **Admin Dashboard Docker Enhancements** - Admin container can now run user management scripts
+  - Full project mount (`/project`) for running `user-add.sh` via API
+  - Docker socket mount for `docker compose exec` commands within scripts
+  - `qrencode` installed for QR code generation in user bundles
+- **AmneziaWG Grafana Dashboard** - Monitoring panel for AmneziaWG connections
+
+### Fixed
+- **Bootstrap Key Preservation** - Bootstrap no longer regenerates existing keys on re-run
+  - Reality, WireGuard, and AmneziaWG keys preserved across re-bootstrap
+  - Prevents breaking existing user configs when re-bootstrapping
+- **WireGuard/AmneziaWG User Addition** - Fixed multiple bugs in user-add flow
+  - AWG peers now hot-reloaded into running container (previously required restart)
+  - AWG IP allocation uses actual IPs from config + running interface (prevents collisions)
+  - WG IP allocation checks both config file and running interface
+  - Fixed stale peers with `allowed ips: (none)` after re-bootstrap
+- **Reality Public Key Derivation** - Fixed empty `pbk=` in Reality client configs
+  - Bootstrap no longer clobbers public key when `sing-box generate reality-keypair --private-key` is unavailable
+  - Falls back to `wg pubkey` for x25519 key derivation (same curve as WireGuard)
+  - `singbox-user-add.sh` auto-derives and saves public key if missing from state
+- **dnstt Public Key in README.html** - Fixed empty dnstt pubkey in generated README.html
+  - `generate-user.sh` was reading from `dnstt-server.pub` instead of `dnstt-server.pub.hex`
+- **User Regeneration** - Fixed WG/AWG config regeneration after re-bootstrap
+
+### Changed
+- **Admin Dashboard UI** - Create User form moved from separate card to inline toggle in User Bundles header
+- **Documentation** - Added admin dashboard user creation to SETUP.md and CLI.md
+
 ## [1.3.5] - 2026-02-18
 
 ### Added
@@ -479,7 +516,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.5...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.6...HEAD
+[1.3.6]: https://github.com/shayanb/MoaV/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/shayanb/MoaV/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/shayanb/MoaV/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/shayanb/MoaV/compare/v1.3.1...v1.3.3

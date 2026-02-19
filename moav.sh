@@ -2938,24 +2938,38 @@ cmd_start() {
             done
         fi
     else
+        local individual_services=""
         for p in "$@"; do
             # Resolve profile aliases (e.g., sing-box -> proxy)
             local resolved
             resolved=$(resolve_profile "$p")
 
-            # Validate profile name
-            if ! echo "$valid_profiles" | grep -qw "$resolved"; then
-                error "Invalid profile: $p"
-                echo "Valid profiles: $valid_profiles"
-                echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, awg→amneziawg, dns→dnstt, grafana/grafana-proxy/grafana-cdn/prometheus→monitoring"
-                exit 1
+            # Check if it's a valid profile
+            if echo "$valid_profiles" | grep -qw "$resolved"; then
+                profiles+="--profile $resolved "
+            else
+                # Try resolving as individual service name
+                local svc
+                svc=$(resolve_service "$p")
+                individual_services+="$svc "
             fi
-            profiles+="--profile $resolved "
         done
+
+        # If we have individual services but no profiles, figure out which profiles they need
+        if [[ -n "$individual_services" ]] && [[ -z "$profiles" ]]; then
+            info "Starting individual services: $individual_services"
+            docker compose --profile all up -d $individual_services
+            success "Services started!"
+            return 0
+        elif [[ -n "$individual_services" ]]; then
+            warn "Ignoring individual services ($individual_services) when mixed with profiles"
+        fi
     fi
 
     if [[ -z "$profiles" ]]; then
         error "No service selected"
+        echo "Valid profiles: $valid_profiles"
+        echo "Aliases: sing-box/singbox/reality/trojan/hysteria→proxy, wg→wireguard, awg→amneziawg, dns→dnstt, grafana/prometheus→monitoring"
         exit 1
     fi
 
@@ -3101,7 +3115,7 @@ cmd_stop() {
         fi
     else
         # Check if argument is a profile name
-        local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
+        local profiles="proxy wireguard amneziawg dnstt trusttunnel admin conduit snowflake monitoring"
         local profile_match=""
         for p in $profiles; do
             if [[ "${args[0]}" == "$p" ]]; then
@@ -3411,7 +3425,7 @@ cmd_build() {
         success "All services built!"
     else
         # Check if argument is a profile name
-        local profiles="proxy wireguard dnstt trusttunnel admin conduit snowflake monitoring"
+        local profiles="proxy wireguard amneziawg dnstt trusttunnel admin conduit snowflake monitoring"
         local profile_match=""
         for p in $profiles; do
             if [[ "${services_args[0]}" == "$p" ]]; then
@@ -3434,9 +3448,27 @@ cmd_build() {
                 info "No buildable services specified"
                 return 0
             fi
-            info "Building: $services${no_cache:+ (no cache)}"
-            docker compose --profile all build $no_cache $services
-            success "Build complete!"
+            # Check if any services are image-only (need --local build)
+            local compose_services=()
+            local local_services=()
+            for svc in $services; do
+                if [[ -n "${LOCAL_BUILD_MAP[$svc]:-}" ]]; then
+                    local_services+=("$svc")
+                else
+                    compose_services+=("$svc")
+                fi
+            done
+            # Build compose services normally
+            if [[ ${#compose_services[@]} -gt 0 ]]; then
+                info "Building: ${compose_services[*]}${no_cache:+ (no cache)}"
+                docker compose --profile all build $no_cache ${compose_services[@]}
+                success "Build complete!"
+            fi
+            # Auto-redirect image-only services to local build
+            if [[ ${#local_services[@]} -gt 0 ]]; then
+                info "Building locally: ${local_services[*]} (image-only services)"
+                build_local_images "$no_cache" "${local_services[@]}"
+            fi
         fi
     fi
 }
