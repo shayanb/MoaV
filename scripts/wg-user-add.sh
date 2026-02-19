@@ -76,8 +76,12 @@ fi
 log_info "Adding WireGuard peer '$USERNAME'..."
 
 # Find next available IP
-# Get all used IPs from config
+# Get used IPs from config file AND running interface (prevent collisions if out of sync)
 USED_IPS=$(grep -oP 'AllowedIPs = 10\.66\.66\.\K[0-9]+' "$WG_CONFIG_DIR/wg0.conf" 2>/dev/null || echo "")
+if docker compose ps wireguard --status running &>/dev/null; then
+    RUNNING_IPS=$(docker compose exec -T wireguard wg show wg0 allowed-ips 2>/dev/null | grep -oP '10\.66\.66\.\K[0-9]+' || echo "")
+    USED_IPS="$USED_IPS $RUNNING_IPS"
+fi
 NEXT_IP=2  # Start from .2 (server is .1)
 
 for ip in $USED_IPS; do

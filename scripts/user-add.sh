@@ -210,16 +210,28 @@ for USERNAME in "${USERNAMES[@]}"; do
                 exit 1
             fi
 
-            # Count existing peers for IP assignment
-            AWG_PEER_COUNT=$(grep -c '^\[Peer\]' "configs/amneziawg/awg0.conf" 2>/dev/null) || true
-            AWG_PEER_COUNT=${AWG_PEER_COUNT:-0}
-            AWG_PEER_NUM=$((AWG_PEER_COUNT + 1))
-            AWG_CLIENT_IP="10.67.67.$((AWG_PEER_NUM + 1))"
+            # Find next available IP (extract actual used IPs from config AND running interface)
+            USED_AWG_IPS=$(grep -oP 'AllowedIPs = 10\.67\.67\.\K[0-9]+' "configs/amneziawg/awg0.conf" 2>/dev/null || echo "")
+            if docker compose ps amneziawg --status running &>/dev/null; then
+                RUNNING_AWG_IPS=$(docker compose exec -T amneziawg awg show awg0 allowed-ips 2>/dev/null | grep -oP '10\.67\.67\.\K[0-9]+' || echo "")
+                USED_AWG_IPS="$USED_AWG_IPS $RUNNING_AWG_IPS"
+            fi
+            AWG_NEXT_IP=2  # Start from .2 (server is .1)
+            for _ip in $USED_AWG_IPS; do
+                if [[ $_ip -ge $AWG_NEXT_IP ]]; then
+                    AWG_NEXT_IP=$((_ip + 1))
+                fi
+            done
+            if [[ $AWG_NEXT_IP -gt 254 ]]; then
+                log_error "No available IPs in AmneziaWG network"
+                exit 1
+            fi
+            AWG_CLIENT_IP="10.67.67.$AWG_NEXT_IP"
 
             # Calculate client IPv6 if server has IPv6
             AWG_CLIENT_IP_V6=""
             if [[ -n "${SERVER_IPV6:-}" ]]; then
-                AWG_CLIENT_IP_V6="fd00:cafe:dead::$((AWG_PEER_NUM + 1))"
+                AWG_CLIENT_IP_V6="fd00:cafe:dead::$AWG_NEXT_IP"
             fi
 
             # Save client credentials to bundle dir and host state dir
@@ -246,6 +258,21 @@ CREDEOF
 PublicKey = $AWG_CLIENT_PUBLIC
 AllowedIPs = $AWG_ALLOWED
 PEEREOF
+
+            # Hot-add peer to running AmneziaWG (unless batch mode — batch reloads later)
+            if [[ "$BATCH_MODE" != "true" ]]; then
+                if docker compose ps amneziawg --status running &>/dev/null; then
+                    log_info "Adding peer to running AmneziaWG..."
+                    if docker compose exec -T amneziawg awg set awg0 peer "$AWG_CLIENT_PUBLIC" allowed-ips "$AWG_ALLOWED" 2>/dev/null; then
+                        log_info "Peer added to running AmneziaWG (hot reload)"
+                    else
+                        log_info "Hot reload failed, you may need to restart AmneziaWG"
+                        log_info "Run: docker compose --profile amneziawg restart amneziawg"
+                    fi
+                else
+                    log_info "AmneziaWG not running, config will apply on next start"
+                fi
+            fi
 
             # Read obfuscation params and server key from the server config (bind mount)
             AWG_SERVER_PUB=$(cat "configs/amneziawg/server.pub")
