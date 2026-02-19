@@ -26,6 +26,7 @@ Common issues and their solutions.
 - [Monitoring Issues](#monitoring-issues)
   - [System hangs after starting monitoring](#system-hangs-after-starting-monitoring)
   - [Grafana shows "No Data"](#grafana-shows-no-data)
+  - [Clash-exporter authentication error (401)](#clash-exporter-authentication-error-401)
   - [High memory usage from cAdvisor](#high-memory-usage-from-cadvisor)
   - [Snowflake metrics showing zeros](#snowflake-metrics-showing-zeros)
   - [WireGuard exporter not starting](#wireguard-exporter-not-starting)
@@ -820,6 +821,34 @@ docker stop moav-cadvisor
    ```
 
 3. Ensure services are on the same Docker network (`moav_net`)
+
+### Clash-exporter authentication error (401)
+
+**Symptoms:**
+```
+failed to dial: failed to WebSocket dial: expected handshake response status code 101 but got 401
+```
+
+This means `CLASH_API_SECRET` in `.env` doesn't match the secret in sing-box's config. This typically happens after a re-bootstrap where the state volume has a different secret than `.env`.
+
+**Diagnose:**
+```bash
+# What .env has (used by clash-exporter)
+grep CLASH_API_SECRET .env
+
+# What sing-box actually uses (source of truth)
+docker compose exec sing-box cat /etc/sing-box/config.json | python3 -m json.tool | grep -A2 clash_api
+```
+
+**Fix:**
+```bash
+# Sync .env with the actual sing-box secret
+SECRET=$(docker compose exec sing-box cat /etc/sing-box/config.json | python3 -c "import sys,json; print(json.load(sys.stdin)['experimental']['clash_api']['secret'])")
+sed -i "s/^CLASH_API_SECRET=.*/CLASH_API_SECRET=$SECRET/" .env
+docker compose restart clash-exporter
+```
+
+Or use `moav restart monitoring` — the `ensure_clash_api_secret()` function now auto-syncs stale secrets from the state volume on startup.
 
 ### High memory usage from cAdvisor
 

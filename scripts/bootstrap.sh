@@ -249,7 +249,11 @@ export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
 # Generate WireGuard server config (before creating users)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then
-    log_info "Generating WireGuard server configuration..."
+    if [[ -f "$STATE_DIR/keys/wg-server.key" ]]; then
+        log_info "WireGuard server key exists, regenerating config with existing keys..."
+    else
+        log_info "Generating new WireGuard server keys and configuration..."
+    fi
     generate_wireguard_config
 
     # Verify keys are consistent
@@ -271,7 +275,11 @@ fi
 # Generate AmneziaWG server config (before creating users)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_AMNEZIAWG:-true}" == "true" ]]; then
-    log_info "Generating AmneziaWG server configuration..."
+    if [[ -f "$STATE_DIR/keys/awg-server.key" ]]; then
+        log_info "AmneziaWG server key exists, regenerating config with existing keys..."
+    else
+        log_info "Generating new AmneziaWG server keys and configuration..."
+    fi
     generate_amneziawg_config
 
     # Verify keys are consistent

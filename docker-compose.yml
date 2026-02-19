@@ -359,7 +359,7 @@ services:
       - all
 
   # ===========================================================================
-  # ADMIN: Stats dashboard
+  # ADMIN: Stats dashboard + User management API
   # ===========================================================================
   admin:
     build:
@@ -372,11 +372,10 @@ services:
     ports:
       - "${PORT_ADMIN:-9443}:8443"
     volumes:
-      - ./configs/sing-box:/etc/sing-box:ro
-      - ./outputs/bundles:/outputs/bundles:ro
-      - moav_state:/state:ro
-      - moav_logs:/var/log:ro
-      - moav_certs:/certs:ro
+      - .:/project                               # Full project for running user-add.sh
+      - /var/run/docker.sock:/var/run/docker.sock # Docker CLI for script service reloads
+      - moav_state:/state:ro                      # Dashboard reads keys from Docker volume
+      - moav_certs:/certs:ro                      # SSL certificates
     environment:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_IP_WHITELIST=${ADMIN_IP_WHITELIST:-}

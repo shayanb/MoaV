@@ -278,7 +278,7 @@ moav user list    # Same as above
 ```
 
 #### `moav user add`
-Add one or more users to all services.
+Add one or more users to all services. Users can also be created from the **Admin Dashboard** (User Bundles → + Create User).
 
 ```bash
 # Single user

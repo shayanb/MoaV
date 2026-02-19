@@ -1,7 +1,15 @@
 # Admin stats dashboard
 FROM python:3.12-alpine
 
-RUN apk add --no-cache tzdata
+RUN apk add --no-cache \
+    tzdata \
+    bash \
+    docker-cli \
+    docker-cli-compose \
+    jq \
+    curl \
+    openssl \
+    libqrencode-tools
 
 WORKDIR /app
 
