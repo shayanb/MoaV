@@ -8,7 +8,11 @@ RUN apk add --no-cache \
     docker-cli-compose \
     jq \
     curl \
-    openssl
+    openssl \
+    && apk add --no-cache \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
+    qrencode
 
 WORKDIR /app
 

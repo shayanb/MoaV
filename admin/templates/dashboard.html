@@ -206,27 +206,51 @@
         .download-btn:hover {
             opacity: 0.85;
         }
-        .create-user-form {
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .toggle-create-btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .toggle-create-btn:hover { opacity: 0.9; }
+        .create-panel {
+            display: none;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+        .create-panel.open { display: block; }
+        .create-form {
             display: flex;
             gap: 0.75rem;
             align-items: flex-end;
             flex-wrap: wrap;
         }
-        .create-user-form input {
-            background: var(--bg);
+        .create-form input[type="text"],
+        .create-form input[type="number"] {
+            background: var(--card);
             border: 1px solid var(--border);
             color: var(--text);
             padding: 0.5rem 0.75rem;
             border-radius: 0.25rem;
             font-size: 0.9rem;
             font-family: inherit;
-            min-width: 160px;
+            width: 180px;
         }
-        .create-user-form input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-        .create-user-form label {
+        .create-form input:focus { outline: none; border-color: var(--accent); }
+        .create-form label.field-label {
             display: block;
             color: var(--text-muted);
             font-size: 0.7rem;
@@ -234,7 +258,21 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        .create-btn {
+        .batch-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding-bottom: 0.35rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            user-select: none;
+        }
+        .batch-toggle input[type="checkbox"] {
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+        .submit-btn {
             background: var(--success);
             color: white;
             border: none;
@@ -244,10 +282,10 @@
             font-size: 0.9rem;
             font-weight: 500;
         }
-        .create-btn:hover { opacity: 0.9; }
-        .create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .submit-btn:hover { opacity: 0.9; }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .create-result {
-            margin-top: 1rem;
+            margin-top: 0.75rem;
             padding: 0.75rem 1rem;
             border-radius: 0.25rem;
             font-size: 0.8rem;
@@ -267,11 +305,6 @@
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid var(--error);
             color: var(--error);
-        }
-        .create-or {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            padding-bottom: 0.5rem;
         }
         .spinner {
             display: inline-block;
@@ -430,28 +463,31 @@
         </div>
         {% endif %}
 
-        <!-- Create User Section -->
-        <div class="card" style="margin-bottom: 2rem;">
-            <h2>Create User</h2>
-            <form id="create-user-form" class="create-user-form" onsubmit="return createUser(event)">
-                <div>
-                    <label>Username</label>
-                    <input type="text" id="new-username" pattern="[a-zA-Z0-9_\-]+"
-                           placeholder="e.g. alice" autocomplete="off">
-                </div>
-                <span class="create-or">or</span>
-                <div>
-                    <label>Batch Count</label>
-                    <input type="number" id="batch-count" min="1" max="50" placeholder="e.g. 5">
-                </div>
-                <button type="submit" class="create-btn" id="create-btn">Create User</button>
-            </form>
-            <div id="create-result" class="create-result"></div>
-        </div>
-
         <!-- User Bundles Section -->
         <div class="card" style="margin-bottom: 2rem;">
-            <h2>User Bundles</h2>
+            <div class="section-header">
+                <h2>User Bundles</h2>
+                <button class="toggle-create-btn" onclick="toggleCreatePanel()">+ Create User</button>
+            </div>
+            <div id="create-panel" class="create-panel">
+                <form class="create-form" onsubmit="return createUser(event)">
+                    <div>
+                        <label class="field-label">Username</label>
+                        <input type="text" id="new-username" pattern="[a-zA-Z0-9_\-]+"
+                               placeholder="e.g. alice" autocomplete="off" required>
+                    </div>
+                    <label class="batch-toggle">
+                        <input type="checkbox" id="batch-toggle" onchange="toggleBatch()">
+                        Batch
+                    </label>
+                    <div id="batch-options" style="display: none;">
+                        <label class="field-label">Count</label>
+                        <input type="number" id="batch-count" min="1" max="50" placeholder="5" style="width: 80px;">
+                    </div>
+                    <button type="submit" class="submit-btn" id="create-btn">Create</button>
+                </form>
+                <div id="create-result" class="create-result"></div>
+            </div>
             {% if all_users %}
             <table>
                 <thead>
@@ -499,17 +535,29 @@
         // Auto-refresh every 30 seconds
         setTimeout(() => location.reload(), 30000);
 
+        function toggleCreatePanel() {
+            const panel = document.getElementById('create-panel');
+            const btn = event.target;
+            panel.classList.toggle('open');
+            btn.textContent = panel.classList.contains('open') ? '- Close' : '+ Create User';
+        }
+
+        function toggleBatch() {
+            const checked = document.getElementById('batch-toggle').checked;
+            document.getElementById('batch-options').style.display = checked ? '' : 'none';
+            if (!checked) document.getElementById('batch-count').value = '';
+        }
+
         async function createUser(e) {
             e.preventDefault();
             const username = document.getElementById('new-username').value.trim();
-            const batch = parseInt(document.getElementById('batch-count').value) || 0;
+            const batchOn = document.getElementById('batch-toggle').checked;
+            const batch = batchOn ? (parseInt(document.getElementById('batch-count').value) || 0) : 0;
             const btn = document.getElementById('create-btn');
             const result = document.getElementById('create-result');
 
-            if (!username && !batch) {
-                alert('Enter a username or batch count');
-                return false;
-            }
+            if (!username) { alert('Enter a username'); return false; }
+            if (batchOn && batch < 1) { alert('Enter a batch count'); return false; }
 
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span>Creating...';
@@ -526,7 +574,6 @@
                 if (data.success) {
                     result.className = 'create-result success';
                     result.textContent = data.output || 'User created successfully';
-                    // Reload after 3s to show new user in table
                     setTimeout(() => location.reload(), 3000);
                 } else {
                     result.className = 'create-result error';
@@ -539,7 +586,7 @@
                 result.style.display = 'block';
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = 'Create User';
+                btn.innerHTML = 'Create';
             }
             return false;
         }

@@ -399,17 +399,14 @@ async def create_user(request: Request, _: str = Depends(verify_auth)):
     body = await request.json()
     name = body.get("username", "").strip()
     batch = int(body.get("batch", 0))
-    prefix = body.get("prefix", "user").strip()
 
     # Validate inputs
-    if not name and batch <= 0:
-        raise HTTPException(status_code=400, detail="Provide 'username' or 'batch' count")
-    if name and not re.match(r'^[a-zA-Z0-9_-]+$', name):
+    if not name:
+        raise HTTPException(status_code=400, detail="Username is required")
+    if not re.match(r'^[a-zA-Z0-9_-]+$', name):
         raise HTTPException(status_code=400, detail="Invalid username. Use only letters, numbers, underscores, and hyphens.")
     if batch > 50:
         raise HTTPException(status_code=400, detail="Batch count cannot exceed 50")
-    if prefix and not re.match(r'^[a-zA-Z0-9_-]+$', prefix):
-        raise HTTPException(status_code=400, detail="Invalid prefix")
 
     # Check script exists
     if not USER_ADD_SCRIPT.exists():
@@ -418,11 +415,10 @@ async def create_user(request: Request, _: str = Depends(verify_auth)):
     # Build command
     cmd = ["bash", str(USER_ADD_SCRIPT)]
     if batch > 0:
-        cmd += ["--batch", str(batch)]
-        if prefix and prefix != "user":
-            cmd += ["--prefix", prefix]
+        # Batch mode: username becomes prefix → alice_01, alice_02, ...
+        cmd += ["--batch", str(batch), "--prefix", name]
     else:
-        # Check if user already exists
+        # Single user mode
         bundle_path = get_bundle_path()
         if (bundle_path / name).exists():
             raise HTTPException(status_code=409, detail=f"User '{name}' already exists")
@@ -444,7 +440,7 @@ async def create_user(request: Request, _: str = Depends(verify_auth)):
         "success": result.returncode == 0,
         "output": result.stdout,
         "errors": result.stderr if result.returncode != 0 else "",
-        "username": name if name else f"{prefix} (batch {batch})",
+        "username": name if batch <= 0 else f"{name} (batch {batch})",
     }
 
 
