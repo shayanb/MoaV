@@ -1997,27 +1997,43 @@ ensure_clash_api_secret() {
     # Note: || true needed because set -o pipefail causes exit if grep finds nothing
     local current_secret
     current_secret=$(grep "^CLASH_API_SECRET=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || true)
-    if [[ -n "$current_secret" ]]; then
-        return 0  # Already configured
+
+    # Get the authoritative secret from state volume (source of truth from bootstrap)
+    local state_secret
+    state_secret=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/clash-api.env 2>/dev/null | grep "^CLASH_API_SECRET=" | cut -d'=' -f2 || true)
+
+    # If .env matches state, we're good
+    if [[ -n "$current_secret" ]] && [[ "$current_secret" == "$state_secret" ]]; then
+        return 0  # Already configured and in sync
     fi
 
-    # First-time monitoring setup
+    # If .env has a value but it doesn't match state, it's stale
+    if [[ -n "$current_secret" ]] && [[ -n "$state_secret" ]] && [[ "$current_secret" != "$state_secret" ]]; then
+        warn "CLASH_API_SECRET in .env doesn't match state volume (stale after re-bootstrap)"
+        info "Syncing CLASH_API_SECRET from state volume..."
+        sed -i.bak "s/^CLASH_API_SECRET=.*/CLASH_API_SECRET=$state_secret/" "$env_file"
+        rm -f "$env_file.bak"
+        success "CLASH_API_SECRET synced"
+        return 0
+    fi
+
+    # .env is empty — first-time monitoring setup
     # If using 'all' profile, ask user if they want to enable monitoring (requires 2GB RAM)
-    if echo "$profiles" | grep -qE "\ball\b|--profile all"; then
-        echo ""
-        warn "Monitoring requires at least 2GB RAM to run properly."
-        echo "  The monitoring stack includes Grafana, Prometheus, and exporters."
-        echo ""
-        if ! confirm "Enable monitoring? (You can start it later with 'moav start monitoring')" "n"; then
-            info "Skipping monitoring. Starting other services..."
-            return 1  # Signal caller to skip monitoring
+    if [[ -z "$current_secret" ]]; then
+        if echo "$profiles" | grep -qE "\ball\b|--profile all"; then
+            echo ""
+            warn "Monitoring requires at least 2GB RAM to run properly."
+            echo "  The monitoring stack includes Grafana, Prometheus, and exporters."
+            echo ""
+            if ! confirm "Enable monitoring? (You can start it later with 'moav start monitoring')" "n"; then
+                info "Skipping monitoring. Starting other services..."
+                return 1  # Signal caller to skip monitoring
+            fi
         fi
     fi
 
-    # Try to extract from state volume (created by bootstrap)
-    local secret
-    secret=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/clash-api.env 2>/dev/null | grep "^CLASH_API_SECRET=" | cut -d'=' -f2 || true)
-
+    # Try to use state secret, fall back to sing-box config
+    local secret="$state_secret"
     if [[ -z "$secret" ]]; then
         # Try to extract from existing sing-box config.json
         if [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]]; then
@@ -2029,7 +2045,6 @@ ensure_clash_api_secret() {
         info "Configuring CLASH_API_SECRET for monitoring..."
         # Update .env file
         if grep -q "^CLASH_API_SECRET=" "$env_file" 2>/dev/null; then
-            # Replace existing empty line
             sed -i.bak "s/^CLASH_API_SECRET=.*/CLASH_API_SECRET=$secret/" "$env_file"
             rm -f "$env_file.bak"
         else
