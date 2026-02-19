@@ -424,17 +424,18 @@ async def create_user(request: Request, _: str = Depends(verify_auth)):
             raise HTTPException(status_code=409, detail=f"User '{name}' already exists")
         cmd.append(name)
 
-    # Run the script
+    # Run the script (batch creates take longer — ~30s per user)
+    script_timeout = max(120, batch * 60) if batch > 0 else 120
     try:
         result = subprocess.run(
             cmd,
             cwd=str(PROJECT_DIR),
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=script_timeout,
         )
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="User creation timed out (120s)")
+        raise HTTPException(status_code=504, detail=f"User creation timed out ({script_timeout}s)")
 
     return {
         "success": result.returncode == 0,

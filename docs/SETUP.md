@@ -325,6 +325,12 @@ ls outputs/bundles/
 2. Login with username `admin` and your `ADMIN_PASSWORD`
 3. Click **Download** next to any user in the "User Bundles" section
 
+**Creating users from the dashboard:**
+1. Click **+ Create User** in the User Bundles section
+2. Enter a username (e.g. `alice`)
+3. For multiple users, check **Batch** and enter a count — creates `alice_01`, `alice_02`, etc.
+4. Click **Create** and wait for completion
+
 **2. Create a Zip Package:**
 ```bash
 moav user package user01

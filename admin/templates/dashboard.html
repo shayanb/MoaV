@@ -295,6 +295,7 @@
             max-height: 300px;
             overflow-y: auto;
             line-height: 1.4;
+            position: relative;
         }
         .create-result.success {
             background: rgba(34, 197, 94, 0.1);
@@ -306,6 +307,20 @@
             border: 1px solid var(--error);
             color: var(--error);
         }
+        .result-dismiss {
+            position: absolute;
+            top: 0.4rem;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            font-size: 1rem;
+            opacity: 0.6;
+            line-height: 1;
+            padding: 0.2rem;
+        }
+        .result-dismiss:hover { opacity: 1; }
         .spinner {
             display: inline-block;
             width: 14px;
@@ -532,8 +547,9 @@
     </div>
 
     <script>
-        // Auto-refresh every 30 seconds
-        setTimeout(() => location.reload(), 30000);
+        // Auto-refresh: pause while user creation is in progress
+        let creating = false;
+        let refreshTimer = setTimeout(() => { if (!creating) location.reload(); }, 30000);
 
         function toggleCreatePanel() {
             const panel = document.getElementById('create-panel');
@@ -548,6 +564,20 @@
             if (!checked) document.getElementById('batch-count').value = '';
         }
 
+        function showResult(el, cls, text) {
+            el.className = 'create-result ' + cls;
+            el.innerHTML = '<button class="result-dismiss" onclick="dismissResult()" title="Dismiss">&times;</button>';
+            const pre = document.createElement('span');
+            pre.textContent = text;
+            el.appendChild(pre);
+            el.style.display = 'block';
+        }
+
+        function dismissResult() {
+            const el = document.getElementById('create-result');
+            el.style.display = 'none';
+        }
+
         async function createUser(e) {
             e.preventDefault();
             const username = document.getElementById('new-username').value.trim();
@@ -559,6 +589,9 @@
             if (!username) { alert('Enter a username'); return false; }
             if (batchOn && batch < 1) { alert('Enter a batch count'); return false; }
 
+            // Pause auto-refresh during creation
+            creating = true;
+            clearTimeout(refreshTimer);
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span>Creating...';
             result.style.display = 'none';
@@ -568,25 +601,25 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ username, batch }),
+                    signal: AbortSignal.timeout(600000),
                 });
                 const data = await resp.json();
 
                 if (data.success) {
-                    result.className = 'create-result success';
-                    result.textContent = data.output || 'User created successfully';
-                    setTimeout(() => location.reload(), 3000);
+                    showResult(result, 'success', data.output || 'User created successfully');
+                    // Refresh table after a short delay
+                    setTimeout(() => location.reload(), 2000);
                 } else {
-                    result.className = 'create-result error';
-                    result.textContent = data.errors || data.output || 'Creation failed';
+                    showResult(result, 'error', data.errors || data.output || 'Creation failed');
                 }
-                result.style.display = 'block';
             } catch (err) {
-                result.className = 'create-result error';
-                result.textContent = 'Network error: ' + err.message;
-                result.style.display = 'block';
+                showResult(result, 'error', 'Request failed: ' + err.message);
             } finally {
+                creating = false;
                 btn.disabled = false;
                 btn.innerHTML = 'Create';
+                // Resume auto-refresh
+                refreshTimer = setTimeout(() => { if (!creating) location.reload(); }, 30000);
             }
             return false;
         }
