@@ -206,6 +206,85 @@
         .download-btn:hover {
             opacity: 0.85;
         }
+        .create-user-form {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .create-user-form input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.9rem;
+            font-family: inherit;
+            min-width: 160px;
+        }
+        .create-user-form input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .create-user-form label {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .create-btn {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .create-btn:hover { opacity: 0.9; }
+        .create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .create-result {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+            display: none;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+        .create-result.success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+        .create-result.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+        .create-or {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding-bottom: 0.5rem;
+        }
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 640px) {
             body { padding: 1rem; }
             .card-value { font-size: 1.5rem; }
@@ -351,6 +430,25 @@
         </div>
         {% endif %}
 
+        <!-- Create User Section -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>Create User</h2>
+            <form id="create-user-form" class="create-user-form" onsubmit="return createUser(event)">
+                <div>
+                    <label>Username</label>
+                    <input type="text" id="new-username" pattern="[a-zA-Z0-9_\-]+"
+                           placeholder="e.g. alice" autocomplete="off">
+                </div>
+                <span class="create-or">or</span>
+                <div>
+                    <label>Batch Count</label>
+                    <input type="number" id="batch-count" min="1" max="50" placeholder="e.g. 5">
+                </div>
+                <button type="submit" class="create-btn" id="create-btn">Create User</button>
+            </form>
+            <div id="create-result" class="create-result"></div>
+        </div>
+
         <!-- User Bundles Section -->
         <div class="card" style="margin-bottom: 2rem;">
             <h2>User Bundles</h2>
@@ -400,6 +498,51 @@
     <script>
         // Auto-refresh every 30 seconds
         setTimeout(() => location.reload(), 30000);
+
+        async function createUser(e) {
+            e.preventDefault();
+            const username = document.getElementById('new-username').value.trim();
+            const batch = parseInt(document.getElementById('batch-count').value) || 0;
+            const btn = document.getElementById('create-btn');
+            const result = document.getElementById('create-result');
+
+            if (!username && !batch) {
+                alert('Enter a username or batch count');
+                return false;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Creating...';
+            result.style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username, batch }),
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    result.className = 'create-result success';
+                    result.textContent = data.output || 'User created successfully';
+                    // Reload after 3s to show new user in table
+                    setTimeout(() => location.reload(), 3000);
+                } else {
+                    result.className = 'create-result error';
+                    result.textContent = data.errors || data.output || 'Creation failed';
+                }
+                result.style.display = 'block';
+            } catch (err) {
+                result.className = 'create-result error';
+                result.textContent = 'Network error: ' + err.message;
+                result.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Create User';
+            }
+            return false;
+        }
     </script>
 </body>
 </html>

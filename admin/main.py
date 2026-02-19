@@ -10,6 +10,8 @@ import asyncio
 import socket
 import zipfile
 import io
+import re
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -44,11 +46,13 @@ except FileNotFoundError:
 
 # Current version
 CURRENT_VERSION = "unknown"
-try:
-    with open("/app/VERSION") as f:
-        CURRENT_VERSION = f.read().strip()
-except FileNotFoundError:
-    pass
+for _vpath in ["/project/VERSION", "/app/VERSION"]:
+    try:
+        with open(_vpath) as f:
+            CURRENT_VERSION = f.read().strip()
+            break
+    except FileNotFoundError:
+        continue
 
 # Update check cache
 UPDATE_CACHE = {"version": None, "checked_at": 0}
@@ -382,8 +386,71 @@ async def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
+# -------------------------------------------------------------------------
+# User Management API
+# -------------------------------------------------------------------------
+PROJECT_DIR = Path("/project")
+USER_ADD_SCRIPT = PROJECT_DIR / "scripts" / "user-add.sh"
+
+
+@app.post("/api/users")
+async def create_user(request: Request, _: str = Depends(verify_auth)):
+    """Create user(s) by calling user-add.sh."""
+    body = await request.json()
+    name = body.get("username", "").strip()
+    batch = int(body.get("batch", 0))
+    prefix = body.get("prefix", "user").strip()
+
+    # Validate inputs
+    if not name and batch <= 0:
+        raise HTTPException(status_code=400, detail="Provide 'username' or 'batch' count")
+    if name and not re.match(r'^[a-zA-Z0-9_-]+$', name):
+        raise HTTPException(status_code=400, detail="Invalid username. Use only letters, numbers, underscores, and hyphens.")
+    if batch > 50:
+        raise HTTPException(status_code=400, detail="Batch count cannot exceed 50")
+    if prefix and not re.match(r'^[a-zA-Z0-9_-]+$', prefix):
+        raise HTTPException(status_code=400, detail="Invalid prefix")
+
+    # Check script exists
+    if not USER_ADD_SCRIPT.exists():
+        raise HTTPException(status_code=500, detail="user-add.sh not found. Is /project mounted?")
+
+    # Build command
+    cmd = ["bash", str(USER_ADD_SCRIPT)]
+    if batch > 0:
+        cmd += ["--batch", str(batch)]
+        if prefix and prefix != "user":
+            cmd += ["--prefix", prefix]
+    else:
+        # Check if user already exists
+        bundle_path = get_bundle_path()
+        if (bundle_path / name).exists():
+            raise HTTPException(status_code=409, detail=f"User '{name}' already exists")
+        cmd.append(name)
+
+    # Run the script
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(PROJECT_DIR),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="User creation timed out (120s)")
+
+    return {
+        "success": result.returncode == 0,
+        "output": result.stdout,
+        "errors": result.stderr if result.returncode != 0 else "",
+        "username": name if name else f"{prefix} (batch {batch})",
+    }
+
+
 # User bundle paths - check multiple possible locations
 BUNDLE_PATHS = [
+    Path("/project/outputs/bundles"),
     Path("/outputs/bundles"),
     Path("/app/outputs/bundles"),
 ]
