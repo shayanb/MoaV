@@ -144,8 +144,20 @@ if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
         REALITY_PRIVATE_KEY=$(echo "$REALITY_KEYS" | grep "PrivateKey" | awk '{print $2}')
         REALITY_PUBLIC_KEY=$(echo "$REALITY_KEYS" | grep "PublicKey" | awk '{print $2}')
     else
-        REALITY_PUBLIC_KEY=$(sing-box generate reality-keypair --private-key "$REALITY_PRIVATE_KEY" 2>/dev/null | grep "PublicKey" | awk '{print $2}' || echo "")
-        log_info "Reality keypair already exists, skipping generation"
+        log_info "Reality private key already exists, skipping generation"
+        # Only derive public key if it's missing (don't clobber existing value)
+        if [[ -z "${REALITY_PUBLIC_KEY:-}" ]]; then
+            log_info "Reality public key missing, deriving from private key..."
+            # x25519 is the same curve as WireGuard's Curve25519 — convert base64url to base64,
+            # derive via wg pubkey (available in bootstrap container), convert back to base64url
+            REALITY_KEY_B64=$(echo "${REALITY_PRIVATE_KEY}==" | tr '_-' '/+' | head -c 44)
+            REALITY_PUBLIC_KEY=$(echo "$REALITY_KEY_B64" | wg pubkey 2>/dev/null | tr '/+' '_-' | sed 's/=*$//' || echo "")
+            if [[ -n "$REALITY_PUBLIC_KEY" ]]; then
+                log_info "Derived Reality public key: ${REALITY_PUBLIC_KEY:0:10}..."
+            else
+                log_error "Failed to derive Reality public key! Client configs will be incomplete."
+            fi
+        fi
     fi
 
     if [[ -z "${REALITY_SHORT_ID:-}" ]]; then

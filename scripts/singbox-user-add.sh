@@ -130,9 +130,35 @@ log_info "Added $USERNAME to sing-box config"
 if [[ -f "$STATE_DIR/keys/reality.env" ]]; then
     source "$STATE_DIR/keys/reality.env"
 else
-    # Try docker volume
-    REALITY_PUBLIC_KEY=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/reality.env 2>/dev/null | grep REALITY_PUBLIC_KEY | cut -d= -f2 || echo "")
-    REALITY_SHORT_ID=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/reality.env 2>/dev/null | grep REALITY_SHORT_ID | cut -d= -f2 || echo "")
+    # Try docker volume (load all keys including private for derivation fallback)
+    REALITY_ENV_CONTENT=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/reality.env 2>/dev/null || echo "")
+    REALITY_PRIVATE_KEY=$(echo "$REALITY_ENV_CONTENT" | grep REALITY_PRIVATE_KEY | cut -d= -f2)
+    REALITY_PUBLIC_KEY=$(echo "$REALITY_ENV_CONTENT" | grep REALITY_PUBLIC_KEY | cut -d= -f2)
+    REALITY_SHORT_ID=$(echo "$REALITY_ENV_CONTENT" | grep REALITY_SHORT_ID | cut -d= -f2)
+fi
+
+# If public key is missing but private key exists, derive it
+if [[ -z "${REALITY_PUBLIC_KEY:-}" ]] && [[ -n "${REALITY_PRIVATE_KEY:-}" ]]; then
+    log_info "Reality public key missing, deriving from private key..."
+    # x25519 uses the same curve as WireGuard — convert base64url→base64, use wg pubkey, convert back
+    REALITY_KEY_B64=$(echo "${REALITY_PRIVATE_KEY}==" | tr '_-' '/+' | head -c 44)
+    if docker compose ps wireguard --status running &>/dev/null; then
+        REALITY_PUBLIC_KEY=$(echo "$REALITY_KEY_B64" | docker compose exec -T wireguard wg pubkey 2>/dev/null | tr '/+' '_-' | sed 's/=*$//' || echo "")
+    elif command -v wg &>/dev/null; then
+        REALITY_PUBLIC_KEY=$(echo "$REALITY_KEY_B64" | wg pubkey 2>/dev/null | tr '/+' '_-' | sed 's/=*$//' || echo "")
+    fi
+    if [[ -n "$REALITY_PUBLIC_KEY" ]]; then
+        log_info "Derived Reality public key: ${REALITY_PUBLIC_KEY:0:10}..."
+        # Save it back so future runs don't need to derive again
+        if [[ -f "$STATE_DIR/keys/reality.env" ]]; then
+            sed -i "s/^REALITY_PUBLIC_KEY=.*/REALITY_PUBLIC_KEY=$REALITY_PUBLIC_KEY/" "$STATE_DIR/keys/reality.env"
+        fi
+        # Also update Docker volume
+        docker run --rm -v moav_moav_state:/state alpine sh -c \
+            "sed -i 's/^REALITY_PUBLIC_KEY=.*/REALITY_PUBLIC_KEY=$REALITY_PUBLIC_KEY/' /state/keys/reality.env" 2>/dev/null || true
+    else
+        log_warn "Could not derive Reality public key - Reality links will be incomplete"
+    fi
 fi
 
 # Load Hysteria2 obfuscation password
