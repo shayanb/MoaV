@@ -24,7 +24,7 @@ TEST_TIMEOUT="${TEST_TIMEOUT:-10}"
 
 # Protocol priority for auto mode
 # Note: psiphon excluded - requires embedded server list, not supported in client mode
-PROTOCOL_PRIORITY=(reality hysteria2 trojan trusttunnel wireguard amneziawg tor dnstt)
+PROTOCOL_PRIORITY=(reality hysteria2 tuic vmess shadowtls trojan trusttunnel wireguard amneziawg tor dnstt)
 
 # State
 CURRENT_PID=""
@@ -134,6 +134,36 @@ generate_singbox_config() {
             done
             if [[ -z "$config_file" ]]; then
                 for f in "$CONFIG_DIR"/hysteria2*.txt "$CONFIG_DIR"/hysteria2*.yaml "$CONFIG_DIR"/hysteria2*.yml; do
+                    [[ -f "$f" ]] && config_file="$f" && break
+                done
+            fi
+            ;;
+        vmess)
+            for f in "$CONFIG_DIR"/vmess-ws.txt "$CONFIG_DIR"/vmess-ws-singbox.json; do
+                [[ -f "$f" ]] && config_file="$f" && break
+            done
+            if [[ -z "$config_file" ]]; then
+                for f in "$CONFIG_DIR"/vmess*.txt "$CONFIG_DIR"/vmess*.json; do
+                    [[ -f "$f" ]] && config_file="$f" && break
+                done
+            fi
+            ;;
+        tuic)
+            for f in "$CONFIG_DIR"/tuic.txt "$CONFIG_DIR"/tuic-singbox.json; do
+                [[ -f "$f" ]] && config_file="$f" && break
+            done
+            if [[ -z "$config_file" ]]; then
+                for f in "$CONFIG_DIR"/tuic*.txt "$CONFIG_DIR"/tuic*.json; do
+                    [[ -f "$f" ]] && config_file="$f" && break
+                done
+            fi
+            ;;
+        shadowtls)
+            for f in "$CONFIG_DIR"/shadowtls-singbox.json "$CONFIG_DIR"/shadowtls.txt; do
+                [[ -f "$f" ]] && config_file="$f" && break
+            done
+            if [[ -z "$config_file" ]]; then
+                for f in "$CONFIG_DIR"/shadowtls*; do
                     [[ -f "$f" ]] && config_file="$f" && break
                 done
             fi
@@ -348,6 +378,176 @@ EOF
   "route": {"final": "proxy"}
 }
 EOF
+            ;;
+
+        tuic)
+            if [[ "$config_file" == *.txt ]]; then
+                local uri=$(cat "$config_file" | tr -d '\n\r')
+                local auth=$(extract_auth "$uri" "tuic")
+                local uuid="${auth%%:*}"
+                local password="${auth#*:}"
+                local server=$(extract_host "$uri")
+                local port=$(extract_port "$uri")
+                local sni=$(extract_param "$uri" "sni")
+                local congestion=$(extract_param "$uri" "congestion_control")
+                local udp_relay=$(extract_param "$uri" "udp_relay_mode")
+
+                [[ -z "$sni" ]] && sni="$server"
+                [[ -z "$congestion" ]] && congestion="bbr"
+                [[ -z "$udp_relay" ]] && udp_relay="native"
+
+                # Ensure port is numeric
+                port=$(echo "$port" | tr -cd '0-9')
+                [[ -z "$port" ]] && port="8444"
+
+                # Validate required fields
+                if [[ -z "$server" ]] || [[ -z "$uuid" ]] || [[ -z "$password" ]]; then
+                    log_error "Failed to parse TUIC URI (missing required fields)"
+                    log_debug "server='$server' uuid='${uuid:0:8}...' password='${password:0:8}...'"
+                    return 1
+                fi
+
+                log_debug "TUIC config: server=$server port=$port sni=$sni"
+
+                cat > "$output_file" << EOF
+{
+  "log": {"level": "info", "timestamp": true},
+  "inbounds": $inbounds,
+  "outbounds": [
+    {
+      "type": "tuic",
+      "tag": "proxy",
+      "server": "$server",
+      "server_port": $port,
+      "uuid": "$uuid",
+      "password": "$password",
+      "congestion_control": "$congestion",
+      "udp_relay_mode": "$udp_relay",
+      "tls": {
+        "enabled": true,
+        "server_name": "$sni",
+        "alpn": ["h3"]
+      }
+    }
+  ],
+  "route": {"final": "proxy"}
+}
+EOF
+            else
+                jq --argjson inbounds "$inbounds" '. + {"inbounds": $inbounds, "log": {"level": "info", "timestamp": true}, "route": {"final": "proxy"}}' "$config_file" > "$output_file"
+            fi
+            ;;
+
+        vmess)
+            if [[ "$config_file" == *.txt ]]; then
+                local uri=$(cat "$config_file" | tr -d '\n\r')
+                # vmess://BASE64_JSON - decode the base64 part
+                local vmess_json=$(echo "$uri" | sed 's|vmess://||' | base64 -d 2>/dev/null || true)
+                if [[ -z "$vmess_json" ]]; then
+                    log_error "Failed to decode VMess URI (invalid base64)"
+                    return 1
+                fi
+                local server=$(echo "$vmess_json" | jq -r '.add // empty' 2>/dev/null || true)
+                local port=$(echo "$vmess_json" | jq -r '.port // empty' 2>/dev/null || true)
+                local uuid=$(echo "$vmess_json" | jq -r '.id // empty' 2>/dev/null || true)
+                local ws_path=$(echo "$vmess_json" | jq -r '.path // empty' 2>/dev/null || true)
+
+                # Ensure port is numeric
+                port=$(echo "$port" | tr -cd '0-9')
+                [[ -z "$port" ]] && port="2086"
+                [[ -z "$ws_path" ]] && ws_path="/vmws"
+
+                # Validate required fields
+                if [[ -z "$server" ]] || [[ -z "$uuid" ]]; then
+                    log_error "Failed to parse VMess URI (missing required fields)"
+                    log_debug "server='$server' uuid='${uuid:0:8}...'"
+                    return 1
+                fi
+
+                log_debug "VMess config: server=$server port=$port path=$ws_path"
+
+                cat > "$output_file" << EOF
+{
+  "log": {"level": "info", "timestamp": true},
+  "inbounds": $inbounds,
+  "outbounds": [
+    {
+      "type": "vmess",
+      "tag": "proxy",
+      "server": "$server",
+      "server_port": $port,
+      "uuid": "$uuid",
+      "security": "auto",
+      "transport": {
+        "type": "ws",
+        "path": "$ws_path"
+      }
+    }
+  ],
+  "route": {"final": "proxy"}
+}
+EOF
+            else
+                jq --argjson inbounds "$inbounds" '. + {"inbounds": $inbounds, "log": {"level": "info", "timestamp": true}, "route": {"final": "proxy"}}' "$config_file" > "$output_file"
+            fi
+            ;;
+
+        shadowtls)
+            if [[ "$config_file" == *singbox.json ]]; then
+                # Use sing-box JSON config directly, replacing inbounds
+                jq --argjson inbounds "$inbounds" '. + {"inbounds": $inbounds, "log": {"level": "info", "timestamp": true}, "route": {"final": "proxy"}}' "$config_file" > "$output_file"
+            elif [[ "$config_file" == *.txt ]]; then
+                local server=$(grep -i "^Server:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+                local port=$(grep -i "^Port:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+                local stls_pass=$(grep -i "^ShadowTLS Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d '\r' | head -1 || true)
+                local ss_server_key=$(grep -i "^SS Server Key:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d '\r' | head -1 || true)
+                local ss_user_key=$(grep -i "^SS User Key:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d '\r' | head -1 || true)
+
+                [[ -z "$port" ]] && port="8445"
+
+                if [[ -z "$server" ]] || [[ -z "$stls_pass" ]] || [[ -z "$ss_server_key" ]] || [[ -z "$ss_user_key" ]]; then
+                    log_error "Failed to parse ShadowTLS config (missing required fields)"
+                    return 1
+                fi
+
+                log_debug "ShadowTLS config: server=$server port=$port"
+
+                cat > "$output_file" << EOF
+{
+  "log": {"level": "info", "timestamp": true},
+  "inbounds": $inbounds,
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "proxy",
+      "detour": "shadowtls-out",
+      "method": "2022-blake3-aes-128-gcm",
+      "password": "${ss_server_key}:${ss_user_key}",
+      "multiplex": {
+        "enabled": true,
+        "padding": true
+      }
+    },
+    {
+      "type": "shadowtls",
+      "tag": "shadowtls-out",
+      "server": "$server",
+      "server_port": $port,
+      "version": 3,
+      "password": "$stls_pass",
+      "tls": {
+        "enabled": true,
+        "server_name": "www.microsoft.com"
+      }
+    }
+  ],
+  "route": {"final": "proxy"}
+}
+EOF
+            else
+                log_error "Unsupported ShadowTLS config format"
+                return 1
+            fi
             ;;
 
         wireguard)
@@ -804,7 +1004,7 @@ connect_auto() {
         log_info "Trying $protocol..."
 
         case "$protocol" in
-            reality|trojan|hysteria2)
+            reality|trojan|hysteria2|tuic|vmess|shadowtls)
                 if connect_singbox "$protocol"; then
                     log_success "Connected via $protocol"
                     return 0
@@ -879,7 +1079,7 @@ main() {
         auto)
             connect_auto && connected=true
             ;;
-        reality|trojan|hysteria2)
+        reality|trojan|hysteria2|tuic|vmess|shadowtls)
             connect_singbox "$PROTOCOL" && connected=true
             ;;
         wireguard)

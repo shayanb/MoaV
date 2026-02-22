@@ -8,7 +8,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ## Features
 
-- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, TrustTunnel, WireGuard (direct & wstunnel), DNS tunnel
+- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, TUIC, VMess+WS, ShadowTLS+SS2022, TrustTunnel, WireGuard (direct & wstunnel), DNS tunnel
 - **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, or DNS
 - **Per-user credentials** - Create, revoke, and manage users independently
 - **Easy deployment** - Docker Compose based, single command setup
@@ -129,6 +129,9 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 | Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | Fast, works when TCP throttled |
 | Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
 | CDN (VLESS+WS) | 443 via Cloudflare | ★★★★★ | ★★★☆☆ | When server IP is blocked |
+| TUIC v5 | 8444/udp | ★★★★☆ | ★★★★★ | QUIC-based, alternative to Hysteria2 |
+| VMess+WS | 2086/tcp | ★★★☆☆ | ★★★☆☆ | CDN-compatible, wide client support |
+| ShadowTLS v3 | 8445/tcp | ★★★★★ | ★★★★☆ | TLS camouflage + Shadowsocks 2022 |
 | TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 & QUIC, looks like HTTPS |
 | WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | Full VPN, simple setup |
 | AmneziaWG | 51821/udp | ★★★★★ | ★★★★☆ | Obfuscated WireGuard, defeats DPI |

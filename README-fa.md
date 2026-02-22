@@ -8,7 +8,7 @@
 
 ## ویژگی‌ها
 
-- **پروتکل‌های متعدد** - Reality (VLESS)، Trojan، Hysteria2، TrustTunnel، WireGuard (مستقیم و wstunnel)، تونل DNS
+- **پروتکل‌های متعدد** - Reality (VLESS)، Trojan، Hysteria2، TUIC، VMess، ShadowTLS+SS2022، TrustTunnel، WireGuard (مستقیم و wstunnel)، تونل DNS
 - **اولویت پنهان‌کاری** - تمام ترافیک شبیه HTTPS معمولی، WebSocket، یا DNS به نظر می‌رسد
 - **اعتبارنامه‌های جداگانه برای هر کاربر** - ایجاد، لغو و مدیریت کاربران به صورت مستقل
 - **نصب آسان** - مبتنی بر Docker Compose، راه‌اندازی با یک دستور
@@ -150,6 +150,9 @@ docker compose --profile all up -d                 # شروع تمام سروی�
 | Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | سریع، کار می‌کند وقتی TCP محدود است |
 | Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | پشتیبان، از دامنه شما استفاده می‌کند |
 | CDN (VLESS+WS) | 443 از Cloudflare | ★★★★★ | ★★★☆☆ | وقتی IP سرور مسدود است |
+| TUIC v5 | 8444/udp | ★★★★☆ | ★★★★★ | مبتنی بر QUIC، جایگزین Hysteria2 |
+| VMess+WS | 2086/tcp | ★★★☆☆ | ★★★☆☆ | سازگار با CDN، پشتیبانی گسترده کلاینت |
+| ShadowTLS v3 | 8445/tcp | ★★★★★ | ★★★★☆ | استتار TLS + Shadowsocks 2022 |
 | TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 و QUIC، شبیه HTTPS |
 | WireGuard (مستقیم) | 51820/udp | ★★★☆☆ | ★★★★★ | VPN کامل، نصب ساده |
 | AmneziaWG | 51821/udp | ★★★★★ | ★★★★☆ | وایرگارد مبهم‌سازی شده، دور زدن DPI |
@@ -359,6 +362,7 @@ moav logs conduit             # مشاهده لاگ‌های conduit
 | 8443/tcp | TCP | Trojan | بله |
 | 4443/tcp+udp | TCP+UDP | TrustTunnel | بله |
 | 2082/tcp | TCP | CDN WebSocket | بله (Cloudflare) |
+| 8445/tcp | TCP | ShadowTLS v3 + SS2022 | خیر |
 | 51820/udp | UDP | WireGuard | خیر |
 | 8080/tcp | TCP | wstunnel | خیر |
 | 9443/tcp | TCP | داشبورد ادمین | خیر |

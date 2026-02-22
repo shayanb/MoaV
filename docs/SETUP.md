@@ -48,8 +48,11 @@ Complete guide to deploy MoaV on a VPS or home server.
 | 443/tcp | TCP | Reality (VLESS) | Yes |
 | 443/udp | UDP | Hysteria2 | Yes |
 | 8443/tcp | TCP | Trojan | Yes |
+| 8444/udp | UDP | TUIC v5 | Yes |
+| 2086/tcp | TCP | VMess+WS (CDN) | Yes (Cloudflare) |
+| 8445/tcp | TCP | ShadowTLS v3 + SS2022 | No |
 | 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
-| 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) |
+| 2082/tcp | TCP | CDN WebSocket (VLESS+WS) | Yes (Cloudflare) |
 | 51820/udp | UDP | WireGuard | No |
 | 51821/udp | UDP | AmneziaWG | No |
 | 8080/tcp | TCP | wstunnel | No |
@@ -263,6 +266,9 @@ moav start all                   # Everything
 ufw allow 443/tcp    # Reality
 ufw allow 443/udp    # Hysteria2
 ufw allow 8443/tcp   # Trojan
+ufw allow 8444/udp   # TUIC v5
+ufw allow 2086/tcp   # VMess+WS (CDN)
+ufw allow 8445/tcp   # ShadowTLS v3
 
 # TrustTunnel
 ufw allow 4443/tcp   # HTTP/2
@@ -311,6 +317,10 @@ ls outputs/bundles/
 - `reality.txt` - Reality share link + QR code
 - `trojan.txt` - Trojan share link
 - `hysteria2.txt` - Hysteria2 share link
+- `tuic.txt` - TUIC share link
+- `vmess-ws.txt` - VMess+WS share link
+- `vmess-cdn.txt` - VMess CDN share link (if CDN configured)
+- `shadowtls.txt` - ShadowTLS v3 + SS2022 config
 - `cdn-vless-ws.txt` - CDN share link (if CDN_DOMAIN set)
 - `wireguard.conf` - WireGuard config + QR code
 - `wireguard-wstunnel.conf` - WireGuard over WebSocket

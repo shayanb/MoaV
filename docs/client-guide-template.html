@@ -585,14 +585,17 @@
             <ul class="toc-list">
                 <li><a href="#en" onclick="scrollToSection('reality-en')">1. Reality (VLESS) <span class="toc-badge badge-primary">Primary</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('hysteria2-en')">2. Hysteria2 <span class="toc-badge badge-secondary">Fast</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('trojan-en')">3. Trojan <span class="toc-badge badge-secondary">Backup</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('cdn-en')">4. CDN VLESS+WS <span class="toc-badge badge-secondary">IP Blocked?</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('wireguard-en')">5. WireGuard <span class="toc-badge badge-secondary">Full VPN</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('amneziawg-en')">6. AmneziaWG <span class="toc-badge badge-secondary">Anti-DPI</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('trusttunnel-en')">7. TrustTunnel <span class="toc-badge badge-secondary">Stealth VPN</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">8. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('tor-en')">9. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('psiphon-en')">10. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('tuic-en')">3. TUIC v5 <span class="toc-badge badge-secondary">QUIC Alt</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('vmess-en')">4. VMess+WS <span class="toc-badge badge-secondary">CDN</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('shadowtls-en')">5. ShadowTLS v3 <span class="toc-badge badge-secondary">Anti-DPI</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('trojan-en')">6. Trojan <span class="toc-badge badge-secondary">Backup</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('cdn-en')">7. CDN VLESS+WS <span class="toc-badge badge-secondary">IP Blocked?</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('wireguard-en')">8. WireGuard <span class="toc-badge badge-secondary">Full VPN</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('amneziawg-en')">9. AmneziaWG <span class="toc-badge badge-secondary">Anti-DPI</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('trusttunnel-en')">10. TrustTunnel <span class="toc-badge badge-secondary">Stealth VPN</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">11. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('tor-en')">12. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('psiphon-en')">13. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('apps-en')">Recommended Apps</a></li>
             </ul>
         </div>
@@ -677,11 +680,108 @@
             </div>
         </div>
 
+        <!-- TUIC v5 -->
+        <div class="protocol-section" id="tuic-en">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>3. TUIC v5</h2>
+                    <span class="protocol-badge badge-secondary">QUIC Alt</span>
+                </div>
+                <span class="protocol-port">Port 8444/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">QUIC-based protocol, alternative to Hysteria2 with a different fingerprint. Try this when Hysteria2 is blocked.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_TUIC}}" alt="TUIC QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR not available<br>Use config below';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install <strong>Streisand</strong>, <strong>Hiddify</strong>, or <strong>sing-box</strong></li>
+                            <li>Scan the QR code or copy the config link</li>
+                            <li>Enable the connection</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>Config Link (click to copy)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_TUIC}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VMess+WS -->
+        <div class="protocol-section" id="vmess-en">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>4. VMess+WS</h2>
+                    <span class="protocol-badge badge-secondary">CDN</span>
+                </div>
+                <span class="protocol-port">Port 2086/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">VMess over WebSocket with wide client support. Works through Cloudflare CDN when server IP is blocked.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_VMESS}}" alt="VMess QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR not available<br>Use config below';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install <strong>v2rayNG</strong>, <strong>Hiddify</strong>, or <strong>Streisand</strong></li>
+                            <li>Scan the QR code or copy the config link</li>
+                            <li>Enable the connection</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>Direct Link (click to copy)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_VMESS}}</div>
+                </div>
+                <div class="config-box">
+                    <h4>CDN Link (when IP blocked)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_VMESS_CDN}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ShadowTLS v3 + SS2022 -->
+        <div class="protocol-section" id="shadowtls-en">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>5. ShadowTLS v3</h2>
+                    <span class="protocol-badge badge-secondary">Anti-DPI</span>
+                </div>
+                <span class="protocol-port">Port 8445/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">TLS camouflage + Shadowsocks 2022. Completes a real TLS handshake with microsoft.com, making traffic virtually undetectable by DPI. No domain required.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_SHADOWTLS}}" alt="ShadowTLS QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR not available<br>Use config below';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install <strong>Hiddify</strong>, <strong>NekoBox</strong>, or <strong>sing-box</strong></li>
+                            <li>Import the sing-box JSON config file below</li>
+                            <li>Enable the connection</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>Config (click to copy)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_SHADOWTLS}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Trojan -->
         <div class="protocol-section" id="trojan-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>3. Trojan</h2>
+                    <h2>6. Trojan</h2>
                     <span class="protocol-badge badge-secondary">Backup</span>
                 </div>
                 <span class="protocol-port">Port 8443/tcp</span>
@@ -712,7 +812,7 @@
         <div class="protocol-section" id="cdn-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>4. CDN VLESS+WS</h2>
+                    <h2>7. CDN VLESS+WS</h2>
                     <span class="protocol-badge badge-secondary">IP Blocked?</span>
                 </div>
                 <span class="protocol-port">Port 443/tcp (via Cloudflare)</span>
@@ -757,7 +857,7 @@
         <div class="protocol-section" id="wireguard-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>5. WireGuard</h2>
+                    <h2>8. WireGuard</h2>
                     <span class="protocol-badge badge-secondary">Full VPN</span>
                 </div>
                 <span class="protocol-port">Port 51820/udp</span>
@@ -829,7 +929,7 @@
         <div class="protocol-section" id="amneziawg-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>6. AmneziaWG</h2>
+                    <h2>9. AmneziaWG</h2>
                     <span class="protocol-badge badge-secondary">Anti-DPI</span>
                 </div>
                 <span class="protocol-port">Port 51821/udp</span>
@@ -881,7 +981,7 @@
         <div class="protocol-section" id="trusttunnel-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>7. TrustTunnel</h2>
+                    <h2>10. TrustTunnel</h2>
                     <span class="protocol-badge badge-secondary">Stealth VPN</span>
                 </div>
                 <span class="protocol-port">Port 4443/tcp+udp</span>
@@ -944,7 +1044,7 @@
         <div class="protocol-section" id="dns-tunnel-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>8. DNS Tunnel</h2>
+                    <h2>11. DNS Tunnel</h2>
                     <span class="protocol-badge badge-fallback">Last Resort</span>
                 </div>
                 <span class="protocol-port">Port 53/udp</span>
@@ -997,7 +1097,7 @@
         <div class="protocol-section" id="tor-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>9. Tor</h2>
+                    <h2>12. Tor</h2>
                     <span class="protocol-badge badge-standalone">Standalone</span>
                 </div>
                 <span class="protocol-port">Various</span>
@@ -1034,7 +1134,7 @@
         <div class="protocol-section" id="psiphon-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>10. Psiphon</h2>
+                    <h2>13. Psiphon</h2>
                     <span class="protocol-badge badge-standalone">Standalone</span>
                 </div>
                 <span class="protocol-port">Various</span>
@@ -1087,15 +1187,15 @@
                     <tr>
                         <td rowspan="8"><span class="platform-icon">📱</span>iOS</td>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (Free)</td>
-                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a> (Free)</td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690" target="_blank">V2Box</a> (Free)</td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/wireguard/id1441195209" target="_blank">WireGuard</a> (Free)</td>
@@ -1115,16 +1215,16 @@
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a> ($2.99)</td>
-                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC, WireGuard</td>
                     </tr>
                     <tr>
                         <td rowspan="7"><span class="platform-icon">🤖</span>Android</td>
                         <td><a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a></td>
@@ -1149,11 +1249,11 @@
                     <tr>
                         <td rowspan="6"><span class="platform-icon">🪟</span>Windows</td>
                         <td><a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
@@ -1174,15 +1274,15 @@
                     <tr>
                         <td rowspan="7"><span class="platform-icon">🍎</span>macOS</td>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a> (Free)</td>
-                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://github.com/clash-verge-rev/clash-verge-rev/releases" target="_blank">Clash Verge</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a></td>
@@ -1203,7 +1303,7 @@
                     <tr>
                         <td rowspan="5"><span class="platform-icon">🐧</span>Linux</td>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
@@ -1247,14 +1347,17 @@
             <ul class="toc-list">
                 <li><a href="#fa" onclick="scrollToSection('reality-fa')">۱. Reality (VLESS) <span class="toc-badge badge-primary">اصلی</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('hysteria2-fa')">۲. Hysteria2 <span class="toc-badge badge-secondary">سریع</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('trojan-fa')">۳. Trojan <span class="toc-badge badge-secondary">پشتیبان</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('cdn-fa')">۴. CDN VLESS+WS <span class="toc-badge badge-secondary">IP مسدود؟</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('wireguard-fa')">۵. WireGuard <span class="toc-badge badge-secondary">VPN کامل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('amneziawg-fa')">۶. AmneziaWG <span class="toc-badge badge-secondary">ضد فیلتر</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('trusttunnel-fa')">۷. TrustTunnel <span class="toc-badge badge-secondary">VPN مخفی</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۸. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۹. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۱۰. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('tuic-fa')">۳. TUIC v5 <span class="toc-badge badge-secondary">جایگزین QUIC</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('vmess-fa')">۴. VMess+WS <span class="toc-badge badge-secondary">CDN</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('shadowtls-fa')">۵. ShadowTLS v3 <span class="toc-badge badge-secondary">ضد DPI</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('trojan-fa')">۶. Trojan <span class="toc-badge badge-secondary">پشتیبان</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('cdn-fa')">۷. CDN VLESS+WS <span class="toc-badge badge-secondary">IP مسدود؟</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('wireguard-fa')">۸. WireGuard <span class="toc-badge badge-secondary">VPN کامل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('amneziawg-fa')">۹. AmneziaWG <span class="toc-badge badge-secondary">ضد فیلتر</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('trusttunnel-fa')">۱۰. TrustTunnel <span class="toc-badge badge-secondary">VPN مخفی</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۱۱. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۱۲. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۱۳. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('apps-fa')">اپلیکیشن‌ها</a></li>
             </ul>
         </div>
@@ -1339,11 +1442,108 @@
             </div>
         </div>
 
+        <!-- TUIC v5 -->
+        <div class="protocol-section" id="tuic-fa">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۳. TUIC v5</h2>
+                    <span class="protocol-badge badge-secondary">جایگزین QUIC</span>
+                </div>
+                <span class="protocol-port">پورت 8444/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">پروتکل مبتنی بر QUIC، جایگزین Hysteria2 با اثر انگشت متفاوت. وقتی Hysteria2 مسدود شده از این استفاده کنید.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_TUIC}}" alt="QR Code TUIC" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR در دسترس نیست<br>از لینک زیر استفاده کنید';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li><strong>Streisand</strong>، <strong>Hiddify</strong> یا <strong>sing-box</strong> را نصب کنید</li>
+                            <li>کد QR را اسکن کنید یا لینک کانفیگ را کپی کنید</li>
+                            <li>اتصال را فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>لینک کانفیگ (کلیک برای کپی)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_TUIC}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VMess+WS -->
+        <div class="protocol-section" id="vmess-fa">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۴. VMess+WS</h2>
+                    <span class="protocol-badge badge-secondary">CDN</span>
+                </div>
+                <span class="protocol-port">پورت 2086/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">VMess روی وب‌سوکت با پشتیبانی گسترده کلاینت. از طریق CDN کلادفلر کار می‌کند وقتی IP سرور مسدود شده.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_VMESS}}" alt="QR Code VMess" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR در دسترس نیست<br>از لینک زیر استفاده کنید';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li><strong>v2rayNG</strong>، <strong>Hiddify</strong> یا <strong>Streisand</strong> را نصب کنید</li>
+                            <li>کد QR را اسکن کنید یا لینک کانفیگ را کپی کنید</li>
+                            <li>اتصال را فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>لینک مستقیم (کلیک برای کپی)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_VMESS}}</div>
+                </div>
+                <div class="config-box">
+                    <h4>لینک CDN (وقتی IP مسدود است)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_VMESS_CDN}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ShadowTLS v3 + SS2022 -->
+        <div class="protocol-section" id="shadowtls-fa">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۵. ShadowTLS v3</h2>
+                    <span class="protocol-badge badge-secondary">ضد DPI</span>
+                </div>
+                <span class="protocol-port">پورت 8445/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">استتار TLS + Shadowsocks 2022. یک دست‌دهی TLS واقعی با microsoft.com انجام می‌دهد که ترافیک را برای DPI تقریباً غیرقابل تشخیص می‌کند. نیازی به دامنه ندارد.</p>
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_SHADOWTLS}}" alt="QR Code ShadowTLS" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR در دسترس نیست<br>از لینک زیر استفاده کنید';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li><strong>Hiddify</strong>، <strong>NekoBox</strong> یا <strong>sing-box</strong> را نصب کنید</li>
+                            <li>فایل کانفیگ sing-box JSON زیر را وارد کنید</li>
+                            <li>اتصال را فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>کانفیگ (کلیک برای کپی)</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_SHADOWTLS}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Trojan -->
         <div class="protocol-section" id="trojan-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۳. Trojan</h2>
+                    <h2>۶. Trojan</h2>
                     <span class="protocol-badge badge-secondary">پشتیبان</span>
                 </div>
                 <span class="protocol-port">پورت 8443/tcp</span>
@@ -1374,7 +1574,7 @@
         <div class="protocol-section" id="cdn-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۴. CDN VLESS+WS</h2>
+                    <h2>۷. CDN VLESS+WS</h2>
                     <span class="protocol-badge badge-secondary">IP مسدود؟</span>
                 </div>
                 <span class="protocol-port">پورت 443/tcp (از طریق Cloudflare)</span>
@@ -1419,7 +1619,7 @@
         <div class="protocol-section" id="wireguard-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۵. WireGuard</h2>
+                    <h2>۸. WireGuard</h2>
                     <span class="protocol-badge badge-secondary">VPN کامل</span>
                 </div>
                 <span class="protocol-port">پورت 51820/udp</span>
@@ -1491,7 +1691,7 @@
         <div class="protocol-section" id="amneziawg-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۶. AmneziaWG</h2>
+                    <h2>۹. AmneziaWG</h2>
                     <span class="protocol-badge badge-secondary">ضد فیلتر</span>
                 </div>
                 <span class="protocol-port">پورت 51821/udp</span>
@@ -1543,7 +1743,7 @@
         <div class="protocol-section" id="trusttunnel-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۷. TrustTunnel</h2>
+                    <h2>۱۰. TrustTunnel</h2>
                     <span class="protocol-badge badge-secondary">VPN مخفی</span>
                 </div>
                 <span class="protocol-port">پورت 4443/tcp+udp</span>
@@ -1606,7 +1806,7 @@
         <div class="protocol-section" id="dns-tunnel-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۸. تونل DNS</h2>
+                    <h2>۱۱. تونل DNS</h2>
                     <span class="protocol-badge badge-fallback">آخرین راه‌حل</span>
                 </div>
                 <span class="protocol-port">پورت 53/udp</span>
@@ -1657,7 +1857,7 @@
         <div class="protocol-section" id="tor-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۹. Tor</h2>
+                    <h2>۱۲. Tor</h2>
                     <span class="protocol-badge badge-standalone">مستقل</span>
                 </div>
                 <span class="protocol-port">مختلف</span>
@@ -1685,7 +1885,7 @@
         <div class="protocol-section" id="psiphon-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۱۰. Psiphon</h2>
+                    <h2>۱۳. Psiphon</h2>
                     <span class="protocol-badge badge-standalone">مستقل</span>
                 </div>
                 <span class="protocol-port">مختلف</span>
@@ -1719,15 +1919,15 @@
                     <tr>
                         <td rowspan="8"><span class="platform-icon">📱</span>iOS</td>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690" target="_blank">V2Box</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532" target="_blank">Hiddify</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/wireguard/id1441195209" target="_blank">WireGuard</a></td>
@@ -1747,16 +1947,16 @@
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/shadowrocket/id932747118" target="_blank">Shadowrocket</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC, WireGuard</td>
                     </tr>
                     <tr>
                         <td rowspan="6"><span class="platform-icon">🤖</span>Android</td>
                         <td><a href="https://github.com/2dust/v2rayNG/releases" target="_blank">v2rayNG</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank">WireGuard</a></td>
@@ -1777,7 +1977,7 @@
                     <tr>
                         <td rowspan="5"><span class="platform-icon">🪟</span>Windows</td>
                         <td><a href="https://github.com/2dust/v2rayN/releases" target="_blank">v2rayN</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://www.wireguard.com/install/" target="_blank">WireGuard</a></td>
@@ -1798,11 +1998,11 @@
                     <tr>
                         <td rowspan="6"><span class="platform-icon">🍎</span>macOS</td>
                         <td><a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/streisand/id6450534064" target="_blank">Streisand</a></td>
-                        <td class="protocols">Reality, Trojan, Hysteria2, WireGuard</td>
+                        <td class="protocols">Reality, Trojan, Hysteria2, TUIC, WireGuard</td>
                     </tr>
                     <tr>
                         <td><a href="https://apps.apple.com/us/app/wireguard/id1451685025" target="_blank">WireGuard</a></td>

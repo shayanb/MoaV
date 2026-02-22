@@ -30,6 +30,8 @@ fi
 # Generate credentials
 USER_UUID=$(sing-box generate uuid)
 USER_PASSWORD=$(pwgen -s 24 1)
+SHADOWTLS_PASSWORD=$(openssl rand -hex 16)
+SS_USER_KEY=$(openssl rand -base64 16)
 
 # Store credentials
 mkdir -p "$STATE_DIR/users/$USER_ID"
@@ -37,6 +39,8 @@ cat > "$STATE_DIR/users/$USER_ID/credentials.env" <<EOF
 USER_ID=$USER_ID
 USER_UUID=$USER_UUID
 USER_PASSWORD=$USER_PASSWORD
+SHADOWTLS_PASSWORD=$SHADOWTLS_PASSWORD
+SS_USER_KEY=$SS_USER_KEY
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
@@ -64,6 +68,26 @@ if [[ -f "$CONFIG_FILE" ]]; then
     # Add to VLESS WS inbound (CDN)
     jq --arg name "$USER_ID" --arg uuid "$USER_UUID" \
         '(.inbounds[] | select(.tag == "vless-ws-in") | .users) += [{"name": $name, "uuid": $uuid}]' \
+        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+
+    # Add to TUIC inbound
+    jq --arg name "$USER_ID" --arg uuid "$USER_UUID" --arg password "$USER_PASSWORD" \
+        '(.inbounds[] | select(.tag == "tuic-in") | .users) += [{"name": $name, "uuid": $uuid, "password": $password}]' \
+        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+
+    # Add to VMess-WS inbound
+    jq --arg name "$USER_ID" --arg uuid "$USER_UUID" \
+        '(.inbounds[] | select(.tag == "vmess-ws-in") | .users) += [{"name": $name, "uuid": $uuid}]' \
+        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+
+    # Add to ShadowTLS inbound
+    jq --arg name "$USER_ID" --arg pass "$SHADOWTLS_PASSWORD" \
+        '(.inbounds[] | select(.tag == "shadowtls-in") | .users) += [{"name": $name, "password": $pass}]' \
+        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+
+    # Add to Shadowsocks inbound
+    jq --arg name "$USER_ID" --arg pass "$SS_USER_KEY" \
+        '(.inbounds[] | select(.tag == "shadowsocks-in") | .users) += [{"name": $name, "password": $pass}]' \
         "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
 
     log_info "Added $USER_ID to sing-box config"
@@ -136,6 +160,13 @@ export ENABLE_AMNEZIAWG="${ENABLE_AMNEZIAWG:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+export ENABLE_TUIC="${ENABLE_TUIC:-true}"
+export PORT_TUIC="${PORT_TUIC:-8444}"
+export ENABLE_VMESS="${ENABLE_VMESS:-true}"
+export PORT_VMESS_WS="${PORT_VMESS_WS:-2086}"
+export CDN_VMESS_WS_PATH="${CDN_VMESS_WS_PATH:-/vmws}"
+export ENABLE_SHADOWTLS="${ENABLE_SHADOWTLS:-true}"
+export PORT_SHADOWTLS="${PORT_SHADOWTLS:-8445}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
 # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
 if [[ -z "${CDN_DOMAIN:-}" && -n "${CDN_SUBDOMAIN:-}" && -n "${DOMAIN:-}" ]]; then
@@ -149,6 +180,12 @@ export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
 if [[ -f "$STATE_DIR/keys/clash-api.env" ]]; then
     source "$STATE_DIR/keys/clash-api.env"
     export HYSTERIA2_OBFS_PASSWORD
+fi
+
+# Load Shadowsocks server key if available
+if [[ -f "$STATE_DIR/keys/shadowsocks.env" ]]; then
+    source "$STATE_DIR/keys/shadowsocks.env"
+    export SS_SERVER_PASSWORD
 fi
 
 /app/generate-user.sh "$USER_ID"

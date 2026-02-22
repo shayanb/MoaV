@@ -267,6 +267,190 @@ EOF
 fi
 
 # -----------------------------------------------------------------------------
+# Generate TUIC client config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_TUIC:-true}" == "true" ]]; then
+    cat > "$OUTPUT_DIR/tuic-singbox.json" <<EOF
+{
+  "log": {"level": "info"},
+  "inbounds": [
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
+  ],
+  "outbounds": [
+    {
+      "type": "tuic",
+      "tag": "proxy",
+      "server": "${SERVER_IP}",
+      "server_port": ${PORT_TUIC:-8444},
+      "uuid": "${USER_UUID}",
+      "password": "${USER_PASSWORD}",
+      "congestion_control": "bbr",
+      "udp_relay_mode": "native",
+      "zero_rtt_handshake": false,
+      "heartbeat": "10s",
+      "tls": {
+        "enabled": true,
+        "server_name": "${DOMAIN}",
+        "alpn": ["h3"]
+      }
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "final": "proxy"
+  }
+}
+EOF
+
+    # TUIC URI (IPv4)
+    TUIC_LINK="tuic://${USER_UUID}:${USER_PASSWORD}@${SERVER_IP}:${PORT_TUIC:-8444}?congestion_control=bbr&alpn=h3&sni=${DOMAIN}&udp_relay_mode=native#MoaV-TUIC-${USER_ID}"
+    echo "$TUIC_LINK" > "$OUTPUT_DIR/tuic.txt"
+    qrencode -o "$OUTPUT_DIR/tuic-qr.png" -s 6 "$TUIC_LINK" 2>/dev/null || true
+
+    # Generate IPv6 link if available
+    if [[ -n "${SERVER_IPV6:-}" ]]; then
+        TUIC_LINK_V6="tuic://${USER_UUID}:${USER_PASSWORD}@[${SERVER_IPV6}]:${PORT_TUIC:-8444}?congestion_control=bbr&alpn=h3&sni=${DOMAIN}&udp_relay_mode=native#MoaV-TUIC-${USER_ID}-IPv6"
+        echo "$TUIC_LINK_V6" > "$OUTPUT_DIR/tuic-ipv6.txt"
+        qrencode -o "$OUTPUT_DIR/tuic-ipv6-qr.png" -s 6 "$TUIC_LINK_V6" 2>/dev/null || true
+    fi
+
+    log_info "  - TUIC config generated"
+fi
+
+# -----------------------------------------------------------------------------
+# Generate VMess+WS client config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_VMESS:-true}" == "true" ]]; then
+    VMESS_WS_PATH="${CDN_VMESS_WS_PATH:-/vmws}"
+    VMESS_PORT="${PORT_VMESS_WS:-2086}"
+
+    cat > "$OUTPUT_DIR/vmess-ws-singbox.json" <<EOF
+{
+  "log": {"level": "info"},
+  "inbounds": [
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
+  ],
+  "outbounds": [
+    {
+      "type": "vmess",
+      "tag": "proxy",
+      "server": "${SERVER_IP}",
+      "server_port": ${VMESS_PORT},
+      "uuid": "${USER_UUID}",
+      "security": "auto",
+      "transport": {
+        "type": "ws",
+        "path": "${VMESS_WS_PATH}"
+      }
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "final": "proxy"
+  }
+}
+EOF
+
+    # VMess URI (base64-encoded JSON) - Direct IPv4
+    VMESS_JSON="{\"v\":\"2\",\"ps\":\"MoaV-VMess-WS-${USER_ID}\",\"add\":\"${SERVER_IP}\",\"port\":\"${VMESS_PORT}\",\"id\":\"${USER_UUID}\",\"aid\":\"0\",\"scy\":\"auto\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"${VMESS_WS_PATH}\",\"tls\":\"\"}"
+    VMESS_LINK="vmess://$(echo -n "$VMESS_JSON" | base64 -w 0)"
+    echo "$VMESS_LINK" > "$OUTPUT_DIR/vmess-ws.txt"
+    qrencode -o "$OUTPUT_DIR/vmess-ws-qr.png" -s 6 "$VMESS_LINK" 2>/dev/null || true
+
+    # CDN variant (if CDN domain is configured)
+    if [[ -n "${CDN_DOMAIN:-}" ]]; then
+        VMESS_CDN_JSON="{\"v\":\"2\",\"ps\":\"MoaV-VMess-CDN-${USER_ID}\",\"add\":\"${CDN_DOMAIN}\",\"port\":\"${VMESS_PORT}\",\"id\":\"${USER_UUID}\",\"aid\":\"0\",\"scy\":\"auto\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"${CDN_DOMAIN}\",\"path\":\"${VMESS_WS_PATH}\",\"tls\":\"\"}"
+        VMESS_CDN_LINK="vmess://$(echo -n "$VMESS_CDN_JSON" | base64 -w 0)"
+        echo "$VMESS_CDN_LINK" > "$OUTPUT_DIR/vmess-cdn.txt"
+    fi
+
+    # Generate IPv6 link if available
+    if [[ -n "${SERVER_IPV6:-}" ]]; then
+        VMESS_V6_JSON="{\"v\":\"2\",\"ps\":\"MoaV-VMess-WS-${USER_ID}-IPv6\",\"add\":\"${SERVER_IPV6}\",\"port\":\"${VMESS_PORT}\",\"id\":\"${USER_UUID}\",\"aid\":\"0\",\"scy\":\"auto\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"${VMESS_WS_PATH}\",\"tls\":\"\"}"
+        VMESS_V6_LINK="vmess://$(echo -n "$VMESS_V6_JSON" | base64 -w 0)"
+        echo "$VMESS_V6_LINK" > "$OUTPUT_DIR/vmess-ws-ipv6.txt"
+    fi
+
+    log_info "  - VMess+WS config generated"
+fi
+
+# -----------------------------------------------------------------------------
+# Generate ShadowTLS v3 + Shadowsocks 2022 client config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_SHADOWTLS:-true}" == "true" ]]; then
+    # Load SS server key
+    if [[ -z "${SS_SERVER_PASSWORD:-}" ]] && [[ -f "$STATE_DIR/keys/shadowsocks.env" ]]; then
+        source "$STATE_DIR/keys/shadowsocks.env"
+    fi
+
+    # Load per-user ShadowTLS/SS credentials
+    if [[ -z "${SHADOWTLS_PASSWORD:-}" ]] && [[ -f "$STATE_DIR/users/$USER_ID/credentials.env" ]]; then
+        SHADOWTLS_PASSWORD=$(grep "^SHADOWTLS_PASSWORD=" "$STATE_DIR/users/$USER_ID/credentials.env" | cut -d= -f2 || true)
+        SS_USER_KEY=$(grep "^SS_USER_KEY=" "$STATE_DIR/users/$USER_ID/credentials.env" | cut -d= -f2 || true)
+    fi
+
+    if [[ -n "${SS_SERVER_PASSWORD:-}" ]] && [[ -n "${SHADOWTLS_PASSWORD:-}" ]] && [[ -n "${SS_USER_KEY:-}" ]]; then
+        cat > "$OUTPUT_DIR/shadowtls-singbox.json" <<EOF
+{
+  "log": {"level": "info"},
+  "inbounds": [
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
+  ],
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "proxy",
+      "detour": "shadowtls-out",
+      "method": "2022-blake3-aes-128-gcm",
+      "password": "${SS_SERVER_PASSWORD}:${SS_USER_KEY}",
+      "multiplex": {
+        "enabled": true,
+        "padding": true
+      }
+    },
+    {
+      "type": "shadowtls",
+      "tag": "shadowtls-out",
+      "server": "${SERVER_IP}",
+      "server_port": ${PORT_SHADOWTLS:-8445},
+      "version": 3,
+      "password": "${SHADOWTLS_PASSWORD}",
+      "tls": {
+        "enabled": true,
+        "server_name": "www.microsoft.com"
+      }
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "final": "proxy"
+  }
+}
+EOF
+
+        # Human-readable text config
+        cat > "$OUTPUT_DIR/shadowtls.txt" <<EOF
+ShadowTLS v3 + Shadowsocks 2022
+================================
+Server: ${SERVER_IP}
+Port: ${PORT_SHADOWTLS:-8445}
+ShadowTLS Password: ${SHADOWTLS_PASSWORD}
+SS Method: 2022-blake3-aes-128-gcm
+SS Server Key: ${SS_SERVER_PASSWORD}
+SS User Key: ${SS_USER_KEY}
+Handshake Server: www.microsoft.com
+EOF
+
+        # QR code
+        qrencode -o "$OUTPUT_DIR/shadowtls-qr.png" -s 6 "ss-shadowtls://${SERVER_IP}:${PORT_SHADOWTLS:-8445}#MoaV-ShadowTLS-${USER_ID}" 2>/dev/null || true
+
+        log_info "  - ShadowTLS + SS2022 config generated"
+    else
+        log_info "  - ShadowTLS skipped (missing keys)"
+    fi
+fi
+
+# -----------------------------------------------------------------------------
 # Generate TrustTunnel client config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]]; then
@@ -405,6 +589,10 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_WIREGUARD=$(cat "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || echo "")
     CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
     CONFIG_AMNEZIAWG=$(cat "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || echo "")
+    CONFIG_TUIC=$(cat "$OUTPUT_DIR/tuic.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_VMESS=$(cat "$OUTPUT_DIR/vmess-ws.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_VMESS_CDN=$(cat "$OUTPUT_DIR/vmess-cdn.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_SHADOWTLS=$(cat "$OUTPUT_DIR/shadowtls.txt" 2>/dev/null || echo "")
 
     # Get dnstt info
     DNSTT_DOMAIN="${DNSTT_SUBDOMAIN:-t}.${DOMAIN}"
@@ -427,6 +615,9 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
     QR_AMNEZIAWG_B64=$(qr_to_base64 "$OUTPUT_DIR/amneziawg-qr.png")
+    QR_TUIC_B64=$(qr_to_base64 "$OUTPUT_DIR/tuic-qr.png")
+    QR_VMESS_B64=$(qr_to_base64 "$OUTPUT_DIR/vmess-ws-qr.png")
+    QR_SHADOWTLS_B64=$(qr_to_base64 "$OUTPUT_DIR/shadowtls-qr.png")
 
     GENERATED_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -485,6 +676,9 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_AMNEZIAWG}}|$QR_AMNEZIAWG_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_TUIC}}|$QR_TUIC_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_VMESS}}|$QR_VMESS_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_SHADOWTLS}}|$QR_SHADOWTLS_B64|g" "$OUTPUT_HTML"
 
     # Python-based placeholder replacement - handles special chars and multiline safely
     replace_placeholder() {
@@ -549,6 +743,34 @@ with open(filepath, 'w') as f:
         replace_placeholder "{{CONFIG_AMNEZIAWG}}" "$CONFIG_AMNEZIAWG"
     else
         replace_placeholder "{{CONFIG_AMNEZIAWG}}" "No AmneziaWG config available"
+    fi
+
+    # TUIC config
+    if [[ -n "$CONFIG_TUIC" ]]; then
+        replace_placeholder "{{CONFIG_TUIC}}" "$CONFIG_TUIC"
+    else
+        replace_placeholder "{{CONFIG_TUIC}}" "No TUIC config available"
+    fi
+
+    # VMess+WS config
+    if [[ -n "$CONFIG_VMESS" ]]; then
+        replace_placeholder "{{CONFIG_VMESS}}" "$CONFIG_VMESS"
+    else
+        replace_placeholder "{{CONFIG_VMESS}}" "No VMess config available"
+    fi
+
+    # VMess CDN config
+    if [[ -n "$CONFIG_VMESS_CDN" ]]; then
+        replace_placeholder "{{CONFIG_VMESS_CDN}}" "$CONFIG_VMESS_CDN"
+    else
+        replace_placeholder "{{CONFIG_VMESS_CDN}}" "No VMess CDN config available"
+    fi
+
+    # ShadowTLS config (multiline)
+    if [[ -n "$CONFIG_SHADOWTLS" ]]; then
+        replace_placeholder "{{CONFIG_SHADOWTLS}}" "$CONFIG_SHADOWTLS"
+    else
+        replace_placeholder "{{CONFIG_SHADOWTLS}}" "No ShadowTLS config available"
     fi
 
     log_info "  - README.html generated"
