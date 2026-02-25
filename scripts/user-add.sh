@@ -414,6 +414,10 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_WIREGUARD=$(cat "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || echo "")
     CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
     CONFIG_AMNEZIAWG=$(cat "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || echo "")
+    CONFIG_TUIC=$(cat "$OUTPUT_DIR/tuic.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_VMESS=$(cat "$OUTPUT_DIR/vmess-ws.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_VMESS_CDN=$(cat "$OUTPUT_DIR/vmess-cdn.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_SHADOWTLS=$(cat "$OUTPUT_DIR/shadowtls.txt" 2>/dev/null || echo "")
 
     # Get CDN domain from .env
     CDN_DOMAIN="${CDN_DOMAIN:-$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")}"
@@ -447,6 +451,9 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
     QR_AMNEZIAWG_B64=$(qr_to_base64 "$OUTPUT_DIR/amneziawg-qr.png")
+    QR_TUIC_B64=$(qr_to_base64 "$OUTPUT_DIR/tuic-qr.png")
+    QR_VMESS_B64=$(qr_to_base64 "$OUTPUT_DIR/vmess-ws-qr.png")
+    QR_SHADOWTLS_B64=$(qr_to_base64 "$OUTPUT_DIR/shadowtls-qr.png")
 
     # Copy template
     cp "$TEMPLATE_FILE" "$OUTPUT_HTML"
@@ -494,6 +501,9 @@ with open(filepath, 'w') as f:
     sed -i.bak "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
     sed -i.bak "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
     sed -i.bak "s|{{QR_AMNEZIAWG}}|$QR_AMNEZIAWG_B64|g" "$OUTPUT_HTML"
+    sed -i.bak "s|{{QR_TUIC}}|$QR_TUIC_B64|g" "$OUTPUT_HTML"
+    sed -i.bak "s|{{QR_VMESS}}|$QR_VMESS_B64|g" "$OUTPUT_HTML"
+    sed -i.bak "s|{{QR_SHADOWTLS}}|$QR_SHADOWTLS_B64|g" "$OUTPUT_HTML"
 
     if [[ -n "$CONFIG_REALITY" ]]; then
         replace_placeholder "{{CONFIG_REALITY}}" "$CONFIG_REALITY"
@@ -544,6 +554,34 @@ with open(filepath, 'w') as f:
         replace_placeholder "{{CONFIG_AMNEZIAWG}}" "$CONFIG_AMNEZIAWG"
     else
         replace_placeholder "{{CONFIG_AMNEZIAWG}}" "No AmneziaWG config available"
+    fi
+
+    # TUIC config
+    if [[ -n "$CONFIG_TUIC" ]]; then
+        replace_placeholder "{{CONFIG_TUIC}}" "$CONFIG_TUIC"
+    else
+        replace_placeholder "{{CONFIG_TUIC}}" "No TUIC config available"
+    fi
+
+    # VMess+WS config
+    if [[ -n "$CONFIG_VMESS" ]]; then
+        replace_placeholder "{{CONFIG_VMESS}}" "$CONFIG_VMESS"
+    else
+        replace_placeholder "{{CONFIG_VMESS}}" "No VMess config available"
+    fi
+
+    # VMess CDN config
+    if [[ -n "$CONFIG_VMESS_CDN" ]]; then
+        replace_placeholder "{{CONFIG_VMESS_CDN}}" "$CONFIG_VMESS_CDN"
+    else
+        replace_placeholder "{{CONFIG_VMESS_CDN}}" "No VMess CDN config available"
+    fi
+
+    # ShadowTLS config (multiline)
+    if [[ -n "$CONFIG_SHADOWTLS" ]]; then
+        replace_placeholder "{{CONFIG_SHADOWTLS}}" "$CONFIG_SHADOWTLS"
+    else
+        replace_placeholder "{{CONFIG_SHADOWTLS}}" "No ShadowTLS config available"
     fi
 
     # Clean up backup files

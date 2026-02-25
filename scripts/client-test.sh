@@ -642,6 +642,485 @@ EOF
     wait $pid 2>/dev/null || true
 }
 
+# Test TUIC (connection test via sing-box)
+test_tuic() {
+    log_info "Testing TUIC..."
+
+    local config_file=""
+    local detail=""
+    local is_ipv6=false
+
+    # Find TUIC config
+    for f in "$CONFIG_DIR"/tuic.txt "$CONFIG_DIR"/tuic-singbox.json; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+    if [[ -z "$config_file" ]]; then
+        for f in "$CONFIG_DIR"/tuic*.txt; do
+            [[ -f "$f" ]] && config_file="$f" && break
+        done
+    fi
+    [[ "$config_file" == *ipv6* ]] && is_ipv6=true
+
+    if [[ -z "$config_file" ]]; then
+        detail="No TUIC config found in bundle"
+        log_warn "$detail"
+        RESULTS[tuic]="skip"
+        DETAILS[tuic]="$detail"
+        return
+    fi
+
+    log_debug "Using config: $config_file"
+
+    local client_config="$TEMP_DIR/tuic-client.json"
+    local server="" uuid="" password="" sni="" host="" port=""
+
+    if [[ "$config_file" == *.txt ]]; then
+        local uri=$(cat "$config_file" | tr -d '\n\r')
+        # tuic://UUID:PASSWORD@HOST:PORT?params#tag
+        uuid=$(echo "$uri" | sed -n 's|tuic://\([^:]*\):.*|\1|p')
+        password=$(echo "$uri" | sed -n 's|tuic://[^:]*:\([^@]*\)@.*|\1|p')
+        server=$(echo "$uri" | sed -n 's|.*@\([^?#]*\).*|\1|p' | head -1)
+        sni=$(extract_param "$uri" "sni")
+    elif [[ "$config_file" == *.json ]]; then
+        host=$(jq -r '.outbounds[0].server // empty' "$config_file" 2>/dev/null || true)
+        port=$(jq -r '.outbounds[0].server_port // empty' "$config_file" 2>/dev/null || true)
+        uuid=$(jq -r '.outbounds[0].uuid // empty' "$config_file" 2>/dev/null || true)
+        password=$(jq -r '.outbounds[0].password // empty' "$config_file" 2>/dev/null || true)
+        sni=$(jq -r '.outbounds[0].tls.server_name // empty' "$config_file" 2>/dev/null || true)
+        server="$host:$port"
+    fi
+
+    # Parse host:port
+    if echo "$server" | grep -q '^\['; then
+        host=$(echo "$server" | sed 's/^\[\([^]]*\)\].*/\1/')
+        port=$(echo "$server" | sed -n 's/.*\]:\([0-9]*\).*/\1/p')
+        [[ -z "$port" ]] && port="8444"
+    elif echo "$server" | grep -q ':'; then
+        host="${server%:*}"
+        port="${server##*:}"
+    else
+        host="$server"
+        port="8444"
+    fi
+
+    port=$(echo "$port" | tr -cd '0-9')
+    [[ -z "$port" ]] && port="8444"
+    [[ -z "$sni" ]] && sni="$host"
+
+    log_debug "Parsed: host=$host port=$port uuid=$uuid sni=$sni"
+
+    if [[ -z "$host" ]] || [[ -z "$uuid" ]]; then
+        detail="Could not parse TUIC config. Run with -v for details."
+        log_error "$detail"
+        RESULTS[tuic]="fail"
+        DETAILS[tuic]="$detail"
+        return
+    fi
+
+    cat > "$client_config" << EOF
+{
+  "log": {"level": "error"},
+  "inbounds": [
+    {"type": "socks", "listen": "127.0.0.1", "listen_port": 10803}
+  ],
+  "outbounds": [
+    {
+      "type": "tuic",
+      "tag": "proxy",
+      "server": "$host",
+      "server_port": $port,
+      "uuid": "$uuid",
+      "password": "$password",
+      "congestion_control": "bbr",
+      "udp_relay_mode": "native",
+      "zero_rtt_handshake": false,
+      "heartbeat": "10s",
+      "tls": {
+        "enabled": true,
+        "server_name": "$sni",
+        "alpn": ["h3"]
+      }
+    }
+  ],
+  "route": {
+    "final": "proxy"
+  }
+}
+EOF
+
+    log_debug "Generated config: $(cat "$client_config")"
+
+    if ! jq empty "$client_config" 2>/dev/null; then
+        detail="Generated invalid JSON config"
+        log_error "$detail"
+        RESULTS[tuic]="fail"
+        DETAILS[tuic]="$detail"
+        return
+    fi
+
+    local error_log="$TEMP_DIR/tuic-error.log"
+    sing-box run -c "$client_config" 2>"$error_log" &
+    local pid=$!
+    sleep 3
+
+    if ! kill -0 $pid 2>/dev/null; then
+        detail="sing-box failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
+            detail="sing-box error: $error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[tuic]="fail"
+        DETAILS[tuic]="$detail"
+        return
+    fi
+
+    log_debug "sing-box started successfully (PID: $pid)"
+
+    if curl -sf --socks5 127.0.0.1:10803 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        local exit_ip=""
+        exit_ip=$(curl -sf --socks5 127.0.0.1:10803 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:10803 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "TUIC connection successful (exit IP: $exit_ip)"
+            RESULTS[tuic]="pass"
+            DETAILS[tuic]="Connected via TUIC, exit IP: $exit_ip"
+        else
+            log_success "TUIC connection successful"
+            RESULTS[tuic]="pass"
+            DETAILS[tuic]="Connected via TUIC"
+        fi
+    else
+        detail="Connection test failed"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
+        if [[ "$is_ipv6" == "true" ]] && echo "$detail" | grep -qi "unreachable\|network"; then
+            log_warn "IPv6 config - $detail"
+            RESULTS[tuic]="warn"
+            DETAILS[tuic]="IPv6 network may not be available: $detail"
+        else
+            log_error "$detail"
+            RESULTS[tuic]="fail"
+            DETAILS[tuic]="$detail"
+        fi
+    fi
+
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
+}
+
+# Test VMess+WS connection
+test_vmess() {
+    log_info "Testing VMess+WS..."
+
+    local config_file=""
+    local detail=""
+    local is_ipv6=false
+
+    # Find VMess config
+    for f in "$CONFIG_DIR"/vmess-ws.txt "$CONFIG_DIR"/vmess-ws-singbox.json; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+    if [[ -z "$config_file" ]]; then
+        for f in "$CONFIG_DIR"/vmess*.txt; do
+            [[ -f "$f" ]] && config_file="$f" && break
+        done
+    fi
+    [[ "$config_file" == *ipv6* ]] && is_ipv6=true
+
+    if [[ -z "$config_file" ]]; then
+        detail="No VMess config found in bundle"
+        log_warn "$detail"
+        RESULTS[vmess]="skip"
+        DETAILS[vmess]="$detail"
+        return
+    fi
+
+    log_debug "Using config: $config_file"
+
+    local client_config="$TEMP_DIR/vmess-client.json"
+    local host="" port="" uuid="" ws_path=""
+
+    if [[ "$config_file" == *.txt ]]; then
+        local uri=$(cat "$config_file" | tr -d '\n\r')
+        # vmess://BASE64_JSON - decode the base64 part
+        local vmess_json=$(echo "$uri" | sed 's|vmess://||' | base64 -d 2>/dev/null || true)
+        if [[ -n "$vmess_json" ]]; then
+            host=$(echo "$vmess_json" | jq -r '.add // empty' 2>/dev/null || true)
+            port=$(echo "$vmess_json" | jq -r '.port // empty' 2>/dev/null || true)
+            uuid=$(echo "$vmess_json" | jq -r '.id // empty' 2>/dev/null || true)
+            ws_path=$(echo "$vmess_json" | jq -r '.path // empty' 2>/dev/null || true)
+        fi
+    elif [[ "$config_file" == *.json ]]; then
+        host=$(jq -r '.outbounds[0].server // empty' "$config_file" 2>/dev/null || true)
+        port=$(jq -r '.outbounds[0].server_port // empty' "$config_file" 2>/dev/null || true)
+        uuid=$(jq -r '.outbounds[0].uuid // empty' "$config_file" 2>/dev/null || true)
+        ws_path=$(jq -r '.outbounds[0].transport.path // empty' "$config_file" 2>/dev/null || true)
+    fi
+
+    port=$(echo "$port" | tr -cd '0-9')
+    [[ -z "$port" ]] && port="2086"
+    [[ -z "$ws_path" ]] && ws_path="/vmws"
+
+    log_debug "Parsed: host=$host port=$port uuid=$uuid path=$ws_path"
+
+    if [[ -z "$host" ]] || [[ -z "$uuid" ]]; then
+        detail="Could not parse VMess config. Run with -v for details."
+        log_error "$detail"
+        RESULTS[vmess]="fail"
+        DETAILS[vmess]="$detail"
+        return
+    fi
+
+    cat > "$client_config" << EOF
+{
+  "log": {"level": "error"},
+  "inbounds": [
+    {"type": "socks", "listen": "127.0.0.1", "listen_port": 10804}
+  ],
+  "outbounds": [
+    {
+      "type": "vmess",
+      "tag": "proxy",
+      "server": "$host",
+      "server_port": $port,
+      "uuid": "$uuid",
+      "security": "auto",
+      "transport": {
+        "type": "ws",
+        "path": "$ws_path"
+      }
+    }
+  ],
+  "route": {
+    "final": "proxy"
+  }
+}
+EOF
+
+    log_debug "Generated config: $(cat "$client_config")"
+
+    if ! jq empty "$client_config" 2>/dev/null; then
+        detail="Generated invalid JSON config"
+        log_error "$detail"
+        RESULTS[vmess]="fail"
+        DETAILS[vmess]="$detail"
+        return
+    fi
+
+    local error_log="$TEMP_DIR/vmess-error.log"
+    sing-box run -c "$client_config" 2>"$error_log" &
+    local pid=$!
+    sleep 3
+
+    if ! kill -0 $pid 2>/dev/null; then
+        detail="sing-box failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
+            detail="sing-box error: $error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[vmess]="fail"
+        DETAILS[vmess]="$detail"
+        return
+    fi
+
+    log_debug "sing-box started successfully (PID: $pid)"
+
+    if curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        local exit_ip=""
+        exit_ip=$(curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:10804 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "VMess+WS connection successful (exit IP: $exit_ip)"
+            RESULTS[vmess]="pass"
+            DETAILS[vmess]="Connected via VMess+WS, exit IP: $exit_ip"
+        else
+            log_success "VMess+WS connection successful"
+            RESULTS[vmess]="pass"
+            DETAILS[vmess]="Connected via VMess+WS"
+        fi
+    else
+        detail="Connection test failed"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
+        if [[ "$is_ipv6" == "true" ]] && echo "$detail" | grep -qi "unreachable\|network"; then
+            log_warn "IPv6 config - $detail"
+            RESULTS[vmess]="warn"
+            DETAILS[vmess]="IPv6 network may not be available: $detail"
+        else
+            log_error "$detail"
+            RESULTS[vmess]="fail"
+            DETAILS[vmess]="$detail"
+        fi
+    fi
+
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
+}
+
+# Test ShadowTLS v3 + Shadowsocks 2022
+test_shadowtls() {
+    log_info "Testing ShadowTLS + SS2022..."
+
+    local config_file=""
+    local detail=""
+
+    # Find ShadowTLS config
+    for f in "$CONFIG_DIR"/shadowtls-singbox.json "$CONFIG_DIR"/shadowtls.txt; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+    if [[ -z "$config_file" ]]; then
+        for f in "$CONFIG_DIR"/shadowtls*; do
+            [[ -f "$f" ]] && config_file="$f" && break
+        done
+    fi
+
+    if [[ -z "$config_file" ]]; then
+        detail="No ShadowTLS config found in bundle"
+        log_warn "$detail"
+        RESULTS[shadowtls]="skip"
+        DETAILS[shadowtls]="$detail"
+        return
+    fi
+
+    log_debug "Using config: $config_file"
+
+    local client_config="$TEMP_DIR/shadowtls-client.json"
+
+    if [[ "$config_file" == *singbox.json ]]; then
+        # Use the sing-box JSON config directly, replacing inbounds with SOCKS
+        jq '.inbounds = [{"type": "socks", "listen": "127.0.0.1", "listen_port": 10805}] | .log = {"level": "error"} | .route = {"final": "proxy"}' \
+            "$config_file" > "$client_config" 2>/dev/null || {
+            detail="Failed to parse JSON config"
+            log_error "$detail"
+            RESULTS[shadowtls]="fail"
+            DETAILS[shadowtls]="$detail"
+            return
+        }
+    elif [[ "$config_file" == *.txt ]]; then
+        # Parse text config
+        local server=$(grep -i "^Server:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        local port=$(grep -i "^Port:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d ' \r' | head -1 || true)
+        local stls_pass=$(grep -i "^ShadowTLS Password:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d '\r' | head -1 || true)
+        local ss_server_key=$(grep -i "^SS Server Key:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d '\r' | head -1 || true)
+        local ss_user_key=$(grep -i "^SS User Key:" "$config_file" | sed 's/^[^:]*:[[:space:]]*//' | tr -d '\r' | head -1 || true)
+
+        [[ -z "$port" ]] && port="8445"
+
+        if [[ -z "$server" ]] || [[ -z "$stls_pass" ]] || [[ -z "$ss_server_key" ]] || [[ -z "$ss_user_key" ]]; then
+            detail="Failed to parse ShadowTLS config (missing required fields)"
+            log_error "$detail"
+            RESULTS[shadowtls]="fail"
+            DETAILS[shadowtls]="$detail"
+            return
+        fi
+
+        cat > "$client_config" << EOF
+{
+  "log": {"level": "error"},
+  "inbounds": [
+    {"type": "socks", "listen": "127.0.0.1", "listen_port": 10805}
+  ],
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "proxy",
+      "detour": "shadowtls-out",
+      "method": "2022-blake3-aes-128-gcm",
+      "password": "${ss_server_key}:${ss_user_key}",
+      "multiplex": {
+        "enabled": true,
+        "padding": true
+      }
+    },
+    {
+      "type": "shadowtls",
+      "tag": "shadowtls-out",
+      "server": "$server",
+      "server_port": $port,
+      "version": 3,
+      "password": "$stls_pass",
+      "tls": {
+        "enabled": true,
+        "server_name": "www.microsoft.com"
+      }
+    }
+  ],
+  "route": {
+    "final": "proxy"
+  }
+}
+EOF
+    else
+        detail="Unsupported ShadowTLS config format"
+        log_error "$detail"
+        RESULTS[shadowtls]="fail"
+        DETAILS[shadowtls]="$detail"
+        return
+    fi
+
+    log_debug "Generated config: $(cat "$client_config")"
+
+    if ! jq empty "$client_config" 2>/dev/null; then
+        detail="Generated invalid JSON config"
+        log_error "$detail"
+        RESULTS[shadowtls]="fail"
+        DETAILS[shadowtls]="$detail"
+        return
+    fi
+
+    local error_log="$TEMP_DIR/shadowtls-error.log"
+    sing-box run -c "$client_config" 2>"$error_log" &
+    local pid=$!
+    sleep 3
+
+    if ! kill -0 $pid 2>/dev/null; then
+        detail="sing-box failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
+            detail="sing-box error: $error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[shadowtls]="fail"
+        DETAILS[shadowtls]="$detail"
+        return
+    fi
+
+    log_debug "sing-box started successfully (PID: $pid)"
+
+    if curl -sf --socks5 127.0.0.1:10805 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        local exit_ip=""
+        exit_ip=$(curl -sf --socks5 127.0.0.1:10805 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:10805 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "ShadowTLS connection successful (exit IP: $exit_ip)"
+            RESULTS[shadowtls]="pass"
+            DETAILS[shadowtls]="Connected via ShadowTLS+SS2022, exit IP: $exit_ip"
+        else
+            log_success "ShadowTLS connection successful"
+            RESULTS[shadowtls]="pass"
+            DETAILS[shadowtls]="Connected via ShadowTLS+SS2022"
+        fi
+    else
+        detail="Connection test failed"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[shadowtls]="fail"
+        DETAILS[shadowtls]="$detail"
+    fi
+
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
+}
+
 # Test WireGuard (config validation + endpoint reachability)
 test_wireguard() {
     log_info "Testing WireGuard (config validation)..."
@@ -1285,7 +1764,7 @@ output_json() {
 EOF
 
     local first=true
-    for protocol in reality trojan hysteria2 wireguard amneziawg dnstt trusttunnel; do
+    for protocol in reality trojan hysteria2 tuic vmess shadowtls wireguard amneziawg dnstt trusttunnel; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             [[ "$first" != "true" ]] && echo ","
             first=false
@@ -1316,7 +1795,7 @@ output_human() {
     echo ""
     echo "───────────────────────────────────────────────────────────────"
 
-    for protocol in reality trojan hysteria2 wireguard amneziawg dnstt trusttunnel; do
+    for protocol in reality trojan hysteria2 tuic vmess shadowtls wireguard amneziawg dnstt trusttunnel; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             local status="${RESULTS[$protocol]}"
             local detail="${DETAILS[$protocol]:-}"
@@ -1353,6 +1832,9 @@ main() {
     test_reality
     test_trojan
     test_hysteria2
+    test_tuic
+    test_vmess
+    test_shadowtls
     test_wireguard
     test_amneziawg
     test_dnstt

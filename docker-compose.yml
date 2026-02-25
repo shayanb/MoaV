@@ -35,6 +35,9 @@ services:
       - "${PORT_TROJAN:-8443}:8443/tcp"   # Trojan (backup)
       - "${PORT_HYSTERIA:-443}:443/udp"   # Hysteria2 (QUIC)
       - "${PORT_CDN:-2082}:2082/tcp"      # CDN WebSocket (VLESS+WS)
+      - "${PORT_TUIC:-8444}:8444/udp"    # TUIC v5 (QUIC)
+      - "${PORT_VMESS_WS:-2086}:2086/tcp" # VMess+WebSocket (CDN)
+      - "${PORT_SHADOWTLS:-8445}:8445/tcp" # ShadowTLS v3 + Shadowsocks 2022
     volumes:
       - ./configs/sing-box:/etc/sing-box:ro
       - moav_certs:/certs:ro
@@ -624,6 +627,13 @@ services:
       - ENABLE_TRUSTTUNNEL=${ENABLE_TRUSTTUNNEL:-true}
       - ENABLE_AMNEZIAWG=${ENABLE_AMNEZIAWG:-true}
       - PORT_AMNEZIAWG=${PORT_AMNEZIAWG:-51821}
+      - ENABLE_TUIC=${ENABLE_TUIC:-true}
+      - PORT_TUIC=${PORT_TUIC:-8444}
+      - ENABLE_VMESS=${ENABLE_VMESS:-true}
+      - PORT_VMESS_WS=${PORT_VMESS_WS:-2086}
+      - CDN_VMESS_WS_PATH=${CDN_VMESS_WS_PATH:-/vmws}
+      - ENABLE_SHADOWTLS=${ENABLE_SHADOWTLS:-true}
+      - PORT_SHADOWTLS=${PORT_SHADOWTLS:-8445}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
       - CDN_SUBDOMAIN=${CDN_SUBDOMAIN:-}
       - CDN_DOMAIN=${CDN_DOMAIN:-}

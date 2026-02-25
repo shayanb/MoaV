@@ -4429,6 +4429,13 @@ cmd_regenerate_users() {
     local enable_amneziawg=$(grep -E '^ENABLE_AMNEZIAWG=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_dnstt=$(grep -E '^ENABLE_DNSTT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_trusttunnel=$(grep -E '^ENABLE_TRUSTTUNNEL=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_tuic=$(grep -E '^ENABLE_TUIC=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local port_tuic=$(grep -E '^PORT_TUIC=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_vmess=$(grep -E '^ENABLE_VMESS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local port_vmess_ws=$(grep -E '^PORT_VMESS_WS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local cdn_vmess_ws_path=$(grep -E '^CDN_VMESS_WS_PATH=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_shadowtls=$(grep -E '^ENABLE_SHADOWTLS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local port_shadowtls=$(grep -E '^PORT_SHADOWTLS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
 
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
@@ -4449,6 +4456,13 @@ cmd_regenerate_users() {
             -e "ENABLE_AMNEZIAWG=${enable_amneziawg:-true}" \
             -e "ENABLE_DNSTT=${enable_dnstt:-true}" \
             -e "ENABLE_TRUSTTUNNEL=${enable_trusttunnel:-true}" \
+            -e "ENABLE_TUIC=${enable_tuic:-true}" \
+            -e "PORT_TUIC=${port_tuic:-8444}" \
+            -e "ENABLE_VMESS=${enable_vmess:-true}" \
+            -e "PORT_VMESS_WS=${port_vmess_ws:-2086}" \
+            -e "CDN_VMESS_WS_PATH=${cdn_vmess_ws_path:-/vmws}" \
+            -e "ENABLE_SHADOWTLS=${enable_shadowtls:-true}" \
+            -e "PORT_SHADOWTLS=${port_shadowtls:-8445}" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true

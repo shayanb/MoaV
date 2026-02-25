@@ -77,11 +77,17 @@ log_info "Adding user '$USERNAME' to sing-box..."
 USER_UUID=$(docker compose exec -T sing-box sing-box generate uuid 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]')
 USER_PASSWORD=$(openssl rand -base64 18 | tr -d '/+=' | head -c 24)
 
+# Generate ShadowTLS + SS2022 per-user credentials
+SHADOWTLS_PASSWORD=$(openssl rand -hex 16)
+SS_USER_KEY=$(openssl rand -base64 16)
+
 # Save credentials
 cat > "$STATE_DIR/users/$USERNAME/credentials.env" <<EOF
 USER_ID=$USERNAME
 USER_UUID=$USER_UUID
 USER_PASSWORD=$USER_PASSWORD
+SHADOWTLS_PASSWORD=$SHADOWTLS_PASSWORD
+SS_USER_KEY=$SS_USER_KEY
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
@@ -111,6 +117,30 @@ mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 # Add to VLESS WS users (CDN)
 jq --arg name "$USERNAME" --arg uuid "$USER_UUID" \
     '.inbounds |= map(if .tag == "vless-ws-in" then .users += [{"name": $name, "uuid": $uuid}] else . end)' \
+    "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
+mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+
+# Add to TUIC users
+jq --arg name "$USERNAME" --arg uuid "$USER_UUID" --arg pass "$USER_PASSWORD" \
+    '.inbounds |= map(if .tag == "tuic-in" then .users += [{"name": $name, "uuid": $uuid, "password": $pass}] else . end)' \
+    "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
+mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+
+# Add to VMess-WS users
+jq --arg name "$USERNAME" --arg uuid "$USER_UUID" \
+    '.inbounds |= map(if .tag == "vmess-ws-in" then .users += [{"name": $name, "uuid": $uuid}] else . end)' \
+    "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
+mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+
+# Add to ShadowTLS users
+jq --arg name "$USERNAME" --arg pass "$SHADOWTLS_PASSWORD" \
+    '.inbounds |= map(if .tag == "shadowtls-in" then .users += [{"name": $name, "password": $pass}] else . end)' \
+    "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
+mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+
+# Add to Shadowsocks users
+jq --arg name "$USERNAME" --arg pass "$SS_USER_KEY" \
+    '.inbounds |= map(if .tag == "shadowsocks-in" then .users += [{"name": $name, "password": $pass}] else . end)' \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
 mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 
@@ -250,6 +280,148 @@ if [[ -n "$CDN_DOMAIN" ]]; then
     log_info "Generated CDN VLESS+WS link (domain: $CDN_DOMAIN)"
 fi
 
+# Generate TUIC link (if TUIC inbound exists in config)
+if jq -e '.inbounds[] | select(.tag == "tuic-in")' "$CONFIG_FILE" &>/dev/null; then
+    TUIC_LINK="tuic://${USER_UUID}:${USER_PASSWORD}@${SERVER_IP}:${PORT_TUIC:-8444}?congestion_control=bbr&alpn=h3&sni=${DOMAIN}&udp_relay_mode=native#MoaV-TUIC-${USERNAME}"
+    echo "$TUIC_LINK" > "$OUTPUT_DIR/tuic.txt"
+
+    # Generate IPv6 link if available
+    if [[ -n "$SERVER_IPV6" ]]; then
+        TUIC_LINK_V6="tuic://${USER_UUID}:${USER_PASSWORD}@[${SERVER_IPV6}]:${PORT_TUIC:-8444}?congestion_control=bbr&alpn=h3&sni=${DOMAIN}&udp_relay_mode=native#MoaV-TUIC-${USERNAME}-IPv6"
+        echo "$TUIC_LINK_V6" > "$OUTPUT_DIR/tuic-ipv6.txt"
+    fi
+
+    if command -v qrencode &>/dev/null; then
+        qrencode -o "$OUTPUT_DIR/tuic-qr.png" -s 6 "$TUIC_LINK" 2>/dev/null || true
+        if [[ -n "$SERVER_IPV6" ]]; then
+            qrencode -o "$OUTPUT_DIR/tuic-ipv6-qr.png" -s 6 "$TUIC_LINK_V6" 2>/dev/null || true
+        fi
+    fi
+
+    log_info "Generated TUIC link"
+fi
+
+# Generate VMess+WS link (if VMess inbound exists in config)
+if jq -e '.inbounds[] | select(.tag == "vmess-ws-in")' "$CONFIG_FILE" &>/dev/null; then
+    VMESS_WS_PATH=$(jq -r '.inbounds[] | select(.tag == "vmess-ws-in") | .transport.path' "$CONFIG_FILE")
+    VMESS_PORT=$(jq -r '.inbounds[] | select(.tag == "vmess-ws-in") | .listen_port' "$CONFIG_FILE")
+
+    # VMess URI uses base64-encoded JSON
+    VMESS_JSON="{\"v\":\"2\",\"ps\":\"MoaV-VMess-WS-${USERNAME}\",\"add\":\"${SERVER_IP}\",\"port\":\"${VMESS_PORT}\",\"id\":\"${USER_UUID}\",\"aid\":\"0\",\"scy\":\"auto\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"${VMESS_WS_PATH}\",\"tls\":\"\"}"
+    VMESS_LINK="vmess://$(echo -n "$VMESS_JSON" | base64 -w 0)"
+    echo "$VMESS_LINK" > "$OUTPUT_DIR/vmess-ws.txt"
+
+    # CDN variant (if CDN domain is configured)
+    if [[ -n "${CDN_DOMAIN:-}" ]]; then
+        VMESS_CDN_JSON="{\"v\":\"2\",\"ps\":\"MoaV-VMess-CDN-${USERNAME}\",\"add\":\"${CDN_DOMAIN}\",\"port\":\"${VMESS_PORT}\",\"id\":\"${USER_UUID}\",\"aid\":\"0\",\"scy\":\"auto\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"${CDN_DOMAIN}\",\"path\":\"${VMESS_WS_PATH}\",\"tls\":\"\"}"
+        VMESS_CDN_LINK="vmess://$(echo -n "$VMESS_CDN_JSON" | base64 -w 0)"
+        echo "$VMESS_CDN_LINK" > "$OUTPUT_DIR/vmess-cdn.txt"
+    fi
+
+    # IPv6 variant
+    if [[ -n "$SERVER_IPV6" ]]; then
+        VMESS_V6_JSON="{\"v\":\"2\",\"ps\":\"MoaV-VMess-WS-${USERNAME}-IPv6\",\"add\":\"${SERVER_IPV6}\",\"port\":\"${VMESS_PORT}\",\"id\":\"${USER_UUID}\",\"aid\":\"0\",\"scy\":\"auto\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"${VMESS_WS_PATH}\",\"tls\":\"\"}"
+        VMESS_V6_LINK="vmess://$(echo -n "$VMESS_V6_JSON" | base64 -w 0)"
+        echo "$VMESS_V6_LINK" > "$OUTPUT_DIR/vmess-ws-ipv6.txt"
+    fi
+
+    # Generate QR codes
+    if command -v qrencode &>/dev/null; then
+        qrencode -o "$OUTPUT_DIR/vmess-ws-qr.png" -s 6 "$VMESS_LINK" 2>/dev/null || true
+    fi
+
+    log_info "Generated VMess+WS link"
+fi
+
+# Generate ShadowTLS + SS2022 config (if ShadowTLS inbound exists in config)
+if jq -e '.inbounds[] | select(.tag == "shadowtls-in")' "$CONFIG_FILE" &>/dev/null; then
+    # Load SS server password
+    SS_SERVER_PASSWORD=""
+    if [[ -f "$STATE_DIR/keys/shadowsocks.env" ]]; then
+        source "$STATE_DIR/keys/shadowsocks.env"
+    else
+        SS_SERVER_PASSWORD=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/shadowsocks.env 2>/dev/null | grep SS_SERVER_PASSWORD | cut -d= -f2 || echo "")
+    fi
+
+    if [[ -n "$SS_SERVER_PASSWORD" ]]; then
+        # Generate sing-box client config (ShadowTLS + SS2022 requires chained outbounds)
+        cat > "$OUTPUT_DIR/shadowtls-singbox.json" <<EOF
+{
+  "log": {"level": "info"},
+  "inbounds": [
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
+  ],
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "proxy",
+      "detour": "shadowtls-out",
+      "method": "2022-blake3-aes-128-gcm",
+      "password": "${SS_SERVER_PASSWORD}:${SS_USER_KEY}",
+      "multiplex": {
+        "enabled": true,
+        "padding": true
+      }
+    },
+    {
+      "type": "shadowtls",
+      "tag": "shadowtls-out",
+      "server": "${SERVER_IP}",
+      "server_port": ${PORT_SHADOWTLS:-8445},
+      "version": 3,
+      "password": "${SHADOWTLS_PASSWORD}",
+      "tls": {
+        "enabled": true,
+        "server_name": "www.microsoft.com"
+      }
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "final": "proxy"
+  }
+}
+EOF
+
+        # Generate human-readable text config
+        cat > "$OUTPUT_DIR/shadowtls.txt" <<EOF
+ShadowTLS v3 + Shadowsocks 2022
+================================
+Server: ${SERVER_IP}
+Port: ${PORT_SHADOWTLS:-8445}
+ShadowTLS Password: ${SHADOWTLS_PASSWORD}
+SS Method: 2022-blake3-aes-128-gcm
+SS Server Key: ${SS_SERVER_PASSWORD}
+SS User Key: ${SS_USER_KEY}
+Handshake Server: www.microsoft.com
+EOF
+
+        # Generate QR code from sing-box JSON config (minified)
+        if command -v qrencode &>/dev/null; then
+            jq -c . "$OUTPUT_DIR/shadowtls-singbox.json" | qrencode -o "$OUTPUT_DIR/shadowtls-qr.png" -s 6 2>/dev/null || true
+        fi
+
+        # IPv6 variant
+        if [[ -n "$SERVER_IPV6" ]]; then
+            cat > "$OUTPUT_DIR/shadowtls-ipv6.txt" <<EOF
+ShadowTLS v3 + Shadowsocks 2022 (IPv6)
+========================================
+Server: ${SERVER_IPV6}
+Port: ${PORT_SHADOWTLS:-8445}
+ShadowTLS Password: ${SHADOWTLS_PASSWORD}
+SS Method: 2022-blake3-aes-128-gcm
+SS Server Key: ${SS_SERVER_PASSWORD}
+SS User Key: ${SS_USER_KEY}
+Handshake Server: www.microsoft.com
+EOF
+        fi
+
+        log_info "Generated ShadowTLS + SS2022 config"
+    else
+        log_warn "SS server password not found, skipping ShadowTLS config"
+    fi
+fi
+
 # Add user to TrustTunnel (if config exists)
 TRUSTTUNNEL_CREDS="configs/trusttunnel/credentials.toml"
 if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
@@ -316,7 +488,7 @@ IP Address: ${SERVER_IP}:4443
 Domain: ${DOMAIN}
 Username: ${USERNAME}
 Password: ${USER_PASSWORD}
-DNS Servers: tls://1.1.1.1, tls://8.8.8.8
+DNS Servers: tls://1.1.1.1
 
 CLI Client:
 -----------
@@ -402,13 +574,37 @@ if [[ -n "${CDN_DOMAIN:-}" ]]; then
     echo ""
 fi
 
+if [[ -f "$OUTPUT_DIR/tuic.txt" ]]; then
+    echo "TUIC Link:"
+    cat "$OUTPUT_DIR/tuic.txt"
+    echo ""
+fi
+
+if [[ -f "$OUTPUT_DIR/vmess-ws.txt" ]]; then
+    echo "VMess+WS Link:"
+    cat "$OUTPUT_DIR/vmess-ws.txt"
+    echo ""
+fi
+
+if [[ -f "$OUTPUT_DIR/vmess-cdn.txt" ]]; then
+    echo "VMess CDN Link:"
+    cat "$OUTPUT_DIR/vmess-cdn.txt"
+    echo ""
+fi
+
+if [[ -f "$OUTPUT_DIR/shadowtls.txt" ]]; then
+    echo "ShadowTLS + SS2022:"
+    cat "$OUTPUT_DIR/shadowtls.txt"
+    echo ""
+fi
+
 if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
     echo "TrustTunnel:"
     echo "  IP Address: ${SERVER_IP}:4443"
     echo "  Domain: ${DOMAIN}"
     echo "  Username: ${USERNAME}"
     echo "  Password: ${USER_PASSWORD}"
-    echo "  DNS Servers: tls://1.1.1.1, tls://8.8.8.8"
+    echo "  DNS Servers: tls://1.1.1.1"
     echo ""
 fi
 

@@ -101,6 +101,64 @@
         "type": "ws",
         "path": "${CDN_WS_PATH}"
       }
+    },
+    {
+      "type": "vmess",
+      "tag": "vmess-ws-in",
+      "listen": "::",
+      "listen_port": 2086,
+      "sniff": true,
+      "users": ${VMESS_USERS_JSON},
+      "transport": {
+        "type": "ws",
+        "path": "${CDN_VMESS_WS_PATH}"
+      }
+    },
+    {
+      "type": "shadowtls",
+      "tag": "shadowtls-in",
+      "listen": "::",
+      "listen_port": 8445,
+      "version": 3,
+      "users": ${SHADOWTLS_USERS_JSON},
+      "handshake": {
+        "server": "www.microsoft.com",
+        "server_port": 443
+      },
+      "strict_mode": true,
+      "detour": "shadowsocks-in"
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "shadowsocks-in",
+      "listen": "127.0.0.1",
+      "listen_port": 18445,
+      "method": "2022-blake3-aes-128-gcm",
+      "password": "${SS_SERVER_PASSWORD}",
+      "users": ${SS_USERS_JSON},
+      "multiplex": {
+        "enabled": true,
+        "padding": true
+      }
+    },
+    {
+      "type": "tuic",
+      "tag": "tuic-in",
+      "listen": "::",
+      "listen_port": 8444,
+      "sniff": true,
+      "users": ${TUIC_USERS_JSON},
+      "congestion_control": "bbr",
+      "auth_timeout": "3s",
+      "zero_rtt_handshake": false,
+      "heartbeat": "10s",
+      "tls": {
+        "enabled": true,
+        "server_name": "${DOMAIN}",
+        "alpn": ["h3"],
+        "certificate_path": "/certs/live/${DOMAIN}/fullchain.pem",
+        "key_path": "/certs/live/${DOMAIN}/privkey.pem"
+      }
     }
   ],
   "outbounds": [

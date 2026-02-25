@@ -37,6 +37,7 @@ domain_required=false
 [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_DNSTT:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]] && domain_required=true
+[[ "${ENABLE_TUIC:-true}" == "true" ]] && domain_required=true
 
 if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     log_error "DOMAIN is required when TLS-based protocols are enabled"
@@ -221,6 +222,32 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# Generate Shadowsocks 2022 server key (if ShadowTLS is enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_SHADOWTLS:-true}" == "true" ]]; then
+    if [[ -f "$STATE_DIR/keys/shadowsocks.env" ]]; then
+        source "$STATE_DIR/keys/shadowsocks.env"
+    fi
+
+    if [[ -z "${SS_SERVER_PASSWORD:-}" ]]; then
+        SS_SERVER_PASSWORD=$(openssl rand -base64 16)
+        log_info "Generated Shadowsocks 2022 server key"
+    else
+        log_info "Shadowsocks 2022 server key already exists, skipping generation"
+    fi
+
+    cat > "$STATE_DIR/keys/shadowsocks.env" <<EOF
+SS_SERVER_PASSWORD=$SS_SERVER_PASSWORD
+EOF
+
+    log_info "Shadowsocks key saved to $STATE_DIR/keys/shadowsocks.env"
+else
+    SS_SERVER_PASSWORD=""
+fi
+
+export SS_SERVER_PASSWORD
+
+# -----------------------------------------------------------------------------
 # Export variables needed by generate-user.sh
 # -----------------------------------------------------------------------------
 export REALITY_PUBLIC_KEY
@@ -237,6 +264,12 @@ export ENABLE_WIREGUARD="${ENABLE_WIREGUARD:-true}"
 export ENABLE_AMNEZIAWG="${ENABLE_AMNEZIAWG:-true}"
 export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+export ENABLE_TUIC="${ENABLE_TUIC:-true}"
+export PORT_TUIC="${PORT_TUIC:-8444}"
+export ENABLE_VMESS="${ENABLE_VMESS:-true}"
+export PORT_VMESS_WS="${PORT_VMESS_WS:-2086}"
+export ENABLE_SHADOWTLS="${ENABLE_SHADOWTLS:-true}"
+export PORT_SHADOWTLS="${PORT_SHADOWTLS:-8445}"
 # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
 if [[ -z "${CDN_DOMAIN:-}" && -n "${CDN_SUBDOMAIN:-}" && -n "${DOMAIN:-}" ]]; then
     export CDN_DOMAIN="${CDN_SUBDOMAIN}.${DOMAIN}"
@@ -244,6 +277,7 @@ else
     export CDN_DOMAIN="${CDN_DOMAIN:-}"
 fi
 export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
+export CDN_VMESS_WS_PATH="${CDN_VMESS_WS_PATH:-/vmws}"
 
 # -----------------------------------------------------------------------------
 # Generate WireGuard server config (before creating users)
@@ -327,6 +361,10 @@ REALITY_USERS_JSON="["
 TROJAN_USERS_JSON="["
 HYSTERIA2_USERS_JSON="["
 VLESS_WS_USERS_JSON="["
+TUIC_USERS_JSON="["
+VMESS_USERS_JSON="["
+SHADOWTLS_USERS_JSON="["
+SS_USERS_JSON="["
 TRUSTTUNNEL_CREDENTIALS=""
 
 for i in $(seq -w 1 "$INITIAL_USERS"); do
@@ -350,13 +388,29 @@ for i in $(seq -w 1 "$INITIAL_USERS"); do
         USER_PASSWORD=$(pwgen -s 24 1)
         log_info "Creating new user: $USER_ID"
 
+        # Generate ShadowTLS + SS2022 per-user credentials
+        SHADOWTLS_PASSWORD=$(openssl rand -hex 16)
+        SS_USER_KEY=$(openssl rand -base64 16)
+
         # Store user credentials
         cat > "$STATE_DIR/users/$USER_ID/credentials.env" <<EOF
 USER_ID=$USER_ID
 USER_UUID=$USER_UUID
 USER_PASSWORD=$USER_PASSWORD
+SHADOWTLS_PASSWORD=$SHADOWTLS_PASSWORD
+SS_USER_KEY=$SS_USER_KEY
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
+    fi
+
+    # Ensure ShadowTLS/SS credentials exist (for users created before ShadowTLS was added)
+    if [[ -z "${SHADOWTLS_PASSWORD:-}" ]]; then
+        SHADOWTLS_PASSWORD=$(openssl rand -hex 16)
+        echo "SHADOWTLS_PASSWORD=$SHADOWTLS_PASSWORD" >> "$STATE_DIR/users/$USER_ID/credentials.env"
+    fi
+    if [[ -z "${SS_USER_KEY:-}" ]]; then
+        SS_USER_KEY=$(openssl rand -base64 16)
+        echo "SS_USER_KEY=$SS_USER_KEY" >> "$STATE_DIR/users/$USER_ID/credentials.env"
     fi
 
     # Build JSON arrays for sing-box config
@@ -364,11 +418,19 @@ EOF
     [[ $i -gt 1 ]] && TROJAN_USERS_JSON+=","
     [[ $i -gt 1 ]] && HYSTERIA2_USERS_JSON+=","
     [[ $i -gt 1 ]] && VLESS_WS_USERS_JSON+=","
+    [[ $i -gt 1 ]] && TUIC_USERS_JSON+=","
+    [[ $i -gt 1 ]] && VMESS_USERS_JSON+=","
+    [[ $i -gt 1 ]] && SHADOWTLS_USERS_JSON+=","
+    [[ $i -gt 1 ]] && SS_USERS_JSON+=","
 
     REALITY_USERS_JSON+="{\"name\":\"$USER_ID\",\"uuid\":\"$USER_UUID\",\"flow\":\"xtls-rprx-vision\"}"
     TROJAN_USERS_JSON+="{\"name\":\"$USER_ID\",\"password\":\"$USER_PASSWORD\"}"
     HYSTERIA2_USERS_JSON+="{\"name\":\"$USER_ID\",\"password\":\"$USER_PASSWORD\"}"
     VLESS_WS_USERS_JSON+="{\"name\":\"$USER_ID\",\"uuid\":\"$USER_UUID\"}"
+    TUIC_USERS_JSON+="{\"name\":\"$USER_ID\",\"uuid\":\"$USER_UUID\",\"password\":\"$USER_PASSWORD\"}"
+    VMESS_USERS_JSON+="{\"name\":\"$USER_ID\",\"uuid\":\"$USER_UUID\"}"
+    SHADOWTLS_USERS_JSON+="{\"name\":\"$USER_ID\",\"password\":\"$SHADOWTLS_PASSWORD\"}"
+    SS_USERS_JSON+="{\"name\":\"$USER_ID\",\"password\":\"$SS_USER_KEY\"}"
 
     # TrustTunnel credentials (TOML format - uses [[client]] not [[credentials]])
     TRUSTTUNNEL_CREDENTIALS+="[[client]]
@@ -462,6 +524,20 @@ for user_dir in "$STATE_DIR"/users/*/; do
     TROJAN_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"password\":\"$USER_PASSWORD\"}"
     HYSTERIA2_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"password\":\"$USER_PASSWORD\"}"
     VLESS_WS_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"uuid\":\"$USER_UUID\"}"
+    TUIC_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"uuid\":\"$USER_UUID\",\"password\":\"$USER_PASSWORD\"}"
+    VMESS_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"uuid\":\"$USER_UUID\"}"
+
+    # Ensure ShadowTLS/SS credentials exist for extra users
+    if [[ -z "${SHADOWTLS_PASSWORD:-}" ]]; then
+        SHADOWTLS_PASSWORD=$(openssl rand -hex 16)
+        echo "SHADOWTLS_PASSWORD=$SHADOWTLS_PASSWORD" >> "$STATE_DIR/users/$EXTRA_USER_ID/credentials.env"
+    fi
+    if [[ -z "${SS_USER_KEY:-}" ]]; then
+        SS_USER_KEY=$(openssl rand -base64 16)
+        echo "SS_USER_KEY=$SS_USER_KEY" >> "$STATE_DIR/users/$EXTRA_USER_ID/credentials.env"
+    fi
+    SHADOWTLS_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"password\":\"$SHADOWTLS_PASSWORD\"}"
+    SS_USERS_JSON+=",{\"name\":\"$EXTRA_USER_ID\",\"password\":\"$SS_USER_KEY\"}"
 
     TRUSTTUNNEL_CREDENTIALS+="[[client]]
 username = \"$EXTRA_USER_ID\"
@@ -485,6 +561,10 @@ REALITY_USERS_JSON+="]"
 TROJAN_USERS_JSON+="]"
 HYSTERIA2_USERS_JSON+="]"
 VLESS_WS_USERS_JSON+="]"
+TUIC_USERS_JSON+="]"
+VMESS_USERS_JSON+="]"
+SHADOWTLS_USERS_JSON+="]"
+SS_USERS_JSON+="]"
 
 # -----------------------------------------------------------------------------
 # Generate TrustTunnel config (if enabled)
@@ -513,6 +593,9 @@ singbox_needed=false
 [[ "${ENABLE_REALITY:-true}" == "true" ]] && singbox_needed=true
 [[ "${ENABLE_TROJAN:-true}" == "true" ]] && singbox_needed=true
 [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && singbox_needed=true
+[[ "${ENABLE_TUIC:-true}" == "true" ]] && singbox_needed=true
+[[ "${ENABLE_VMESS:-true}" == "true" ]] && singbox_needed=true
+[[ "${ENABLE_SHADOWTLS:-true}" == "true" ]] && singbox_needed=true
 
 if [[ "$singbox_needed" == "true" ]]; then
     log_info "Generating sing-box configuration..."
@@ -521,6 +604,11 @@ if [[ "$singbox_needed" == "true" ]]; then
     export TROJAN_USERS_JSON
     export HYSTERIA2_USERS_JSON
     export VLESS_WS_USERS_JSON
+    export TUIC_USERS_JSON
+    export VMESS_USERS_JSON
+    export SHADOWTLS_USERS_JSON
+    export SS_USERS_JSON
+    export SS_SERVER_PASSWORD
     export REALITY_PRIVATE_KEY
     export REALITY_SHORT_ID
     export REALITY_TARGET_HOST
@@ -529,6 +617,7 @@ if [[ "$singbox_needed" == "true" ]]; then
     export CLASH_API_SECRET
     export HYSTERIA2_OBFS_PASSWORD
     export CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
+    export CDN_VMESS_WS_PATH="${CDN_VMESS_WS_PATH:-/vmws}"
     export LOG_LEVEL="${LOG_LEVEL:-info}"
 
     envsubst < /configs/sing-box/config.json.template > /configs/sing-box/config.json

@@ -16,6 +16,9 @@ This guide explains how to connect to MoaV from various devices.
 - [WireGuard Setup](#wireguard-setup)
 - [AmneziaWG Setup](#amneziawg-setup)
 - [Hysteria2 Setup](#hysteria2-setup)
+- [TUIC v5 Setup](#tuic-v5-setup)
+- [VMess+WS Setup](#vmessws-setup)
+- [ShadowTLS v3 Setup](#shadowtls-v3-setup)
 - [CDN VLESS+WS Setup (When IP Blocked)](#cdn-vlessws-setup-when-ip-blocked)
 - [TrustTunnel Setup](#trusttunnel-setup)
 - [DNS Tunnel Setup (Last Resort)](#dns-tunnel-setup-last-resort)
@@ -36,6 +39,9 @@ This guide explains how to connect to MoaV from various devices.
 | [Reality (VLESS)](https://github.com/XTLS/REALITY) | 443/tcp | TLS camouflage, virtually undetectable |
 | [Trojan](https://trojan-gfw.github.io/trojan/) | 8443/tcp | HTTPS mimicry, battle-tested |
 | [Hysteria2](https://v2.hysteria.network/) | 443/udp | QUIC-based, fast on lossy networks |
+| [TUIC v5](https://github.com/EAimTY/tuic) | 8444/udp | QUIC-based, alternative to Hysteria2 |
+| VMess+WS | 2086/tcp | CDN-compatible, wide client support |
+| [ShadowTLS v3](https://github.com/ihciah/shadow-tls) + SS2022 | 8445/tcp | TLS camouflage + Shadowsocks 2022 |
 | CDN (VLESS+WS) | 443 via Cloudflare | When server IP is blocked |
 | [TrustTunnel](https://trusttunnel.org/) | 4443/tcp+udp | HTTP/2 & QUIC, looks like HTTPS |
 | [WireGuard](https://www.wireguard.com/) (Direct) | 51820/udp | Full VPN mode, simple setup |
@@ -51,12 +57,12 @@ This guide explains how to connect to MoaV from various devices.
 
 | App | Protocols | Link |
 |-----|-----------|------|
-| [Shadowrocket](https://apps.apple.com/us/app/shadowrocket/id932747118) | VLESS, VMess, Trojan, Hysteria2, WireGuard | [App Store ($2.99)](https://apps.apple.com/us/app/shadowrocket/id932747118) |
-| [Streisand](https://apps.apple.com/us/app/streisand/id6450534064) | VLESS/Reality, VMess, Trojan, Hysteria2, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/streisand/id6450534064) |
-| [Hiddify](https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532) | VLESS, VMess, Hysteria2, Trojan, Reality, SSH | [App Store (Free)](https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532) |
-| [V2Box](https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690) | VLESS, VMess, Trojan, Hysteria2, Reality | [App Store](https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690) |
-| [sing-box](https://apps.apple.com/us/app/sing-box-vt/id6673731168) | VLESS, VMess, Trojan, Hysteria2, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/sing-box-vt/id6673731168) |
-| [Loon](https://apps.apple.com/us/app/loon/id1373567447) | VLESS/Reality, Hysteria2, Trojan, WireGuard | [App Store](https://apps.apple.com/us/app/loon/id1373567447) |
+| [Shadowrocket](https://apps.apple.com/us/app/shadowrocket/id932747118) | VLESS, VMess, Trojan, Hysteria2, TUIC, WireGuard | [App Store ($2.99)](https://apps.apple.com/us/app/shadowrocket/id932747118) |
+| [Streisand](https://apps.apple.com/us/app/streisand/id6450534064) | VLESS/Reality, VMess, Trojan, Hysteria2, TUIC, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/streisand/id6450534064) |
+| [Hiddify](https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532) | VLESS, VMess, Hysteria2, Trojan, TUIC, Reality, SSH | [App Store (Free)](https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532) |
+| [V2Box](https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690) | VLESS, VMess, Trojan, Hysteria2, TUIC, Reality | [App Store](https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690) |
+| [sing-box](https://apps.apple.com/us/app/sing-box-vt/id6673731168) | VLESS, VMess, Trojan, Hysteria2, TUIC, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/sing-box-vt/id6673731168) |
+| [Loon](https://apps.apple.com/us/app/loon/id1373567447) | VLESS/Reality, Hysteria2, Trojan, TUIC, WireGuard | [App Store](https://apps.apple.com/us/app/loon/id1373567447) |
 | [Pharos Pro](https://apps.apple.com/us/app/pharos-pro/id1456610173) | VLESS, Hysteria2, Trojan, TUIC | [App Store ($2.99)](https://apps.apple.com/us/app/pharos-pro/id1456610173) |
 | [Onion Browser](https://apps.apple.com/us/app/onion-browser/id519296448) | Tor | [App Store (Free)](https://apps.apple.com/us/app/onion-browser/id519296448) |
 | [Psiphon](https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909) | Psiphon | [App Store (Free)](https://apps.apple.com/us/app/psiphon-vpn-freedom-online/id1276263909) |
@@ -68,11 +74,11 @@ This guide explains how to connect to MoaV from various devices.
 
 | App | Protocols | Link |
 |-----|-----------|------|
-| [v2rayNG](https://github.com/2dust/v2rayNG) | VLESS, VMess, Trojan, Shadowsocks | [GitHub](https://github.com/2dust/v2rayNG/releases) |
-| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality, SSH | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
-| [NekoBox](https://github.com/MatsuriDayo/NekoBoxForAndroid) | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/NekoBoxForAndroid/releases) |
-| [V2Box](https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box) | VLESS, VMess, Trojan, Hysteria2, Reality | [Play Store](https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box) |
-| [sing-box](https://github.com/SagerNet/sing-box) | VLESS, VMess, Trojan, Hysteria2, WireGuard | [F-Droid](https://f-droid.org/packages/io.nekohasekai.sfa/) / [GitHub](https://github.com/SagerNet/sing-box/releases) |
+| [v2rayNG](https://github.com/2dust/v2rayNG) | VLESS, VMess, Trojan, TUIC, Shadowsocks | [GitHub](https://github.com/2dust/v2rayNG/releases) |
+| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, TUIC, Reality, SSH | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| [NekoBox](https://github.com/MatsuriDayo/NekoBoxForAndroid) | VLESS, VMess, Trojan, Hysteria2, TUIC (sing-box) | [GitHub](https://github.com/MatsuriDayo/NekoBoxForAndroid/releases) |
+| [V2Box](https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box) | VLESS, VMess, Trojan, Hysteria2, TUIC, Reality | [Play Store](https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box) |
+| [sing-box](https://github.com/SagerNet/sing-box) | VLESS, VMess, Trojan, Hysteria2, TUIC, WireGuard | [F-Droid](https://f-droid.org/packages/io.nekohasekai.sfa/) / [GitHub](https://github.com/SagerNet/sing-box/releases) |
 | [HTTP Injector](https://play.google.com/store/apps/details?id=com.evozi.injector) | VLESS, Hysteria, DNS Tunnel, WireGuard, SSH | [Play Store](https://play.google.com/store/apps/details?id=com.evozi.injector) |
 | [Clash Meta](https://github.com/MetaCubeX/ClashMetaForAndroid) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/MetaCubeX/ClashMetaForAndroid/releases) |
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Play Store](https://play.google.com/store/apps/details?id=org.torproject.torbrowser) / [Official](https://www.torproject.org/download/) |
@@ -86,10 +92,10 @@ This guide explains how to connect to MoaV from various devices.
 | App | Protocols | Link |
 |-----|-----------|------|
 | [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2, TUIC | [GitHub](https://github.com/2dust/v2rayN/releases) |
-| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
-| [NekoRay](https://github.com/MatsuriDayo/nekoray) | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) ¹ |
-| [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/mihomo-party-org/mihomo-party/releases) |
-| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
+| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, TUIC, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| [NekoRay](https://github.com/MatsuriDayo/nekoray) | VLESS, VMess, Trojan, Hysteria2, TUIC (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) ¹ |
+| [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party) | VLESS, VMess, Hysteria2, TUIC, Trojan | [GitHub](https://github.com/mihomo-party-org/mihomo-party/releases) |
+| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, TUIC, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [Psiphon](https://psiphon.ca/) | Psiphon | [Official](https://psiphon.ca/en/download.html) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [Official](https://www.wireguard.com/install/) |
@@ -100,12 +106,12 @@ This guide explains how to connect to MoaV from various devices.
 
 | App | Protocols | Link |
 |-----|-----------|------|
-| [Streisand](https://apps.apple.com/us/app/streisand/id6450534064) | VLESS/Reality, VMess, Trojan, Hysteria2, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/streisand/id6450534064) |
-| [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2 | [GitHub](https://github.com/2dust/v2rayN/releases) |
-| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
-| [NekoRay](https://github.com/MatsuriDayo/nekoray) | VLESS, VMess, Trojan, Hysteria2 (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) ¹ |
-| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
-| [sing-box](https://sing-box.sagernet.org/) | VLESS, VMess, Trojan, Hysteria2, WireGuard | [Homebrew](https://formulae.brew.sh/formula/sing-box) / [GitHub](https://github.com/SagerNet/sing-box) |
+| [Streisand](https://apps.apple.com/us/app/streisand/id6450534064) | VLESS/Reality, VMess, Trojan, Hysteria2, TUIC, WireGuard | [App Store (Free)](https://apps.apple.com/us/app/streisand/id6450534064) |
+| [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2, TUIC | [GitHub](https://github.com/2dust/v2rayN/releases) |
+| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, TUIC, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| [NekoRay](https://github.com/MatsuriDayo/nekoray) | VLESS, VMess, Trojan, Hysteria2, TUIC (sing-box) | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) ¹ |
+| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, TUIC, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
+| [sing-box](https://sing-box.sagernet.org/) | VLESS, VMess, Trojan, Hysteria2, TUIC, WireGuard | [Homebrew](https://formulae.brew.sh/formula/sing-box) / [GitHub](https://github.com/SagerNet/sing-box) |
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [Psiphon](https://psiphon.ca/) | Psiphon | [App Store (Apple Silicon)](https://apps.apple.com/us/app/psiphon/id1276263909) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [App Store](https://apps.apple.com/us/app/wireguard/id1451685025) |
@@ -116,11 +122,11 @@ This guide explains how to connect to MoaV from various devices.
 
 | App | Protocols | Link |
 |-----|-----------|------|
-| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
-| [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2 | [GitHub](https://github.com/2dust/v2rayN/releases) |
-| [sing-box](https://sing-box.sagernet.org/) | VLESS, VMess, Trojan, Hysteria2, WireGuard, DNS | [GitHub](https://github.com/SagerNet/sing-box) |
-| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
-| [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party) | VLESS, VMess, Hysteria2, Trojan | [GitHub](https://github.com/mihomo-party-org/mihomo-party/releases) |
+| [Hiddify](https://hiddify.com/) | VLESS, VMess, Hysteria2, Trojan, TUIC, Reality | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| [v2rayN](https://github.com/2dust/v2rayN) | VLESS, VMess, Trojan, Hysteria2, TUIC | [GitHub](https://github.com/2dust/v2rayN/releases) |
+| [sing-box](https://sing-box.sagernet.org/) | VLESS, VMess, Trojan, Hysteria2, TUIC, WireGuard, DNS | [GitHub](https://github.com/SagerNet/sing-box) |
+| [Clash Verge](https://github.com/clash-verge-rev/clash-verge-rev) | VLESS, VMess, Hysteria2, TUIC, Trojan | [GitHub](https://github.com/clash-verge-rev/clash-verge-rev/releases) |
+| [Mihomo Party](https://github.com/mihomo-party-org/mihomo-party) | VLESS, VMess, Hysteria2, TUIC, Trojan | [GitHub](https://github.com/mihomo-party-org/mihomo-party/releases) |
 | [Tor Browser](https://www.torproject.org/download/) | Tor | [Official](https://www.torproject.org/download/) |
 | [WireGuard](https://www.wireguard.com/) | WireGuard | [Official](https://www.wireguard.com/install/) |
 | [AmneziaWG](https://github.com/amnezia-vpn/amneziawg-linux-kernel-module) | AmneziaWG | `awg-quick` CLI (awg-tools) |
@@ -140,14 +146,16 @@ Try these in order. If one doesn't work, try the next:
 
 1. **Reality (VLESS)** - Primary, most reliable (port 443/tcp)
 2. **Hysteria2** - Fast alternative, uses QUIC/UDP (port 443/udp)
-3. **Trojan** - Backup, uses your domain's TLS cert (port 8443/tcp)
-4. **CDN (VLESS+WS)** - When server IP is blocked, routes via Cloudflare (port 443 via CDN)
-5. **TrustTunnel** - HTTP/2 & QUIC, looks like normal HTTPS (port 4443)
-6. **WireGuard (Direct)** - Full VPN mode, simple setup (port 51820/udp)
-7. **WireGuard (wstunnel)** - VPN wrapped in WebSocket, for restrictive networks (port 8080/tcp)
-8. **Tor (Snowflake)** - Uses Tor network (no server needed)
-9. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
-10. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
+3. **TUIC v5** - QUIC-based alternative to Hysteria2, different fingerprint (port 8444/udp)
+4. **ShadowTLS v3** - TLS camouflage with Shadowsocks 2022, strong anti-DPI (port 8445/tcp)
+5. **Trojan** - Backup, uses your domain's TLS cert (port 8443/tcp)
+6. **CDN (VLESS+WS)** - When server IP is blocked, routes via Cloudflare (port 443 via CDN)
+7. **TrustTunnel** - HTTP/2 & QUIC, looks like normal HTTPS (port 4443)
+8. **WireGuard (Direct)** - Full VPN mode, simple setup (port 51820/udp)
+9. **WireGuard (wstunnel)** - VPN wrapped in WebSocket, for restrictive networks (port 8080/tcp)
+10. **Tor (Snowflake)** - Uses Tor network (no server needed)
+11. **DNS Tunnel** - Last resort, very slow but hard to block (port 53/udp)
+12. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
 
 ---
 
@@ -171,7 +179,7 @@ moav test user1
 moav test user1 --json
 ```
 
-The test checks: Reality, Trojan, Hysteria2, WireGuard (config validation), and dnstt.
+The test checks: Reality, Trojan, Hysteria2, TUIC, VMess, ShadowTLS, WireGuard (config validation), and dnstt.
 
 **Sample output:**
 ```
@@ -186,6 +194,9 @@ The test checks: Reality, Trojan, Hysteria2, WireGuard (config validation), and 
   ✓ reality      Connected via VLESS/Reality
   ✓ trojan       Connected via Trojan
   ✓ hysteria2    Connected via Hysteria2
+  ✓ tuic         Connected via TUIC v5
+  ✓ vmess        Connected via VMess+WS
+  ✓ shadowtls    Connected via ShadowTLS v3 + SS2022
   ✓ wireguard    Config valid, endpoint reachable
   ○ dnstt        No dnstt config found in bundle
 
@@ -203,6 +214,9 @@ moav client connect user1
 # Force a specific protocol
 moav client connect user1 --protocol reality
 moav client connect user1 --protocol hysteria2
+moav client connect user1 --protocol tuic
+moav client connect user1 --protocol vmess
+moav client connect user1 --protocol shadowtls
 moav client connect user1 --protocol trojan
 moav client connect user1 --protocol wireguard
 moav client connect user1 --protocol dnstt
@@ -222,10 +236,13 @@ CLIENT_HTTP_PORT=8080
 **Protocol fallback order (auto mode):**
 1. Reality (VLESS) - Most reliable
 2. Hysteria2 - Fast, UDP-based
-3. Trojan - TLS-based backup
-4. WireGuard - Full VPN
-5. Tor (Snowflake) - Uses Tor network (no server needed)
-6. dnstt - Last resort, slow but hard to block
+3. TUIC v5 - QUIC-based alternative
+4. VMess+WS - CDN-compatible
+5. ShadowTLS v3 - TLS camouflage + SS2022
+6. Trojan - TLS-based backup
+7. WireGuard - Full VPN
+8. Tor (Snowflake) - Uses Tor network (no server needed)
+9. dnstt - Last resort, slow but hard to block
 
 > **Note:** Psiphon is not available via MoaV client. Use the [official Psiphon apps](https://psiphon.ca/en/download.html) instead.
 
@@ -240,7 +257,7 @@ moav client build
 ### Technical Details
 
 The client container includes:
-- **sing-box** - Handles Reality, Trojan, Hysteria2
+- **sing-box** - Handles Reality, Trojan, Hysteria2, TUIC, VMess, ShadowTLS+SS2022
 - **wireguard-go** - Userspace WireGuard implementation
 - **wstunnel** - WebSocket tunnel for WireGuard
 - **dnstt-client** - DNS tunnel client
@@ -525,6 +542,92 @@ This creates a local proxy on:
 - HTTP: `127.0.0.1:8080`
 
 Configure your browser/apps to use this proxy.
+
+---
+
+## TUIC v5 Setup
+
+TUIC is a QUIC-based protocol similar to Hysteria2 but with a different fingerprint. It provides an alternative when Hysteria2 is blocked.
+
+### Using Shadowrocket / v2rayNG / Hiddify
+
+These apps support TUIC links natively. Import `tuic.txt` the same way as Reality.
+
+### Using sing-box CLI
+
+For desktop:
+
+```bash
+# Install sing-box
+# https://sing-box.sagernet.org/installation/
+
+# Run with config
+sing-box run -c tuic-singbox.json
+```
+
+This creates a local proxy on:
+- SOCKS5: `127.0.0.1:1080`
+- HTTP: `127.0.0.1:8080`
+
+Configure your browser/apps to use this proxy.
+
+---
+
+## VMess+WS Setup
+
+VMess over WebSocket provides wide client compatibility and CDN support. It works through Cloudflare CDN on port 2086.
+
+### Using v2rayNG / Shadowrocket / Hiddify
+
+All major proxy apps support VMess links natively. Import `vmess-ws.txt` (direct) or `vmess-cdn.txt` (CDN) the same way as Reality.
+
+### CDN Mode
+
+If your server IP is blocked, use the CDN link from `vmess-cdn.txt`. This routes traffic through Cloudflare, hiding your server's real IP.
+
+### Using sing-box CLI
+
+```bash
+sing-box run -c vmess-ws-singbox.json
+```
+
+---
+
+## ShadowTLS v3 Setup
+
+ShadowTLS v3 wraps Shadowsocks 2022 traffic in a TLS handshake that completes against a real server (e.g. `www.microsoft.com`). DPI sees a legitimate TLS session, making it extremely hard to detect or block. No domain required.
+
+**Your config files:**
+- `shadowtls.txt` - Human-readable config (server, port, passwords)
+- `shadowtls-singbox.json` - sing-box client configuration
+
+### Using sing-box / Hiddify / NekoBox
+
+Apps with sing-box core support ShadowTLS v3 natively. Import the `shadowtls-singbox.json` config file:
+
+1. Open **Hiddify**, **NekoBox**, or **sing-box** app
+2. Import `shadowtls-singbox.json` as a sing-box profile
+3. Enable the connection
+
+### Using sing-box CLI
+
+For desktop:
+
+```bash
+# Install sing-box
+# https://sing-box.sagernet.org/installation/
+
+# Run with config
+sing-box run -c shadowtls-singbox.json
+```
+
+This creates a local proxy on:
+- SOCKS5: `127.0.0.1:1080`
+- HTTP: `127.0.0.1:8080`
+
+Configure your browser/apps to use this proxy.
+
+**Note:** ShadowTLS v3 does not have a standard URI scheme like `vless://` or `vmess://`. Use the sing-box JSON config for import.
 
 ---
 
