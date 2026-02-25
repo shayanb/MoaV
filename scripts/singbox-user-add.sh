@@ -396,9 +396,9 @@ SS User Key: ${SS_USER_KEY}
 Handshake Server: www.microsoft.com
 EOF
 
-        # Generate QR code from text config
+        # Generate QR code from sing-box JSON config (minified)
         if command -v qrencode &>/dev/null; then
-            qrencode -o "$OUTPUT_DIR/shadowtls-qr.png" -s 6 "ss-shadowtls://${SERVER_IP}:${PORT_SHADOWTLS:-8445}#MoaV-ShadowTLS-${USERNAME}" 2>/dev/null || true
+            jq -c . "$OUTPUT_DIR/shadowtls-singbox.json" | qrencode -o "$OUTPUT_DIR/shadowtls-qr.png" -s 6 2>/dev/null || true
         fi
 
         # IPv6 variant
@@ -488,7 +488,7 @@ IP Address: ${SERVER_IP}:4443
 Domain: ${DOMAIN}
 Username: ${USERNAME}
 Password: ${USER_PASSWORD}
-DNS Servers: tls://1.1.1.1, tls://8.8.8.8
+DNS Servers: tls://1.1.1.1
 
 CLI Client:
 -----------
@@ -604,7 +604,7 @@ if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
     echo "  Domain: ${DOMAIN}"
     echo "  Username: ${USERNAME}"
     echo "  Password: ${USER_PASSWORD}"
-    echo "  DNS Servers: tls://1.1.1.1, tls://8.8.8.8"
+    echo "  DNS Servers: tls://1.1.1.1"
     echo ""
 fi
 

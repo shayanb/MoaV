@@ -441,8 +441,10 @@ SS User Key: ${SS_USER_KEY}
 Handshake Server: www.microsoft.com
 EOF
 
-        # QR code
-        qrencode -o "$OUTPUT_DIR/shadowtls-qr.png" -s 6 "ss-shadowtls://${SERVER_IP}:${PORT_SHADOWTLS:-8445}#MoaV-ShadowTLS-${USER_ID}" 2>/dev/null || true
+        # QR code from sing-box JSON config (minified)
+        if command -v qrencode &>/dev/null; then
+            jq -c . "$OUTPUT_DIR/shadowtls-singbox.json" | qrencode -o "$OUTPUT_DIR/shadowtls-qr.png" -s 6 2>/dev/null || true
+        fi
 
         log_info "  - ShadowTLS + SS2022 config generated"
     else
@@ -498,7 +500,7 @@ IP Address: ${SERVER_IP}:4443
 Domain: ${DOMAIN}
 Username: ${USER_ID}
 Password: ${USER_PASSWORD}
-DNS Servers: tls://1.1.1.1, tls://8.8.8.8
+DNS Servers: tls://1.1.1.1
 
 CLI Client:
 -----------
