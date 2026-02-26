@@ -312,8 +312,7 @@ moav client build
 <div dir="ltr">
 
 ```bash
-moav logs conduit             # مشاهده لاگ‌های conduit
-./scripts/conduit-stats.sh    # مشاهده آمار ترافیک زنده بر اساس کشور
+moav logs conduit             # مشاهده لاگ‌های conduit (لینک Ryve هنگام شروع نمایش داده می‌شود)
 ./scripts/conduit-info.sh     # دریافت لینک عمیق Ryve برای وارد کردن در موبایل
 ```
 

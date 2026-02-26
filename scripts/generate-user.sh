@@ -283,7 +283,7 @@ killswitch_enabled = false
 killswitch_allow_ports = []
 post_quantum_group_enabled = true
 exclusions = []
-dns_upstreams = ["tls://1.1.1.1", "tls://8.8.8.8"]
+dns_upstreams = ["tls://1.1.1.1"]
 
 [endpoint]
 hostname = "${DOMAIN}"
@@ -314,7 +314,7 @@ IP Address: ${SERVER_IP}:4443
 Domain: ${DOMAIN}
 Username: ${USER_ID}
 Password: ${USER_PASSWORD}
-DNS Servers: tls://1.1.1.1, tls://8.8.8.8
+DNS Servers: tls://1.1.1.1
 
 CLI Client:
 -----------
@@ -338,7 +338,7 @@ EOF
   "domain": "${DOMAIN}",
   "username": "${USER_ID}",
   "password": "${USER_PASSWORD}",
-  "dns_servers": ["tls://1.1.1.1", "tls://8.8.8.8"]
+  "dns_servers": ["tls://1.1.1.1"]
 }
 EOF
 

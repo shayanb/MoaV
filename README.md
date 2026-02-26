@@ -245,8 +245,7 @@ moav client build
 If running Psiphon Conduit to donate bandwidth:
 
 ```bash
-moav logs conduit             # View conduit logs
-./scripts/conduit-stats.sh    # View live traffic stats by country
+moav logs conduit             # View conduit logs (Ryve link shown on startup)
 ./scripts/conduit-info.sh     # Get Ryve deep link for mobile import
 ```
 

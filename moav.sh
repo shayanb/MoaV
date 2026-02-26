@@ -3085,7 +3085,7 @@ resolve_service() {
         snow|tor)                     echo "snowflake" ;;
         # Monitoring services (pass through or resolve aliases)
         grafana-cdn)                  echo "grafana-proxy" ;;
-        grafana|grafana-proxy|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter|conduit-exporter|singbox-exporter)
+        grafana|grafana-proxy|prometheus|cadvisor|node-exporter|clash-exporter|wireguard-exporter|snowflake-exporter|singbox-exporter)
             echo "$svc" ;;
         *)                            echo "$svc" ;;
     esac
