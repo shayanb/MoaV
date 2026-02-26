@@ -233,14 +233,45 @@ async def fetch_singbox_stats():
     return stats
 
 
+def _parse_prometheus_metric(lines: list[str], metric_name: str) -> float:
+    """Extract a simple gauge/counter value from Prometheus text format."""
+    for line in lines:
+        if line.startswith(metric_name + " ") or line.startswith(metric_name + "{"):
+            # Simple metric without labels: "metric_name value"
+            if line.startswith(metric_name + " "):
+                try:
+                    return float(line.split()[-1])
+                except (ValueError, IndexError):
+                    pass
+    return 0
+
+
+def _parse_prometheus_labeled(lines: list[str], metric_name: str) -> list[dict]:
+    """Extract labeled metrics (e.g. per-region) from Prometheus text format."""
+    results = []
+    for line in lines:
+        if line.startswith(metric_name + "{"):
+            try:
+                # Parse: metric_name{label="value",...} number
+                labels_str = line[line.index("{") + 1:line.index("}")]
+                value = float(line.split()[-1])
+                labels = {}
+                for part in labels_str.split(","):
+                    k, v = part.split("=", 1)
+                    labels[k.strip()] = v.strip().strip('"')
+                results.append({"labels": labels, "value": value})
+            except (ValueError, IndexError):
+                pass
+    return results
+
+
 async def fetch_conduit_stats():
-    """Fetch stats from Psiphon Conduit if running"""
+    """Fetch stats from Psiphon Conduit v2 native metrics endpoint"""
     stats = {
         "running": False,
         "connections": {"connecting": 0, "connected": 0},
         "bandwidth": {"upload": "0 B", "download": "0 B"},
-        "traffic_from": [],
-        "traffic_to": [],
+        "regions": [],
         "error": None
     }
 
@@ -251,18 +282,40 @@ async def fetch_conduit_stats():
 
     stats["running"] = True
 
-    # Try to read stats from shared state file
-    stats_file = Path("/state/conduit-stats.json")
-    if stats_file.exists():
-        try:
-            with open(stats_file) as f:
-                file_stats = json.load(f)
-                stats["connections"] = file_stats.get("connections", stats["connections"])
-                stats["bandwidth"] = file_stats.get("bandwidth", stats["bandwidth"])
-                stats["traffic_from"] = file_stats.get("traffic_from", [])
-                stats["traffic_to"] = file_stats.get("traffic_to", [])
-        except (json.JSONDecodeError, IOError) as e:
-            stats["error"] = f"Failed to read stats: {e}"
+    # Query native Prometheus metrics endpoint
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get("http://psiphon-conduit:9090/metrics")
+            resp.raise_for_status()
+            lines = resp.text.strip().split("\n")
+
+        stats["connections"]["connecting"] = int(_parse_prometheus_metric(lines, "conduit_connecting_clients"))
+        stats["connections"]["connected"] = int(_parse_prometheus_metric(lines, "conduit_connected_clients"))
+
+        upload_bytes = _parse_prometheus_metric(lines, "conduit_bytes_uploaded")
+        download_bytes = _parse_prometheus_metric(lines, "conduit_bytes_downloaded")
+        stats["bandwidth"]["upload"] = format_bytes(upload_bytes)
+        stats["bandwidth"]["download"] = format_bytes(download_bytes)
+
+        # Per-region connected clients
+        region_clients = _parse_prometheus_labeled(lines, "conduit_region_connected_clients")
+        region_download = {r["labels"].get("region", ""): r["value"]
+                          for r in _parse_prometheus_labeled(lines, "conduit_region_bytes_downloaded")}
+        region_upload = {r["labels"].get("region", ""): r["value"]
+                        for r in _parse_prometheus_labeled(lines, "conduit_region_bytes_uploaded")}
+
+        for r in region_clients:
+            region = r["labels"].get("region", "Unknown")
+            stats["regions"].append({
+                "region": region,
+                "connected": int(r["value"]),
+                "download": format_bytes(region_download.get(region, 0)),
+                "upload": format_bytes(region_upload.get(region, 0)),
+            })
+        stats["regions"].sort(key=lambda x: x["connected"], reverse=True)
+
+    except Exception as e:
+        stats["error"] = f"Failed to fetch metrics: {e}"
 
     return stats
 

@@ -199,7 +199,6 @@ The following services do not currently expose metrics:
 |---------|--------|
 | **TrustTunnel** | No metrics API available |
 | **dnstt** | No metrics API available |
-| **Conduit GeoIP** | Country-level stats remain in admin dashboard |
 
 Container-level metrics (CPU, memory, network) are still available for these services via cAdvisor.
 

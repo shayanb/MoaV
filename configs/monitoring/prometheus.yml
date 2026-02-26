@@ -47,11 +47,11 @@ scrape_configs:
       - targets: ['amneziawg-exporter:9587']
     scrape_timeout: 10s
 
-  # Conduit Exporter - parses Psiphon conduit logs for [STATS] metrics
+  # Conduit v2 native Prometheus metrics
   # NOTE: Only available when running with --profile conduit
   - job_name: 'conduit'
     static_configs:
-      - targets: ['conduit-exporter:9101']
+      - targets: ['psiphon-conduit:9090']
     scrape_timeout: 10s
 
   # Snowflake Exporter - parses snowflake proxy logs for metrics

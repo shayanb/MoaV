@@ -204,44 +204,21 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.psiphon
       args:
-        CONDUIT_VERSION: ${CONDUIT_VERSION:-1.4.0}
+        CONDUIT_VERSION: ${CONDUIT_VERSION:-2.0.0}
     container_name: moav-conduit
     restart: unless-stopped
     networks:
       - moav_net
     volumes:
       - moav_conduit:/data
-      - moav_state:/state
     environment:
       - TZ=${TZ:-UTC}
       - CONDUIT_BANDWIDTH=${CONDUIT_BANDWIDTH:-200}
-      - CONDUIT_MAX_CLIENTS=${CONDUIT_MAX_CLIENTS:-100}
-      - CONDUIT_STATS_ENABLED=${CONDUIT_STATS_ENABLED:-false}
-    cap_add:
-      - NET_ADMIN
+      - CONDUIT_MAX_COMMON_CLIENTS=${CONDUIT_MAX_COMMON_CLIENTS:-100}
+    expose:
+      - "9090"
     profiles:
       - conduit
-      - all
-
-  # Conduit Prometheus Exporter - parses conduit logs for [STATS] metrics
-  # Only runs with monitoring profile (requires Prometheus to scrape)
-  conduit-exporter:
-    build:
-      context: ./exporters/conduit
-      dockerfile: Dockerfile
-    container_name: moav-conduit-exporter
-    restart: unless-stopped
-    networks:
-      - moav_net
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - TZ=${TZ:-UTC}
-    expose:
-      - "9101"
-    # Note: No depends_on as conduit may not be running; exporter handles retry
-    profiles:
-      - monitoring
       - all
 
   # ===========================================================================

@@ -625,13 +625,12 @@ Optionally donate bandwidth to help others bypass censorship.
 # Start
 moav start conduit
 
-# View stats
-./scripts/conduit-stats.sh     # Live traffic by country
-./scripts/conduit-info.sh      # Ryve deep link
+# View info
+./scripts/conduit-info.sh      # Ryve deep link (also shown in container logs on startup)
 
 # Configure in .env:
-CONDUIT_BANDWIDTH=200    # Mbps limit
-CONDUIT_MAX_CLIENTS=100  # Max concurrent
+CONDUIT_BANDWIDTH=200              # Mbps limit
+CONDUIT_MAX_COMMON_CLIENTS=100     # Max concurrent common clients
 ```
 
 **Tor Snowflake:**
