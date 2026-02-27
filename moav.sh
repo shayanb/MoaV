@@ -3441,20 +3441,24 @@ cmd_build() {
         # causing TLS handshake timeouts on module downloads.
         # Fix: build Go services sequentially first, then everything else in parallel.
         local go_services="amneziawg dnstt snowflake"
-        local all_svc_list remaining_services
-        all_svc_list=$(docker compose --profile all config --services 2>/dev/null)
+        local buildable_services remaining_services
+
+        # Get only services that have build: configs (excludes image-only services)
+        buildable_services=$(docker compose --profile all config --format json 2>/dev/null \
+            | jq -r '.services | to_entries[] | select(.value.build != null) | .key' 2>/dev/null) \
+            || buildable_services=$(docker compose --profile all config --services 2>/dev/null)
 
         # Phase 1: Build Go-compilation services one at a time
         info "Phase 1/2: Building Go services (sequential)..."
         for svc in $go_services; do
-            if echo "$all_svc_list" | grep -q "^${svc}$"; then
+            if echo "$buildable_services" | grep -q "^${svc}$"; then
                 info "  Building ${svc}..."
                 docker compose --profile all build $no_cache "$svc"
             fi
         done
 
-        # Phase 2: Build remaining services in parallel (skip Go services already built)
-        remaining_services=$(echo "$all_svc_list" | grep -vE "^($(echo $go_services | tr ' ' '|'))$" | tr '\n' ' ')
+        # Phase 2: Build remaining buildable services in parallel
+        remaining_services=$(echo "$buildable_services" | grep -vE "^($(echo $go_services | tr ' ' '|'))$" | tr '\n' ' ')
         info "Phase 2/2: Building remaining services ($(echo $remaining_services | wc -w | tr -d ' ') services)..."
         docker compose --profile all build $no_cache $remaining_services
         success "All services built!"
