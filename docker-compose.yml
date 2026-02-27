@@ -14,6 +14,7 @@ volumes:
   moav_prometheus:
   moav_grafana:
   moav_snowflake_logs:
+  moav_webroot:
 
 services:
   # ===========================================================================
@@ -145,11 +146,11 @@ services:
   certbot:
     image: ${IMAGE_CERTBOT:-certbot/certbot:latest}
     container_name: moav-certbot
-    ports:
-      - "80:80"
+    depends_on:
+      - decoy
     volumes:
       - moav_certs:/etc/letsencrypt
-      - ./web:/var/www/html:ro
+      - moav_webroot:/acme
     environment:
       - DOMAIN=${DOMAIN}
       - ACME_EMAIL=${ACME_EMAIL}
@@ -161,7 +162,8 @@ services:
           exit 0
         fi
         if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then
-          certbot certonly --standalone \
+          certbot certonly --webroot \
+            --webroot-path /acme \
             --non-interactive \
             --agree-tos \
             --email ${ACME_EMAIL} \
@@ -189,6 +191,8 @@ services:
       - moav_net
     volumes:
       - ./web:/usr/share/nginx/html:ro
+      - moav_webroot:/acme
+      - ./configs/decoy/default.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"
     expose:
