@@ -26,7 +26,7 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.sing-box
       args:
-        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.22}
+        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.23}
     container_name: moav-sing-box
     restart: unless-stopped
     networks:
@@ -625,7 +625,7 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.client
       args:
-        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.22}
+        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.23}
         WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.2}
         SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
         TRUSTTUNNEL_CLIENT_VERSION: ${TRUSTTUNNEL_CLIENT_VERSION:-0.99.105}
