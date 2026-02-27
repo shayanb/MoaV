@@ -3436,7 +3436,10 @@ cmd_build() {
 
     if [[ ${#services_args[@]} -eq 0 ]] || [[ "${services_args[0]}" == "all" ]]; then
         info "Building all services${no_cache:+ (no cache)}..."
-        docker compose --profile all build $no_cache
+        # Limit parallel builds to prevent network saturation
+        # (Go module downloads timeout when 13+ images build simultaneously)
+        COMPOSE_PARALLEL_LIMIT=${COMPOSE_PARALLEL_LIMIT:-4} \
+            docker compose --profile all build $no_cache
         success "All services built!"
     else
         # Check if argument is a profile name
