@@ -415,8 +415,15 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
     CONFIG_AMNEZIAWG=$(cat "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || echo "")
 
-    # Get CDN domain from .env
-    CDN_DOMAIN="${CDN_DOMAIN:-$(grep -E '^CDN_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")}"
+    # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
+    CDN_DOMAIN="${CDN_DOMAIN:-}"
+    if [[ -z "$CDN_DOMAIN" ]]; then
+        _cdn_sub="${CDN_SUBDOMAIN:-}"
+        _cdn_dom="${DOMAIN:-}"
+        if [[ -n "$_cdn_sub" && -n "$_cdn_dom" ]]; then
+            CDN_DOMAIN="${_cdn_sub}.${_cdn_dom}"
+        fi
+    fi
 
     # Read user password from trusttunnel.json or credentials
     if [[ -f "$OUTPUT_DIR/trusttunnel.json" ]]; then
