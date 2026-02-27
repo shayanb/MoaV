@@ -33,7 +33,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_connected_clients", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(conduit_connected_clients)", "refId": "A" }
       ],
       "title": "Connected",
       "type": "stat"
@@ -62,7 +62,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_connecting_clients", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(conduit_connecting_clients)", "refId": "A" }
       ],
       "title": "Connecting",
       "type": "stat"
@@ -91,7 +91,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max_over_time(conduit_connected_clients[$__range]) + max_over_time(conduit_connecting_clients[$__range])", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(max_over_time(conduit_connected_clients[$__range])) + sum(max_over_time(conduit_connecting_clients[$__range]))", "refId": "A" }
       ],
       "title": "Peak Clients",
       "description": "Maximum concurrent clients (connected + connecting) in the selected time range",
@@ -120,7 +120,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_bytes_downloaded", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(conduit_bytes_downloaded)", "refId": "A" }
       ],
       "title": "Total Download",
       "type": "stat"
@@ -148,7 +148,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_bytes_uploaded", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(conduit_bytes_uploaded)", "refId": "A" }
       ],
       "title": "Total Upload",
       "type": "stat"
@@ -208,7 +208,7 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(conduit_bytes_downloaded[5m]) + rate(conduit_bytes_uploaded[5m])", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(conduit_bytes_downloaded[5m])) + sum(rate(conduit_bytes_uploaded[5m]))", "refId": "A" }
       ],
       "title": "Current Rate",
       "type": "stat"
@@ -268,8 +268,8 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_connected_clients", "legendFormat": "Connected", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_connecting_clients", "legendFormat": "Connecting", "refId": "B" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(conduit_connected_clients)", "legendFormat": "Connected", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(conduit_connecting_clients)", "legendFormat": "Connecting", "refId": "B" }
       ],
       "title": "Client Connections",
       "type": "timeseries"
@@ -301,8 +301,8 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(conduit_bytes_downloaded[5m])", "legendFormat": "Download", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(conduit_bytes_uploaded[5m])", "legendFormat": "Upload", "refId": "B" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(conduit_bytes_downloaded[5m]))", "legendFormat": "Download", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(conduit_bytes_uploaded[5m]))", "legendFormat": "Upload", "refId": "B" }
       ],
       "title": "Bandwidth Rate",
       "type": "timeseries"
@@ -334,8 +334,8 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_bytes_downloaded", "legendFormat": "Download", "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_bytes_uploaded", "legendFormat": "Upload", "refId": "B" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(conduit_bytes_downloaded)", "legendFormat": "Download", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(conduit_bytes_uploaded)", "legendFormat": "Upload", "refId": "B" }
       ],
       "title": "Total Bandwidth Over Time",
       "type": "timeseries"
@@ -366,10 +366,79 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "conduit_region_connected_clients", "legendFormat": "{{region}}", "refId": "A" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (region) (conduit_region_connected_clients)", "legendFormat": "{{region}}", "refId": "A" }
       ],
       "title": "Connected Clients by Region",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Region" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Download" },
+            "properties": [{ "id": "unit", "value": "bytes" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Upload" },
+            "properties": [{ "id": "unit", "value": "bytes" }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+      "id": 13,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ["Connected", "Download", "Upload"]
+        },
+        "sortBy": [{ "displayName": "Connected", "desc": true }]
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (region) (conduit_region_connected_clients)", "format": "table", "instant": true, "refId": "Connected" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (region) (conduit_region_bytes_downloaded)", "format": "table", "instant": true, "refId": "Download" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (region) (conduit_region_bytes_uploaded)", "format": "table", "instant": true, "refId": "Upload" }
+      ],
+      "title": "Traffic by Region",
+      "description": "Current connected clients and cumulative traffic per region",
+      "transformations": [
+        {
+          "id": "seriesToColumns",
+          "options": { "byField": "region" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "Time 3": true },
+            "renameByName": {
+              "region": "Region",
+              "Value #Connected": "Connected",
+              "Value #Download": "Download",
+              "Value #Upload": "Upload"
+            }
+          }
+        }
+      ],
+      "type": "table"
     }
   ],
   "refresh": "30s",
@@ -381,6 +450,6 @@
   "timezone": "",
   "title": "MoaV - Conduit",
   "uid": "moav-conduit",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
