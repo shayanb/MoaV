@@ -6,8 +6,11 @@ ARG AMNEZIAWG_GO_VERSION=v0.2.16
 
 RUN apk add --no-cache git gcc musl-dev
 
-RUN git clone --branch ${AMNEZIAWG_GO_VERSION} --depth 1 https://github.com/amnezia-vpn/amneziawg-go.git /src && \
-    cd /src && \
+RUN git clone --branch ${AMNEZIAWG_GO_VERSION} --depth 1 https://github.com/amnezia-vpn/amneziawg-go.git /src
+
+WORKDIR /src
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
     go build -ldflags '-linkmode external -extldflags "-fno-PIC -static"' -o /usr/bin/amneziawg-go
 
 FROM alpine:3.21

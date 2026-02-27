@@ -5,7 +5,10 @@ RUN apk add --no-cache git
 
 WORKDIR /src
 
-RUN git clone https://www.bamsoftware.com/git/dnstt.git . && \
+RUN git clone https://www.bamsoftware.com/git/dnstt.git .
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
     cd dnstt-server && \
     go build -o /dnstt-server -trimpath -ldflags "-s -w" .
 

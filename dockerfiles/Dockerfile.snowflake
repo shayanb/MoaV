@@ -12,7 +12,9 @@ RUN apk add --no-cache git
 RUN git clone --depth 1 --branch v${SNOWFLAKE_VERSION} \
     https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake.git /snowflake
 WORKDIR /snowflake/proxy
-RUN go build -ldflags="-s -w" -o /bin/proxy
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -ldflags="-s -w" -o /bin/proxy
 
 # Final image
 FROM alpine:3.21
