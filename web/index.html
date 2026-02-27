@@ -3,68 +3,637 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Site Under Construction</title>
+    <title>Backgammon</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            padding: 12px;
+        }
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 400;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            color: #c8a96e;
+        }
+        #status {
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+            min-height: 1.2em;
+            color: #aaa;
+        }
+        #status.your-turn { color: #8bc34a; }
+        #status.opp-turn { color: #ff9800; }
+        #status.win { color: #ffd700; font-weight: 600; }
+
+        .board-wrap {
+            position: relative;
+            background: #2d1810;
+            border: 4px solid #5a3a1a;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 0 40px rgba(0,0,0,0.3);
+            padding: 6px;
+        }
+        canvas { display: block; border-radius: 6px; }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            align-items: center;
+        }
+        button {
+            background: #c8a96e;
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #dabb7f; }
+        button:disabled { background: #555; color: #888; cursor: default; }
+
+        .dice-area {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .die {
+            width: 36px; height: 36px;
+            background: #f5f0e8;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #fff;
-        }
-        .container {
-            text-align: center;
-            padding: 2rem;
-            max-width: 600px;
-        }
-        .icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 300;
-            margin-bottom: 1rem;
-        }
-        p {
             font-size: 1.1rem;
-            opacity: 0.9;
-            line-height: 1.6;
+            font-weight: 700;
+            color: #1a1a2e;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            transition: transform 0.3s;
         }
-        .progress {
-            margin-top: 2rem;
-            height: 4px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-            overflow: hidden;
+        .die.used { opacity: 0.3; }
+        .die.rolling { animation: shake 0.4s ease; }
+        @keyframes shake {
+            0%,100% { transform: rotate(0deg); }
+            25% { transform: rotate(-15deg) scale(1.1); }
+            75% { transform: rotate(15deg) scale(1.1); }
         }
-        .progress-bar {
-            height: 100%;
-            width: 60%;
-            background: #fff;
-            animation: progress 2s ease-in-out infinite;
-        }
-        @keyframes progress {
-            0%, 100% { transform: translateX(-100%); }
-            50% { transform: translateX(100%); }
-        }
+        .score { font-size: 0.75rem; color: #888; margin-top: 8px; }
+        .footer { margin-top: 16px; font-size: 0.7rem; color: #444; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="icon">🚧</div>
-        <h1>Under Construction</h1>
-        <p>We're working on something new. Please check back soon.</p>
-        <div class="progress">
-            <div class="progress-bar"></div>
-        </div>
+    <h1>BACKGAMMON</h1>
+    <div id="status">Roll dice to start</div>
+    <div class="board-wrap">
+        <canvas id="board"></canvas>
     </div>
+    <div class="controls">
+        <button id="rollBtn" onclick="rollDice()">Roll Dice</button>
+        <div class="dice-area">
+            <div class="die" id="d1">-</div>
+            <div class="die" id="d2">-</div>
+        </div>
+        <button id="undoBtn" onclick="undoMove()" disabled>Undo</button>
+    </div>
+    <div class="score" id="score">You: 0 &nbsp;|&nbsp; Opponent: 0</div>
+    <div class="footer">Click a piece to select, then click destination to move</div>
+
+<script>
+const C = document.getElementById('board');
+const ctx = C.getContext('2d');
+
+// Responsive sizing
+const isMobile = window.innerWidth < 600;
+const W = isMobile ? Math.min(window.innerWidth - 40, 380) : 580;
+const H = Math.round(W * 0.62);
+C.width = W; C.height = H;
+
+const COLS = 12;
+const BAR_W = Math.round(W * 0.04);
+const TRAY_W = Math.round(W * 0.05);
+const PLAY_W = W - BAR_W - TRAY_W * 2;
+const COL_W = Math.round(PLAY_W / COLS);
+const TRI_H = Math.round(H * 0.4);
+const PC_R = Math.round(Math.min(COL_W * 0.4, 14));
+const MID_Y = Math.round(H / 2);
+
+// Colors
+const BG = '#2e6b45';
+const TRI_DARK = '#1a3d28';
+const TRI_LIGHT = '#c8a96e';
+const P1_COL = '#f5f0e8';
+const P1_BORDER = '#d4cbb8';
+const P2_COL = '#2c2c2c';
+const P2_BORDER = '#555';
+const SEL_COL = '#8bc34a';
+const HINT_COL = 'rgba(139,195,74,0.35)';
+
+// Game State: positive = player (white), negative = opponent (black)
+// Points 0-23 (0 = player's 1-point / bearing off side)
+// bar[0] = player bar, bar[1] = opponent bar
+// off[0] = player borne off, off[1] = opponent borne off
+let pts, bar, off, turn, dice, usedDice, sel, moves, hist, scores, gameOver;
+
+function initGame() {
+    pts = new Array(24).fill(0);
+    // Standard starting position
+    // Player (positive) bearing off toward point 0
+    pts[23] = 2;   // player's 24-point
+    pts[12] = 5;   // player's 13-point
+    pts[7] = 3;    // player's 8-point
+    pts[5] = 5;    // player's 6-point
+    // Opponent (negative) bearing off toward point 23
+    pts[0] = -2;   // opp's 24-point (= player's 1-point)
+    pts[11] = -5;  // opp's 13-point
+    pts[16] = -3;  // opp's 8-point
+    pts[18] = -5;  // opp's 6-point
+    bar = [0, 0];
+    off = [0, 0];
+    turn = 1; // 1 = player, -1 = opponent
+    dice = [];
+    usedDice = [];
+    sel = -1;
+    moves = [];
+    hist = [];
+    gameOver = false;
+    updateStatus();
+    draw();
+}
+
+function updateStatus() {
+    const s = document.getElementById('status');
+    if (gameOver) {
+        s.textContent = gameOver === 1 ? 'You win!' : 'Opponent wins!';
+        s.className = 'win';
+        return;
+    }
+    if (turn === 1) {
+        s.textContent = dice.length ? 'Your turn — select a piece to move' : 'Roll dice to play';
+        s.className = 'your-turn';
+    } else {
+        s.textContent = 'Opponent is thinking...';
+        s.className = 'opp-turn';
+    }
+    document.getElementById('rollBtn').disabled = dice.length > 0 || turn !== 1 || gameOver;
+    document.getElementById('undoBtn').disabled = hist.length === 0 || turn !== 1;
+    document.getElementById('score').textContent = `You: ${scores?.[0] || 0}  |  Opponent: ${scores?.[1] || 0}`;
+}
+
+// Drawing
+function colX(i) {
+    // Points 12-23 are top-left to top-right, 11-0 bottom-right to bottom-left
+    let col;
+    if (i >= 12) col = i - 12; else col = 11 - i;
+    let x = TRAY_W + col * COL_W + COL_W / 2;
+    if (col >= 6) x += BAR_W;
+    return x;
+}
+
+function draw() {
+    // Background
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, W, H);
+
+    // Bar
+    const barX = TRAY_W + 6 * COL_W;
+    ctx.fillStyle = '#1a3d28';
+    ctx.fillRect(barX, 0, BAR_W, H);
+
+    // Trays
+    ctx.fillStyle = '#1a3d28';
+    ctx.fillRect(0, 0, TRAY_W, H);
+    ctx.fillRect(W - TRAY_W, 0, TRAY_W, H);
+
+    // Triangles
+    for (let i = 0; i < 24; i++) {
+        const x = colX(i);
+        const top = i >= 12;
+        const dark = i % 2 === 0;
+        ctx.fillStyle = dark ? TRI_DARK : TRI_LIGHT;
+        ctx.beginPath();
+        if (top) {
+            ctx.moveTo(x - COL_W / 2, 0);
+            ctx.lineTo(x + COL_W / 2, 0);
+            ctx.lineTo(x, TRI_H);
+        } else {
+            ctx.moveTo(x - COL_W / 2, H);
+            ctx.lineTo(x + COL_W / 2, H);
+            ctx.lineTo(x, H - TRI_H);
+        }
+        ctx.fill();
+    }
+
+    // Hints
+    if (sel >= 0 && turn === 1) {
+        const mv = getValidMoves(1);
+        for (const m of mv) {
+            if (m.from === sel) {
+                const tx = m.to === 'off' ? W - TRAY_W / 2 : colX(m.to);
+                const top = m.to === 'off' ? false : m.to >= 12;
+                ctx.fillStyle = HINT_COL;
+                ctx.beginPath();
+                ctx.arc(tx, top ? PC_R + 4 : H - PC_R - 4, PC_R + 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // Pieces on points
+    for (let i = 0; i < 24; i++) {
+        const v = pts[i];
+        if (v === 0) continue;
+        const count = Math.abs(v);
+        const player = v > 0 ? 1 : -1;
+        const x = colX(i);
+        const top = i >= 12;
+        for (let j = 0; j < Math.min(count, 5); j++) {
+            const y = top ? PC_R + 4 + j * PC_R * 2 : H - PC_R - 4 - j * PC_R * 2;
+            drawPiece(x, y, player, sel === i && player === 1);
+        }
+        if (count > 5) {
+            const y = top ? PC_R + 4 + 4 * PC_R * 2 : H - PC_R - 4 - 4 * PC_R * 2;
+            ctx.fillStyle = player === 1 ? '#333' : '#ddd';
+            ctx.font = `bold ${PC_R}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(count, x, y);
+        }
+    }
+
+    // Bar pieces
+    for (let p = 0; p < 2; p++) {
+        const count = bar[p];
+        const player = p === 0 ? 1 : -1;
+        for (let j = 0; j < Math.min(count, 4); j++) {
+            const y = p === 0 ? MID_Y + PC_R + 4 + j * PC_R * 2 : MID_Y - PC_R - 4 - j * PC_R * 2;
+            drawPiece(barX + BAR_W / 2, y, player, sel === 'bar' && player === 1);
+        }
+        if (count > 4) {
+            const y = p === 0 ? MID_Y + PC_R + 4 + 3 * PC_R * 2 : MID_Y - PC_R - 4 - 3 * PC_R * 2;
+            ctx.fillStyle = player === 1 ? '#333' : '#ddd';
+            ctx.font = `bold ${PC_R}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(count, barX + BAR_W / 2, y);
+        }
+    }
+
+    // Borne off
+    for (let p = 0; p < 2; p++) {
+        const count = off[p];
+        if (!count) continue;
+        const player = p === 0 ? 1 : -1;
+        const x = p === 0 ? W - TRAY_W / 2 : TRAY_W / 2;
+        for (let j = 0; j < Math.min(count, 5); j++) {
+            const y = p === 0 ? H - 6 - j * (PC_R * 1.2) : 6 + j * (PC_R * 1.2);
+            ctx.fillStyle = player === 1 ? P1_COL : P2_COL;
+            ctx.fillRect(x - PC_R + 2, y - 3, (PC_R - 2) * 2, 6);
+        }
+        ctx.fillStyle = '#aaa';
+        ctx.font = `${Math.round(PC_R * 0.8)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(count, x, p === 0 ? H - 6 - Math.min(count, 5) * PC_R * 1.2 - 4 : 6 + Math.min(count, 5) * PC_R * 1.2 + 10);
+    }
+
+    // Point numbers (subtle)
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.font = `${Math.max(8, Math.round(COL_W * 0.22))}px sans-serif`;
+    ctx.textAlign = 'center';
+    for (let i = 0; i < 24; i++) {
+        const x = colX(i);
+        const top = i >= 12;
+        const num = i + 1;
+        ctx.fillText(num, x, top ? H * 0.48 : H * 0.53);
+    }
+}
+
+function drawPiece(x, y, player, selected) {
+    ctx.beginPath();
+    ctx.arc(x, y, PC_R, 0, Math.PI * 2);
+    ctx.fillStyle = player === 1 ? P1_COL : P2_COL;
+    ctx.fill();
+    ctx.strokeStyle = selected ? SEL_COL : (player === 1 ? P1_BORDER : P2_BORDER);
+    ctx.lineWidth = selected ? 3 : 1.5;
+    ctx.stroke();
+    if (selected) {
+        ctx.beginPath();
+        ctx.arc(x, y, PC_R + 3, 0, Math.PI * 2);
+        ctx.strokeStyle = SEL_COL;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+}
+
+// Dice
+function rollDice() {
+    if (dice.length || turn !== 1 || gameOver) return;
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    const d2 = Math.floor(Math.random() * 6) + 1;
+    dice = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
+    usedDice = [];
+    hist = [];
+    animateDice(d1, d2);
+    setTimeout(() => {
+        if (getValidMoves(1).length === 0) {
+            document.getElementById('status').textContent = 'No valid moves — turn passes';
+            dice = [];
+            setTimeout(() => { turn = -1; updateStatus(); opponentTurn(); }, 1000);
+        } else {
+            updateStatus();
+        }
+        draw();
+    }, 500);
+}
+
+function animateDice(d1, d2) {
+    const e1 = document.getElementById('d1');
+    const e2 = document.getElementById('d2');
+    e1.textContent = d1; e2.textContent = d2;
+    e1.classList.remove('used'); e2.classList.remove('used');
+    e1.classList.add('rolling'); e2.classList.add('rolling');
+    setTimeout(() => { e1.classList.remove('rolling'); e2.classList.remove('rolling'); }, 400);
+}
+
+function updateDiceUI() {
+    const e1 = document.getElementById('d1');
+    const e2 = document.getElementById('d2');
+    if (dice.length >= 1) { e1.textContent = dice[0]; e1.classList.remove('used'); }
+    else { e1.classList.add('used'); }
+    if (dice.length >= 2) { e2.textContent = dice[dice.length > 2 ? 0 : 1]; e2.classList.remove('used'); }
+    else if (usedDice.length >= 2) { e2.classList.add('used'); }
+}
+
+// Movement logic
+function canBearOff(player) {
+    const start = player === 1 ? 6 : 18;
+    const end = player === 1 ? 24 : 24;
+    const barIdx = player === 1 ? 0 : 1;
+    if (bar[barIdx] > 0) return false;
+    for (let i = 0; i < 24; i++) {
+        const v = pts[i];
+        if (player === 1 && v > 0 && i >= 6) return false;
+        if (player === -1 && v < 0 && i < 18) return false;
+    }
+    return true;
+}
+
+function getValidMoves(player) {
+    const mv = [];
+    const barIdx = player === 1 ? 0 : 1;
+    const uniqueDice = [...new Set(dice)];
+
+    for (const d of uniqueDice) {
+        if (bar[barIdx] > 0) {
+            // Must enter from bar first
+            const to = player === 1 ? 24 - d : d - 1;
+            if (to >= 0 && to < 24) {
+                const dest = pts[to];
+                if (dest * player >= 0 || Math.abs(dest) === 1) {
+                    mv.push({ from: 'bar', to, die: d });
+                }
+            }
+        } else {
+            for (let i = 0; i < 24; i++) {
+                if (pts[i] * player <= 0) continue;
+                const to = player === 1 ? i - d : i + d;
+                if (to >= 0 && to < 24) {
+                    const dest = pts[to];
+                    if (dest * player >= 0 || Math.abs(dest) === 1) {
+                        mv.push({ from: i, to, die: d });
+                    }
+                } else if (canBearOff(player)) {
+                    // Bearing off
+                    if (player === 1 && to < 0) {
+                        // Exact or highest occupied point
+                        const exact = i === d - 1;
+                        const noHigher = !pts.slice(i + 1, 6).some(v => v > 0);
+                        if (exact || (to < 0 && noHigher)) {
+                            mv.push({ from: i, to: 'off', die: d });
+                        }
+                    } else if (player === -1 && to >= 24) {
+                        const exact = i === 24 - d;
+                        const noHigher = !pts.slice(18, i).some(v => v < 0);
+                        if (exact || (to >= 24 && noHigher)) {
+                            mv.push({ from: i, to: 'off', die: d });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return mv;
+}
+
+function applyMove(m, player) {
+    const barIdx = player === 1 ? 0 : 1;
+    const oppBar = player === 1 ? 1 : 0;
+    const offIdx = player === 1 ? 0 : 1;
+
+    // Save state for undo
+    const snapshot = { pts: [...pts], bar: [...bar], off: [...off], dice: [...dice], usedDice: [...usedDice] };
+
+    if (m.from === 'bar') {
+        bar[barIdx]--;
+    } else {
+        pts[m.from] -= player;
+    }
+
+    if (m.to === 'off') {
+        off[offIdx]++;
+    } else {
+        // Hit opponent?
+        if (pts[m.to] * player === -1) {
+            pts[m.to] = 0;
+            bar[oppBar]++;
+        }
+        pts[m.to] += player;
+    }
+
+    const di = dice.indexOf(m.die);
+    if (di >= 0) {
+        usedDice.push(dice.splice(di, 1)[0]);
+    }
+
+    return snapshot;
+}
+
+// Click handling
+C.addEventListener('click', (e) => {
+    if (turn !== 1 || !dice.length || gameOver) return;
+    const rect = C.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (W / rect.width);
+    const my = (e.clientY - rect.top) * (H / rect.height);
+
+    // Check bar click
+    const barX = TRAY_W + 6 * COL_W;
+    if (bar[0] > 0 && mx > barX && mx < barX + BAR_W && my > MID_Y) {
+        sel = 'bar';
+        draw();
+        updateStatus();
+        return;
+    }
+
+    // Check bearing off tray click (destination)
+    if (sel >= 0 && mx > W - TRAY_W) {
+        const mv = getValidMoves(1).filter(m => m.from === sel && m.to === 'off');
+        if (mv.length) {
+            const snap = applyMove(mv[0], 1);
+            hist.push(snap);
+            sel = -1;
+            updateDiceUI();
+            if (off[0] === 15) { endGame(1); return; }
+            if (dice.length === 0 || getValidMoves(1).length === 0) {
+                dice = []; sel = -1; draw(); updateStatus();
+                setTimeout(() => { turn = -1; updateStatus(); opponentTurn(); }, 600);
+            } else { draw(); updateStatus(); }
+        }
+        return;
+    }
+
+    // Find clicked point
+    let clicked = -1;
+    for (let i = 0; i < 24; i++) {
+        const cx = colX(i);
+        if (Math.abs(mx - cx) < COL_W / 2) {
+            const top = i >= 12;
+            if (top && my < H * 0.5) { clicked = i; break; }
+            if (!top && my > H * 0.5) { clicked = i; break; }
+        }
+    }
+
+    if (clicked < 0) { sel = -1; draw(); return; }
+
+    // If we have a selection, try to move there
+    if (sel >= 0) {
+        const mv = getValidMoves(1).filter(m => m.from === sel && m.to === clicked);
+        if (mv.length) {
+            const snap = applyMove(mv[0], 1);
+            hist.push(snap);
+            sel = -1;
+            updateDiceUI();
+            if (dice.length === 0 || getValidMoves(1).length === 0) {
+                dice = []; sel = -1; draw(); updateStatus();
+                setTimeout(() => { turn = -1; updateStatus(); opponentTurn(); }, 600);
+            } else { draw(); updateStatus(); }
+            return;
+        }
+    }
+
+    // Select a piece
+    if (pts[clicked] > 0) {
+        sel = clicked;
+    } else {
+        sel = -1;
+    }
+    draw();
+    updateStatus();
+});
+
+function undoMove() {
+    if (!hist.length || turn !== 1) return;
+    const snap = hist.pop();
+    pts = snap.pts;
+    bar = snap.bar;
+    off = snap.off;
+    dice = snap.dice;
+    usedDice = snap.usedDice;
+    sel = -1;
+    updateDiceUI();
+    draw();
+    updateStatus();
+}
+
+// Opponent AI (simple)
+function opponentTurn() {
+    if (gameOver) return;
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    const d2 = Math.floor(Math.random() * 6) + 1;
+    dice = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
+    usedDice = [];
+
+    setTimeout(() => {
+        animateDice(d1, d2);
+        setTimeout(() => doAiMoves(), 600);
+    }, 400);
+}
+
+function doAiMoves() {
+    const mv = getValidMoves(-1);
+    if (mv.length === 0) {
+        dice = [];
+        turn = 1;
+        updateStatus();
+        draw();
+        return;
+    }
+
+    // Simple strategy: prioritize hitting, then advancing furthest back piece
+    let best = mv[0];
+    let bestScore = -Infinity;
+    for (const m of mv) {
+        let score = 0;
+        // Prefer hitting
+        if (m.to !== 'off' && pts[m.to] === 1) score += 50;
+        // Prefer bearing off
+        if (m.to === 'off') score += 40;
+        // Prefer moving from bar
+        if (m.from === 'bar') score += 30;
+        // Prefer advancing back pieces
+        if (m.from !== 'bar') score += (23 - m.from);
+        // Prefer making points (stacking)
+        if (m.to !== 'off' && pts[m.to] <= -1) score += 10;
+        // Avoid leaving blots
+        if (m.from !== 'bar' && Math.abs(pts[m.from]) === 1) score -= 5;
+        if (score > bestScore) { bestScore = score; best = m; }
+    }
+
+    applyMove(best, -1);
+    updateDiceUI();
+    draw();
+
+    if (off[1] === 15) { endGame(-1); return; }
+
+    if (dice.length > 0 && getValidMoves(-1).length > 0) {
+        setTimeout(doAiMoves, 400);
+    } else {
+        dice = [];
+        turn = 1;
+        updateStatus();
+        draw();
+    }
+}
+
+function endGame(winner) {
+    gameOver = winner;
+    dice = [];
+    if (!scores) scores = [0, 0];
+    if (winner === 1) scores[0]++;
+    else scores[1]++;
+    updateStatus();
+    draw();
+    setTimeout(() => {
+        if (confirm(winner === 1 ? 'You win! Play again?' : 'Opponent wins! Play again?')) {
+            initGame();
+        }
+    }, 500);
+}
+
+// Init
+scores = [0, 0];
+initGame();
+</script>
 </body>
 </html>
