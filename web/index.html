@@ -237,7 +237,7 @@ function draw() {
     }
 
     // Hints
-    if (sel >= 0 && turn === 1) {
+    if (sel !== -1 && turn === 1) {
         const mv = getValidMoves(1);
         for (const m of mv) {
             if (m.from === sel) {
@@ -487,7 +487,7 @@ C.addEventListener('click', (e) => {
     }
 
     // Check bearing off tray click (destination)
-    if (sel >= 0 && mx > W - TRAY_W) {
+    if (sel !== -1 && mx > W - TRAY_W) {
         const mv = getValidMoves(1).filter(m => m.from === sel && m.to === 'off');
         if (mv.length) {
             const snap = applyMove(mv[0], 1);
@@ -517,7 +517,7 @@ C.addEventListener('click', (e) => {
     if (clicked < 0) { sel = -1; draw(); return; }
 
     // If we have a selection, try to move there
-    if (sel >= 0) {
+    if (sel !== -1) {
         const mv = getValidMoves(1).filter(m => m.from === sel && m.to === clicked);
         if (mv.length) {
             const snap = applyMove(mv[0], 1);

@@ -189,6 +189,8 @@ services:
       - moav_net
     volumes:
       - ./web:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
     expose:
       - "80"
     profiles:
