@@ -15,7 +15,9 @@ WORKDIR /build
 RUN git clone --depth 1 --branch v${CLASH_EXPORTER_VERSION} https://github.com/zxh326/clash-exporter.git .
 
 # Build clash-exporter
-RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o clash-exporter .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -ldflags="-w -s" -o clash-exporter .
 
 # =============================================================================
 # Runtime image

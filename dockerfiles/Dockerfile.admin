@@ -14,7 +14,8 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 COPY admin/requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 COPY admin/ /app/
 COPY scripts/admin-entrypoint.sh /entrypoint.sh

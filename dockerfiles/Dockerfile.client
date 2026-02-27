@@ -19,7 +19,10 @@ ARG TARGETOS=linux
 RUN apk add --no-cache git
 
 # Build dnstt-client with cross-compilation
-RUN git clone https://www.bamsoftware.com/git/dnstt.git /tmp/dnstt && \
+RUN git clone https://www.bamsoftware.com/git/dnstt.git /tmp/dnstt
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
     cd /tmp/dnstt/dnstt-client && \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} CGO_ENABLED=0 go build -o /dnstt-client . || touch /dnstt-client
 
