@@ -189,10 +189,13 @@ services:
     restart: unless-stopped
     networks:
       - moav_net
+    tmpfs:
+      - /usr/share/nginx/html
     volumes:
-      - ./web:/usr/share/nginx/html:ro
+      - ./web:/template:ro
       - moav_webroot:/acme
       - ./configs/decoy/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./configs/decoy/40-randomize.sh:/docker-entrypoint.d/40-randomize.sh:ro
     ports:
       - "80:80"
     expose:
