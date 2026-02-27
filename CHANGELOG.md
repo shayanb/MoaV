@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.7] - 2026-02-27
+
+### Added
+- **Conduit v2.0.0 Upgrade** — Upgraded Psiphon Conduit to v2.0.0 with native Prometheus metrics
+  - Native `/metrics` endpoint replaces custom log-parsing exporter and tcpdump-based GeoIP collector
+  - Per-region client breakdown (`conduit_region_connected_clients`, `conduit_region_bytes_downloaded/uploaded`)
+  - Ryve deep link displayed in container logs on startup for easy mobile import
+  - Slimmed Dockerfile: removed `geoip-bin`, `tcpdump`, `iproute2`, `procps` (no longer needed)
+- **Conduit Grafana Dashboard** — New panels for v2 native metrics
+  - Live status panel (`conduit_is_live`), max clients panel (`conduit_max_common_clients`)
+  - Connected clients by region timeseries chart
+- **Build Optimization** — BuildKit cache mounts for Go compilation services
+  - Go module and build caches persist across rebuilds (amneziawg, dnstt, snowflake, clash-exporter, client)
+  - pip cache mount for admin image
+
+### Fixed
+- **Build Reliability** — Fixed Go services failing during parallel `moav build --no-cache`
+  - Root cause: 13+ parallel builds saturated network, causing TLS handshake timeouts on Go module downloads
+  - Fix: two-phase build — Go services built sequentially first, then remaining services in parallel
+  - Phase 2 now filters to only buildable services (skips image-only services like certbot, grafana)
+- **Go Version Pinning** — Fixed Dockerfile.amneziawg and Dockerfile.dnstt build failures
+  - Pinned amneziawg-go to tag v0.2.16 (was cloning unpinned default branch)
+  - Updated dnstt builder from `golang:1.21-alpine` to `golang:1.24-alpine` to match upstream `go.mod`
+
+### Changed
+- **Conduit Environment Variables** — `CONDUIT_MAX_CLIENTS` renamed to `CONDUIT_MAX_COMMON_CLIENTS` (backwards-compatible fallback in entrypoint)
+- **Prometheus Scrape Target** — Conduit metrics now scraped directly from `psiphon-conduit:9090` (was `conduit-exporter:9101`)
+- **Admin Dashboard** — Conduit stats section now shows per-region data from native metrics endpoint
+- **Component Versions** — Updated Prometheus default to 3.10.0, sing-box 1.12.22, AmneziaWG tools 1.0.20260223
+
+### Removed
+- **conduit-exporter** service — Replaced by Conduit v2 native Prometheus endpoint
+- `exporters/conduit/main.py` and `exporters/conduit/Dockerfile` — Custom log parser no longer needed
+- `scripts/conduit-stats-collector.sh` — tcpdump-based GeoIP collector replaced by native per-region metrics
+- `scripts/conduit-stats.sh` — Live CLI viewer replaced by Grafana dashboard
+
 ## [1.3.6] - 2026-02-19
 
 ### Added
@@ -516,7 +552,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.6...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.7...HEAD
+[1.3.7]: https://github.com/shayanb/MoaV/compare/v1.3.6...v1.3.7
 [1.3.6]: https://github.com/shayanb/MoaV/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/shayanb/MoaV/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/shayanb/MoaV/compare/v1.3.3...v1.3.4
