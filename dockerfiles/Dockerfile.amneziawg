@@ -1,6 +1,6 @@
 # AmneziaWG - DPI-resistant WireGuard fork
 # Uses userspace Go implementation (amneziawg-go) for Docker compatibility
-FROM golang:1-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 ARG AMNEZIAWG_GO_VERSION=v0.2.16
 
