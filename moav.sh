@@ -3436,10 +3436,29 @@ cmd_build() {
 
     if [[ ${#services_args[@]} -eq 0 ]] || [[ "${services_args[0]}" == "all" ]]; then
         info "Building all services${no_cache:+ (no cache)}..."
-        # Limit parallel builds to prevent network saturation
-        # (Go module downloads timeout when 13+ images build simultaneously)
-        COMPOSE_PARALLEL_LIMIT=${COMPOSE_PARALLEL_LIMIT:-4} \
-            docker compose --profile all build $no_cache
+        # Go services compile from source and download modules from proxy.golang.org.
+        # Building them in parallel with 10+ other images saturates the network,
+        # causing TLS handshake timeouts. Build Go services sequentially first,
+        # then build everything else in parallel.
+        local go_services=("amneziawg" "dnstt" "snowflake")
+        local all_svc_list remaining_services
+        all_svc_list=$(docker compose --profile all config --services 2>/dev/null)
+
+        # Phase 1: Build Go-compilation services one at a time
+        info "Phase 1/2: Building Go services (sequential)..."
+        for svc in "${go_services[@]}"; do
+            if echo "$all_svc_list" | grep -q "^${svc}$"; then
+                info "  Building ${svc}..."
+                docker compose --profile all build $no_cache "$svc"
+            fi
+        done
+
+        # Phase 2: Build everything else in parallel
+        remaining_services=$(echo "$all_svc_list" | grep -vE '^(amneziawg|dnstt|snowflake)$' | tr '\n' ' ')
+        if [[ -n "$remaining_services" ]]; then
+            info "Phase 2/2: Building remaining services..."
+            docker compose --profile all build $no_cache $remaining_services
+        fi
         success "All services built!"
     else
         # Check if argument is a profile name
