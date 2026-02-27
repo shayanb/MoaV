@@ -3438,24 +3438,25 @@ cmd_build() {
         info "Building all services${no_cache:+ (no cache)}..."
         # Go services compile from source and download modules from proxy.golang.org.
         # Building them in parallel with 10+ other images saturates the network,
-        # causing TLS handshake timeouts. Build Go services sequentially first
-        # to populate the BuildKit cache mounts, then build everything in parallel
-        # (Go module downloads will be instant from cache).
-        local go_services=("amneziawg" "dnstt" "snowflake")
+        # causing TLS handshake timeouts on module downloads.
+        # Fix: build Go services sequentially first, then everything else in parallel.
+        local go_services="amneziawg dnstt snowflake"
+        local all_svc_list remaining_services
+        all_svc_list=$(docker compose --profile all config --services 2>/dev/null)
 
-        # Phase 1: Build Go services sequentially to populate module cache
-        info "Phase 1/2: Building Go services (populating module cache)..."
-        for svc in "${go_services[@]}"; do
-            if docker compose --profile all config --services 2>/dev/null | grep -q "^${svc}$"; then
+        # Phase 1: Build Go-compilation services one at a time
+        info "Phase 1/2: Building Go services (sequential)..."
+        for svc in $go_services; do
+            if echo "$all_svc_list" | grep -q "^${svc}$"; then
                 info "  Building ${svc}..."
                 docker compose --profile all build $no_cache "$svc"
             fi
         done
 
-        # Phase 2: Build all services in parallel
-        # Go services will rebuild but module downloads are instant (BuildKit cache mounts)
-        info "Phase 2/2: Building all services..."
-        docker compose --profile all build $no_cache
+        # Phase 2: Build remaining services in parallel (skip Go services already built)
+        remaining_services=$(echo "$all_svc_list" | grep -vE "^($(echo $go_services | tr ' ' '|'))$" | tr '\n' ' ')
+        info "Phase 2/2: Building remaining services ($(echo $remaining_services | wc -w | tr -d ' ') services)..."
+        docker compose --profile all build $no_cache $remaining_services
         success "All services built!"
     else
         # Check if argument is a profile name
