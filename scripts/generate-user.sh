@@ -78,7 +78,8 @@ if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
           "enabled": true,
           "public_key": "${REALITY_PUBLIC_KEY}",
           "short_id": "${REALITY_SHORT_ID}"
-        }
+        },
+        "record_fragment": true
       }
     }
   ],
@@ -126,7 +127,14 @@ if [[ "${ENABLE_TROJAN:-true}" == "true" ]]; then
       "tls": {
         "enabled": true,
         "server_name": "${DOMAIN}",
-        "utls": {"enabled": true, "fingerprint": "chrome"}
+        "utls": {"enabled": true, "fingerprint": "chrome"},
+        "record_fragment": true
+      },
+      "multiplex": {
+        "enabled": true,
+        "protocol": "h2mux",
+        "max_connections": 2,
+        "padding": true
       }
     }
   ],
@@ -249,6 +257,12 @@ if [[ -n "${CDN_DOMAIN:-}" ]]; then
         "type": "ws",
         "path": "${CDN_WS_PATH}",
         "headers": {"Host": "${CDN_DOMAIN}"}
+      },
+      "multiplex": {
+        "enabled": true,
+        "protocol": "h2mux",
+        "max_connections": 2,
+        "padding": true
       }
     }
   ],

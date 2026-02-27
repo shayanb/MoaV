@@ -44,7 +44,7 @@
       },
       "multiplex": {
         "enabled": true,
-        "padding": false
+        "padding": true
       }
     },
     {
@@ -67,7 +67,7 @@
       },
       "multiplex": {
         "enabled": true,
-        "padding": false
+        "padding": true
       }
     },
     {
@@ -100,6 +100,10 @@
       "transport": {
         "type": "ws",
         "path": "${CDN_WS_PATH}"
+      },
+      "multiplex": {
+        "enabled": true,
+        "padding": true
       }
     }
   ],
