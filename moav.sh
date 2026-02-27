@@ -3367,16 +3367,17 @@ cmd_user() {
             fi
             ;;
         revoke|rm|remove|delete)
-            if [[ -z "$username" ]]; then
-                error "Usage: moav user revoke USERNAME"
+            if [[ -z "${1:-}" ]]; then
+                error "Usage: moav user revoke USERNAME [USERNAME2...]"
                 exit 1
             fi
-            if [[ -x "./scripts/user-revoke.sh" ]]; then
-                ./scripts/user-revoke.sh "$username"
-            else
+            if [[ ! -x "./scripts/user-revoke.sh" ]]; then
                 error "User revoke script not found"
                 exit 1
             fi
+            for u in "$@"; do
+                ./scripts/user-revoke.sh "$u"
+            done
             ;;
         package|pkg)
             if [[ -z "$username" ]]; then
