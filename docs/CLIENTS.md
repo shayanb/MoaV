@@ -24,6 +24,7 @@ This guide explains how to connect to MoaV from various devices.
 - [About Tor Snowflake (Server Feature)](#about-tor-snowflake-server-feature)
 - [Troubleshooting](#troubleshooting)
 - [Tips for Highly Censored Environments](#tips-for-highly-censored-environments)
+- [Connection Optimization (Fragment & MUX)](#connection-optimization-fragment--mux)
 
 ---
 
@@ -739,3 +740,138 @@ Yes! Both services can run simultaneously without conflicts. They donate bandwid
 6. **Try wstunnel if UDP is blocked** - Some ISPs block UDP; wstunnel wraps WireGuard in TCP/WebSocket
 7. **Reality is often best** - Mimics legitimate HTTPS traffic to common sites
 8. **Keep Psiphon as backup** - No server needed, works independently of your MoaV setup
+9. **Enable TLS Fragment and MUX** - See below for client-side optimizations
+
+---
+
+## Connection Optimization (Fragment & MUX)
+
+MoaV's generated sing-box configs already include optimal Fragment and MUX settings. If you're using third-party apps (Hiddify, v2rayNG, NekoBox, etc.) or importing via share links, you can enable these manually for better performance in censored networks.
+
+### TLS Fragment
+
+TLS Fragment splits the TLS ClientHello message into smaller pieces, making it harder for DPI (Deep Packet Inspection) systems to detect the SNI (Server Name Indication) and block the connection. This is a **client-side only** feature — no server changes needed.
+
+**When to use:** When connections are being blocked or reset during the TLS handshake, which is common in Iran and similar environments.
+
+**Which protocols benefit:**
+
+| Protocol | Fragment | Why |
+|----------|----------|-----|
+| Reality (VLESS) | Yes | Hides SNI from DPI during TLS handshake |
+| Trojan | Yes | Same — TLS-based, benefits from fragment |
+| CDN (VLESS+WS) | No | TLS terminates at Cloudflare, not your server |
+| Hysteria2 | No | Uses QUIC/UDP, not TCP-based TLS |
+| WireGuard / AmneziaWG | No | Not TLS-based |
+
+#### sing-box JSON Config
+
+MoaV's generated configs already include this. If you're building your own config:
+
+```json
+{
+  "outbounds": [
+    {
+      "type": "vless",
+      "tls": {
+        "enabled": true,
+        "server_name": "example.com",
+        "record_fragment": true
+      }
+    }
+  ]
+}
+```
+
+The `record_fragment` option (sing-box 1.12+) automatically splits TLS records. This is simpler than Xray-core's granular settings and works well for most scenarios.
+
+#### Hiddify
+
+1. Go to **Settings** → **Config Options**
+2. Find **TLS Fragment** section
+3. Enable it and set:
+   - **Size**: `10-100` (bytes per fragment)
+   - **Sleep**: `10-50` (ms delay between fragments)
+
+#### v2rayNG
+
+1. Go to **Settings** → **TLS/Reality**
+2. Enable **TLS Fragment**
+3. Recommended values:
+   - **Length**: `50-200`
+   - **Interval**: `10-50`
+   - **Packets**: `1-3`
+
+#### Shadowrocket
+
+Shadowrocket does not currently support TLS Fragment. Use the sing-box app or Hiddify if you need this feature on iOS.
+
+### MUX (Multiplexing)
+
+MUX multiplexes multiple connections over a single TCP connection, reducing the number of TLS handshakes and making traffic patterns harder to fingerprint.
+
+**When to use:** When you experience frequent connection drops or slow initial connections. Also useful to reduce the number of observable connections to the server.
+
+**Which protocols benefit:**
+
+| Protocol | MUX | Why |
+|----------|-----|-----|
+| Reality (VLESS) | No | Incompatible with VLESS Vision flow (`xtls-rprx-vision`) |
+| Trojan | Yes | Reduces handshakes, improves stability |
+| CDN (VLESS+WS) | Yes | Fewer WebSocket connections through CDN |
+| Hysteria2 | No | QUIC already multiplexes natively |
+| WireGuard / AmneziaWG | No | Not applicable |
+
+> **Important:** MUX is **not compatible** with Reality (VLESS Vision). Enabling MUX on a Reality connection will break it. MoaV's generated configs handle this correctly.
+
+#### sing-box JSON Config
+
+MoaV's generated Trojan and CDN configs already include this:
+
+```json
+{
+  "outbounds": [
+    {
+      "type": "trojan",
+      "multiplex": {
+        "enabled": true,
+        "protocol": "h2mux",
+        "max_connections": 2,
+        "padding": true
+      }
+    }
+  ]
+}
+```
+
+- `protocol`: `h2mux` is recommended (HTTP/2 multiplexing)
+- `max_connections`: `2` balances speed and stealth
+- `padding`: `true` adds random padding to obscure traffic patterns
+
+#### Hiddify
+
+1. Go to **Settings** → **Config Options**
+2. Find **MUX** section
+3. Enable and set:
+   - **Protocol**: `h2mux`
+   - **Max Connections**: `2`
+   - **Padding**: On
+
+#### v2rayNG
+
+1. Go to **Settings** → **MUX**
+2. Enable **MUX**
+3. Set **Concurrency**: `2-4`
+
+### Summary: What to Enable Per Protocol
+
+| Protocol | Fragment | MUX | Notes |
+|----------|----------|-----|-------|
+| Reality (VLESS) | Yes | **No** | Vision flow is incompatible with MUX |
+| Trojan | Yes | Yes | Best with both enabled |
+| CDN (VLESS+WS) | No | Yes | Fragment won't help (CDN terminates TLS) |
+| Hysteria2 | No | No | QUIC handles both natively |
+| WireGuard | No | No | Different protocol layer |
+| AmneziaWG | No | No | Has its own obfuscation |
+
+> **Note:** MoaV v1.3.7+ automatically includes these optimizations in generated sing-box JSON configs. If you import via share links (vless://, trojan://, hy2://), you may need to enable Fragment and MUX manually in your app settings.
