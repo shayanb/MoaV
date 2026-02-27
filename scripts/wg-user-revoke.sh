@@ -32,8 +32,8 @@ if ! grep -q "# $USERNAME\$" "$WG_CONFIG_FILE" 2>/dev/null; then
     exit 1
 fi
 
-# Get the public key before removing
-PUBLIC_KEY=$(grep -A1 "# $USERNAME\$" "$WG_CONFIG_FILE" | grep "PublicKey" | awk '{print $3}')
+# Get the public key before removing (may be empty if peer block is malformed/orphaned)
+PUBLIC_KEY=$(grep -A1 "# $USERNAME\$" "$WG_CONFIG_FILE" | grep "PublicKey" | awk '{print $3}' || true)
 
 log_info "Revoking WireGuard peer '$USERNAME'..."
 log_info "Public key: $PUBLIC_KEY"

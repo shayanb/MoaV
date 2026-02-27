@@ -8,6 +8,7 @@ set -euo pipefail
 # This is the master script that calls individual service scripts:
 #   - singbox-user-revoke.sh
 #   - wg-user-revoke.sh
+#   - awg-user-revoke.sh
 #
 # For individual services, use the specific scripts directly.
 # =============================================================================
@@ -31,6 +32,7 @@ if [[ -z "$USERNAME" ]]; then
     echo "For individual services:"
     echo "  ./scripts/singbox-user-revoke.sh <username>  # sing-box"
     echo "  ./scripts/wg-user-revoke.sh <username>       # WireGuard"
+    echo "  ./scripts/awg-user-revoke.sh <username>      # AmneziaWG"
     exit 1
 fi
 
@@ -55,7 +57,7 @@ REVOKED=false
 # Revoke from sing-box
 # -----------------------------------------------------------------------------
 if [[ -f "configs/sing-box/config.json" ]] && grep -q "\"name\":\"$USERNAME\"" "configs/sing-box/config.json" 2>/dev/null; then
-    log_info "[1/2] Revoking from sing-box..."
+    log_info "[1/3] Revoking from sing-box..."
     if "$SCRIPT_DIR/singbox-user-revoke.sh" "$USERNAME"; then
         log_info "✓ Revoked from sing-box"
         REVOKED=true
@@ -63,7 +65,7 @@ if [[ -f "configs/sing-box/config.json" ]] && grep -q "\"name\":\"$USERNAME\"" "
         log_error "✗ Failed to revoke from sing-box"
     fi
 else
-    log_info "[1/2] User not found in sing-box (skipping)"
+    log_info "[1/3] User not found in sing-box (skipping)"
 fi
 
 echo ""
@@ -72,7 +74,7 @@ echo ""
 # Revoke from WireGuard
 # -----------------------------------------------------------------------------
 if [[ -f "configs/wireguard/wg0.conf" ]] && grep -q "# $USERNAME\$" "configs/wireguard/wg0.conf" 2>/dev/null; then
-    log_info "[2/2] Revoking from WireGuard..."
+    log_info "[2/3] Revoking from WireGuard..."
     if "$SCRIPT_DIR/wg-user-revoke.sh" "$USERNAME"; then
         log_info "✓ Revoked from WireGuard"
         REVOKED=true
@@ -80,7 +82,24 @@ if [[ -f "configs/wireguard/wg0.conf" ]] && grep -q "# $USERNAME\$" "configs/wir
         log_error "✗ Failed to revoke from WireGuard"
     fi
 else
-    log_info "[2/2] User not found in WireGuard (skipping)"
+    log_info "[2/3] User not found in WireGuard (skipping)"
+fi
+
+echo ""
+
+# -----------------------------------------------------------------------------
+# Revoke from AmneziaWG
+# -----------------------------------------------------------------------------
+if [[ -f "configs/amneziawg/awg0.conf" ]] && grep -q "# $USERNAME\$" "configs/amneziawg/awg0.conf" 2>/dev/null; then
+    log_info "[3/3] Revoking from AmneziaWG..."
+    if "$SCRIPT_DIR/awg-user-revoke.sh" "$USERNAME"; then
+        log_info "✓ Revoked from AmneziaWG"
+        REVOKED=true
+    else
+        log_error "✗ Failed to revoke from AmneziaWG"
+    fi
+else
+    log_info "[3/3] User not found in AmneziaWG (skipping)"
 fi
 
 echo ""

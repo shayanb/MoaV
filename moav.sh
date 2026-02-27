@@ -3376,7 +3376,7 @@ cmd_user() {
                 exit 1
             fi
             for u in "$@"; do
-                ./scripts/user-revoke.sh "$u"
+                ./scripts/user-revoke.sh "$u" || true
             done
             ;;
         package|pkg)
