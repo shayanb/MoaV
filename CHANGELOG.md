@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.8] - 2026-02-27
+
+### Added
+- **Decoy Website** — Interactive backgammon game replaces "Under Construction" page
+  - Anti-fingerprinting: randomized titles, headings, footers, and color themes on each container start
+  - 8 distinct color palettes, random hex comment to change file hash per deployment
+  - Uses nginx `docker-entrypoint.d` mechanism with tmpfs for ephemeral randomized content
+- **Connection Optimization Tips in User Bundle** — Inline per-protocol optimization guidance in README.html
+  - Reality: TLS Fragment tip with Hiddify/v2rayNG settings, MUX warning (incompatible with Vision)
+  - Trojan: TLS Fragment + MUX tips with app-specific values
+  - CDN VLESS+WS: MUX tip, note that Fragment doesn't help (TLS at Cloudflare)
+  - Hysteria2: no tips (QUIC, nothing to tweak)
+- **Multi-user Revoke** — `moav user revoke` now accepts multiple usernames in one command
+- **AmneziaWG Revoke** — User revoke now properly removes AmneziaWG peers
+
+### Fixed
+- **CDN Domain Empty in User Bundle** — `{{CDN_DOMAIN}}` in README.html was replaced with empty string
+  - Root cause: `user-add.sh` and `generate-user.sh` didn't construct `CDN_DOMAIN` from `CDN_SUBDOMAIN` + `DOMAIN`
+  - `singbox-user-add.sh` had the construction logic but it didn't propagate to the README generation
+- **Certbot Port 80 Conflict** — Certbot standalone mode conflicted with decoy website on port 80
+  - Switched certbot from `--standalone` to `--webroot` mode with shared ACME challenge volume
+- **Decoy Container Not Picking Up Config** — `docker compose restart` doesn't apply compose file changes; documented need for `--force-recreate`
+
+### Changed
+- **sing-box** — Updated to v1.12.23
+- **Decoy Website** — Now accessible on HTTP port 80 (was only internal)
+- **Client Guide Docs** — Added Connection Optimization section to `docs/CLIENTS.md` (Fragment & MUX per-protocol table)
+
 ## [1.3.7] - 2026-02-27
 
 ### Added
@@ -552,7 +580,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.7...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.8...HEAD
+[1.3.8]: https://github.com/shayanb/MoaV/compare/v1.3.7...v1.3.8
 [1.3.7]: https://github.com/shayanb/MoaV/compare/v1.3.6...v1.3.7
 [1.3.6]: https://github.com/shayanb/MoaV/compare/v1.3.5...v1.3.6
 [1.3.5]: https://github.com/shayanb/MoaV/compare/v1.3.4...v1.3.5
