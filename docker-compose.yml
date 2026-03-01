@@ -248,6 +248,9 @@ services:
       - "80"
     profiles:
       - proxy
+      - wireguard
+      - dnstunnel
+      - trusttunnel
       - all
 
   # ===========================================================================
