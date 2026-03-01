@@ -3294,6 +3294,7 @@ cmd_logs() {
     local follow=true
     local tail_lines=100
     local services_to_log=""
+    local profile_flags=""
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -3311,13 +3312,22 @@ cmd_logs() {
                 shift 2
                 ;;
             all)
+                profile_flags="--profile all"
                 shift
                 ;;
             *)
-                if [[ -z "$services_to_log" ]]; then
-                    services_to_log=$(resolve_services "$1")
+                # Check if argument is a profile name (or alias)
+                local resolved_profile
+                resolved_profile=$(resolve_profile "$1")
+                local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel admin conduit snowflake monitoring client all setup"
+                if echo "$valid_profiles" | grep -qw "$resolved_profile"; then
+                    profile_flags="$profile_flags --profile $resolved_profile"
                 else
-                    services_to_log="$services_to_log $(resolve_services "$1")"
+                    if [[ -z "$services_to_log" ]]; then
+                        services_to_log=$(resolve_services "$1")
+                    else
+                        services_to_log="$services_to_log $(resolve_services "$1")"
+                    fi
                 fi
                 shift
                 ;;
@@ -3326,8 +3336,10 @@ cmd_logs() {
 
     # Build docker compose command
     local cmd="docker compose --ansi always"
-    if [[ -z "$services_to_log" ]]; then
+    if [[ -z "$services_to_log" && -z "$profile_flags" ]]; then
         cmd="$cmd --profile all"
+    elif [[ -n "$profile_flags" ]]; then
+        cmd="$cmd $profile_flags"
     fi
     cmd="$cmd logs -t --tail $tail_lines"
 

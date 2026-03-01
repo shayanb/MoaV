@@ -108,9 +108,11 @@ RUN chmod +x /usr/local/bin/dnstt-client 2>/dev/null && \
     echo "dnstt-client installed" || \
     echo "dnstt-client: not available (optional)"
 
-# slipstream-client: download pre-built binary
+# slipstream-client: download pre-built binary (Rust, glibc-linked)
+# Requires glibc compatibility layer on Alpine
 ARG SLIPSTREAM_VERSION=2026.02.22.1
-RUN ARCH=$(cat /tmp/arch) && \
+RUN apk add --no-cache gcompat && \
+    ARCH=$(cat /tmp/arch) && \
     echo "Downloading slipstream-client for ${ARCH}..." && \
     wget -qO /usr/local/bin/slipstream-client \
     "https://github.com/net2share/slipstream-rust-build/releases/download/v${SLIPSTREAM_VERSION}/slipstream-client-linux-${ARCH}" && \
