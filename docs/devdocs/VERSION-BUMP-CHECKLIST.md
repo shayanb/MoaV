@@ -91,6 +91,7 @@ If any component versions were bumped in this release, verify they are consisten
 | awg-tools | `AWGTOOLS_VERSION` | amneziawg + client build args | `Dockerfile.amneziawg`, `Dockerfile.client` |
 | Prometheus | `PROMETHEUS_VERSION` | — | `Dockerfile.prometheus` |
 | Grafana | `GRAFANA_VERSION` | — | `Dockerfile.grafana` |
+| Slipstream | `SLIPSTREAM_VERSION` | slipstream + client build args | `Dockerfile.slipstream`, `Dockerfile.client` |
 | Conduit | `CONDUIT_VERSION` | conduit build args | `Dockerfile.conduit` |
 
 Pattern: `.env.example` is the source, `docker-compose.yml` passes as build arg with fallback default, `Dockerfile` has `ARG` with same fallback default.
@@ -178,3 +179,17 @@ For a minimal release, the absolute minimum files to touch:
 4. `site/index.html` — update softwareVersion
 
 That's 4 files. Everything else (`moav.sh`, docker images, etc.) picks up the version automatically.
+
+---
+
+## 8. Print PR & Release Text
+
+After completing all steps above, print the following two blocks of text (filled in with the actual version, date, and changelog content) so they can be copied directly.
+
+### 8a. PR Description
+
+Print the PR description using the template from step 6a, populated with the actual changelog entries from step 3.
+
+### 8b. GitHub Release Body
+
+Print the release body using the template from step 6b, populated with the actual changelog entries and compare URL.

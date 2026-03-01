@@ -109,9 +109,9 @@ RUN chmod +x /usr/local/bin/dnstt-client 2>/dev/null && \
     echo "dnstt-client: not available (optional)"
 
 # slipstream-client: download pre-built binary (Rust, glibc-linked)
-# Requires glibc compatibility layer on Alpine
+# Needs gcompat + libgcc (for _Unwind_*) + libc6-compat (for __res_init/libresolv)
 ARG SLIPSTREAM_VERSION=2026.02.22.1
-RUN apk add --no-cache gcompat && \
+RUN apk add --no-cache gcompat libgcc libc6-compat && \
     ARCH=$(cat /tmp/arch) && \
     echo "Downloading slipstream-client for ${ARCH}..." && \
     wget -qO /usr/local/bin/slipstream-client \

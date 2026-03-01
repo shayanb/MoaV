@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-03-01
+
+### Added
+- **Slipstream DNS Tunnel** — QUIC-over-DNS protocol (1.5-5x faster than dnstt)
+  - New `slipstream` service using pre-built Rust binaries from [slipstream-rust](https://github.com/Mygod/slipstream-rust)
+  - Resolver mode (default, ~63 KB/s, stealthier) and authoritative mode (~3.9 MB/s, exposes server IP)
+  - ECDSA P-256 self-signed certificate generated during bootstrap
+  - Full client support: cert distribution, client instructions, client-test, client-connect
+  - Client guide (EN/FA) with protocol description and setup instructions
+- **DNS Router** — Lightweight Go UDP forwarder for running multiple DNS tunnels on port 53
+  - Routes DNS queries by domain suffix to dnstt or Slipstream backends
+  - Supports single-backend mode (routes all traffic when only one tunnel is enabled)
+- **`dnstunnel` Profile** — Unified profile for all DNS tunnel services (dns-router + dnstt + Slipstream)
+  - Profile aliases: `dnstt`, `dns`, `slip`, `slipstream` all resolve to `dnstunnel`
+  - Individual toggles: `ENABLE_DNSTT` and `ENABLE_SLIPSTREAM` control which backends are active
+- **`moav logs` Profile Support** — `moav logs dnstunnel` now shows logs for all services in a profile (was silently failing for profile names)
+
+### Fixed
+- **Decoy Container Profile Mismatch** — `certbot` depends on `decoy`, but `decoy` was missing profiles (`wireguard`, `dnstunnel`, `trusttunnel`) causing `invalid compose project` errors when starting non-proxy profiles
+- **Slipstream Binary on Alpine** — Pre-built Rust binaries are glibc-linked; Slipstream server switched to `debian:bookworm-slim`, client container uses `gcompat` + `libgcc` + `libc6-compat`
+
+### Changed
+- **`dnstt` Profile Renamed** — `dnstt` profile renamed to `dnstunnel` (backwards-compatible via alias)
+- **dnstt Port Mapping** — dnstt no longer binds host port 53 directly; dns-router handles port 53 and routes to backends
+
 ## [1.3.8] - 2026-02-27
 
 ### Added
@@ -580,7 +605,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.3.8...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/shayanb/MoaV/compare/v1.3.8...v1.4.0
 [1.3.8]: https://github.com/shayanb/MoaV/compare/v1.3.7...v1.3.8
 [1.3.7]: https://github.com/shayanb/MoaV/compare/v1.3.6...v1.3.7
 [1.3.6]: https://github.com/shayanb/MoaV/compare/v1.3.5...v1.3.6
