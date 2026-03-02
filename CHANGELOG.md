@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-03-02
+
+### Added
+- **Telegram MTProxy (telemt)** — Rust-based MTProxy with Fake-TLS V2 for direct Telegram access in censored regions
+  - New `telemt` service on port 993/tcp (IMAPS port — blends with expected TLS traffic)
+  - Fake-TLS V2: real certificate emulation, timing simulation, ALPN enforcement (mimics `dl.google.com`)
+  - Per-user 32-hex secrets with configurable connection limits (`TELEMT_MAX_TCP_CONNS`, `TELEMT_MAX_UNIQUE_IPS`)
+  - `tg://proxy` and `https://t.me/proxy` links auto-generated in user bundles with QR codes
+  - No domain required — works with IP address only (fake-TLS domain is for DPI evasion, not DNS)
+  - No client binary needed — users connect via official Telegram app
+  - Profile: `telegram` (aliases: `tg`, `mtproxy`, `telemt`)
+  - `ENABLE_TELEMT=true` by default
+- **Telegram MTProxy Grafana Dashboard** — Per-user connection monitoring
+  - Active Users, Total/Bad Connections, Handshake Timeouts, Uptime stat panels
+  - Connection Rate, Active Connections & Users, Bandwidth Rate time series
+  - Per-user breakdown: Active Connections by User, Unique IPs by User
+  - Per-User Details table and ME Health (Messaging Engine) charts
+- **`moav user add` telemt integration** — New users automatically get MTProxy secrets and `tg://proxy` links
+
+### Fixed
+- **Grafana proxy 502 errors** — Race condition where grafana-proxy started before Grafana was ready; added readiness wait loop
+- **Grafana dashboard starring fails on HTTPS** — `star_dashboards()` was using `http://` but Grafana runs HTTPS when certs are found; now uses matching protocol with `--no-check-certificate`
+- **dnstt/Slipstream "cannot resolve sing-box" warning** — Race condition where DNS tunnels started before sing-box was registered in Docker DNS; added `depends_on: sing-box: condition: service_healthy`
+- **telemt metrics not scraped by Prometheus** — telemt's `metrics_whitelist` defaults to localhost-only; added `metrics_whitelist = ["0.0.0.0/0"]` to generated config
+- **`moav restart grafana` restarting entire monitoring stack** — Service names like `grafana`, `prometheus` were being resolved as profile aliases to `monitoring`; `restart`/`stop` now only match exact profile names
+- **Slipstream build arguments** — Fixed build failures from incorrect argument passing
+
+### Changed
+- **Fake-TLS default domain** — Changed from `www.google.com` to `dl.google.com` (whitelisted during Iran's Jan-Feb 2026 shutdowns, less commonly used as proxy SNI fingerprint)
+- **telemt per-user limits configurable** — `TELEMT_MAX_TCP_CONNS` (default: 100) and `TELEMT_MAX_UNIQUE_IPS` (default: 10) via `.env`
+
 ## [1.4.0] - 2026-03-01
 
 ### Added
@@ -605,7 +636,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/shayanb/MoaV/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/shayanb/MoaV/compare/v1.3.8...v1.4.0
 [1.3.8]: https://github.com/shayanb/MoaV/compare/v1.3.7...v1.3.8
 [1.3.7]: https://github.com/shayanb/MoaV/compare/v1.3.6...v1.3.7
