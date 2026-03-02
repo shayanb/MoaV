@@ -1,0 +1,442 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 100 },
+            { "color": "red", "value": 500 }
+          ]}
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_connections_total", "refId": "A" }
+      ],
+      "title": "Total Connections",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 10 },
+            { "color": "red", "value": 50 }
+          ]}
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 0 },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_connections_bad_total", "refId": "A" }
+      ],
+      "title": "Bad Connections",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 5 }
+          ]}
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 0 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_handshake_timeouts_total", "refId": "A" }
+      ],
+      "title": "Handshake Timeouts",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "#73BF69", "value": 1 }
+          ]}
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 15, "y": 0 },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "count(telemt_user_connections_current > 0)", "refId": "A" }
+      ],
+      "title": "Active Users",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 0 },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_uptime_seconds", "refId": "A" }
+      ],
+      "title": "Uptime",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto",
+            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5,
+            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true,
+            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 7,
+      "options": {
+        "legend": { "calcs": ["mean", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(telemt_connections_total[5m]) * 60", "legendFormat": "Connections/min", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(telemt_connections_bad_total[5m]) * 60", "legendFormat": "Bad/min", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(telemt_handshake_timeouts_total[5m]) * 60", "legendFormat": "Timeouts/min", "refId": "C" }
+      ],
+      "title": "Connection Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto",
+            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5,
+            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true,
+            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 8,
+      "options": {
+        "legend": { "calcs": ["mean", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(telemt_user_connections_current)", "legendFormat": "Active Connections", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "count(telemt_user_connections_current > 0)", "legendFormat": "Active Users", "refId": "B" }
+      ],
+      "title": "Active Connections & Users",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto",
+            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5,
+            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true,
+            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "binBps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "id": 9,
+      "options": {
+        "legend": { "calcs": ["mean", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(telemt_user_octets_from_client[5m]))", "legendFormat": "From Clients", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(telemt_user_octets_to_client[5m]))", "legendFormat": "To Clients", "refId": "B" }
+      ],
+      "title": "Bandwidth Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto",
+            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5,
+            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true,
+            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "id": 10,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_connections_current", "legendFormat": "{{user}}", "refId": "A" }
+      ],
+      "title": "Active Connections by User",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto",
+            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5,
+            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true,
+            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "id": 11,
+      "options": {
+        "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_unique_ips_current", "legendFormat": "{{user}}", "refId": "A" }
+      ],
+      "title": "Unique IPs by User",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "User" },
+            "properties": [{ "id": "custom.width", "value": 120 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "From Client" },
+            "properties": [{ "id": "unit", "value": "bytes" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "To Client" },
+            "properties": [{ "id": "unit", "value": "bytes" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Unique IPs" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
+      "id": 12,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ["Connections", "Active", "From Client", "To Client", "Unique IPs"]
+        },
+        "sortBy": [{ "displayName": "Active", "desc": true }]
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_connections_total", "format": "table", "instant": true, "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_connections_current", "format": "table", "instant": true, "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_octets_from_client", "format": "table", "instant": true, "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_octets_to_client", "format": "table", "instant": true, "refId": "D" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_unique_ips_current", "format": "table", "instant": true, "refId": "E" }
+      ],
+      "title": "Per-User Details",
+      "transformations": [
+        {
+          "id": "merge"
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
+            "indexByName": { "user": 0, "Value #A": 1, "Value #B": 2, "Value #C": 3, "Value #D": 4, "Value #E": 5 },
+            "renameByName": {
+              "user": "User",
+              "Value #A": "Connections",
+              "Value #B": "Active",
+              "Value #C": "From Client",
+              "Value #D": "To Client",
+              "Value #E": "Unique IPs"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto",
+            "barAlignment": 0, "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5,
+            "scaleDistribution": { "type": "linear" }, "showPoints": "never", "spanNulls": true,
+            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 },
+      "id": 13,
+      "options": {
+        "legend": { "calcs": ["mean", "max", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(telemt_me_reconnect_attempts_total[5m]) * 60", "legendFormat": "Reconnect Attempts/min", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(telemt_me_reconnect_success_total[5m]) * 60", "legendFormat": "Reconnect Success/min", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(telemt_me_crc_mismatch_total[5m]) * 60", "legendFormat": "CRC Mismatch/min", "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(telemt_desync_total[5m]) * 60", "legendFormat": "Desync/min", "refId": "D" }
+      ],
+      "title": "ME Health (Messaging Engine)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["moav", "telemt", "telegram", "mtproxy"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "MoaV - Telegram MTProxy",
+  "uid": "moav-telemt",
+  "version": 1,
+  "weekStart": ""
+}

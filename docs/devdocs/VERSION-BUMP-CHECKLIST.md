@@ -92,6 +92,7 @@ If any component versions were bumped in this release, verify they are consisten
 | Prometheus | `PROMETHEUS_VERSION` | — | `Dockerfile.prometheus` |
 | Grafana | `GRAFANA_VERSION` | — | `Dockerfile.grafana` |
 | Slipstream | `SLIPSTREAM_VERSION` | slipstream + client build args | `Dockerfile.slipstream`, `Dockerfile.client` |
+| telemt | `TELEMT_VERSION` | telemt build args | `Dockerfile.telemt` |
 | Conduit | `CONDUIT_VERSION` | conduit build args | `Dockerfile.conduit` |
 
 Pattern: `.env.example` is the source, `docker-compose.yml` passes as build arg with fallback default, `Dockerfile` has `ARG` with same fallback default.

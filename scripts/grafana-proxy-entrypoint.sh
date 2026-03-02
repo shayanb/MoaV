@@ -53,6 +53,22 @@ echo "[grafana-proxy] Using certificates:"
 echo "[grafana-proxy]   Key:  $key_file"
 echo "[grafana-proxy]   Cert: $cert_file"
 
+# Wait for Grafana to be ready (up to 60 seconds)
+echo "[grafana-proxy] Waiting for Grafana to be ready..."
+waited=0
+while [ $waited -lt 60 ]; do
+    if wget -q --spider --no-check-certificate "https://grafana:3000/api/health" 2>/dev/null || \
+       wget -q --spider "http://grafana:3000/api/health" 2>/dev/null; then
+        echo "[grafana-proxy] Grafana is ready"
+        break
+    fi
+    sleep 3
+    waited=$((waited + 3))
+done
+if [ $waited -ge 60 ]; then
+    echo "[grafana-proxy] WARNING: Grafana not ready after 60s, starting anyway"
+fi
+
 # Generate nginx config with correct certificate paths
 cat > /etc/nginx/conf.d/default.conf << EOF
 # Nginx reverse proxy for Grafana (auto-generated)

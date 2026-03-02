@@ -11,6 +11,7 @@ source /app/lib/wireguard.sh
 source /app/lib/amneziawg.sh
 source /app/lib/dnstt.sh
 source /app/lib/slipstream.sh
+source /app/lib/telemt.sh
 
 # Default state directory if not set
 STATE_DIR="${STATE_DIR:-/state}"
@@ -421,6 +422,14 @@ if [[ "${ENABLE_SLIPSTREAM:-false}" == "true" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# Generate telemt (Telegram MTProxy) instructions (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
+    telemt_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
+    log_info "  - telemt (Telegram MTProxy) config generated"
+fi
+
+# -----------------------------------------------------------------------------
 # Generate README.html from template
 # -----------------------------------------------------------------------------
 TEMPLATE_FILE="/docs/client-guide-template.html"
@@ -444,6 +453,9 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     SLIPSTREAM_DOMAIN="${SLIPSTREAM_SUBDOMAIN:-s}.${DOMAIN}"
     CONFIG_SLIPSTREAM=$(cat "$OUTPUT_DIR/slipstream-instructions.txt" 2>/dev/null || echo "")
 
+    # Get telemt info
+    CONFIG_TELEMT=$(cat "$OUTPUT_DIR/telemt-proxy-link.txt" 2>/dev/null | tr -d '\n' || echo "")
+
     # Convert QR images to base64
     qr_to_base64() {
         local file="$1"
@@ -461,6 +473,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
     QR_AMNEZIAWG_B64=$(qr_to_base64 "$OUTPUT_DIR/amneziawg-qr.png")
+    QR_TELEMT_B64=$(qr_to_base64 "$OUTPUT_DIR/telemt-qr.png")
 
     GENERATED_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
@@ -520,6 +533,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{QR_WIREGUARD}}|$QR_WIREGUARD_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
     sed -i "s|{{QR_AMNEZIAWG}}|$QR_AMNEZIAWG_B64|g" "$OUTPUT_HTML"
+    sed -i "s|{{QR_TELEMT}}|$QR_TELEMT_B64|g" "$OUTPUT_HTML"
 
     # Python-based placeholder replacement - handles special chars and multiline safely
     replace_placeholder() {
@@ -591,6 +605,13 @@ with open(filepath, 'w') as f:
         replace_placeholder "{{CONFIG_SLIPSTREAM}}" "$CONFIG_SLIPSTREAM"
     else
         replace_placeholder "{{CONFIG_SLIPSTREAM}}" "Slipstream not enabled"
+    fi
+
+    # telemt (Telegram MTProxy) link
+    if [[ -n "${CONFIG_TELEMT:-}" ]]; then
+        replace_placeholder "{{CONFIG_TELEMT}}" "$CONFIG_TELEMT"
+    else
+        replace_placeholder "{{CONFIG_TELEMT}}" "Telegram MTProxy not enabled"
     fi
 
     log_info "  - README.html generated"

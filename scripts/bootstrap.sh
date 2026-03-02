@@ -12,6 +12,7 @@ source /app/lib/wireguard.sh
 source /app/lib/amneziawg.sh
 source /app/lib/dnstt.sh
 source /app/lib/slipstream.sh
+source /app/lib/telemt.sh
 
 log_info "Starting MoaV bootstrap..."
 
@@ -241,6 +242,11 @@ export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_SLIPSTREAM="${ENABLE_SLIPSTREAM:-false}"
 export SLIPSTREAM_SUBDOMAIN="${SLIPSTREAM_SUBDOMAIN:-s}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+export ENABLE_TELEMT="${ENABLE_TELEMT:-true}"
+export PORT_TELEMT="${PORT_TELEMT:-993}"
+export TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
+export TELEMT_MAX_TCP_CONNS="${TELEMT_MAX_TCP_CONNS:-100}"
+export TELEMT_MAX_UNIQUE_IPS="${TELEMT_MAX_UNIQUE_IPS:-10}"
 # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
 if [[ -z "${CDN_DOMAIN:-}" && -n "${CDN_SUBDOMAIN:-}" && -n "${DOMAIN:-}" ]]; then
     export CDN_DOMAIN="${CDN_SUBDOMAIN}.${DOMAIN}"
@@ -352,6 +358,9 @@ TROJAN_USERS_JSON="["
 HYSTERIA2_USERS_JSON="["
 VLESS_WS_USERS_JSON="["
 TRUSTTUNNEL_CREDENTIALS=""
+TELEMT_USERS_TOML=""
+TELEMT_CONNS_TOML=""
+TELEMT_IPS_TOML=""
 
 for i in $(seq -w 1 "$INITIAL_USERS"); do
     # Use "demouser" for single user, otherwise "user01", "user02", etc.
@@ -400,6 +409,17 @@ username = \"$USER_ID\"
 password = \"$USER_PASSWORD\"
 
 "
+
+    # telemt (Telegram MTProxy) per-user secret
+    if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
+        telemt_generate_secret "$USER_ID"
+        TELEMT_USERS_TOML+="${USER_ID} = \"${TELEMT_SECRET}\"
+"
+        TELEMT_CONNS_TOML+="${USER_ID} = ${TELEMT_MAX_TCP_CONNS}
+"
+        TELEMT_IPS_TOML+="${USER_ID} = ${TELEMT_MAX_UNIQUE_IPS}
+"
+    fi
 
     # Generate user bundle
     /app/generate-user.sh "$USER_ID"
@@ -493,6 +513,17 @@ password = \"$USER_PASSWORD\"
 
 "
 
+    # telemt secret for extra user
+    if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
+        telemt_generate_secret "$EXTRA_USER_ID"
+        TELEMT_USERS_TOML+="${EXTRA_USER_ID} = \"${TELEMT_SECRET}\"
+"
+        TELEMT_CONNS_TOML+="${EXTRA_USER_ID} = ${TELEMT_MAX_TCP_CONNS}
+"
+        TELEMT_IPS_TOML+="${EXTRA_USER_ID} = ${TELEMT_MAX_UNIQUE_IPS}
+"
+    fi
+
     # Regenerate user bundle (adds WG/AWG peers via guards + generates configs)
     export USER_ID="$EXTRA_USER_ID"
     export IS_DEMO_USER="false"
@@ -528,6 +559,13 @@ if [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]]; then
     envsubst < /configs/trusttunnel/vpn.toml.template > /configs/trusttunnel/vpn.toml
 
     log_info "TrustTunnel configuration written to /configs/trusttunnel/"
+fi
+
+# -----------------------------------------------------------------------------
+# Generate telemt config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
+    telemt_write_config
 fi
 
 # -----------------------------------------------------------------------------

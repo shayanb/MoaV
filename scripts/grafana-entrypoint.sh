@@ -163,9 +163,16 @@ star_dashboards() {
     echo "[grafana] Waiting for Grafana to be ready..."
     sleep 15  # Wait for Grafana to fully start
 
+    # Use same protocol Grafana is running with
+    PROTO="${GF_SERVER_PROTOCOL:-http}"
+    WGET_OPTS=""
+    if [ "$PROTO" = "https" ]; then
+        WGET_OPTS="--no-check-certificate"
+    fi
+
     # Wait for Grafana API to be available (up to 60 seconds)
     for i in $(seq 1 12); do
-        if wget -q -O /dev/null "http://localhost:3000/api/health" 2>/dev/null; then
+        if wget -q -O /dev/null $WGET_OPTS "${PROTO}://localhost:3000/api/health" 2>/dev/null; then
             break
         fi
         sleep 5
@@ -174,11 +181,11 @@ star_dashboards() {
     # Get admin password from env
     ADMIN_PASS="${GF_SECURITY_ADMIN_PASSWORD:-admin}"
     AUTH="admin:${ADMIN_PASS}"
-    API="http://localhost:3000/api"
+    API="${PROTO}://localhost:3000/api"
 
     # Star all MoaV dashboards
-    for uid in moav-system moav-containers moav-singbox moav-wireguard moav-snowflake moav-conduit; do
-        wget -q -O /dev/null --header="Content-Type: application/json" \
+    for uid in moav-system moav-containers moav-singbox moav-wireguard moav-snowflake moav-conduit moav-telemt; do
+        wget -q -O /dev/null $WGET_OPTS --header="Content-Type: application/json" \
             --post-data="" \
             --auth-no-challenge \
             --user="admin" --password="${ADMIN_PASS}" \

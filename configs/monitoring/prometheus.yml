@@ -60,3 +60,10 @@ scrape_configs:
     static_configs:
       - targets: ['snowflake-exporter:8080']
     scrape_timeout: 10s
+
+  # telemt - Telegram MTProxy native Prometheus metrics
+  # NOTE: Only available when running with --profile telegram
+  - job_name: 'telemt'
+    static_configs:
+      - targets: ['telemt:9090']
+    scrape_timeout: 10s

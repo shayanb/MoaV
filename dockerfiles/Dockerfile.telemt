@@ -1,0 +1,47 @@
+# =============================================================================
+# MoaV telemt - Telegram MTProxy with Fake-TLS V2
+# =============================================================================
+# Advanced MTProxy server with DPI evasion: real TLS cert emulation,
+# timing simulation, ALPN enforcement, per-user secrets.
+# Uses pre-built musl static binaries (no glibc needed).
+# =============================================================================
+
+FROM alpine:3.21
+
+ARG TARGETARCH
+
+# Version - read from .env via docker-compose build args
+ARG TELEMT_VERSION=3.1.3
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    bash \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Architecture mapping and binary download
+# telemt releases use: x86_64, aarch64
+RUN case "${TARGETARCH:-amd64}" in \
+        amd64) ARCH="x86_64" ;; \
+        arm64) ARCH="aarch64" ;; \
+        *) ARCH="x86_64" ;; \
+    esac && \
+    echo "Downloading telemt v${TELEMT_VERSION} for ${ARCH} (musl)..." && \
+    wget -qO- \
+    "https://github.com/telemt/telemt/releases/download/${TELEMT_VERSION}/telemt-${ARCH}-linux-musl.tar.gz" | \
+    tar xz -C /usr/local/bin/ && \
+    chmod +x /usr/local/bin/telemt && \
+    echo "telemt v${TELEMT_VERSION} installed (${ARCH}-musl)" || \
+    { echo "telemt: download failed"; exit 1; }
+
+# Create directories
+RUN mkdir -p /app /etc/telemt /app/tlsfront
+
+# Copy entrypoint
+COPY scripts/telemt-entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 993/tcp 9090/tcp
+
+ENTRYPOINT ["/app/entrypoint.sh"]

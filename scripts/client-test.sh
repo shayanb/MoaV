@@ -1377,6 +1377,61 @@ EOF
     rm -f "$test_config"
 }
 
+test_telemt() {
+    log_info "Testing Telegram MTProxy (telemt)..."
+
+    local config_file=""
+    local detail=""
+
+    # Find telemt proxy link
+    for f in "$CONFIG_DIR"/telemt-proxy-link.txt; do
+        [[ -f "$f" ]] && config_file="$f" && break
+    done
+
+    if [[ -z "$config_file" ]]; then
+        detail="No telemt config found in bundle"
+        log_warn "$detail"
+        RESULTS[telemt]="skip"
+        DETAILS[telemt]="$detail"
+        return
+    fi
+
+    log_debug "Using config: $config_file"
+
+    # Parse tg://proxy link to extract server and port
+    local tg_link
+    tg_link=$(cat "$config_file" | tr -d '\n\r')
+    log_debug "tg:// link: ${tg_link:0:60}..."
+
+    local server port
+    server=$(echo "$tg_link" | grep -oP 'server=\K[^&]+' || true)
+    port=$(echo "$tg_link" | grep -oP 'port=\K[^&]+' || true)
+
+    if [[ -z "$server" ]] || [[ -z "$port" ]]; then
+        detail="Failed to parse telemt proxy link"
+        log_error "$detail"
+        RESULTS[telemt]="fail"
+        DETAILS[telemt]="$detail"
+        return
+    fi
+
+    log_debug "Parsed: server=$server port=$port"
+
+    # TCP connectivity test (cannot test MTProxy protocol without Telegram client)
+    log_info "  Testing TCP connectivity to $server:$port..."
+    if nc -z -w 5 "$server" "$port" 2>/dev/null; then
+        detail="Port $port reachable — use Telegram app to verify proxy"
+        log_info "  $detail"
+        RESULTS[telemt]="pass"
+        DETAILS[telemt]="$detail"
+    else
+        detail="TCP connection to $server:$port failed (port may be blocked or service not running)"
+        log_error "  $detail"
+        RESULTS[telemt]="fail"
+        DETAILS[telemt]="$detail"
+    fi
+}
+
 # =============================================================================
 # Output Functions
 # =============================================================================
@@ -1412,7 +1467,7 @@ output_json() {
 EOF
 
     local first=true
-    for protocol in reality trojan hysteria2 wireguard amneziawg dnstt slipstream trusttunnel; do
+    for protocol in reality trojan hysteria2 wireguard amneziawg dnstt slipstream trusttunnel telemt; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             [[ "$first" != "true" ]] && echo ","
             first=false
@@ -1443,7 +1498,7 @@ output_human() {
     echo ""
     echo "───────────────────────────────────────────────────────────────"
 
-    for protocol in reality trojan hysteria2 wireguard amneziawg dnstt slipstream trusttunnel; do
+    for protocol in reality trojan hysteria2 wireguard amneziawg dnstt slipstream trusttunnel telemt; do
         if [[ -n "${RESULTS[$protocol]:-}" ]]; then
             local status="${RESULTS[$protocol]}"
             local detail="${DETAILS[$protocol]:-}"
@@ -1485,6 +1540,7 @@ main() {
     test_dnstt
     test_slipstream
     test_trusttunnel
+    test_telemt
 
     # Output results
     if [[ "${JSON_OUTPUT:-false}" == "true" ]]; then

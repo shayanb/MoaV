@@ -346,6 +346,36 @@ EOF
     log_info "Generated TrustTunnel client config (toml + txt + json)"
 fi
 
+# Add user to telemt (Telegram MTProxy) if config exists
+TELEMT_CONFIG="configs/telemt/config.toml"
+if [[ "${ENABLE_TELEMT:-true}" == "true" ]] && [[ -f "$TELEMT_CONFIG" ]]; then
+    log_info "Adding $USERNAME to telemt..."
+
+    # Check if user already exists
+    if grep -q "^${USERNAME} = " "$TELEMT_CONFIG" 2>/dev/null; then
+        log_info "User '$USERNAME' already exists in telemt, skipping..."
+    else
+        # Generate 32-hex MTProxy secret
+        TELEMT_SECRET=$(openssl rand -hex 16)
+
+        # Save secret to state
+        cat > "$STATE_DIR/users/$USERNAME/telemt.env" <<EOF
+TELEMT_SECRET=$TELEMT_SECRET
+EOF
+
+        # Add user to [access.users] section (before [access.user_max_tcp_conns])
+        sed -i "/^\[access\.user_max_tcp_conns\]/i ${USERNAME} = \"${TELEMT_SECRET}\"" "$TELEMT_CONFIG"
+
+        # Add connection limit (before [access.user_max_unique_ips])
+        sed -i "/^\[access\.user_max_unique_ips\]/i ${USERNAME} = ${TELEMT_MAX_TCP_CONNS:-100}" "$TELEMT_CONFIG"
+
+        # Add IP limit (append at end)
+        echo "${USERNAME} = ${TELEMT_MAX_UNIQUE_IPS:-10}" >> "$TELEMT_CONFIG"
+
+        log_info "Added $USERNAME to telemt config"
+    fi
+fi
+
 # Try to reload sing-box (hot reload) unless --no-reload was passed
 if [[ "$NO_RELOAD" != "true" ]]; then
     if docker compose ps sing-box --status running &>/dev/null; then
@@ -365,6 +395,14 @@ if [[ "$NO_RELOAD" != "true" ]]; then
         if docker compose ps trusttunnel --status running &>/dev/null; then
             log_info "Restarting TrustTunnel to apply new credentials..."
             docker compose restart trusttunnel
+        fi
+    fi
+
+    # Try to reload telemt (if running)
+    if [[ -f "$TELEMT_CONFIG" ]]; then
+        if docker compose --profile telegram ps telemt --status running &>/dev/null; then
+            log_info "Restarting telemt to apply new user..."
+            docker compose --profile telegram restart telemt
         fi
     fi
 fi
@@ -409,6 +447,15 @@ if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
     echo "  Username: ${USERNAME}"
     echo "  Password: ${USER_PASSWORD}"
     echo "  DNS Servers: tls://1.1.1.1"
+    echo ""
+fi
+
+if [[ -n "${TELEMT_SECRET:-}" ]] && [[ -f "$TELEMT_CONFIG" ]]; then
+    PORT_TELEMT="${PORT_TELEMT:-993}"
+    TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
+    HEX_DOMAIN=$(printf '%s' "$TELEMT_TLS_DOMAIN" | xxd -p | tr -d '\n')
+    echo "Telegram MTProxy:"
+    echo "  tg://proxy?server=${SERVER_IP}&port=${PORT_TELEMT}&secret=ee${TELEMT_SECRET}${HEX_DOMAIN}"
     echo ""
 fi
 
