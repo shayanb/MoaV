@@ -1152,8 +1152,9 @@ cmd_update() {
             success "Updated: $current_commit → $new_commit (branch: $new_branch)"
         fi
 
-        # Check for component version updates
+        # Check for component version updates and new .env variables
         check_component_versions
+        check_env_additions
     else
         error "Failed to update. Check your network connection or git status."
         echo ""
@@ -1268,6 +1269,100 @@ check_component_versions() {
         echo ""
         echo "Versions not updated. To update later, compare:"
         echo "  .env.example (new versions) vs .env (your versions)"
+    fi
+}
+
+# Check for new variables in .env.example that are missing from .env
+check_env_additions() {
+    local env_file="$SCRIPT_DIR/.env"
+    local example_file="$SCRIPT_DIR/.env.example"
+
+    [[ ! -f "$env_file" ]] && return 0
+    [[ ! -f "$example_file" ]] && return 0
+
+    # Extract variable names (lines matching KEY=value, skip comments and empty lines)
+    local env_vars example_vars
+    env_vars=$(grep -oP '^[A-Z_][A-Z0-9_]*(?==)' "$env_file" 2>/dev/null | sort -u)
+    example_vars=$(grep -oP '^[A-Z_][A-Z0-9_]*(?==)' "$example_file" 2>/dev/null | sort -u)
+
+    # Find variables in .env.example but not in .env
+    local missing_vars
+    missing_vars=$(comm -23 <(echo "$example_vars") <(echo "$env_vars"))
+
+    [[ -z "$missing_vars" ]] && return 0
+
+    # Build display list and extract lines with context from .env.example
+    local missing_count=0
+    local display_lines=""
+    local append_block=""
+
+    while IFS= read -r var; do
+        [[ -z "$var" ]] && continue
+        missing_count=$((missing_count + 1))
+
+        # Get the value line from .env.example
+        local value_line
+        value_line=$(grep "^${var}=" "$example_file")
+
+        # Get preceding comment lines (walk backwards from the variable line)
+        local line_num comments=""
+        line_num=$(grep -n "^${var}=" "$example_file" | head -1 | cut -d: -f1)
+
+        if [[ -n "$line_num" ]]; then
+            local prev=$((line_num - 1))
+            while [[ $prev -gt 0 ]]; do
+                local prev_line
+                prev_line=$(sed -n "${prev}p" "$example_file")
+                if [[ "$prev_line" =~ ^# ]]; then
+                    comments="${prev_line}"$'\n'"${comments}"
+                    prev=$((prev - 1))
+                else
+                    break
+                fi
+            done
+        fi
+
+        # Display: variable name with its default value
+        local default_val
+        default_val=$(echo "$value_line" | cut -d'=' -f2-)
+        if [[ -z "$default_val" ]]; then
+            display_lines+="  ${var}  ${DIM}(empty default)${NC}"$'\n'
+        else
+            display_lines+="  ${var}=${default_val}"$'\n'
+        fi
+
+        # Build the block to append (comments + variable line)
+        if [[ -n "$comments" ]]; then
+            append_block+="${comments}"
+        fi
+        append_block+="${value_line}"$'\n'
+
+    done <<< "$missing_vars"
+
+    [[ $missing_count -eq 0 ]] && return 0
+
+    echo ""
+    info "New configuration options available ($missing_count):"
+    echo ""
+    echo -e "$display_lines"
+
+    read -r -p "Add these to your .env with default values? [Y/n] " add_vars
+
+    if [[ ! "$add_vars" =~ ^[Nn]$ ]]; then
+        # Append with a separator
+        {
+            echo ""
+            echo "# ── Added by moav update ($(date +%Y-%m-%d)) ──"
+            echo -n "$append_block"
+        } >> "$env_file"
+
+        success "Added $missing_count new variable(s) to .env"
+        echo ""
+        echo -e "Review with: ${WHITE}cat .env${NC}"
+    else
+        echo ""
+        echo "Skipped. To add later, compare:"
+        echo "  diff <(grep '^[A-Z]' .env.example | cut -d= -f1 | sort) <(grep '^[A-Z]' .env | cut -d= -f1 | sort)"
     fi
 }
 
