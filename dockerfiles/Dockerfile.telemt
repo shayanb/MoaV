@@ -29,7 +29,7 @@ RUN case "${TARGETARCH:-amd64}" in \
     esac && \
     echo "Downloading telemt v${TELEMT_VERSION} for ${ARCH} (musl)..." && \
     wget -qO- \
-    "https://github.com/telemt/telemt/releases/download/v${TELEMT_VERSION}/telemt-${ARCH}-linux-musl.tar.gz" | \
+    "https://github.com/telemt/telemt/releases/download/${TELEMT_VERSION}/telemt-${ARCH}-linux-musl.tar.gz" | \
     tar xz -C /usr/local/bin/ && \
     chmod +x /usr/local/bin/telemt && \
     echo "telemt v${TELEMT_VERSION} installed (${ARCH}-musl)" || \
