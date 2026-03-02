@@ -3185,20 +3185,18 @@ cmd_stop() {
             success "All services stopped!"
         fi
     else
-        # Check if argument is a profile name (resolve aliases first)
-        local resolved_arg
-        resolved_arg=$(resolve_profile "${args[0]}")
-        local profiles="proxy wireguard amneziawg dnstunnel trusttunnel admin conduit snowflake monitoring"
+        # Only treat as profile if it's an exact profile name
+        # Service names like "grafana", "prometheus" stop just that service
+        local profiles="proxy wireguard amneziawg dnstunnel trusttunnel admin conduit snowflake monitoring telegram"
         local profile_match=""
         for p in $profiles; do
-            if [[ "$resolved_arg" == "$p" ]]; then
+            if [[ "${args[0]}" == "$p" ]]; then
                 profile_match="$p"
                 break
             fi
         done
 
         if [[ -n "$profile_match" ]]; then
-            # Handle profile stop
             if [[ "$remove_containers" == "true" ]]; then
                 info "Stopping and removing $profile_match profile..."
                 docker compose --profile "$profile_match" down
@@ -3232,20 +3230,18 @@ cmd_restart() {
         docker compose --profile all restart
         success "All services restarted!"
     elif [[ $# -eq 1 ]]; then
-        # Single argument - check if it's a profile name (resolve aliases first)
-        local resolved_arg
-        resolved_arg=$(resolve_profile "$1")
-        local profiles="proxy wireguard dnstunnel trusttunnel admin conduit snowflake monitoring"
+        # Single argument - only treat as profile if it's an exact profile name
+        # Service names like "grafana", "prometheus", "telemt" restart just that service
+        local profiles="proxy wireguard amneziawg dnstunnel trusttunnel admin conduit snowflake monitoring telegram"
         local profile_match=""
         for p in $profiles; do
-            if [[ "$resolved_arg" == "$p" ]]; then
+            if [[ "$1" == "$p" ]]; then
                 profile_match="$p"
                 break
             fi
         done
 
         if [[ -n "$profile_match" ]]; then
-            # Handle profile restart - restart all services in that profile
             info "Restarting $profile_match profile services..."
             docker compose --profile "$profile_match" restart
             success "Profile $profile_match restarted!"

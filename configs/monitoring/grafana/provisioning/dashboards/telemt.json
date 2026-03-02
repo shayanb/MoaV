@@ -344,8 +344,8 @@
             "properties": [{ "id": "unit", "value": "bytes" }]
           },
           {
-            "matcher": { "id": "byName", "options": "IP Usage" },
-            "properties": [{ "id": "unit", "value": "percentunit" }, { "id": "custom.cellOptions", "value": { "type": "gauge", "mode": "basic" } }]
+            "matcher": { "id": "byName", "options": "Unique IPs" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
           }
         ]
       },
@@ -358,7 +358,7 @@
           "show": true,
           "reducer": ["sum"],
           "countRows": false,
-          "fields": ["Connections", "Active", "From Client", "To Client"]
+          "fields": ["Connections", "Active", "From Client", "To Client", "Unique IPs"]
         },
         "sortBy": [{ "displayName": "Active", "desc": true }]
       },
@@ -368,13 +368,13 @@
         { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_connections_current", "format": "table", "instant": true, "refId": "Active" },
         { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_octets_from_client", "format": "table", "instant": true, "refId": "FromClient" },
         { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_octets_to_client", "format": "table", "instant": true, "refId": "ToClient" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_unique_ips_utilization", "format": "table", "instant": true, "refId": "IPUsage" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_unique_ips_current", "format": "table", "instant": true, "refId": "IPs" }
       ],
       "title": "Per-User Details",
       "transformations": [
         {
-          "id": "seriesToColumns",
-          "options": { "byField": "user" }
+          "id": "joinByField",
+          "options": { "byField": "user", "mode": "outer" }
         },
         {
           "id": "filterFieldsByName",
@@ -391,7 +391,7 @@
               "Value #Active": "Active",
               "Value #FromClient": "From Client",
               "Value #ToClient": "To Client",
-              "Value #IPUsage": "IP Usage"
+              "Value #IPs": "Unique IPs"
             }
           }
         }
