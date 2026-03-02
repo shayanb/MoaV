@@ -157,8 +157,9 @@ services:
       - DNSTT_DOMAIN=${DNSTT_SUBDOMAIN:-t}.${DOMAIN}
       - DNSTT_UPSTREAM=sing-box:1080
       - TZ=${TZ:-UTC}
-    # Note: dnstt requires sing-box (proxy profile) to be running
-    # The moav CLI auto-adds proxy profile when dnstunnel is selected
+    depends_on:
+      sing-box:
+        condition: service_healthy
     profiles:
       - dnstunnel
       - all
@@ -182,6 +183,9 @@ services:
       - SLIPSTREAM_DOMAIN=${SLIPSTREAM_SUBDOMAIN:-s}.${DOMAIN}
       - SLIPSTREAM_UPSTREAM=sing-box:1080
       - TZ=${TZ:-UTC}
+    depends_on:
+      sing-box:
+        condition: service_healthy
     profiles:
       - dnstunnel
       - all
