@@ -153,7 +153,7 @@ Try these in order. If one doesn't work, try the next:
 10. **Slipstream** - QUIC-over-DNS, 1.5-5x faster than dnstt (port 53/udp)
 11. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
 
-**Telegram-specific:** Use the **Telegram MTProxy** link (in `telemt-proxy-link.txt`) directly in the Telegram app. This only works for Telegram traffic — it's not a general proxy.
+**Telegram-specific:** Use the **Telegram MTProxy** link (in `telegram-proxy-link.txt`) directly in the Telegram app. This only works for Telegram traffic — it's not a general proxy.
 
 ---
 

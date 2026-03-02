@@ -454,7 +454,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_SLIPSTREAM=$(cat "$OUTPUT_DIR/slipstream-instructions.txt" 2>/dev/null || echo "")
 
     # Get telemt info
-    CONFIG_TELEMT=$(cat "$OUTPUT_DIR/telemt-proxy-link.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_TELEMT=$(cat "$OUTPUT_DIR/telegram-proxy-link.txt" 2>/dev/null | tr -d '\n' || echo "")
 
     # Convert QR images to base64
     qr_to_base64() {
@@ -473,7 +473,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
     QR_AMNEZIAWG_B64=$(qr_to_base64 "$OUTPUT_DIR/amneziawg-qr.png")
-    QR_TELEMT_B64=$(qr_to_base64 "$OUTPUT_DIR/telemt-qr.png")
+    QR_TELEMT_B64=$(qr_to_base64 "$OUTPUT_DIR/telegram-proxy-qr.png")
 
     GENERATED_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 

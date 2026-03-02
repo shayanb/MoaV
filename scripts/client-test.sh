@@ -1384,7 +1384,7 @@ test_telemt() {
     local detail=""
 
     # Find telemt proxy link
-    for f in "$CONFIG_DIR"/telemt-proxy-link.txt; do
+    for f in "$CONFIG_DIR"/telegram-proxy-link.txt; do
         [[ -f "$f" ]] && config_file="$f" && break
     done
 

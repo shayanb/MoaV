@@ -126,13 +126,13 @@ telemt_generate_client_instructions() {
     https_link=$(echo "$tg_link" | sed 's|^tg://proxy|https://t.me/proxy|')
 
     # Save the proxy link
-    echo "$tg_link" > "$output_dir/telemt-proxy-link.txt"
+    echo "$tg_link" > "$output_dir/telegram-proxy-link.txt"
 
     # Generate QR code of the tg:// link
-    qrencode -o "$output_dir/telemt-qr.png" -s 6 "$tg_link" 2>/dev/null || true
+    qrencode -o "$output_dir/telegram-proxy-qr.png" -s 6 "$tg_link" 2>/dev/null || true
 
     # Generate instructions
-    cat > "$output_dir/telemt-instructions.txt" <<EOF
+    cat > "$output_dir/telegram-proxy-instructions.txt" <<EOF
 # Telegram MTProxy Instructions for $user_id
 # ============================================
 # Connect to Telegram through your MoaV server's MTProxy.

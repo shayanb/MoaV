@@ -587,8 +587,8 @@
                 <li><a href="#en" onclick="scrollToSection('hysteria2-en')">2. Hysteria2 <span class="toc-badge badge-secondary">Fast</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('trojan-en')">3. Trojan <span class="toc-badge badge-secondary">Backup</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('cdn-en')">4. CDN VLESS+WS <span class="toc-badge badge-secondary">IP Blocked?</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('wireguard-en')">5. WireGuard <span class="toc-badge badge-secondary">Full VPN</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('amneziawg-en')">6. AmneziaWG <span class="toc-badge badge-secondary">Anti-DPI</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('amneziawg-en')">5. AmneziaWG <span class="toc-badge badge-secondary">Anti-DPI</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('wireguard-en')">6. WireGuard <span class="toc-badge badge-secondary">Full VPN</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('trusttunnel-en')">7. TrustTunnel <span class="toc-badge badge-secondary">Stealth VPN</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">8. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('slipstream-en')">8b. Slipstream <span class="toc-badge badge-fallback">Faster DNS Tunnel</span></a></li>
@@ -773,11 +773,63 @@
             </div>
         </div>
 
+        <!-- AmneziaWG -->
+        <div class="protocol-section" id="amneziawg-en">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>5. AmneziaWG</h2>
+                    <span class="protocol-badge badge-secondary">Anti-DPI</span>
+                </div>
+                <span class="protocol-port">Port 51821/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">DPI-resistant WireGuard fork. Obfuscates WireGuard packets to defeat deep packet inspection. Same performance, invisible to censors.</p>
+
+                <div class="extra-section">
+                    <h4>When to use AmneziaWG</h4>
+                    <ul>
+                        <li>Standard WireGuard is blocked or throttled</li>
+                        <li>Mobile carriers detect and limit WireGuard traffic</li>
+                        <li>You need a full VPN with DPI evasion</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>Download AmneziaWG Client</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/amneziawg/id6478942365" target="_blank">AmneziaWG on App Store</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=org.amnezia.awg" target="_blank">AmneziaWG on Play Store</a></li>
+                        <li><strong>Windows:</strong> <a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases" target="_blank">AmneziaWG Client</a></li>
+                        <li><strong>macOS:</strong> <a href="https://apps.apple.com/app/amneziawg/id6478942365" target="_blank">AmneziaWG on App Store</a> or <code>awg-quick</code> CLI</li>
+                        <li><strong>Linux:</strong> Use <code>awg-quick</code> CLI tool (included in awg-tools)</li>
+                    </ul>
+                </div>
+
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_AMNEZIAWG}}" alt="AmneziaWG QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR not available<br>Use config below';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>How to connect:</h4>
+                        <ol>
+                            <li>Install <strong>AmneziaWG</strong> app for your platform</li>
+                            <li>Tap "+" then scan the QR code or import the .conf file</li>
+                            <li>Enable the connection</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>AmneziaWG Config File (save as .conf)</h4>
+                    <div class="config-value multiline">{{CONFIG_AMNEZIAWG}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- WireGuard -->
         <div class="protocol-section" id="wireguard-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>5. WireGuard</h2>
+                    <h2>6. WireGuard</h2>
                     <span class="protocol-badge badge-secondary">Full VPN</span>
                 </div>
                 <span class="protocol-port">Port 51820/udp</span>
@@ -841,58 +893,6 @@
                 <div class="config-box">
                     <h4>WireGuard-wstunnel Config File (save as .conf)</h4>
                     <div class="config-value multiline">{{CONFIG_WIREGUARD_WSTUNNEL}}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- AmneziaWG -->
-        <div class="protocol-section" id="amneziawg-en">
-            <div class="protocol-header">
-                <div class="protocol-title">
-                    <h2>6. AmneziaWG</h2>
-                    <span class="protocol-badge badge-secondary">Anti-DPI</span>
-                </div>
-                <span class="protocol-port">Port 51821/udp</span>
-            </div>
-            <div class="protocol-content">
-                <p class="protocol-desc">DPI-resistant WireGuard fork. Obfuscates WireGuard packets to defeat deep packet inspection. Same performance, invisible to censors.</p>
-
-                <div class="extra-section">
-                    <h4>When to use AmneziaWG</h4>
-                    <ul>
-                        <li>Standard WireGuard is blocked or throttled</li>
-                        <li>Mobile carriers detect and limit WireGuard traffic</li>
-                        <li>You need a full VPN with DPI evasion</li>
-                    </ul>
-                </div>
-
-                <div class="extra-section">
-                    <h4>Download AmneziaWG Client</h4>
-                    <ul>
-                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/amneziawg/id6478942365" target="_blank">AmneziaWG on App Store</a></li>
-                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=org.amnezia.awg" target="_blank">AmneziaWG on Play Store</a></li>
-                        <li><strong>Windows:</strong> <a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases" target="_blank">AmneziaWG Client</a></li>
-                        <li><strong>macOS:</strong> <a href="https://apps.apple.com/app/amneziawg/id6478942365" target="_blank">AmneziaWG on App Store</a> or <code>awg-quick</code> CLI</li>
-                        <li><strong>Linux:</strong> Use <code>awg-quick</code> CLI tool (included in awg-tools)</li>
-                    </ul>
-                </div>
-
-                <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_AMNEZIAWG}}" alt="AmneziaWG QR Code" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR not available<br>Use config below';">
-                    </div>
-                    <div class="qr-instructions">
-                        <h4>How to connect:</h4>
-                        <ol>
-                            <li>Install <strong>AmneziaWG</strong> app for your platform</li>
-                            <li>Tap "+" then scan the QR code or import the .conf file</li>
-                            <li>Enable the connection</li>
-                        </ol>
-                    </div>
-                </div>
-                <div class="config-box">
-                    <h4>AmneziaWG Config File (save as .conf)</h4>
-                    <div class="config-value multiline">{{CONFIG_AMNEZIAWG}}</div>
                 </div>
             </div>
         </div>
@@ -1344,8 +1344,8 @@
                 <li><a href="#fa" onclick="scrollToSection('hysteria2-fa')">۲. Hysteria2 <span class="toc-badge badge-secondary">سریع</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('trojan-fa')">۳. Trojan <span class="toc-badge badge-secondary">پشتیبان</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('cdn-fa')">۴. CDN VLESS+WS <span class="toc-badge badge-secondary">IP مسدود؟</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('wireguard-fa')">۵. WireGuard <span class="toc-badge badge-secondary">VPN کامل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('amneziawg-fa')">۶. AmneziaWG <span class="toc-badge badge-secondary">ضد فیلتر</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('amneziawg-fa')">۵. AmneziaWG <span class="toc-badge badge-secondary">ضد فیلتر</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('wireguard-fa')">۶. WireGuard <span class="toc-badge badge-secondary">VPN کامل</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('trusttunnel-fa')">۷. TrustTunnel <span class="toc-badge badge-secondary">VPN مخفی</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۸. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('slipstream-fa')">۸ب. Slipstream <span class="toc-badge badge-fallback">تونل DNS سریع‌تر</span></a></li>
@@ -1530,11 +1530,63 @@
             </div>
         </div>
 
+        <!-- AmneziaWG -->
+        <div class="protocol-section" id="amneziawg-fa">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۵. AmneziaWG</h2>
+                    <span class="protocol-badge badge-secondary">ضد فیلتر</span>
+                </div>
+                <span class="protocol-port">پورت 51821/udp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">نسخه ضد فیلتر WireGuard. بسته‌های WireGuard را مبهم‌سازی می‌کند تا از بازرسی عمیق بسته‌ها عبور کند. همان عملکرد، نامرئی برای سانسورگرها.</p>
+
+                <div class="extra-section">
+                    <h4>چه زمانی از AmneziaWG استفاده کنید</h4>
+                    <ul>
+                        <li>WireGuard معمولی مسدود یا کند شده</li>
+                        <li>اپراتورهای موبایل ترافیک WireGuard را شناسایی می‌کنند</li>
+                        <li>به VPN کامل با دور زدن DPI نیاز دارید</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>دانلود کلاینت AmneziaWG</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/amneziawg/id6478942365" target="_blank">AmneziaWG در App Store</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=org.amnezia.awg" target="_blank">AmneziaWG در Play Store</a></li>
+                        <li><strong>Windows:</strong> <a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases" target="_blank">کلاینت AmneziaWG</a></li>
+                        <li><strong>macOS:</strong> <a href="https://apps.apple.com/app/amneziawg/id6478942365" target="_blank">AmneziaWG در App Store</a> یا <code>awg-quick</code> CLI</li>
+                        <li><strong>Linux:</strong> ابزار <code>awg-quick</code> CLI (موجود در awg-tools)</li>
+                    </ul>
+                </div>
+
+                <div class="qr-section">
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{QR_AMNEZIAWG}}" alt="QR Code AmneziaWG" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR در دسترس نیست<br>از کانفیگ زیر استفاده کنید';">
+                    </div>
+                    <div class="qr-instructions">
+                        <h4>نحوه اتصال:</h4>
+                        <ol>
+                            <li>اپ <strong>AmneziaWG</strong> را برای پلتفرم خود نصب کنید</li>
+                            <li>روی "+" بزنید و کد QR را اسکن کنید یا فایل .conf را وارد کنید</li>
+                            <li>اتصال را فعال کنید</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>فایل کانفیگ AmneziaWG (ذخیره با پسوند .conf)</h4>
+                    <div class="config-value multiline">{{CONFIG_AMNEZIAWG}}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- WireGuard -->
         <div class="protocol-section" id="wireguard-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۵. WireGuard</h2>
+                    <h2>۶. WireGuard</h2>
                     <span class="protocol-badge badge-secondary">VPN کامل</span>
                 </div>
                 <span class="protocol-port">پورت 51820/udp</span>
@@ -1598,58 +1650,6 @@
                 <div class="config-box">
                     <h4>فایل کانفیگ WireGuard-wstunnel (ذخیره با پسوند .conf)</h4>
                     <div class="config-value multiline">{{CONFIG_WIREGUARD_WSTUNNEL}}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- AmneziaWG -->
-        <div class="protocol-section" id="amneziawg-fa">
-            <div class="protocol-header">
-                <div class="protocol-title">
-                    <h2>۶. AmneziaWG</h2>
-                    <span class="protocol-badge badge-secondary">ضد فیلتر</span>
-                </div>
-                <span class="protocol-port">پورت 51821/udp</span>
-            </div>
-            <div class="protocol-content">
-                <p class="protocol-desc">نسخه ضد فیلتر WireGuard. بسته‌های WireGuard را مبهم‌سازی می‌کند تا از بازرسی عمیق بسته‌ها عبور کند. همان عملکرد، نامرئی برای سانسورگرها.</p>
-
-                <div class="extra-section">
-                    <h4>چه زمانی از AmneziaWG استفاده کنید</h4>
-                    <ul>
-                        <li>WireGuard معمولی مسدود یا کند شده</li>
-                        <li>اپراتورهای موبایل ترافیک WireGuard را شناسایی می‌کنند</li>
-                        <li>به VPN کامل با دور زدن DPI نیاز دارید</li>
-                    </ul>
-                </div>
-
-                <div class="extra-section">
-                    <h4>دانلود کلاینت AmneziaWG</h4>
-                    <ul>
-                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/amneziawg/id6478942365" target="_blank">AmneziaWG در App Store</a></li>
-                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=org.amnezia.awg" target="_blank">AmneziaWG در Play Store</a></li>
-                        <li><strong>Windows:</strong> <a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases" target="_blank">کلاینت AmneziaWG</a></li>
-                        <li><strong>macOS:</strong> <a href="https://apps.apple.com/app/amneziawg/id6478942365" target="_blank">AmneziaWG در App Store</a> یا <code>awg-quick</code> CLI</li>
-                        <li><strong>Linux:</strong> ابزار <code>awg-quick</code> CLI (موجود در awg-tools)</li>
-                    </ul>
-                </div>
-
-                <div class="qr-section">
-                    <div class="qr-code">
-                        <img src="data:image/png;base64,{{QR_AMNEZIAWG}}" alt="QR Code AmneziaWG" onerror="this.parentElement.classList.add('qr-missing'); this.parentElement.innerHTML='QR در دسترس نیست<br>از کانفیگ زیر استفاده کنید';">
-                    </div>
-                    <div class="qr-instructions">
-                        <h4>نحوه اتصال:</h4>
-                        <ol>
-                            <li>اپ <strong>AmneziaWG</strong> را برای پلتفرم خود نصب کنید</li>
-                            <li>روی "+" بزنید و کد QR را اسکن کنید یا فایل .conf را وارد کنید</li>
-                            <li>اتصال را فعال کنید</li>
-                        </ol>
-                    </div>
-                </div>
-                <div class="config-box">
-                    <h4>فایل کانفیگ AmneziaWG (ذخیره با پسوند .conf)</h4>
-                    <div class="config-value multiline">{{CONFIG_AMNEZIAWG}}</div>
                 </div>
             </div>
         </div>

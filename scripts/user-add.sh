@@ -413,10 +413,10 @@ if [[ "${ENABLE_TELEMT:-true}" == "true" ]] && [[ -f "configs/telemt/config.toml
         TG_LINK="tg://proxy?server=${SERVER_IP}&port=${PORT_TELEMT}&secret=ee${TELEMT_SECRET}${HEX_DOMAIN}"
         HTTPS_LINK="https://t.me/proxy?server=${SERVER_IP}&port=${PORT_TELEMT}&secret=ee${TELEMT_SECRET}${HEX_DOMAIN}"
 
-        echo "$TG_LINK" > "$OUTPUT_DIR/telemt-proxy-link.txt"
-        qrencode -o "$OUTPUT_DIR/telemt-qr.png" -s 6 "$TG_LINK" 2>/dev/null || true
+        echo "$TG_LINK" > "$OUTPUT_DIR/telegram-proxy-link.txt"
+        qrencode -o "$OUTPUT_DIR/telegram-proxy-qr.png" -s 6 "$TG_LINK" 2>/dev/null || true
 
-        cat > "$OUTPUT_DIR/telemt-instructions.txt" <<EOF
+        cat > "$OUTPUT_DIR/telegram-proxy-instructions.txt" <<EOF
 # Telegram MTProxy Instructions for $USERNAME
 # ============================================
 # Quick Setup (tap/click the link):
@@ -515,7 +515,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_SLIPSTREAM=$(cat "$OUTPUT_DIR/slipstream-instructions.txt" 2>/dev/null || echo "")
 
     # Get telemt info
-    CONFIG_TELEMT=$(cat "$OUTPUT_DIR/telemt-proxy-link.txt" 2>/dev/null | tr -d '\n' || echo "")
+    CONFIG_TELEMT=$(cat "$OUTPUT_DIR/telegram-proxy-link.txt" 2>/dev/null | tr -d '\n' || echo "")
 
     # Convert QR images to base64
     qr_to_base64() {
@@ -533,7 +533,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_WIREGUARD_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-qr.png")
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
     QR_AMNEZIAWG_B64=$(qr_to_base64 "$OUTPUT_DIR/amneziawg-qr.png")
-    QR_TELEMT_B64=$(qr_to_base64 "$OUTPUT_DIR/telemt-qr.png")
+    QR_TELEMT_B64=$(qr_to_base64 "$OUTPUT_DIR/telegram-proxy-qr.png")
 
     # Copy template
     cp "$TEMPLATE_FILE" "$OUTPUT_HTML"
