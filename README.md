@@ -8,8 +8,8 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ## Features
 
-- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, TrustTunnel, WireGuard (direct & wstunnel), DNS tunnels (dnstt + Slipstream)
-- **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, or DNS
+- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard (direct & wstunnel), DNS tunnels (dnstt + Slipstream), Telegram MTProxy, CDN (VLESS+WS)
+- **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, DNS, or IMAPS
 - **Per-user credentials** - Create, revoke, and manage users independently
 - **Easy deployment** - Docker Compose based, single command setup
 - **Mobile-friendly** - QR codes and links for easy client import
@@ -97,25 +97,25 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
                │                 │                                    │                  │
 ╔══════════════╪═════════════════╪════════════════════════════════════╪══════════════════╪═════════╗
 ║              │                 │                                    │                  │         ║
-║     ┌────────┼─────────────────┼───────┐                            │                  │         ║
-║     │        │         │       │       │                            │                  │         ║
-║     ▼        ▼         ▼       ▼       ▼                            ▼                  ▼         ║
-║ ┌─────────┐┌─────────┐┌───────┐┌─────────┐                    ┌───────────┐      ┌───────────┐   ║
-║ │ Reality ││WireGuard││ Trust ││  DNS    │                    │           │      │           │   ║
-║ │ 443/tcp ││51820/udp││Tunnel ││ 53/udp  │                    │  Conduit  │      │ Snowflake │   ║
-║ │ Trojan  ││wstunnel ││4443/  │├─────────┤                    │  (donate  │      │  (donate  │   ║
-║ │8443/tcp ││8080/tcp ││tcp+udp││  dnstt  │                    │ bandwidth)│      │ bandwidth)│   ║
-║ │Hysteria2│└────┬────┘└───┬───┘└────┬────┘                    └─────┬─────┘      └─────┬─────┘   ║
-║ │ 443/udp │     │         │         │                               │                  │         ║
-║ │ CDN WS  │     │         │         │                               │                  │         ║
-║ │2082/tcp │     │         │         │    ┌────────────────────┐     │                  │     M   ║
-║ ├─────────┤     │         │         │    │ Grafana   :9444    │     │                  │     O   ║
-║ │ sing-box│     │         │         │    │ Prometheus         │     │                  │     A   ║
-║ └────┬────┘     │         │         │    └────────────────────┘     │                  │     V   ║
-║      │          │         │         │                               │                  │         ║
-╚══════╪══════════╪═════════╪═════════╪═══════════════════════════════╪══════════════════╪═════════╝
-       │          │         │         │                               │                  │
-       ▼          ▼         ▼         ▼                               ▼                  ▼
+║     ┌────────┼─────────────────┼───────┼──────┐                     │                  │         ║
+║     │        │         │       │       │      │                     │                  │         ║
+║     ▼        ▼         ▼       ▼       ▼      ▼                     ▼                  ▼         ║
+║ ┌─────────┐┌─────────┐┌───────┐┌─────────┐┌────────┐          ┌───────────┐      ┌───────────┐   ║
+║ │ Reality ││WireGuard││ Trust ││  DNS    ││Telegram│          │           │      │           │   ║
+║ │ 443/tcp ││51820/udp││Tunnel ││ 53/udp  ││MTProxy │          │  Conduit  │      │ Snowflake │   ║
+║ │ Trojan  ││AmneziaWG││4443/  │├─────────┤│993/tcp │          │  (donate  │      │  (donate  │   ║
+║ │8443/tcp ││51821/udp││tcp+udp││  dnstt  │└───┬────┘          │ bandwidth)│      │ bandwidth)│   ║
+║ │Hysteria2││wstunnel ││       ││Slipstrm │    │               └─────┬─────┘      └─────┬─────┘   ║
+║ │ 443/udp ││8080/tcp ││       │└────┬────┘    │                     │                  │         ║
+║ │ CDN WS  │└────┬────┘└───┬───┘     │         │                     │                  │         ║
+║ │2082/tcp │     │         │         │         │  ┌────────────────┐ │                  │     M   ║
+║ ├─────────┤     │         │         │         │  │ Grafana  :9444 │ │                  │     O   ║
+║ │ sing-box│     │         │         │         │  │ Prometheus     │ │                  │     A   ║
+║ └────┬────┘     │         │         │         │  └────────────────┘ │                  │     V   ║
+║      │          │         │         │         │                     │                  │         ║
+╚══════╪══════════╪═════════╪═════════╪═════════╪═════════════════════╪══════════════════╪═════════╝
+       │          │         │         │         │                     │                  │
+       ▼          ▼         ▼         ▼         ▼                     ▼                  ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                        Open Internet                                            │
 └─────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -217,7 +217,7 @@ moav test user1           # Test all protocols for user1
 moav test user1 --json    # Output results as JSON
 ```
 
-Tests Reality, Trojan, Hysteria2, TrustTunnel, WireGuard, dnstt, and Slipstream. Reports pass/fail/skip for each protocol.
+Tests Reality, Trojan, Hysteria2, TrustTunnel, WireGuard, AmneziaWG, dnstt, Slipstream, and Telegram MTProxy. Reports pass/fail/skip for each protocol.
 
 ### Client Mode
 
@@ -240,7 +240,7 @@ Build the client image separately:
 moav client build
 ```
 
-**Service aliases:** `conduit`→psiphon-conduit, `singbox`→sing-box, `wg`→wireguard, `dns/dnstt/slip`→dnstunnel
+**Service aliases:** `conduit`→psiphon-conduit, `singbox`→sing-box, `wg`→wireguard, `dns/dnstt/slip`→dnstunnel, `tg/mtproxy`→telemt
 
 ## Conduit Management
 
@@ -291,7 +291,9 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
 | 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) |
 | 51820/udp | UDP | WireGuard | No |
+| 51821/udp | UDP | AmneziaWG | No |
 | 8080/tcp | TCP | wstunnel | No |
+| 993/tcp | TCP | Telegram MTProxy | No |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 9444/tcp | TCP | Grafana (monitoring) | No |
 | 53/udp | UDP | DNS tunnel | Yes |
@@ -301,6 +303,8 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 
 Don't have a domain? MoaV can run in **domain-less mode** with:
 - **WireGuard** (direct UDP + WebSocket tunnel)
+- **AmneziaWG** (obfuscated WireGuard, defeats DPI)
+- **Telegram MTProxy** (fake-TLS, direct Telegram access)
 - **Admin dashboard** (uses self-signed certificate)
 - **Conduit** (Psiphon bandwidth donation)
 - **Snowflake** (Tor bandwidth donation)
@@ -323,7 +327,11 @@ MoaV/
 ├── configs/                # Service configurations
 │   ├── sing-box/
 │   ├── wireguard/
-│   └── dnstt/
+│   ├── amneziawg/
+│   ├── trusttunnel/
+│   ├── dnstt/
+│   ├── telemt/
+│   └── monitoring/
 ├── scripts/                # Management scripts
 │   ├── bootstrap.sh
 │   ├── user-add.sh

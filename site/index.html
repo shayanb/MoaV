@@ -6,8 +6,8 @@
     <title>MoaV - Mother of all VPNs | Multi-Protocol Censorship Circumvention</title>
 
     <!-- Primary SEO Meta Tags -->
-    <meta name="description" content="MoaV (Mother of all VPNs) is a free, open-source censorship circumvention stack built for hostile network environments. Docker-based deployment of Reality (VLESS), Trojan, Hysteria2, TrustTunnel, CDN WebSocket, WireGuard, DNS tunneling, Psiphon Conduit, and Tor Snowflake. Web admin dashboard, Grafana monitoring, and automatic protocol fallback. Internet freedom is a human right.">
-    <meta name="keywords" content="VPN, censorship circumvention, privacy, internet freedom, Reality protocol, VLESS, Trojan, Hysteria2, TrustTunnel, WireGuard, DNS tunnel, anti-censorship, proxy, sing-box, bypass firewall, GFW, psiphon, conduit, tor, snowflake, open source VPN, self-hosted VPN, Docker VPN, internet shutdown, digital rights, human rights, Cloudflare CDN, WebSocket tunnel, Grafana monitoring">
+    <meta name="description" content="MoaV (Mother of all VPNs) is a free, open-source censorship circumvention stack built for hostile network environments. Docker-based deployment of Reality (VLESS), Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN WebSocket, WireGuard, DNS tunneling (dnstt + Slipstream), Telegram MTProxy, Psiphon Conduit, and Tor Snowflake. Web admin dashboard, Grafana monitoring, and automatic protocol fallback. Internet freedom is a human right.">
+    <meta name="keywords" content="VPN, censorship circumvention, privacy, internet freedom, Reality protocol, VLESS, Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunnel, Slipstream, Telegram MTProxy, anti-censorship, proxy, sing-box, bypass firewall, GFW, psiphon, conduit, tor, snowflake, open source VPN, self-hosted VPN, Docker VPN, internet shutdown, digital rights, human rights, Cloudflare CDN, WebSocket tunnel, Grafana monitoring">
     <meta name="author" content="MoaV Contributors">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <link rel="canonical" href="https://moav.sh">
@@ -16,7 +16,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://moav.sh">
     <meta property="og:title" content="MoaV - Mother of all VPNs | Internet Freedom Stack">
-    <meta property="og:description" content="Open-source multi-protocol circumvention stack for hostile networks. One-command Docker deployment. Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, WireGuard, DNS tunneling, Psiphon Conduit, and Tor Snowflake. Web admin, Grafana monitoring, automatic protocol fallback. Internet access is a human right.">
+    <meta property="og:description" content="Open-source multi-protocol circumvention stack for hostile networks. One-command Docker deployment. Reality, Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN mode, WireGuard, DNS tunneling, Slipstream, Telegram MTProxy, Psiphon Conduit, and Tor Snowflake. Web admin, Grafana monitoring, automatic protocol fallback. Internet access is a human right.">
     <meta property="og:image" content="https://moav.sh/assets/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -27,7 +27,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://moav.sh">
     <meta name="twitter:title" content="MoaV - Mother of all VPNs | Internet Freedom Stack">
-    <meta name="twitter:description" content="Open-source censorship circumvention for hostile networks. Docker-based multi-protocol stack with automatic fallback. Internet access is a human right.">
+    <meta name="twitter:description" content="Open-source censorship circumvention for hostile networks. Docker-based multi-protocol stack: Reality, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunneling, Telegram MTProxy, and more. Internet access is a human right.">
     <meta name="twitter:image" content="https://moav.sh/assets/og-image.png">
 
     <!-- Additional SEO -->
@@ -42,7 +42,7 @@
         "@type": "SoftwareApplication",
         "name": "MoaV",
         "alternateName": "Mother of all VPNs",
-        "description": "MoaV is a free, open-source multi-protocol censorship circumvention stack that deploys Reality (VLESS), Trojan, Hysteria2, TrustTunnel, CDN WebSocket, WireGuard, Psiphon Conduit, Tor Snowflake, and DNS tunneling protocols. Designed for hostile network environments, it provides automatic protocol fallback, multi-user management, web admin dashboard, Grafana monitoring, and stealth operation. Single-command deployment with Docker Compose.",
+        "description": "MoaV is a free, open-source multi-protocol censorship circumvention stack that deploys Reality (VLESS), Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN WebSocket, WireGuard, Telegram MTProxy, Psiphon Conduit, Tor Snowflake, and DNS tunneling (dnstt + Slipstream) protocols. Designed for hostile network environments, it provides automatic protocol fallback, multi-user management, web admin dashboard, Grafana monitoring, and stealth operation. Single-command deployment with Docker Compose.",
         "url": "https://moav.sh",
         "applicationCategory": "NetworkApplication",
         "operatingSystem": "Linux, Docker",
@@ -59,9 +59,11 @@
             "Trojan protocol - HTTPS mimicry",
             "Hysteria2 - QUIC-based fast protocol",
             "TrustTunnel - HTTP/2 and QUIC tunneling",
+            "AmneziaWG - Obfuscated WireGuard defeating DPI",
             "CDN mode - VLESS over WebSocket via Cloudflare",
             "WireGuard - Full VPN mode (direct and wstunnel)",
-            "DNS Tunneling - Works when only DNS allowed",
+            "DNS Tunneling (dnstt + Slipstream) - Works when only DNS allowed",
+            "Telegram MTProxy - Fake-TLS V2 for direct Telegram access",
             "Tor Snowflake - Donate bandwidth to Tor network",
             "Psiphon Conduit - Donate bandwidth to Psiphon network",
             "Grafana monitoring dashboard",
@@ -71,7 +73,7 @@
             "Docker Compose deployment",
             "Decoy website included"
         ],
-        "keywords": "VPN, censorship circumvention, privacy, Reality, Trojan, Hysteria2, TrustTunnel, WireGuard, DNS tunnel, proxy, anti-censorship, Cloudflare CDN, WebSocket, Grafana monitoring",
+        "keywords": "VPN, censorship circumvention, privacy, Reality, Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunnel, Slipstream, Telegram MTProxy, proxy, anti-censorship, Cloudflare CDN, WebSocket, Grafana monitoring",
         "downloadUrl": "https://github.com/shayanb/MoaV",
         "installUrl": "https://moav.sh/install.sh",
         "codeRepository": "https://github.com/shayanb/MoaV",
@@ -95,7 +97,7 @@
                 "name": "What is MoaV?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "MoaV (Mother of all VPNs) is a free, open-source multi-protocol censorship circumvention stack that combines Reality (VLESS), Trojan, Hysteria2, WireGuard, Tor Snowflake, Psiphone Conduit, and DNS tunneling into a single Docker-based deployment."
+                    "text": "MoaV (Mother of all VPNs) is a free, open-source multi-protocol censorship circumvention stack that combines Reality (VLESS), Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, Telegram MTProxy, Tor Snowflake, Psiphon Conduit, and DNS tunneling (dnstt + Slipstream) into a single Docker-based deployment."
                 }
             },
             {
@@ -111,7 +113,7 @@
                 "name": "Which VPN protocols does MoaV support?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "MoaV supports Reality (VLESS) on 443/tcp, Hysteria2 on 443/udp, Trojan on 8443/tcp, TrustTunnel on 4443/tcp+udp, CDN mode (VLESS over WebSocket via Cloudflare), WireGuard on 51820/udp (and via WebSocket on 8080/tcp), DNS tunneling on 53/udp, Psiphon Conduit, and Tor Snowflake."
+                    "text": "MoaV supports Reality (VLESS) on 443/tcp, Hysteria2 on 443/udp, Trojan on 8443/tcp, TrustTunnel on 4443/tcp+udp, AmneziaWG on 51821/udp, CDN mode (VLESS over WebSocket via Cloudflare), WireGuard on 51820/udp (and via WebSocket on 8080/tcp), DNS tunneling on 53/udp (dnstt + Slipstream), Telegram MTProxy on 993/tcp, Psiphon Conduit, and Tor Snowflake."
                 }
             },
             {
@@ -222,8 +224,8 @@
                         </svg>
                     </div>
                     <h3>Stealth Proxies</h3>
-                    <p>Reality (VLESS), Hysteria2, Trojan. Look like normal HTTPS traffic. V2Ray-compatible, powered by sing-box.</p>
-                    <span class="protocol-port">443/tcp · 443/udp · 8443/tcp</span>
+                    <p>Reality (VLESS), Hysteria2, Trojan. Look like normal HTTPS. CDN mode routes through Cloudflare when IP is blocked.</p>
+                    <span class="protocol-port">443/tcp · 443/udp · 8443/tcp · CDN</span>
                 </div>
 
                 <div class="protocol-card">
@@ -241,14 +243,39 @@
                 <div class="protocol-card">
                     <div class="protocol-icon">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+                            <path d="M20 12a8 8 0 0 0-8-8"/>
+                            <path d="M8 12h8M12 8v8" stroke-width="1" opacity="0.5"/>
+                        </svg>
+                    </div>
+                    <h3>AmneziaWG</h3>
+                    <p>Obfuscated WireGuard that defeats deep packet inspection. Same speed, invisible to DPI filters.</p>
+                    <span class="protocol-port">51821/udp</span>
+                </div>
+
+                <div class="protocol-card">
+                    <div class="protocol-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <circle cx="12" cy="12" r="10"/>
                             <line x1="2" y1="12" x2="22" y2="12"/>
                             <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                         </svg>
                     </div>
-                    <h3>DNS Tunnel (dnstt)</h3>
-                    <p>Last resort when everything else is blocked. Tunnels traffic over DNS queries. Slow but hard to block.</p>
+                    <h3>DNS Tunnel</h3>
+                    <p>Last resort when everything else is blocked. dnstt for basic tunneling, Slipstream for faster QUIC-over-DNS.</p>
                     <span class="protocol-port">53/udp</span>
+                </div>
+
+                <div class="protocol-card">
+                    <div class="protocol-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            <path d="M8 10h8M8 14h4"/>
+                        </svg>
+                    </div>
+                    <h3>Telegram MTProxy</h3>
+                    <p>Fake-TLS V2 proxy for direct Telegram access. Mimics IMAPS traffic, works without a domain.</p>
+                    <span class="protocol-port">993/tcp</span>
                 </div>
 
                 <div class="protocol-card">
@@ -286,17 +313,6 @@
                     <h3>TrustTunnel</h3>
                     <p>HTTP/2 and QUIC tunneling. Looks exactly like normal HTTPS traffic to deep packet inspection.</p>
                     <span class="protocol-port">4443/tcp+udp</span>
-                </div>
-
-                <div class="protocol-card">
-                    <div class="protocol-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                        </svg>
-                    </div>
-                    <h3>CDN Mode (VLESS+WS)</h3>
-                    <p>Route through Cloudflare when server IP is blocked. WebSocket over CDN bypasses IP-based filtering.</p>
-                    <span class="protocol-port">443 via Cloudflare</span>
                 </div>
 
                 <div class="protocol-card protocol-card-cta">
@@ -362,7 +378,7 @@
                         </svg>
                     </div>
                     <h3>Stealth First</h3>
-                    <p>All traffic looks like normal HTTPS, WebSocket, or DNS. Decoy website included.</p>
+                    <p>All traffic looks like normal HTTPS, WebSocket, DNS, or IMAPS. Decoy website included.</p>
                 </div>
 
                 <div class="why-card">
@@ -689,28 +705,28 @@
                │                 │                                    │                  │
 ╔══════════════╪═════════════════╪════════════════════════════════════╪══════════════════╪═════════╗
 ║              │                 │                                    │                  │         ║
-║     ┌────────┼─────────────────┼───────┐                            │                  │         ║
-║     │        │         │       │       │                            │                  │         ║
-║     ▼        ▼         ▼       ▼       ▼                            ▼                  ▼         ║
-║ ┌─────────┐┌─────────┐┌───────┐┌─────────┐                    ┌───────────┐      ┌───────────┐   ║
-║ │ Reality ││WireGuard││ Trust ││  DNS    │                    │           │      │           │   ║
-║ │ 443/tcp ││51820/udp││Tunnel ││ 53/udp  │                    │  Conduit  │      │ Snowflake │   ║
-║ │ Trojan  ││wstunnel ││4443/  │├─────────┤                    │  (donate  │      │  (donate  │   ║
-║ │8443/tcp ││8080/tcp ││tcp+udp││  dnstt  │                    │ bandwidth)│      │ bandwidth)│   ║
-║ │Hysteria2│└────┬────┘└───┬───┘└────┬────┘                    └─────┬─────┘      └─────┬─────┘   ║
-║ │ 443/udp │     │         │         │                               │                  │         ║
-║ │ CDN WS  │     │         │         │                               │                  │         ║
-║ │2082/tcp │     │         │         │    ┌────────────────────┐     │                  │     M   ║
-║ ├─────────┤     │         │         │    │ Grafana   :9444    │     │                  │     O   ║
-║ │ sing-box│     │         │         │    │ Prometheus         │     │                  │     A   ║
-║ └────┬────┘     │         │         │    └────────────────────┘     │                  │     V   ║
-║      │          │         │         │                               │                  │         ║
-╚══════╪══════════╪═════════╪═════════╪═══════════════════════════════╪══════════════════╪═════════╝
-       │          │         │         │                               │                  │
-       ▼          ▼         ▼         ▼                               ▼                  ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                        Open Internet                                             │
-└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+║     ┌────────┼─────────────────┼───────┼──────┐                     │                  │         ║
+║     │        │         │       │       │      │                     │                  │         ║
+║     ▼        ▼         ▼       ▼       ▼      ▼                     ▼                  ▼         ║
+║ ┌─────────┐┌─────────┐┌───────┐┌─────────┐┌────────┐          ┌───────────┐      ┌───────────┐   ║
+║ │ Reality ││WireGuard││ Trust ││  DNS    ││Telegram│          │           │      │           │   ║
+║ │ 443/tcp ││51820/udp││Tunnel ││ 53/udp  ││MTProxy │          │  Conduit  │      │ Snowflake │   ║
+║ │ Trojan  ││AmneziaWG││4443/  │├─────────┤│993/tcp │          │  (donate  │      │  (donate  │   ║
+║ │8443/tcp ││51821/udp││tcp+udp││  dnstt  │└───┬────┘          │ bandwidth)│      │ bandwidth)│   ║
+║ │Hysteria2││wstunnel ││       ││Slipstrm │    │               └─────┬─────┘      └─────┬─────┘   ║
+║ │ 443/udp ││8080/tcp ││       │└────┬────┘    │                     │                  │         ║
+║ │ CDN WS  │└────┬────┘└───┬───┘     │         │                     │                  │         ║
+║ │2082/tcp │     │         │         │         │  ┌────────────────┐ │                  │     M   ║
+║ ├─────────┤     │         │         │         │  │ Grafana  :9444 │ │                  │     O   ║
+║ │ sing-box│     │         │         │         │  │ Prometheus     │ │                  │     A   ║
+║ └────┬────┘     │         │         │         │  └────────────────┘ │                  │     V   ║
+║      │          │         │         │         │                     │                  │         ║
+╚══════╪══════════╪═════════╪═════════╪═════════╪═════════════════════╪══════════════════╪═════════╝
+       │          │         │         │         │                     │                  │
+       ▼          ▼         ▼         ▼         ▼                     ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                        Open Internet                                            │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
                     </pre>
                 </div>
             </div>
