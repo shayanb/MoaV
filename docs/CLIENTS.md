@@ -44,6 +44,7 @@ This guide explains how to connect to MoaV from various devices.
 | [WireGuard](https://www.wireguard.com/) + [wstunnel](https://github.com/erebe/wstunnel) | 8080/tcp | VPN wrapped in WebSocket |
 | [DNS Tunnel (dnstt)](https://www.bamsoftware.com/software/dnstt/) | 53/udp | Last resort, slow but hard to block |
 | [Slipstream](https://github.com/Mygod/slipstream-rust) | 53/udp | QUIC-over-DNS, 1.5-5x faster than dnstt |
+| [Telegram MTProxy](https://github.com/telemt/telemt) | 993/tcp | Fake-TLS V2, direct Telegram access |
 | [Psiphon](https://psiphon.ca/) | Various | Standalone app, uses Psiphon network |
 | [Tor](https://www.torproject.org/) (Snowflake) | Various | Uses Tor network |
 
@@ -151,6 +152,8 @@ Try these in order. If one doesn't work, try the next:
 9. **DNS Tunnel (dnstt)** - Last resort, very slow but hard to block (port 53/udp)
 10. **Slipstream** - QUIC-over-DNS, 1.5-5x faster than dnstt (port 53/udp)
 11. **Psiphon** - Standalone app only, uses Psiphon network (not via MoaV client)
+
+**Telegram-specific:** Use the **Telegram MTProxy** link (in `telemt-proxy-link.txt`) directly in the Telegram app. This only works for Telegram traffic — it's not a general proxy.
 
 ---
 

@@ -135,6 +135,7 @@ See [docs/SETUP.md](docs/SETUP.md) for complete setup instructions.
 | WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN when UDP is blocked |
 | DNS Tunnel (dnstt) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort, hard to block |
 | Slipstream | 53/udp | ★★★☆☆ | ★★☆☆☆ | QUIC-over-DNS, 1.5-5x faster than dnstt |
+| Telegram MTProxy | 993/tcp | ★★★★☆ | ★★★☆☆ | Fake-TLS V2, direct Telegram access |
 | Psiphon | - | ★★★★☆ | ★★★☆☆ | Standalone, no server needed |
 | Tor (Snowflake) | - | ★★★★☆ | ★★☆☆☆ | Standalone, uses Tor network |
 
@@ -185,7 +186,7 @@ moav logs conduit         # View specific service logs
 moav build                # Build/rebuild all containers
 ```
 
-**Profiles:** `proxy`, `wireguard`, `amneziawg`, `dnstunnel`, `trusttunnel`, `admin`, `conduit`, `snowflake`, `monitoring`, `all`
+**Profiles:** `proxy`, `wireguard`, `amneziawg`, `dnstunnel`, `trusttunnel`, `telegram`, `admin`, `conduit`, `snowflake`, `monitoring`, `all`
 
 ## Server Migration
 

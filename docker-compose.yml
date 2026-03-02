@@ -254,6 +254,33 @@ services:
       - all
 
   # ===========================================================================
+  # TELEMT: Telegram MTProxy with Fake-TLS V2
+  # Provides direct Telegram access with advanced DPI evasion
+  # ===========================================================================
+  telemt:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.telemt
+      args:
+        TELEMT_VERSION: ${TELEMT_VERSION:-3.1.3}
+    container_name: moav-telemt
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_TELEMT:-993}:993/tcp"
+    volumes:
+      - ./configs/telemt:/etc/telemt:ro
+    tmpfs:
+      - /app/tlsfront:rw,size=10m
+    environment:
+      - RUST_LOG=info
+      - TZ=${TZ:-UTC}
+    profiles:
+      - telegram
+      - all
+
+  # ===========================================================================
   # PSIPHON CONDUIT: Bandwidth donation (optional)
   # Donates your bandwidth to help others bypass censorship
   # ===========================================================================
@@ -659,6 +686,9 @@ services:
       - ENABLE_SLIPSTREAM=${ENABLE_SLIPSTREAM:-false}
       - SLIPSTREAM_SUBDOMAIN=${SLIPSTREAM_SUBDOMAIN:-s}
       - ENABLE_TRUSTTUNNEL=${ENABLE_TRUSTTUNNEL:-true}
+      - ENABLE_TELEMT=${ENABLE_TELEMT:-true}
+      - PORT_TELEMT=${PORT_TELEMT:-993}
+      - TELEMT_TLS_DOMAIN=${TELEMT_TLS_DOMAIN:-dl.google.com}
       - ENABLE_AMNEZIAWG=${ENABLE_AMNEZIAWG:-true}
       - PORT_AMNEZIAWG=${PORT_AMNEZIAWG:-51821}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}

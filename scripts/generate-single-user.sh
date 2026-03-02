@@ -10,6 +10,7 @@ source /app/lib/wireguard.sh
 source /app/lib/amneziawg.sh
 source /app/lib/dnstt.sh
 source /app/lib/slipstream.sh
+source /app/lib/telemt.sh
 
 USER_ID="${1:-}"
 
@@ -125,6 +126,13 @@ EOF
     fi
 fi
 
+# Add to telemt config
+TELEMT_CONFIG="/configs/telemt/config.toml"
+if [[ "${ENABLE_TELEMT:-true}" == "true" ]] && [[ -f "$TELEMT_CONFIG" ]]; then
+    telemt_generate_secret "$USER_ID"
+    telemt_add_user_to_config "$USER_ID" "$TELEMT_SECRET"
+fi
+
 # Generate bundle
 export STATE_DIR
 export USER_ID USER_UUID USER_PASSWORD
@@ -138,6 +146,9 @@ export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_SLIPSTREAM="${ENABLE_SLIPSTREAM:-false}"
 export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+export ENABLE_TELEMT="${ENABLE_TELEMT:-true}"
+export PORT_TELEMT="${PORT_TELEMT:-993}"
+export TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
 export SLIPSTREAM_SUBDOMAIN="${SLIPSTREAM_SUBDOMAIN:-s}"
 # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set

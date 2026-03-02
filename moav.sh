@@ -850,6 +850,12 @@ do_uninstall() {
             echo "  - configs/trusttunnel/*"
         fi
 
+        # Remove generated telemt files
+        if [[ -f "$SCRIPT_DIR/configs/telemt/config.toml" ]]; then
+            rm -f "$SCRIPT_DIR/configs/telemt/config.toml" 2>/dev/null
+            echo "  - configs/telemt/config.toml"
+        fi
+
         # Remove outputs (bundles, keys)
         if [[ -d "$SCRIPT_DIR/outputs" ]] && [[ -n "$(ls -A "$SCRIPT_DIR/outputs" 2>/dev/null | grep -v .gitkeep)" ]]; then
             local bundle_count
@@ -1177,6 +1183,7 @@ check_component_versions() {
         "TRUSTTUNNEL_VERSION"
         "TRUSTTUNNEL_CLIENT_VERSION"
         "SLIPSTREAM_VERSION"
+        "TELEMT_VERSION"
     )
 
     local updates_available=()
@@ -1207,6 +1214,7 @@ check_component_versions() {
                     fi
                     ;;
                 SLIPSTREAM_VERSION) services_to_rebuild+=("slipstream") ;;
+                TELEMT_VERSION) services_to_rebuild+=("telemt") ;;
             esac
         fi
     done
@@ -1474,11 +1482,12 @@ get_running_services() {
 }
 
 show_versions() {
-    local singbox_ver wstunnel_ver conduit_ver slipstream_ver
+    local singbox_ver wstunnel_ver conduit_ver slipstream_ver telemt_ver
     singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
     wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
     conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
     slipstream_ver=$(get_component_version "SLIPSTREAM_VERSION" "2026.02.22.1")
+    telemt_ver=$(get_component_version "TELEMT_VERSION" "3.1.3")
 
     echo ""
     echo -e "${CYAN}MoaV${NC} v${VERSION}"
@@ -1495,6 +1504,7 @@ show_versions() {
     printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${DIM}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "snowflake" "latest" "torproject.org (built from src)"
     printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${DIM}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "dnstt" "latest" "bamsoftware.com (built from src)"
     printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${GREEN}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "slipstream" "$slipstream_ver" "github.com/Mygod/slipstream-rust"
+    printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${GREEN}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "telemt" "$telemt_ver" "github.com/telemt/telemt"
     printf "  ${CYAN}│${NC} %-12s ${CYAN}│${NC} ${DIM}%-8s${NC} ${CYAN}│${NC} %-32s ${CYAN}│${NC}\n" "wireguard" "alpine" "wireguard-tools package"
     echo -e "  ${CYAN}└──────────────┴──────────┴──────────────────────────────────┘${NC}"
     echo ""
@@ -1538,6 +1548,8 @@ show_status() {
             disabled_services["dns-router"]=1
         fi
         [[ "$enable_admin" != "true" ]] && disabled_services["admin"]=1
+        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        [[ "$enable_telemt" != "true" ]] && disabled_services["telemt"]=1
     fi
 
     print_section "Service Status"
@@ -1711,6 +1723,7 @@ select_profiles() {
     local dnstunnel_enabled=true
     local amneziawg_enabled=true
     local trusttunnel_enabled=true
+    local telegram_enabled=true
     local admin_enabled=true
 
     if [[ -f "$env_file" ]]; then
@@ -1722,6 +1735,7 @@ select_profiles() {
         local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_slipstream=$(grep "^ENABLE_SLIPSTREAM=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
         local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
 
         # proxy is disabled if all three protocols are disabled
@@ -1735,11 +1749,12 @@ select_profiles() {
             dnstunnel_enabled=false
         fi
         [[ "$enable_trusttunnel" != "true" ]] && trusttunnel_enabled=false
+        [[ "$enable_telemt" != "true" ]] && telegram_enabled=false
         [[ "$enable_admin" != "true" ]] && admin_enabled=false
     fi
 
     # Build menu lines with disabled indicators
-    local proxy_line wg_line amneziawg_line dnstunnel_line trusttunnel_line admin_line
+    local proxy_line wg_line amneziawg_line dnstunnel_line trusttunnel_line telegram_line admin_line
 
     if [[ "$proxy_enabled" == "true" ]]; then
         proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 (v2ray apps)       ${CYAN}│${NC}"
@@ -1771,10 +1786,16 @@ select_profiles() {
         trusttunnel_line="  ${CYAN}│${NC}  ${DIM}5   trusttunnel  TrustTunnel VPN (disabled)${NC}                    ${CYAN}│${NC}"
     fi
 
-    if [[ "$admin_enabled" == "true" ]]; then
-        admin_line="  ${CYAN}│${NC}  ${GREEN}6${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
+    if [[ "$telegram_enabled" == "true" ]]; then
+        telegram_line="  ${CYAN}│${NC}  ${GREEN}6${NC}   telegram     Telegram MTProxy (fake-TLS)                   ${CYAN}│${NC}"
     else
-        admin_line="  ${CYAN}│${NC}  ${DIM}6   admin        Stats dashboard (disabled)${NC}                   ${CYAN}│${NC}"
+        telegram_line="  ${CYAN}│${NC}  ${DIM}6   telegram     Telegram MTProxy (disabled)${NC}                   ${CYAN}│${NC}"
+    fi
+
+    if [[ "$admin_enabled" == "true" ]]; then
+        admin_line="  ${CYAN}│${NC}  ${GREEN}7${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
+    else
+        admin_line="  ${CYAN}│${NC}  ${DIM}7   admin        Stats dashboard (disabled)${NC}                   ${CYAN}│${NC}"
     fi
 
     echo ""
@@ -1786,12 +1807,13 @@ select_profiles() {
     echo -e "$amneziawg_line"
     echo -e "$dnstunnel_line"
     echo -e "$trusttunnel_line"
+    echo -e "$telegram_line"
     echo -e "$admin_line"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}7${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}9${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}9${NC}   monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}10${NC}  monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Back${NC}         Back to main menu                             ${CYAN}│${NC}"
@@ -1822,6 +1844,7 @@ select_profiles() {
         local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_slipstream=$(grep "^ENABLE_SLIPSTREAM=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
         local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
         local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
 
         # Build profiles list based on enabled services
@@ -1850,6 +1873,11 @@ select_profiles() {
         # trusttunnel profile
         if [[ "$enable_trusttunnel" == "true" ]]; then
             SELECTED_PROFILES+=("trusttunnel")
+        fi
+
+        # telegram profile (Telegram MTProxy)
+        if [[ "$enable_telemt" == "true" ]]; then
+            SELECTED_PROFILES+=("telegram")
         fi
 
         # admin profile
@@ -1909,10 +1937,11 @@ select_profiles() {
                 3) SELECTED_PROFILES+=("amneziawg") ;;
                 4) SELECTED_PROFILES+=("dnstunnel") ;;
                 5) SELECTED_PROFILES+=("trusttunnel") ;;
-                6) SELECTED_PROFILES+=("admin") ;;
-                7) SELECTED_PROFILES+=("conduit") ;;
-                8) SELECTED_PROFILES+=("snowflake") ;;
-                9) SELECTED_PROFILES+=("monitoring") ;;
+                6) SELECTED_PROFILES+=("telegram") ;;
+                7) SELECTED_PROFILES+=("admin") ;;
+                8) SELECTED_PROFILES+=("conduit") ;;
+                9) SELECTED_PROFILES+=("snowflake") ;;
+                10) SELECTED_PROFILES+=("monitoring") ;;
             esac
         done
     fi
@@ -2740,9 +2769,9 @@ show_usage() {
     echo "  regenerate-users      Regenerate all user bundles with current .env"
     echo "  setup-dns             Free port 53 for DNS tunnels (disables systemd-resolved)"
     echo ""
-    echo "Profiles: proxy, wireguard, amneziawg, dnstunnel, trusttunnel, admin, conduit, snowflake, client, all"
-    echo "Services: sing-box, decoy, wstunnel, wireguard, amneziawg, dns-router, dnstt, slipstream, trusttunnel, admin, psiphon-conduit, snowflake"
-    echo "Aliases:  proxy/singbox/reality→sing-box, wg→wireguard, awg→amneziawg, dns/dnstt/slip→dnstunnel, conduit→psiphon-conduit"
+    echo "Profiles: proxy, wireguard, amneziawg, dnstunnel, trusttunnel, telegram, admin, conduit, snowflake, client, all"
+    echo "Services: sing-box, decoy, wstunnel, wireguard, amneziawg, dns-router, dnstt, slipstream, trusttunnel, telemt, admin, psiphon-conduit, snowflake"
+    echo "Aliases:  proxy/singbox/reality→sing-box, wg→wireguard, awg→amneziawg, dns/dnstt/slip→dnstunnel, tg/mtproxy→telegram, conduit→psiphon-conduit"
     echo ""
     echo "Examples:"
     echo "  moav                           # Interactive menu"
@@ -2952,7 +2981,7 @@ cmd_profiles() {
 
 cmd_start() {
     local profiles=""
-    local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel admin conduit snowflake monitoring client all setup"
+    local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel telegram admin conduit snowflake monitoring client all setup"
 
     if [[ $# -eq 0 ]]; then
         # No arguments - check for DEFAULT_PROFILES in .env
@@ -3086,6 +3115,8 @@ resolve_profile() {
             echo "amneziawg" ;;
         dns|dnstt|slip|slipstream)
             echo "dnstunnel" ;;
+        tg|mtproxy|telemt)
+            echo "telegram" ;;
         psiphon)
             echo "conduit" ;;
         grafana|grafana-proxy|grafana-cdn|prometheus|metrics)
@@ -3106,6 +3137,7 @@ resolve_service() {
         dns)                          echo "dnstt" ;;
         slip)                         echo "slipstream" ;;
         dns-router|dnsrouter)         echo "dns-router" ;;
+        tg|mtproxy|telegram)          echo "telemt" ;;
         snow|tor)                     echo "snowflake" ;;
         # Monitoring services (pass through or resolve aliases)
         grafana-cdn)                  echo "grafana-proxy" ;;
@@ -3319,7 +3351,7 @@ cmd_logs() {
                 # Check if argument is a profile name (or alias)
                 local resolved_profile
                 resolved_profile=$(resolve_profile "$1")
-                local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel admin conduit snowflake monitoring client all setup"
+                local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel telegram admin conduit snowflake monitoring client all setup"
                 if echo "$valid_profiles" | grep -qw "$resolved_profile"; then
                     profile_flags="$profile_flags --profile $resolved_profile"
                 else
@@ -4521,6 +4553,9 @@ cmd_regenerate_users() {
     local enable_slipstream=$(grep -E '^ENABLE_SLIPSTREAM=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local slipstream_subdomain=$(grep -E '^SLIPSTREAM_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local enable_trusttunnel=$(grep -E '^ENABLE_TRUSTTUNNEL=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_telemt=$(grep -E '^ENABLE_TELEMT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local telemt_tls_domain=$(grep -E '^TELEMT_TLS_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local port_telemt=$(grep -E '^PORT_TELEMT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
 
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
@@ -4543,6 +4578,9 @@ cmd_regenerate_users() {
             -e "ENABLE_SLIPSTREAM=${enable_slipstream:-false}" \
             -e "SLIPSTREAM_SUBDOMAIN=${slipstream_subdomain:-s}" \
             -e "ENABLE_TRUSTTUNNEL=${enable_trusttunnel:-true}" \
+            -e "ENABLE_TELEMT=${enable_telemt:-true}" \
+            -e "TELEMT_TLS_DOMAIN=${telemt_tls_domain:-dl.google.com}" \
+            -e "PORT_TELEMT=${port_telemt:-993}" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true

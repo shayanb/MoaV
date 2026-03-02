@@ -55,6 +55,7 @@ Complete guide to deploy MoaV on a VPS or home server.
 | 8080/tcp | TCP | wstunnel | No |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 9444/tcp | TCP | Grafana (monitoring) | No |
+| 993/tcp | TCP | Telegram MTProxy (telemt) | No |
 | 53/udp | UDP | DNS tunnels (dnstt + Slipstream) | Yes |
 | 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
@@ -251,6 +252,7 @@ moav start all                   # Everything
 - `amneziawg` - AmneziaWG (obfuscated WireGuard)
 - `dnstt` - DNS tunnel
 - `trusttunnel` - TrustTunnel VPN
+- `telegram` - Telegram MTProxy (fake-TLS)
 - `admin` - Admin dashboard
 - `conduit` - Psiphon bandwidth donation
 - `snowflake` - Tor bandwidth donation

@@ -592,8 +592,9 @@
                 <li><a href="#en" onclick="scrollToSection('trusttunnel-en')">7. TrustTunnel <span class="toc-badge badge-secondary">Stealth VPN</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">8. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('slipstream-en')">8b. Slipstream <span class="toc-badge badge-fallback">Faster DNS Tunnel</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('tor-en')">9. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('psiphon-en')">10. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('telemt-en')">9. Telegram MTProxy <span class="toc-badge badge-secondary">Telegram Only</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('tor-en')">10. Tor <span class="toc-badge badge-standalone">Standalone</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('psiphon-en')">11. Psiphon <span class="toc-badge badge-standalone">Standalone</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('apps-en')">Recommended Apps</a></li>
             </ul>
         </div>
@@ -1052,11 +1053,46 @@
             </div>
         </div>
 
+        <!-- Telegram MTProxy -->
+        <div class="protocol-section" id="telemt-en">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>9. Telegram MTProxy</h2>
+                    <span class="protocol-badge badge-secondary">Telegram Only</span>
+                </div>
+                <span class="protocol-port">993/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">Direct Telegram access via Fake-TLS V2 proxy. Traffic appears as normal HTTPS. Only works for Telegram — not a general proxy.</p>
+
+                <div class="extra-section">
+                    <h4>Quick Setup</h4>
+                    <p>Tap/click the link below to add the proxy to your Telegram app:</p>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_TELEMT}}</div>
+                </div>
+
+                <div class="extra-section">
+                    <h4>QR Code</h4>
+                    <img src="data:image/png;base64,{{QR_TELEMT}}" alt="Telegram Proxy QR" class="qr-code" />
+                </div>
+
+                <div class="extra-section">
+                    <h4>Manual Setup</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> Settings → Data and Storage → Proxy → Add Proxy → MTProto</li>
+                        <li><strong>Android:</strong> Settings → Data and Storage → Proxy Settings → Add Proxy</li>
+                        <li><strong>Desktop:</strong> Settings → Advanced → Connection type → Use custom proxy</li>
+                    </ul>
+                    <p>Select MTProto and enter the server, port, and secret from the link above.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Tor -->
         <div class="protocol-section" id="tor-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>9. Tor</h2>
+                    <h2>10. Tor</h2>
                     <span class="protocol-badge badge-standalone">Standalone</span>
                 </div>
                 <span class="protocol-port">Various</span>
@@ -1093,7 +1129,7 @@
         <div class="protocol-section" id="psiphon-en">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>10. Psiphon</h2>
+                    <h2>11. Psiphon</h2>
                     <span class="protocol-badge badge-standalone">Standalone</span>
                 </div>
                 <span class="protocol-port">Various</span>
@@ -1312,8 +1348,10 @@
                 <li><a href="#fa" onclick="scrollToSection('amneziawg-fa')">۶. AmneziaWG <span class="toc-badge badge-secondary">ضد فیلتر</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('trusttunnel-fa')">۷. TrustTunnel <span class="toc-badge badge-secondary">VPN مخفی</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۸. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۹. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۱۰. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('slipstream-fa')">۸ب. Slipstream <span class="toc-badge badge-fallback">تونل DNS سریع‌تر</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('telemt-fa')">۹. Telegram MTProxy <span class="toc-badge badge-secondary">فقط تلگرام</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('tor-fa')">۱۰. Tor <span class="toc-badge badge-standalone">مستقل</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('psiphon-fa')">۱۱. Psiphon <span class="toc-badge badge-standalone">مستقل</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('apps-fa')">اپلیکیشن‌ها</a></li>
             </ul>
         </div>
@@ -1769,11 +1807,46 @@
             </div>
         </div>
 
+        <!-- Telegram MTProxy -->
+        <div class="protocol-section" id="telemt-fa">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۹. Telegram MTProxy</h2>
+                    <span class="protocol-badge badge-secondary">فقط تلگرام</span>
+                </div>
+                <span class="protocol-port">993/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">دسترسی مستقیم به تلگرام از طریق پروکسی Fake-TLS V2. ترافیک مانند HTTPS عادی به نظر می‌رسد. فقط برای تلگرام کار می‌کند — پروکسی عمومی نیست.</p>
+
+                <div class="extra-section">
+                    <h4>راه‌اندازی سریع</h4>
+                    <p>روی لینک زیر بزنید تا پروکسی به اپلیکیشن تلگرام شما اضافه شود:</p>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_TELEMT}}</div>
+                </div>
+
+                <div class="extra-section">
+                    <h4>کد QR</h4>
+                    <img src="data:image/png;base64,{{QR_TELEMT}}" alt="QR پروکسی تلگرام" class="qr-code" />
+                </div>
+
+                <div class="extra-section">
+                    <h4>راه‌اندازی دستی</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> تنظیمات ← داده و ذخیره‌سازی ← پروکسی ← افزودن پروکسی ← MTProto</li>
+                        <li><strong>Android:</strong> تنظیمات ← داده و ذخیره‌سازی ← تنظیمات پروکسی ← افزودن پروکسی</li>
+                        <li><strong>دسکتاپ:</strong> تنظیمات ← پیشرفته ← نوع اتصال ← استفاده از پروکسی سفارشی</li>
+                    </ul>
+                    <p>MTProto را انتخاب کنید و سرور، پورت و secret را از لینک بالا وارد کنید.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Tor -->
         <div class="protocol-section" id="tor-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۹. Tor</h2>
+                    <h2>۱۰. Tor</h2>
                     <span class="protocol-badge badge-standalone">مستقل</span>
                 </div>
                 <span class="protocol-port">مختلف</span>
@@ -1801,7 +1874,7 @@
         <div class="protocol-section" id="psiphon-fa">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>۱۰. Psiphon</h2>
+                    <h2>۱۱. Psiphon</h2>
                     <span class="protocol-badge badge-standalone">مستقل</span>
                 </div>
                 <span class="protocol-port">مختلف</span>
