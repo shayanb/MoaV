@@ -364,34 +364,29 @@
       },
       "pluginVersion": "10.4.1",
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_connections_total", "format": "table", "instant": true, "refId": "Connections" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_connections_current", "format": "table", "instant": true, "refId": "Active" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_octets_from_client", "format": "table", "instant": true, "refId": "FromClient" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_octets_to_client", "format": "table", "instant": true, "refId": "ToClient" },
-        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_unique_ips_current", "format": "table", "instant": true, "refId": "IPs" }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_connections_total", "format": "table", "instant": true, "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_connections_current", "format": "table", "instant": true, "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_octets_from_client", "format": "table", "instant": true, "refId": "C" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_octets_to_client", "format": "table", "instant": true, "refId": "D" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "telemt_user_unique_ips_current", "format": "table", "instant": true, "refId": "E" }
       ],
       "title": "Per-User Details",
       "transformations": [
         {
-          "id": "joinByField",
-          "options": { "byField": "user", "mode": "outer" }
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": { "pattern": "^(user|Value)" }
-          }
+          "id": "merge"
         },
         {
           "id": "organize",
           "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true, "job": true },
+            "indexByName": { "user": 0, "Value #A": 1, "Value #B": 2, "Value #C": 3, "Value #D": 4, "Value #E": 5 },
             "renameByName": {
               "user": "User",
-              "Value #Connections": "Connections",
-              "Value #Active": "Active",
-              "Value #FromClient": "From Client",
-              "Value #ToClient": "To Client",
-              "Value #IPs": "Unique IPs"
+              "Value #A": "Connections",
+              "Value #B": "Active",
+              "Value #C": "From Client",
+              "Value #D": "To Client",
+              "Value #E": "Unique IPs"
             }
           }
         }
