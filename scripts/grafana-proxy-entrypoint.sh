@@ -53,6 +53,22 @@ echo "[grafana-proxy] Using certificates:"
 echo "[grafana-proxy]   Key:  $key_file"
 echo "[grafana-proxy]   Cert: $cert_file"
 
+# Wait for Grafana to be ready (up to 60 seconds)
+echo "[grafana-proxy] Waiting for Grafana to be ready..."
+waited=0
+while [ $waited -lt 60 ]; do
+    if wget -q --spider --no-check-certificate "https://grafana:3000/api/health" 2>/dev/null || \
+       wget -q --spider "http://grafana:3000/api/health" 2>/dev/null; then
+        echo "[grafana-proxy] Grafana is ready"
+        break
+    fi
+    sleep 3
+    waited=$((waited + 3))
+done
+if [ $waited -ge 60 ]; then
+    echo "[grafana-proxy] WARNING: Grafana not ready after 60s, starting anyway"
+fi
+
 # Generate nginx config with correct certificate paths
 cat > /etc/nginx/conf.d/default.conf << EOF
 # Nginx reverse proxy for Grafana (auto-generated)
@@ -78,8 +94,8 @@ server {
 
     # Caching for static assets
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        proxy_pass http://grafana:3000;
-
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -92,8 +108,8 @@ server {
 
     # WebSocket support for live updates
     location /api/live/ {
-        proxy_pass http://grafana:3000;
-
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -105,8 +121,8 @@ server {
 
     # Main proxy
     location / {
-        proxy_pass http://grafana:3000;
-
+        proxy_pass https://grafana:3000;
+        proxy_ssl_verify off;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
