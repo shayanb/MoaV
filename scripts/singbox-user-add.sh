@@ -61,9 +61,13 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
     exit 1
 fi
 
-# Create directories
-mkdir -p "$OUTPUT_DIR"
-mkdir -p "$STATE_DIR/users/$USERNAME"
+# Create directories (may need sudo if Docker created parent as root)
+mkdir -p "$OUTPUT_DIR" 2>/dev/null || sudo mkdir -p "$OUTPUT_DIR" 2>/dev/null || true
+mkdir -p "$STATE_DIR/users/$USERNAME" 2>/dev/null || sudo mkdir -p "$STATE_DIR/users/$USERNAME" 2>/dev/null || true
+# Ensure writable
+if [[ ! -w "$STATE_DIR/users/$USERNAME" ]]; then
+    sudo chmod 777 "$STATE_DIR/users/$USERNAME" 2>/dev/null || true
+fi
 
 # Check if user already exists in config
 if grep -q "\"name\":\"$USERNAME\"" "$CONFIG_FILE" 2>/dev/null; then
@@ -429,12 +433,16 @@ log_info "=== User '$USERNAME' created ==="
 echo ""
 echo "Reality Link:"
 echo "$REALITY_LINK"
-echo ""
-echo "Trojan Link:"
-echo "$TROJAN_LINK"
-echo ""
-echo "Hysteria2 Link:"
-echo "$HY2_LINK"
+if [[ -n "${TROJAN_LINK:-}" ]]; then
+    echo ""
+    echo "Trojan Link:"
+    echo "$TROJAN_LINK"
+fi
+if [[ -n "${HY2_LINK:-}" ]]; then
+    echo ""
+    echo "Hysteria2 Link:"
+    echo "$HY2_LINK"
+fi
 echo ""
 
 if [[ -n "${SERVER_IPV6:-}" ]]; then
@@ -442,12 +450,16 @@ if [[ -n "${SERVER_IPV6:-}" ]]; then
     echo ""
     echo "Reality (IPv6):"
     echo "$REALITY_LINK_V6"
-    echo ""
-    echo "Trojan (IPv6):"
-    echo "$TROJAN_LINK_V6"
-    echo ""
-    echo "Hysteria2 (IPv6):"
-    echo "$HY2_LINK_V6"
+    if [[ -n "${TROJAN_LINK_V6:-}" ]]; then
+        echo ""
+        echo "Trojan (IPv6):"
+        echo "$TROJAN_LINK_V6"
+    fi
+    if [[ -n "${HY2_LINK_V6:-}" ]]; then
+        echo ""
+        echo "Hysteria2 (IPv6):"
+        echo "$HY2_LINK_V6"
+    fi
     echo ""
 fi
 

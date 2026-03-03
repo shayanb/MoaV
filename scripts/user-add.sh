@@ -134,17 +134,30 @@ fi
 CREATED_USERS=()
 FAILED_USERS=()
 
-# Ensure outputs directory exists and is writable
-mkdir -p "outputs/bundles" 2>/dev/null || true
+# Ensure directories exist and are writable (Docker creates them as root)
+for _dir in "outputs/bundles" "state/users" "configs/amneziawg" "configs/wireguard"; do
+    mkdir -p "$_dir" 2>/dev/null || sudo mkdir -p "$_dir" 2>/dev/null || true
+    if [[ ! -w "$_dir" ]]; then
+        if command -v sudo &>/dev/null; then
+            sudo chmod 777 "$_dir" 2>/dev/null || true
+        fi
+    fi
+done
+# Also fix state/ parent and config files that may be root-owned
+for _dir in "state" "configs/amneziawg" "configs/wireguard"; do
+    if [[ -d "$_dir" ]] && [[ ! -w "$_dir" ]]; then
+        sudo chmod 777 "$_dir" 2>/dev/null || true
+    fi
+    # Fix root-owned config files so we can append peers
+    for _f in "$_dir"/*.conf; do
+        if [[ -f "$_f" ]] && [[ ! -w "$_f" ]]; then
+            sudo chmod 666 "$_f" 2>/dev/null || true
+        fi
+    done
+done
 if [[ ! -w "outputs/bundles" ]]; then
-    # Bootstrap may have created it as root — fix ownership
-    if command -v sudo &>/dev/null; then
-        sudo chmod 777 "outputs/bundles" 2>/dev/null || true
-    fi
-    if [[ ! -w "outputs/bundles" ]]; then
-        log_error "Cannot write to outputs/bundles/ — try: sudo chmod 777 outputs/bundles"
-        exit 1
-    fi
+    log_error "Cannot write to outputs/bundles/ — try: sudo chmod 777 outputs/bundles"
+    exit 1
 fi
 
 # -----------------------------------------------------------------------------
