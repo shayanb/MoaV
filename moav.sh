@@ -531,11 +531,12 @@ check_prerequisites() {
                     warn "No domain provided!"
                     echo ""
                     echo -e "  ${YELLOW}Services that require a domain (will be disabled):${NC}"
-                    echo "    • Reality, Trojan, Hysteria2, CDN VLESS (sing-box proxy)"
+                    echo "    • Trojan, Hysteria2, CDN VLESS (need TLS certificates)"
                     echo "    • TrustTunnel"
                     echo "    • DNS tunnels (dnstt + Slipstream)"
                     echo ""
                     echo -e "  ${GREEN}Services that work without a domain:${NC}"
+                    echo "    • Reality (VLESS) — uses dl.google.com for TLS camouflage"
                     echo "    • WireGuard (direct UDP)"
                     echo "    • AmneziaWG (DPI-resistant WireGuard)"
                     echo "    • Telegram MTProxy (fake-TLS, IP only)"
@@ -546,11 +547,11 @@ check_prerequisites() {
 
                     if confirm "Continue with domain-less mode?" "y"; then
                         domainless_mode=true
-                        # Set default profiles to include all domain-less services
-                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard amneziawg telegram admin conduit snowflake\"|" .env
-                        # Disable all protocols that need domain
+                        # Set default profiles to include all domain-less services (proxy = Reality)
+                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"proxy wireguard amneziawg telegram admin conduit snowflake\"|" .env
+                        # Disable cert-based protocols (Reality stays — works without domain)
                         # Use grep to check if line exists, then sed to replace, or append if missing
-                        for var in ENABLE_REALITY ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
+                        for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
                             if grep -q "^${var}=" .env 2>/dev/null; then
                                 sed -i "s|^${var}=.*|${var}=false|" .env
                             else
@@ -558,12 +559,12 @@ check_prerequisites() {
                             fi
                         done
                         success "Domain-less mode enabled"
-                        info "WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, and Snowflake will be available"
+                        info "Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, and Snowflake will be available"
                     else
                         echo ""
                         info "Please enter a domain to use all services."
                         echo "  You can edit .env later and run 'moav bootstrap' again."
-                        return 0
+                        return 1
                     fi
                 fi
                 echo ""
@@ -2927,11 +2928,12 @@ cmd_domainless() {
     info "Domain-less mode disables TLS-based protocols that require a domain."
     echo ""
     echo -e "  ${YELLOW}Will be disabled:${NC}"
-    echo "    • Reality, Trojan, Hysteria2, CDN VLESS (sing-box proxy)"
+    echo "    • Trojan, Hysteria2, CDN VLESS (need TLS certificates)"
     echo "    • TrustTunnel"
     echo "    • DNS tunnels (dnstt + Slipstream)"
     echo ""
     echo -e "  ${GREEN}Will remain available:${NC}"
+    echo "    • Reality (VLESS) — uses dl.google.com for TLS camouflage"
     echo "    • WireGuard (direct UDP)"
     echo "    • AmneziaWG (DPI-resistant WireGuard)"
     echo "    • Telegram MTProxy (fake-TLS, IP only)"
@@ -2956,8 +2958,8 @@ cmd_domainless() {
         fi
     fi
 
-    # Disable TLS-based protocols (add if not present, update if present)
-    for var in ENABLE_REALITY ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
+    # Disable cert-based protocols (Reality stays — works without domain)
+    for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
         if grep -q "^${var}=" .env; then
             sed -i "s/^${var}=.*/${var}=false/" .env
         else
@@ -2974,9 +2976,9 @@ cmd_domainless() {
 
     # Set default profiles (add if not present)
     if grep -q "^DEFAULT_PROFILES=" .env; then
-        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="wireguard amneziawg telegram admin conduit snowflake"/' .env
+        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"/' .env
     else
-        echo 'DEFAULT_PROFILES="wireguard amneziawg telegram admin conduit snowflake"' >> .env
+        echo 'DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"' >> .env
     fi
 
     echo ""

@@ -32,9 +32,10 @@ done
 
 # Check if DOMAIN is required (needed for TLS-based protocols)
 # Domain is required if ANY of: Reality, Trojan, Hysteria2, or dnstt is enabled
+# Note: Reality works without a domain (uses REALITY_TARGET for TLS camouflage)
 # Note: Admin UI works without domain using self-signed certificates
+# Note: Telegram MTProxy works without domain (IP only + fake-TLS)
 domain_required=false
-[[ "${ENABLE_REALITY:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_TROJAN:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_DNSTT:-true}" == "true" ]] && domain_required=true
@@ -42,21 +43,19 @@ domain_required=false
 [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]] && domain_required=true
 
 if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
-    log_error "DOMAIN is required when TLS-based protocols are enabled"
+    log_error "DOMAIN is required when TLS-cert protocols are enabled"
     log_error ""
     log_error "Option 1: Set a domain in .env"
     log_error "  DOMAIN=your-domain.com"
     log_error ""
-    log_error "Option 2: Run in domain-less mode (WireGuard, Conduit, Snowflake, Admin)"
-    log_error "  Add these lines to your .env file:"
-    log_error "    ENABLE_REALITY=false"
+    log_error "Option 2: Run in domain-less mode"
+    log_error "  Disable cert-based protocols (Reality still works without domain):"
     log_error "    ENABLE_TROJAN=false"
     log_error "    ENABLE_HYSTERIA2=false"
     log_error "    ENABLE_DNSTT=false"
     log_error "    ENABLE_TRUSTTUNNEL=false"
     log_error ""
-    log_error "  Or run this command to disable them:"
-    log_error "    sed -i 's/^ENABLE_REALITY=.*/ENABLE_REALITY=false/; s/^ENABLE_TROJAN=.*/ENABLE_TROJAN=false/; s/^ENABLE_HYSTERIA2=.*/ENABLE_HYSTERIA2=false/; s/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/; s/^ENABLE_TRUSTTUNNEL=.*/ENABLE_TRUSTTUNNEL=false/' .env"
+    log_error "  Or run: moav domainless"
     exit 1
 fi
 
