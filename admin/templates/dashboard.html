@@ -196,7 +196,7 @@
             background: rgba(63, 185, 80, 0.03);
         }
         .svc-card.stopped { opacity: 0.45; }
-        .svc-card.unknown { opacity: 0.6; }
+        .svc-card.unknown { opacity: 0.6; cursor: help; }
         .dot {
             width: 7px;
             height: 7px;
@@ -494,11 +494,11 @@
             <div class="section-body">
                 <div class="svc-grid">
                     {% for service in services %}
-                    <div class="svc-card {{ service.status }}">
+                    <div class="svc-card {{ service.status }}"{% if service.status == 'unknown' %} title="Status unknown — this service uses host networking and can't be detected from the dashboard"{% endif %}>
                         <span class="dot {{ service.status }}"></span>
                         <span class="svc-name">{{ service.name }}</span>
-                        {% if service.ports and service.ports != '—' %}
-                        <span class="svc-port">:{{ service.ports }}</span>
+                        {% if service.status == 'unknown' %}<span class="svc-port">?</span>
+                        {% elif service.ports and service.ports != '—' %}<span class="svc-port">:{{ service.ports }}</span>
                         {% endif %}
                     </div>
                     {% endfor %}
@@ -575,6 +575,8 @@
                             {% if user.has_amneziawg %}<span class="tag">AWG</span>{% endif %}
                             {% if user.has_trusttunnel %}<span class="tag">TT</span>{% endif %}
                             {% if user.has_telemt %}<span class="tag">MTProxy</span>{% endif %}
+                            {% if user.has_dnstt %}<span class="tag">dnstt</span>{% endif %}
+                            {% if user.has_slipstream %}<span class="tag">Slip</span>{% endif %}
                         </td>
                         <td style="text-align:right;">
                             <a href="/download/{{ user.username }}" class="dl-link">.zip</a>

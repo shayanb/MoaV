@@ -531,7 +531,9 @@ def list_users():
         has_trusttunnel = (user_dir / "trusttunnel.toml").exists() or (user_dir / "trusttunnel.txt").exists()
         has_cdn = (user_dir / "cdn-vless.txt").exists()
         has_amneziawg = (user_dir / "amneziawg.conf").exists()
-        has_telemt = (user_dir / "telegram-mtproxy.txt").exists() or (user_dir / "telemt.txt").exists()
+        has_telemt = (user_dir / "telegram-proxy-link.txt").exists()
+        has_dnstt = (user_dir / "dnstt-instructions.txt").exists()
+        has_slipstream = (user_dir / "slipstream-instructions.txt").exists() or (user_dir / "slipstream-cert.pem").exists()
 
         # Check if zip already exists
         zip_exists = (bundle_path / f"{username}.zip").exists()
@@ -549,6 +551,8 @@ def list_users():
             "has_cdn": has_cdn,
             "has_amneziawg": has_amneziawg,
             "has_telemt": has_telemt,
+            "has_dnstt": has_dnstt,
+            "has_slipstream": has_slipstream,
             "zip_exists": zip_exists,
             "created_at": created_at,
         })
