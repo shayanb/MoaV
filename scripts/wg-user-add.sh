@@ -78,7 +78,7 @@ log_info "Adding WireGuard peer '$USERNAME'..."
 # Find next available IP
 # Get used IPs from config file AND running interface (prevent collisions if out of sync)
 USED_IPS=$(grep 'AllowedIPs = 10\.66\.66\.' "$WG_CONFIG_DIR/wg0.conf" 2>/dev/null | sed 's/.*10\.66\.66\.\([0-9]*\).*/\1/' || echo "")
-if docker compose ps wireguard --status running &>/dev/null; then
+if docker compose ps wireguard --status running 2>/dev/null | grep -q .; then
     RUNNING_IPS=$(docker compose exec -T wireguard wg show wg0 allowed-ips 2>/dev/null | grep '10\.66\.66\.' | sed 's/.*10\.66\.66\.\([0-9]*\).*/\1/' || echo "")
     USED_IPS="$USED_IPS $RUNNING_IPS"
 fi
@@ -111,7 +111,7 @@ if [[ -n "$SERVER_IPV6" ]]; then
 fi
 
 # Generate client keys using wg command in wireguard container or locally
-if docker compose ps wireguard --status running &>/dev/null; then
+if docker compose ps wireguard --status running 2>/dev/null | grep -q .; then
     # Use running WireGuard container
     CLIENT_PRIVATE_KEY=$(docker compose exec -T wireguard wg genkey)
     CLIENT_PUBLIC_KEY=$(echo "$CLIENT_PRIVATE_KEY" | docker compose exec -T wireguard wg pubkey)
@@ -138,7 +138,7 @@ EOF
 SERVER_PUBLIC_KEY=""
 
 # If WireGuard is running, get the actual public key and sync it
-if docker compose ps wireguard --status running &>/dev/null; then
+if docker compose ps wireguard --status running 2>/dev/null | grep -q .; then
     SERVER_PUBLIC_KEY=$(docker compose exec -T wireguard wg show wg0 public-key 2>/dev/null | tr -d '\r\n')
     if [[ -n "$SERVER_PUBLIC_KEY" ]]; then
         # Sync to server.pub file to ensure consistency
@@ -282,7 +282,7 @@ log_info "Generated wstunnel instructions"
 
 # Hot-add peer to running WireGuard if available (unless --no-reload)
 if [[ "$NO_RELOAD" != "true" ]]; then
-    if docker compose ps wireguard --status running &>/dev/null; then
+    if docker compose ps wireguard --status running 2>/dev/null | grep -q .; then
         log_info "Adding peer to running WireGuard..."
 
         # Use wg set to add peer dynamically

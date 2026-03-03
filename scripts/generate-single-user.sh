@@ -51,22 +51,22 @@ if [[ -f "$CONFIG_FILE" ]]; then
     # Add to Reality inbound
     jq --arg name "$USER_ID" --arg uuid "$USER_UUID" \
         '(.inbounds[] | select(.tag == "vless-reality-in") | .users) += [{"name": $name, "uuid": $uuid, "flow": "xtls-rprx-vision"}]' \
-        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+        "$CONFIG_FILE" > /tmp/config.tmp && mv -f /tmp/config.tmp "$CONFIG_FILE"
 
     # Add to Trojan inbound
     jq --arg name "$USER_ID" --arg password "$USER_PASSWORD" \
         '(.inbounds[] | select(.tag == "trojan-tls-in") | .users) += [{"name": $name, "password": $password}]' \
-        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+        "$CONFIG_FILE" > /tmp/config.tmp && mv -f /tmp/config.tmp "$CONFIG_FILE"
 
     # Add to Hysteria2 inbound
     jq --arg name "$USER_ID" --arg password "$USER_PASSWORD" \
         '(.inbounds[] | select(.tag == "hysteria2-in") | .users) += [{"name": $name, "password": $password}]' \
-        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+        "$CONFIG_FILE" > /tmp/config.tmp && mv -f /tmp/config.tmp "$CONFIG_FILE"
 
     # Add to VLESS WS inbound (CDN)
     jq --arg name "$USER_ID" --arg uuid "$USER_UUID" \
         '(.inbounds[] | select(.tag == "vless-ws-in") | .users) += [{"name": $name, "uuid": $uuid}]' \
-        "$CONFIG_FILE" > /tmp/config.tmp && mv /tmp/config.tmp "$CONFIG_FILE"
+        "$CONFIG_FILE" > /tmp/config.tmp && mv -f /tmp/config.tmp "$CONFIG_FILE"
 
     log_info "Added $USER_ID to sing-box config"
 fi

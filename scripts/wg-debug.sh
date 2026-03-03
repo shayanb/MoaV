@@ -33,7 +33,7 @@ fi
 
 echo ""
 echo "=== 3. Container status ==="
-if docker compose ps wireguard --status running &>/dev/null; then
+if docker compose ps wireguard --status running 2>/dev/null | grep -q .; then
     echo "Container: RUNNING"
 
     echo ""

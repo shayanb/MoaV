@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Shell autocompletion** — `moav install` now installs bash/zsh completions for all commands, subcommands, services, profiles, and protocols; `moav uninstall` removes them
+- **Admin dashboard redesign** — Services displayed as cards with auto-fill grid layout, green border for running services; favicon and logo in browser tab/header; centered footer with version and GitHub link
+
+### Fixed
+- **Domainless mode `unbound variable` crash** — `TROJAN_LINK`, `HY2_LINK`, and their IPv6 variants were referenced unconditionally but only set when a domain is configured; all references now guarded with `[[ -n "${VAR:-}" ]]`
+- **`moav uninstall` aborting on root-owned files** — Docker-created files under `configs/`, `state/`, `outputs/` are owned by root; `set -euo pipefail` + `rm` = permission denied = script abort; now uses `_wrm()` helper with sudo fallback
+- **Permission denied on `state/users/` and `configs/`** — Docker containers create directories as root; non-root users couldn't write when adding/revoking users; added sudo mkdir/chmod fallback in user-add and user-revoke scripts
+- **`mv` interactive prompt on Debian/Ubuntu** — Default `mv -i` alias caused scripts to hang waiting for confirmation; all `mv` calls now use `mv -f` across all scripts
+- **`xxd: command not found` on minimal systems** — Replaced all `xxd -p` usage with POSIX-portable `od -An -tx1 | tr -d ' \n'` (xxd requires vim package, not installed on minimal Raspberry Pi OS)
+- **Docker Compose service status checks always returning true** — `docker compose ps --status running` returns exit code 0 even with empty output; all service-running checks now pipe to `grep -q .` to verify actual output exists
+- **User add failing when WireGuard not running** — Config file existing was enough to trigger WireGuard peer add attempt; now checks if the Docker service is actually running first, skips gracefully with info message if not
+- **Snowflake dashboard false positive** — `check_service_status("snowflake")` was hardcoded to return `"running"`; changed to `"unknown"` since admin container can't detect Snowflake (host networking, no DNS entry)
+- **AmneziaWG `awg` binary missing from Docker image** — Built in multi-stage builder but never copied to final image; added `COPY --from=builder /usr/bin/awg /usr/bin/awg`
+
 ## [1.4.2] - 2026-03-02
 
 ### Added

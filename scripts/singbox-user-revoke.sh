@@ -80,14 +80,14 @@ if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
         }
         { print }
         END { if (in_block && !skip) { printf "%s", buffer } }
-        ' "$TRUSTTUNNEL_CREDS" > "${TRUSTTUNNEL_CREDS}.tmp" && mv "${TRUSTTUNNEL_CREDS}.tmp" "$TRUSTTUNNEL_CREDS"
+        ' "$TRUSTTUNNEL_CREDS" > "${TRUSTTUNNEL_CREDS}.tmp" && mv -f "${TRUSTTUNNEL_CREDS}.tmp" "$TRUSTTUNNEL_CREDS"
 
         log_info "Removed $USERNAME from TrustTunnel credentials"
     fi
 fi
 
 # Reload sing-box
-if docker compose ps sing-box --status running &>/dev/null; then
+if docker compose ps sing-box --status running 2>/dev/null | grep -q .; then
     log_info "Reloading sing-box..."
     if docker compose exec -T sing-box sing-box reload 2>/dev/null; then
         log_info "sing-box reloaded"
@@ -98,7 +98,7 @@ fi
 
 # Reload TrustTunnel (if running)
 if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
-    if docker compose ps trusttunnel --status running &>/dev/null; then
+    if docker compose ps trusttunnel --status running 2>/dev/null | grep -q .; then
         log_info "Restarting TrustTunnel..."
         docker compose restart trusttunnel
     fi
