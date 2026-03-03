@@ -1405,16 +1405,22 @@ check_bootstrap() {
 run_bootstrap() {
     print_section "First-Time Setup (Bootstrap)"
 
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+
     info "Bootstrap will:"
-    echo "  • Generate encryption keys"
-    echo "  • Obtain TLS certificate from Let's Encrypt"
-    echo "  • Create initial users"
-    echo "  • Generate client configuration bundles"
+    echo "  • Generate encryption keys and secrets"
+    if [[ -n "$domain" ]]; then
+        echo "  • Obtain TLS certificate from Let's Encrypt"
+    fi
+    echo "  • Configure enabled protocols"
+    echo "  • Create initial users with connection links"
     echo ""
 
-    warn "Make sure your domain DNS is configured correctly!"
-    echo "  Your domain should point to this server's IP address."
-    echo ""
+    if [[ -n "$domain" ]]; then
+        warn "Make sure your domain DNS is configured correctly!"
+        echo "  Your domain should point to this server's IP address."
+        echo ""
+    fi
 
     # Detect and save SERVER_IP to .env if not already set
     local current_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
@@ -3045,11 +3051,14 @@ cmd_bootstrap() {
         info "Clearing bootstrap flag..."
         docker run --rm -v moav_moav_state:/state alpine rm -f /state/.bootstrapped
     else
+        local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
         info "Bootstrap will perform first-time setup:"
-        echo "  • Generate encryption keys"
-        echo "  • Obtain TLS certificate from Let's Encrypt"
-        echo "  • Create initial users"
-        echo "  • Generate client configuration bundles"
+        echo "  • Generate encryption keys and secrets"
+        if [[ -n "$domain" ]]; then
+            echo "  • Obtain TLS certificate from Let's Encrypt"
+        fi
+        echo "  • Configure enabled protocols"
+        echo "  • Create initial users with connection links"
         echo ""
         if ! confirm "Continue with bootstrap?" "y"; then
             info "Bootstrap cancelled."

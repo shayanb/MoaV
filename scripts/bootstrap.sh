@@ -622,7 +622,7 @@ if [[ "$singbox_needed" == "true" ]]; then
     envsubst < /configs/sing-box/config.json.template > /configs/sing-box/config.json
 
     # Remove disabled protocol inbounds from the generated config
-    local config_file="/configs/sing-box/config.json"
+    config_file="/configs/sing-box/config.json"
     if [[ "${ENABLE_TROJAN:-true}" != "true" ]]; then
         jq 'del(.inbounds[] | select(.tag == "trojan-tls-in"))' "$config_file" > "${config_file}.tmp" && mv "${config_file}.tmp" "$config_file"
         log_info "  Removed Trojan inbound (disabled)"
