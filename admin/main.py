@@ -142,8 +142,11 @@ def check_service_status(name: str) -> str:
         "wstunnel": "moav-wstunnel",
         "wireguard": "moav-wireguard",
         "dnstt": "moav-dnstt",
+        "slipstream": "moav-slipstream",
         "conduit": "moav-conduit",
         "trusttunnel": "moav-trusttunnel",
+        "telemt": "moav-telemt",
+        "amneziawg": "moav-amneziawg",
         "grafana": "moav-grafana",
     }
 
@@ -331,65 +334,23 @@ def format_bytes(bytes_val):
 
 def get_services_status():
     """Get status of all services with live checks"""
-    services = [
-        {
-            "name": "sing-box",
-            "description": "Multi-protocol proxy (Reality, Trojan, Hysteria2)",
-            "ports": "443/tcp, 443/udp, 8443/tcp",
-            "profile": "proxy",
-            "status": check_service_status("sing-box")
-        },
-        {
-            "name": "decoy",
-            "description": "Decoy website (nginx)",
-            "ports": "internal",
-            "profile": "proxy",
-            "status": check_service_status("decoy")
-        },
-        {
-            "name": "wstunnel",
-            "description": "WebSocket tunnel for WireGuard",
-            "ports": "8080/tcp",
-            "profile": "wireguard",
-            "status": check_service_status("wstunnel")
-        },
-        {
-            "name": "dnstt",
-            "description": "DNS tunnel (last resort)",
-            "ports": "53/udp",
-            "profile": "dnstt",
-            "status": check_service_status("dnstt")
-        },
-        {
-            "name": "trusttunnel",
-            "description": "TrustTunnel VPN (HTTP/2, HTTP/3)",
-            "ports": "4443/tcp+udp",
-            "profile": "trusttunnel",
-            "status": check_service_status("trusttunnel")
-        },
-        {
-            "name": "conduit",
-            "description": "Psiphon bandwidth donation",
-            "ports": "dynamic",
-            "profile": "conduit",
-            "status": check_service_status("conduit")
-        },
-        {
-            "name": "snowflake",
-            "description": "Tor Snowflake proxy",
-            "ports": "dynamic",
-            "profile": "snowflake",
-            "status": check_service_status("snowflake")
-        },
-        {
-            "name": "grafana",
-            "description": "Grafana monitoring",
-            "ports": "9444",
-            "profile": "monitoring",
-            "status": check_service_status("grafana")
-        },
+    all_services = [
+        {"name": "sing-box", "ports": "443, 8443", "profile": "proxy"},
+        {"name": "decoy", "ports": "—", "profile": "proxy"},
+        {"name": "wstunnel", "ports": "8080", "profile": "wireguard"},
+        {"name": "dnstt", "ports": "53/udp", "profile": "dnstunnel"},
+        {"name": "slipstream", "ports": "—", "profile": "dnstunnel"},
+        {"name": "trusttunnel", "ports": "4443", "profile": "trusttunnel"},
+        {"name": "telemt", "ports": "993", "profile": "telegram"},
+        {"name": "amneziawg", "ports": "51820/udp", "profile": "amneziawg"},
+        {"name": "conduit", "ports": "dynamic", "profile": "conduit"},
+        {"name": "snowflake", "ports": "dynamic", "profile": "snowflake"},
+        {"name": "grafana", "ports": "9444", "profile": "monitoring"},
     ]
-    return services
+    for svc in all_services:
+        svc["status"] = check_service_status(svc["name"])
+    # Only return services that are running or were expected (not all stopped)
+    return all_services
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -403,15 +364,28 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
     # Get all users with their bundle info (no active status tracking)
     all_users = list_users()
 
+    # Filter services: only show running services + always show sing-box
+    active_services = [s for s in services if s["status"] == "running" or s["name"] == "sing-box"]
+
+    # Detect domainless mode (no Let's Encrypt certs = domainless)
+    import glob
+    has_letsencrypt = any(
+        Path(f"{d}fullchain.pem").exists()
+        for d in glob.glob("/certs/live/*/")
+    )
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "stats": stats,
         "conduit_stats": conduit_stats,
-        "services": services,
+        "services": active_services,
         "all_users": all_users,
         "format_bytes": format_bytes,
+        "active_connections": len(stats.get("connections", [])),
         "total_upload": format_bytes(stats["traffic"]["upload"]),
         "total_download": format_bytes(stats["traffic"]["download"]),
+        "memory_usage": format_bytes(stats.get("memory", 0)),
+        "domainless": not has_letsencrypt,
         "error": stats.get("error"),
         "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
         "update_available": update_info["update_available"],
@@ -538,6 +512,9 @@ def list_users():
         has_hysteria2 = (user_dir / "hysteria2.yaml").exists() or (user_dir / "hysteria2.txt").exists()
         has_trojan = (user_dir / "trojan.txt").exists()
         has_trusttunnel = (user_dir / "trusttunnel.toml").exists() or (user_dir / "trusttunnel.txt").exists()
+        has_cdn = (user_dir / "cdn-vless.txt").exists()
+        has_amneziawg = (user_dir / "amneziawg.conf").exists()
+        has_telemt = (user_dir / "telegram-mtproxy.txt").exists() or (user_dir / "telemt.txt").exists()
 
         # Check if zip already exists
         zip_exists = (bundle_path / f"{username}.zip").exists()
@@ -552,6 +529,9 @@ def list_users():
             "has_hysteria2": has_hysteria2,
             "has_trojan": has_trojan,
             "has_trusttunnel": has_trusttunnel,
+            "has_cdn": has_cdn,
+            "has_amneziawg": has_amneziawg,
+            "has_telemt": has_telemt,
             "zip_exists": zip_exists,
             "created_at": created_at,
         })

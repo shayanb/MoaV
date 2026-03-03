@@ -61,7 +61,7 @@ fi
 
 # Domain-less mode notice
 if [[ -z "${DOMAIN:-}" ]]; then
-    log_info "Running in domain-less mode (WireGuard, Conduit, Snowflake, Admin)"
+    log_info "Running in domain-less mode (Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, Snowflake)"
 
     # Generate self-signed certificate for admin UI (if not exists)
     if [[ "${ENABLE_ADMIN_UI:-true}" == "true" ]]; then

@@ -184,6 +184,27 @@
             gap: 1rem;
             margin-bottom: 2rem;
         }
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 0.5rem 1.5rem;
+        }
+        .service-item {
+            display: flex;
+            align-items: center;
+            padding: 0.4rem 0;
+            font-size: 0.9rem;
+        }
+        .service-name {
+            font-weight: 500;
+            margin-right: 0.4rem;
+        }
+        .port-tag {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-left: auto;
+            font-variant-numeric: tabular-nums;
+        }
         .protocol-tag {
             font-size: 0.65rem;
             background: var(--border);
@@ -346,8 +367,10 @@
             <h1>MoaV Dashboard</h1>
             <div>
                 <span class="timestamp">{{ timestamp }}</span>
+                {% if services|selectattr('name', 'equalto', 'grafana')|selectattr('status', 'equalto', 'running')|list %}
                 <a id="grafana-link" href="#" target="_blank" class="refresh-btn" style="margin-right: 0.5rem; background: #ff6600; text-decoration: none;">Grafana</a>
                 <script>document.getElementById('grafana-link').href = 'https://' + location.hostname + ':9444';</script>
+                {% endif %}
                 <button class="refresh-btn" onclick="location.reload()">Refresh</button>
             </div>
         </header>
@@ -366,21 +389,25 @@
         {% endif %}
 
         <div class="grid">
+            {% if not error %}
             <div class="card">
-                <div class="card-title">Total Upload</div>
+                <div class="card-title">Connections</div>
+                <div class="card-value">{{ active_connections }}</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Upload</div>
                 <div class="card-value">{{ total_upload }}</div>
             </div>
             <div class="card">
-                <div class="card-title">Total Download</div>
+                <div class="card-title">Download</div>
                 <div class="card-value">{{ total_download }}</div>
             </div>
+            {% endif %}
+            {% if conduit_stats.running %}
             <div class="card">
                 <div class="card-title">Conduit</div>
-                <div class="card-value {% if conduit_stats.running %}success{% else %}error{% endif %}">
-                    {% if conduit_stats.running %}Active{% else %}Off{% endif %}
-                </div>
+                <div class="card-value success">Active</div>
             </div>
-            {% if conduit_stats.running %}
             <div class="card">
                 <div class="card-title">Conduit Up</div>
                 <div class="card-value">{{ conduit_stats.bandwidth.upload }}</div>
@@ -392,33 +419,19 @@
             {% endif %}
         </div>
 
-        <div class="section-grid">
-            <div class="card">
-                <h2>Services</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Service</th>
-                            <th>Status</th>
-                            <th>Ports</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for service in services %}
-                        <tr>
-                            <td>
-                                <span class="status-dot {{ service.status }}"></span>
-                                {{ service.name }}
-                                <span class="profile-tag">{{ service.profile }}</span>
-                            </td>
-                            <td>
-                                <span class="status-text {{ service.status }}">{{ service.status }}</span>
-                            </td>
-                            <td>{{ service.ports }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>Services</h2>
+            <div class="services-grid">
+                {% for service in services %}
+                <div class="service-item">
+                    <span class="status-dot {{ service.status }}"></span>
+                    <span class="service-name">{{ service.name }}</span>
+                    <span class="profile-tag">{{ service.profile }}</span>
+                    {% if service.ports and service.ports != '—' %}
+                    <span class="port-tag">{{ service.ports }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
             </div>
         </div>
 
@@ -494,8 +507,11 @@
                             {% if user.has_reality %}<span class="protocol-tag">Reality</span>{% endif %}
                             {% if user.has_trojan %}<span class="protocol-tag">Trojan</span>{% endif %}
                             {% if user.has_hysteria2 %}<span class="protocol-tag">Hy2</span>{% endif %}
+                            {% if user.has_cdn %}<span class="protocol-tag">CDN</span>{% endif %}
                             {% if user.has_wireguard %}<span class="protocol-tag">WG</span>{% endif %}
+                            {% if user.has_amneziawg %}<span class="protocol-tag">AWG</span>{% endif %}
                             {% if user.has_trusttunnel %}<span class="protocol-tag">TT</span>{% endif %}
+                            {% if user.has_telemt %}<span class="protocol-tag">MTProxy</span>{% endif %}
                         </td>
                         <td>
                             <a href="/download/{{ user.username }}" class="download-btn">
@@ -519,15 +535,23 @@
     </div>
 
     <script>
-        // Auto-refresh: pause while user creation is in progress
+        // Auto-refresh: pause while user creation is in progress or create panel is open
         let creating = false;
-        let refreshTimer = setTimeout(() => { if (!creating) location.reload(); }, 30000);
+        let panelOpen = false;
+        function scheduleRefresh() {
+            return setTimeout(() => {
+                if (!creating && !panelOpen) location.reload();
+                else refreshTimer = scheduleRefresh();
+            }, 60000);
+        }
+        let refreshTimer = scheduleRefresh();
 
         function toggleCreatePanel() {
             const panel = document.getElementById('create-panel');
             const btn = event.target;
             panel.classList.toggle('open');
-            btn.textContent = panel.classList.contains('open') ? '- Close' : '+ Create User';
+            panelOpen = panel.classList.contains('open');
+            btn.textContent = panelOpen ? '- Close' : '+ Create User';
         }
 
         function toggleBatch() {

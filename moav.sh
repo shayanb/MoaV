@@ -204,6 +204,22 @@ confirm() {
         response="$default"
     fi
 
+    # Reject invalid input — only accept y/Y/n/N/empty
+    while [[ -n "$response" && ! "$response" =~ ^[YyNn]$ ]]; do
+        if [[ "$default" == "y" ]]; then
+            prompt "$message [Y/n]: "
+        else
+            prompt "$message [y/N]: "
+        fi
+        if read -n 1 -r response < /dev/tty 2>/dev/null; then
+            echo ""
+            response=${response:-$default}
+        else
+            echo ""
+            response="$default"
+        fi
+    done
+
     if [[ "$default" == "y" ]]; then
         # Default yes: return true unless explicitly 'n' or 'N'
         [[ ! "$response" =~ ^[Nn]$ ]]
@@ -221,7 +237,8 @@ press_enter() {
 
 get_admin_url() {
     # Get admin URL using DOMAIN or SERVER_IP from .env
-    local admin_port="${PORT_ADMIN:-9443}"
+    local admin_port=$(grep -E '^PORT_ADMIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    admin_port="${admin_port:-9443}"
     local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local server_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local admin_host="${domain:-${server_ip:-localhost}}"
