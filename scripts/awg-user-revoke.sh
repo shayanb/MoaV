@@ -62,7 +62,7 @@ awk -v user="$USERNAME" '
     { print }
 ' "$AWG_CONFIG_FILE" > "$TEMP_CONFIG"
 
-mv "$TEMP_CONFIG" "$AWG_CONFIG_FILE"
+mv -f "$TEMP_CONFIG" "$AWG_CONFIG_FILE"
 
 log_info "Removed peer from awg0.conf"
 

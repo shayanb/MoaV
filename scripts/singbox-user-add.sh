@@ -104,19 +104,19 @@ jq --arg name "$USERNAME" --arg uuid "$USER_UUID" \
 jq --arg name "$USERNAME" --arg pass "$USER_PASSWORD" \
     '.inbounds |= map(if .tag == "trojan-tls-in" then .users += [{"name": $name, "password": $pass}] else . end)' \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
-mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+mv -f "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 
 # Add to Hysteria2 users
 jq --arg name "$USERNAME" --arg pass "$USER_PASSWORD" \
     '.inbounds |= map(if .tag == "hysteria2-in" then .users += [{"name": $name, "password": $pass}] else . end)' \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
-mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+mv -f "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 
 # Add to VLESS WS users (CDN)
 jq --arg name "$USERNAME" --arg uuid "$USER_UUID" \
     '.inbounds |= map(if .tag == "vless-ws-in" then .users += [{"name": $name, "uuid": $uuid}] else . end)' \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
-mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+mv -f "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 
 # Validate the new config
 if ! jq empty "$TEMP_CONFIG" 2>/dev/null; then
@@ -126,7 +126,7 @@ if ! jq empty "$TEMP_CONFIG" 2>/dev/null; then
 fi
 
 # Apply the config
-mv "$TEMP_CONFIG" "$CONFIG_FILE"
+mv -f "$TEMP_CONFIG" "$CONFIG_FILE"
 
 log_info "Added $USERNAME to sing-box config"
 
@@ -231,8 +231,8 @@ if command -v qrencode &>/dev/null; then
     # IPv6 QR codes
     if [[ -n "$SERVER_IPV6" ]]; then
         qrencode -o "$OUTPUT_DIR/reality-ipv6-qr.png" -s 6 "$REALITY_LINK_V6" 2>/dev/null || true
-        qrencode -o "$OUTPUT_DIR/trojan-ipv6-qr.png" -s 6 "$TROJAN_LINK_V6" 2>/dev/null || true
-        qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
+        [[ -n "${TROJAN_LINK_V6:-}" ]] && qrencode -o "$OUTPUT_DIR/trojan-ipv6-qr.png" -s 6 "$TROJAN_LINK_V6" 2>/dev/null || true
+        [[ -n "${HY2_LINK_V6:-}" ]] && qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
     fi
 fi
 

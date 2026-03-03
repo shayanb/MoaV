@@ -48,7 +48,7 @@ if ! jq empty "$TEMP_CONFIG" 2>/dev/null; then
     exit 1
 fi
 
-mv "$TEMP_CONFIG" "$CONFIG_FILE"
+mv -f "$TEMP_CONFIG" "$CONFIG_FILE"
 
 log_info "Removed $USERNAME from sing-box config"
 
