@@ -176,15 +176,17 @@
         /* Services grid */
         .svc-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 0;
         }
         .svc {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.45rem 0.25rem;
+            padding: 0.5rem 0.6rem;
+            border-bottom: 1px solid var(--border);
         }
+        .svc-grid .svc:nth-last-child(-n+3) { border-bottom: none; }
         .dot {
             width: 7px;
             height: 7px;
@@ -192,7 +194,7 @@
             flex-shrink: 0;
         }
         .dot.running { background: var(--green); box-shadow: 0 0 4px var(--green); }
-        .dot.stopped { background: var(--red); }
+        .dot.stopped { background: #484848; }
         .dot.starting { background: var(--yellow); animation: pulse 1.2s infinite; }
         .dot.unknown { background: var(--text-dim); }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -201,6 +203,7 @@
             font-size: 0.8rem;
             font-weight: 500;
         }
+        .svc.off .svc-name { color: var(--text-dim); }
         .svc-port {
             font-family: var(--mono);
             font-size: 0.6rem;
@@ -384,13 +387,39 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* Footer */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 0 0.5rem;
+            margin-top: 0.5rem;
+            border-top: 1px solid var(--border);
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            color: var(--text-dim);
+        }
+        .footer-links {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .footer-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            transition: color 0.15s;
+        }
+        .footer-links a:hover { color: var(--text); }
+
         /* Responsive */
         @media (max-width: 640px) {
             .shell { padding: 1rem; }
             .stats { flex-direction: column; }
             .stat:first-child { border-radius: 6px 6px 0 0; }
             .stat:last-child { border-radius: 0 0 6px 6px; }
-            .svc-grid { grid-template-columns: 1fr 1fr; }
+            .svc-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -459,10 +488,10 @@
             <div class="section-body">
                 <div class="svc-grid">
                     {% for service in services %}
-                    <div class="svc">
+                    <div class="svc{{ ' off' if service.status != 'running' else '' }}">
                         <span class="dot {{ service.status }}"></span>
                         <span class="svc-name">{{ service.name }}</span>
-                        {% if service.ports and service.ports != '—' %}
+                        {% if service.ports and service.ports != '—' and service.status == 'running' %}
                         <span class="svc-port">:{{ service.ports }}</span>
                         {% endif %}
                     </div>
@@ -552,6 +581,16 @@
             <div class="empty-msg">No users yet. Create one above or run <code>moav user add</code></div>
             {% endif %}
         </div>
+
+        <footer class="footer">
+            <span>MoaV v{{ current_version }}</span>
+            <span class="footer-links">
+                <a href="https://moav.sh" target="_blank">moav.sh</a>
+                <a href="https://github.com/shayanb/MoaV" target="_blank" title="GitHub">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                </a>
+            </span>
+        </footer>
     </div>
 
     <script>

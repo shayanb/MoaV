@@ -134,6 +134,19 @@ fi
 CREATED_USERS=()
 FAILED_USERS=()
 
+# Ensure outputs directory exists and is writable
+mkdir -p "outputs/bundles" 2>/dev/null || true
+if [[ ! -w "outputs/bundles" ]]; then
+    # Bootstrap may have created it as root — fix ownership
+    if command -v sudo &>/dev/null; then
+        sudo chmod 777 "outputs/bundles" 2>/dev/null || true
+    fi
+    if [[ ! -w "outputs/bundles" ]]; then
+        log_error "Cannot write to outputs/bundles/ — try: sudo chmod 777 outputs/bundles"
+        exit 1
+    fi
+fi
+
 # -----------------------------------------------------------------------------
 # Create each user
 # -----------------------------------------------------------------------------
@@ -211,9 +224,9 @@ for USERNAME in "${USERNAMES[@]}"; do
             fi
 
             # Find next available IP (extract actual used IPs from config AND running interface)
-            USED_AWG_IPS=$(grep -oP 'AllowedIPs = 10\.67\.67\.\K[0-9]+' "configs/amneziawg/awg0.conf" 2>/dev/null || echo "")
+            USED_AWG_IPS=$(grep 'AllowedIPs = 10\.67\.67\.' "configs/amneziawg/awg0.conf" 2>/dev/null | sed 's/.*10\.67\.67\.\([0-9]*\).*/\1/' || echo "")
             if docker compose ps amneziawg --status running &>/dev/null; then
-                RUNNING_AWG_IPS=$(docker compose exec -T amneziawg awg show awg0 allowed-ips 2>/dev/null | grep -oP '10\.67\.67\.\K[0-9]+' || echo "")
+                RUNNING_AWG_IPS=$(docker compose exec -T amneziawg awg show awg0 allowed-ips 2>/dev/null | grep '10\.67\.67\.' | sed 's/.*10\.67\.67\.\([0-9]*\).*/\1/' || echo "")
                 USED_AWG_IPS="$USED_AWG_IPS $RUNNING_AWG_IPS"
             fi
             AWG_NEXT_IP=2  # Start from .2 (server is .1)

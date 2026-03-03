@@ -1404,8 +1404,8 @@ test_telemt() {
     log_debug "tg:// link: ${tg_link:0:60}..."
 
     local server port
-    server=$(echo "$tg_link" | grep -oP 'server=\K[^&]+' || true)
-    port=$(echo "$tg_link" | grep -oP 'port=\K[^&]+' || true)
+    server=$(echo "$tg_link" | sed -n 's/.*server=\([^&]*\).*/\1/p' || true)
+    port=$(echo "$tg_link" | sed -n 's/.*port=\([^&]*\).*/\1/p' || true)
 
     if [[ -z "$server" ]] || [[ -z "$port" ]]; then
         detail="Failed to parse telemt proxy link"

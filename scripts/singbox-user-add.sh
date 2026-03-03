@@ -190,24 +190,30 @@ REALITY_TARGET_HOST=$(echo "$REALITY_TARGET" | cut -d: -f1)
 REALITY_LINK="vless://${USER_UUID}@${SERVER_IP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=random&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USERNAME}"
 echo "$REALITY_LINK" > "$OUTPUT_DIR/reality.txt"
 
-# Trojan link (IPv4)
-TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}"
-echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
+# Trojan link (IPv4) — only if domain is set (requires TLS cert)
+if [[ -n "${DOMAIN:-}" ]]; then
+    TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}"
+    echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
+fi
 
-# Hysteria2 link (IPv4) - with obfuscation for censorship bypass
-HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}"
-echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
+# Hysteria2 link (IPv4) — only if domain is set (requires TLS cert)
+if [[ -n "${DOMAIN:-}" ]]; then
+    HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}"
+    echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
+fi
 
 # Generate IPv6 links if available
 if [[ -n "$SERVER_IPV6" ]]; then
     REALITY_LINK_V6="vless://${USER_UUID}@[${SERVER_IPV6}]:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=random&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USERNAME}-IPv6"
     echo "$REALITY_LINK_V6" > "$OUTPUT_DIR/reality-ipv6.txt"
 
-    TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}-IPv6"
-    echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
+    if [[ -n "${DOMAIN:-}" ]]; then
+        TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}-IPv6"
+        echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
 
-    HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}-IPv6"
-    echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
+        HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}-IPv6"
+        echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
+    fi
 
     log_info "Generated IPv6 links (server: $SERVER_IPV6)"
 fi
@@ -215,8 +221,8 @@ fi
 # Generate QR codes
 if command -v qrencode &>/dev/null; then
     qrencode -o "$OUTPUT_DIR/reality-qr.png" -s 6 "$REALITY_LINK" 2>/dev/null || true
-    qrencode -o "$OUTPUT_DIR/trojan-qr.png" -s 6 "$TROJAN_LINK" 2>/dev/null || true
-    qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
+    [[ -n "${TROJAN_LINK:-}" ]] && qrencode -o "$OUTPUT_DIR/trojan-qr.png" -s 6 "$TROJAN_LINK" 2>/dev/null || true
+    [[ -n "${HY2_LINK:-}" ]] && qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
 
     # IPv6 QR codes
     if [[ -n "$SERVER_IPV6" ]]; then

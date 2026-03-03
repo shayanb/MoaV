@@ -364,8 +364,8 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
     # Get all users with their bundle info (no active status tracking)
     all_users = list_users()
 
-    # Filter services: only show running services + always show sing-box
-    active_services = [s for s in services if s["status"] == "running" or s["name"] == "sing-box"]
+    # Show all services (running and stopped)
+    active_services = services
 
     # Detect domainless mode (no Let's Encrypt certs = domainless)
     import glob
