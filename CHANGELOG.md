@@ -7,22 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **Shell autocompletion** — `moav install` now installs bash/zsh completions for all commands, subcommands, services, profiles, and protocols; `moav uninstall` removes them
-- **Admin dashboard redesign** — Services displayed as cards with auto-fill grid layout, green border for running services; favicon and logo in browser tab/header; centered footer with version and GitHub link
-
-### Fixed
-- **Domainless mode `unbound variable` crash** — `TROJAN_LINK`, `HY2_LINK`, and their IPv6 variants were referenced unconditionally but only set when a domain is configured; all references now guarded with `[[ -n "${VAR:-}" ]]`
-- **`moav uninstall` aborting on root-owned files** — Docker-created files under `configs/`, `state/`, `outputs/` are owned by root; `set -euo pipefail` + `rm` = permission denied = script abort; now uses `_wrm()` helper with sudo fallback
-- **Permission denied on `state/users/` and `configs/`** — Docker containers create directories as root; non-root users couldn't write when adding/revoking users; added sudo mkdir/chmod fallback in user-add and user-revoke scripts
-- **`mv` interactive prompt on Debian/Ubuntu** — Default `mv -i` alias caused scripts to hang waiting for confirmation; all `mv` calls now use `mv -f` across all scripts
-- **`xxd: command not found` on minimal systems** — Replaced all `xxd -p` usage with POSIX-portable `od -An -tx1 | tr -d ' \n'` (xxd requires vim package, not installed on minimal Raspberry Pi OS)
-- **Docker Compose service status checks always returning true** — `docker compose ps --status running` returns exit code 0 even with empty output; all service-running checks now pipe to `grep -q .` to verify actual output exists
-- **User add failing when WireGuard not running** — Config file existing was enough to trigger WireGuard peer add attempt; now checks if the Docker service is actually running first, skips gracefully with info message if not
-- **Snowflake dashboard false positive** — `check_service_status("snowflake")` was hardcoded to return `"running"`; changed to `"unknown"` since admin container can't detect Snowflake (host networking, no DNS entry)
-- **AmneziaWG `awg` binary missing from Docker image** — Built in multi-stage builder but never copied to final image; added `COPY --from=builder /usr/bin/awg /usr/bin/awg`
-
-## [1.4.2] - 2026-03-02
+## [1.4.4] - 2026-03-03
 
 ### Added
 - **Auto-detect missing `.env` variables** — `moav update` now compares your `.env` with `.env.example` and offers to auto-add new variables with defaults (timestamped separator for easy review)
@@ -32,10 +17,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Domain naming strategy guide** — New section in DNS docs with good/bad domain name examples and CDN subdomain advice for DPI evasion
 - **CDN split SNI/Address/Host** — Client configs now use root domain as TLS SNI (less suspicious to DPI than `cdn.domain.com`), with CDN subdomain only in the encrypted Host header for Cloudflare routing. Optional `CDN_ADDRESS` for full domain separation (`CDN_SNI`, `CDN_ADDRESS` env vars)
 - **Cloudflare SSL Flexible requirement** — Added clear documentation about SSL mode requirement across DNS, Setup, and Troubleshooting docs (prevents 525 errors)
+- **Shell autocompletion** — `moav install` now installs bash/zsh completions for all commands, subcommands, services, profiles, and protocols; `moav uninstall` removes them
+- **Admin dashboard redesign** — Services displayed as cards with auto-fill grid layout, green border for running services; favicon and logo in browser tab/header; centered footer with version and GitHub link
+- **`moav user revoke` telemt support** — Revoking a user now removes their MTProxy secret from all three telemt config sections and restarts telemt
 
 ### Fixed
 - **`moav update` crashing silently** — `check_component_versions()` failed under `set -euo pipefail` when version variables (e.g., `TELEMT_VERSION`, `SLIPSTREAM_VERSION`) were missing from older `.env` files; grep returning exit code 1 killed the script before reaching `check_env_additions()`
 - **`moav logs <service>` showing all containers** — Service names like `slipstream` were resolved as profile aliases (→ `dnstunnel`), causing `--profile dnstunnel` to show all DNS tunnel services; now checks exact profile names first, then falls back to service resolution
+- **Domainless mode `unbound variable` crash** — `TROJAN_LINK`, `HY2_LINK`, and their IPv6 variants were referenced unconditionally but only set when a domain is configured; all references now guarded with `[[ -n "${VAR:-}" ]]`
+- **`moav uninstall` aborting on root-owned files** — Docker-created files under `configs/`, `state/`, `outputs/` are owned by root; `set -euo pipefail` + `rm` = permission denied = script abort; now uses `_wrm()` helper with sudo fallback
+- **Permission denied on `state/users/` and `configs/`** — Docker containers create directories as root; non-root users couldn't write when adding/revoking users; added sudo mkdir/chmod fallback in user-add and user-revoke scripts
+- **`mv` interactive prompt on Debian/Ubuntu** — Default `mv -i` alias caused scripts to hang waiting for confirmation; all `mv` calls now use `mv -f` across all scripts
+- **`xxd: command not found` on minimal systems** — Replaced all `xxd -p` usage with POSIX-portable `od -An -tx1 | tr -d ' \n'` (xxd requires vim package, not installed on minimal Raspberry Pi OS)
+- **Docker Compose service status checks always returning true** — `docker compose ps --status running` returns exit code 0 with only a header row even when no containers match; all service-running checks now use `tail -n +2 | grep -q .` to skip the header and verify actual container output exists
+- **User add failing when WireGuard not running** — Config file existing was enough to trigger WireGuard peer add attempt; now checks if the Docker service is actually running first, skips gracefully with info message if not
+- **Snowflake dashboard false positive** — `check_service_status("snowflake")` was hardcoded to return `"running"`; changed to `"unknown"` with distinct `?` indicator and hover tooltip explaining host networking limitation
+- **AmneziaWG `awg` binary missing from Docker image** — Built in multi-stage builder but never copied to final image; added `COPY --from=builder /usr/bin/awg /usr/bin/awg`
+- **Grafana dashboard starring silently failing** — `star_dashboards()` used GNU wget flags (`--user`, `--password`, `--auth-no-challenge`) unsupported by BusyBox wget in the official Grafana Alpine image; replaced with `--header "Authorization: Basic ..."` which works everywhere. Also added missing `moav-amneziawg` to star list
+- **Dashboard user protocol tags incomplete** — telemt detection checked wrong filename (`telegram-mtproxy.txt` instead of `telegram-proxy-link.txt`); added missing dnstt and Slipstream protocol detection
 
 ### Changed
 - **CDN bundle files renamed** — `cdn-vless-ws-singbox.json` → `cdn-vless-singbox.json`, `cdn-vless-ws.txt` → `cdn-vless.txt` (reflects transport-agnostic naming)
@@ -669,7 +668,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.4...HEAD
+[1.4.4]: https://github.com/shayanb/MoaV/compare/v1.4.1...v1.4.4
 [1.4.2]: https://github.com/shayanb/MoaV/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/shayanb/MoaV/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/shayanb/MoaV/compare/v1.3.8...v1.4.0
