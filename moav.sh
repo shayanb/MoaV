@@ -884,72 +884,75 @@ do_uninstall() {
         echo ""
         info "Removing configuration files..."
 
+        # Helper: rm that falls back to sudo (Docker creates files as root)
+        _wrm() { rm "$@" 2>/dev/null || sudo rm "$@" 2>/dev/null || true; }
+
         # Remove .env
         if [[ -f "$SCRIPT_DIR/.env" ]]; then
-            rm -f "$SCRIPT_DIR/.env"
+            _wrm -f "$SCRIPT_DIR/.env"
             echo "  - .env"
         fi
 
         # Remove generated sing-box config
         if [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]]; then
-            rm -f "$SCRIPT_DIR/configs/sing-box/config.json"
+            _wrm -f "$SCRIPT_DIR/configs/sing-box/config.json"
             echo "  - configs/sing-box/config.json"
         fi
 
         # Remove generated dnstt files
-        if ls "$SCRIPT_DIR/configs/dnstt/"*.key "$SCRIPT_DIR/configs/dnstt/server.conf" "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null | head -1 >/dev/null 2>&1; then
-            rm -f "$SCRIPT_DIR/configs/dnstt/server.conf" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/dnstt/"*.key 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/dnstt/"*.key.hex 2>/dev/null
+        if [[ -d "$SCRIPT_DIR/configs/dnstt" ]] && ls "$SCRIPT_DIR/configs/dnstt/"*.key "$SCRIPT_DIR/configs/dnstt/server.conf" "$SCRIPT_DIR/configs/dnstt/server.pub" &>/dev/null; then
+            _wrm -f "$SCRIPT_DIR/configs/dnstt/server.conf"
+            _wrm -f "$SCRIPT_DIR/configs/dnstt/server.pub"
+            _wrm -f "$SCRIPT_DIR/configs/dnstt/"*.key
+            _wrm -f "$SCRIPT_DIR/configs/dnstt/"*.key.hex
             echo "  - configs/dnstt/*"
         fi
 
         # Remove generated Slipstream files
         if [[ -f "$SCRIPT_DIR/configs/slipstream/cert.pem" ]]; then
-            rm -f "$SCRIPT_DIR/configs/slipstream/cert.pem" 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/slipstream/cert.pem"
             echo "  - configs/slipstream/*"
         fi
 
         # Remove generated WireGuard files
         if [[ -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" ]] || [[ -d "$SCRIPT_DIR/configs/wireguard/wg_confs" ]]; then
-            rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf."* 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/wireguard/server.pub" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/wireguard/server.key" 2>/dev/null
-            rm -rf "$SCRIPT_DIR/configs/wireguard/wg_confs/" 2>/dev/null
-            rm -rf "$SCRIPT_DIR/configs/wireguard/coredns/" 2>/dev/null
-            rm -rf "$SCRIPT_DIR/configs/wireguard/templates/" 2>/dev/null
-            rm -rf "$SCRIPT_DIR/configs/wireguard/peer"* 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf"
+            _wrm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf."*
+            _wrm -f "$SCRIPT_DIR/configs/wireguard/server.pub"
+            _wrm -f "$SCRIPT_DIR/configs/wireguard/server.key"
+            _wrm -rf "$SCRIPT_DIR/configs/wireguard/wg_confs/"
+            _wrm -rf "$SCRIPT_DIR/configs/wireguard/coredns/"
+            _wrm -rf "$SCRIPT_DIR/configs/wireguard/templates/"
+            _wrm -rf "$SCRIPT_DIR/configs/wireguard/peer"*
             echo "  - configs/wireguard/*"
         fi
 
         # Remove generated AmneziaWG files
         if [[ -f "$SCRIPT_DIR/configs/amneziawg/awg0.conf" ]]; then
-            rm -f "$SCRIPT_DIR/configs/amneziawg/awg0.conf" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/amneziawg/server.pub" 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/amneziawg/awg0.conf"
+            _wrm -f "$SCRIPT_DIR/configs/amneziawg/server.pub"
             echo "  - configs/amneziawg/*"
         fi
 
         # Remove generated TrustTunnel files
         if [[ -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" ]]; then
-            rm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml" 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml"
+            _wrm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml"
+            _wrm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml"
             echo "  - configs/trusttunnel/*"
         fi
 
         # Remove generated telemt files
         if [[ -f "$SCRIPT_DIR/configs/telemt/config.toml" ]]; then
-            rm -f "$SCRIPT_DIR/configs/telemt/config.toml" 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/telemt/config.toml"
             echo "  - configs/telemt/config.toml"
         fi
 
         # Remove outputs (bundles, keys)
-        if [[ -d "$SCRIPT_DIR/outputs" ]] && [[ -n "$(ls -A "$SCRIPT_DIR/outputs" 2>/dev/null | grep -v .gitkeep || true)" ]]; then
+        if [[ -d "$SCRIPT_DIR/outputs" ]] && ls -A "$SCRIPT_DIR/outputs" 2>/dev/null | grep -qv .gitkeep; then
             local bundle_count
             bundle_count=$(find "$SCRIPT_DIR/outputs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l || echo "0")
-            find "$SCRIPT_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
+            sudo find "$SCRIPT_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
             echo "  - outputs/ ($bundle_count user bundles)"
         fi
 
@@ -957,13 +960,13 @@ do_uninstall() {
         if [[ -d "$SCRIPT_DIR/state" ]]; then
             local user_count
             user_count=$(find "$SCRIPT_DIR/state/users" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l || echo "0")
-            rm -rf "$SCRIPT_DIR/state/" 2>/dev/null || true
+            sudo rm -rf "$SCRIPT_DIR/state/" 2>/dev/null || true
             echo "  - state/ ($user_count users)"
         fi
 
         # Remove certbot certificates
         if [[ -d "$SCRIPT_DIR/certbot" ]]; then
-            rm -rf "$SCRIPT_DIR/certbot/" 2>/dev/null
+            sudo rm -rf "$SCRIPT_DIR/certbot/" 2>/dev/null || true
             echo "  - certbot/"
         fi
 
