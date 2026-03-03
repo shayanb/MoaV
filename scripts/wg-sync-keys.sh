@@ -17,7 +17,7 @@ WG_CONFIG_DIR="configs/wireguard"
 log_info "Checking WireGuard key consistency..."
 
 # Check if WireGuard is running
-if ! docker compose ps wireguard --status running &>/dev/null; then
+if ! docker compose ps wireguard --status running 2>/dev/null | tail -n +2 | grep -q .; then
     log_error "WireGuard container is not running"
     log_info "Start it with: docker compose --profile wireguard up -d wireguard"
     exit 1

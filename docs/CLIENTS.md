@@ -552,7 +552,7 @@ The CDN link works in any app that supports VLESS with WebSocket transport:
 
 **Link format:**
 ```
-vless://UUID@cdn.yourdomain.com:443?security=tls&type=httpupgrade&path=/auto-generated-path&sni=cdn.yourdomain.com&host=cdn.yourdomain.com&fp=random&alpn=http/1.1#MoaV-CDN-username
+vless://UUID@cdn.yourdomain.com:443?security=tls&type=httpupgrade&path=/auto-generated-path&sni=yourdomain.com&host=cdn.yourdomain.com&fp=random&alpn=http/1.1#MoaV-CDN-username
 ```
 
 ### iOS (Shadowrocket)

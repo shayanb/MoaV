@@ -268,21 +268,21 @@ escape_for_awk() {
 
 if [[ -n "$CONFIG_REALITY" ]]; then
     ESCAPED=$(escape_for_awk "$CONFIG_REALITY")
-    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_REALITY\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_REALITY\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv -f "$OUTPUT_HTML.new" "$OUTPUT_HTML"
 else
     sed -i.bak "s|{{CONFIG_REALITY}}|No Reality config available|g" "$OUTPUT_HTML"
 fi
 
 if [[ -n "$CONFIG_HYSTERIA2" ]]; then
     ESCAPED=$(escape_for_awk "$CONFIG_HYSTERIA2")
-    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_HYSTERIA2\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_HYSTERIA2\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv -f "$OUTPUT_HTML.new" "$OUTPUT_HTML"
 else
     sed -i.bak "s|{{CONFIG_HYSTERIA2}}|No Hysteria2 config available|g" "$OUTPUT_HTML"
 fi
 
 if [[ -n "$CONFIG_TROJAN" ]]; then
     ESCAPED=$(escape_for_awk "$CONFIG_TROJAN")
-    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_TROJAN\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    awk -v replacement="$ESCAPED" '{gsub(/\{\{CONFIG_TROJAN\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv -f "$OUTPUT_HTML.new" "$OUTPUT_HTML"
 else
     sed -i.bak "s|{{CONFIG_TROJAN}}|No Trojan config available|g" "$OUTPUT_HTML"
 fi
@@ -291,7 +291,7 @@ fi
 if [[ -n "$CONFIG_WIREGUARD" ]]; then
     # Escape & and convert newlines
     ESCAPED=$(echo "$CONFIG_WIREGUARD" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-    awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv -f "$OUTPUT_HTML.new" "$OUTPUT_HTML"
 else
     sed -i.bak "s|{{CONFIG_WIREGUARD}}|No WireGuard config available|g" "$OUTPUT_HTML"
 fi
@@ -300,7 +300,7 @@ fi
 if [[ -n "$CONFIG_WIREGUARD_WSTUNNEL" ]]; then
     # Escape & and convert newlines
     ESCAPED=$(echo "$CONFIG_WIREGUARD_WSTUNNEL" | sed 's/&/\\&/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
-    awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD_WSTUNNEL\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv "$OUTPUT_HTML.new" "$OUTPUT_HTML"
+    awk -v replacement="$ESCAPED" 'BEGIN{gsub(/\\n/,"\n",replacement)} {gsub(/\{\{CONFIG_WIREGUARD_WSTUNNEL\}\}/, replacement)}1' "$OUTPUT_HTML" > "$OUTPUT_HTML.new" && mv -f "$OUTPUT_HTML.new" "$OUTPUT_HTML"
 else
     sed -i.bak "s|{{CONFIG_WIREGUARD_WSTUNNEL}}|No WireGuard-wstunnel config available|g" "$OUTPUT_HTML"
 fi

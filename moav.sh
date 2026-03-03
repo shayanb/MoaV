@@ -204,6 +204,22 @@ confirm() {
         response="$default"
     fi
 
+    # Reject invalid input — only accept y/Y/n/N/empty
+    while [[ -n "$response" && ! "$response" =~ ^[YyNn]$ ]]; do
+        if [[ "$default" == "y" ]]; then
+            prompt "$message [Y/n]: "
+        else
+            prompt "$message [y/N]: "
+        fi
+        if read -n 1 -r response < /dev/tty 2>/dev/null; then
+            echo ""
+            response=${response:-$default}
+        else
+            echo ""
+            response="$default"
+        fi
+    done
+
     if [[ "$default" == "y" ]]; then
         # Default yes: return true unless explicitly 'n' or 'N'
         [[ ! "$response" =~ ^[Nn]$ ]]
@@ -221,7 +237,8 @@ press_enter() {
 
 get_admin_url() {
     # Get admin URL using DOMAIN or SERVER_IP from .env
-    local admin_port="${PORT_ADMIN:-9443}"
+    local admin_port=$(grep -E '^PORT_ADMIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    admin_port="${admin_port:-9443}"
     local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local server_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     local admin_host="${domain:-${server_ip:-localhost}}"
@@ -264,7 +281,7 @@ run_command() {
     echo -e "${WHITE}  $cmd${NC}"
     echo ""
 
-    if confirm "Execute this command?"; then
+    if confirm "Execute this command?" "y"; then
         echo ""
         eval "$cmd"
         return $?
@@ -442,7 +459,7 @@ check_prerequisites() {
     else
         warn ".env file not found"
         if [[ -f ".env.example" ]]; then
-            if confirm "Copy .env.example to .env?"; then
+            if confirm "Copy .env.example to .env?" "y"; then
                 cp .env.example .env
                 success "Created .env from .env.example"
                 echo ""
@@ -531,23 +548,27 @@ check_prerequisites() {
                     warn "No domain provided!"
                     echo ""
                     echo -e "  ${YELLOW}Services that require a domain (will be disabled):${NC}"
-                    echo "    • Reality, Trojan, Hysteria2 (sing-box proxy)"
+                    echo "    • Trojan, Hysteria2, CDN VLESS (need TLS certificates)"
+                    echo "    • TrustTunnel"
                     echo "    • DNS tunnels (dnstt + Slipstream)"
-                    echo "    • Admin dashboard with HTTPS"
                     echo ""
                     echo -e "  ${GREEN}Services that work without a domain:${NC}"
+                    echo "    • Reality (VLESS) — uses dl.google.com for TLS camouflage"
                     echo "    • WireGuard (direct UDP)"
+                    echo "    • AmneziaWG (DPI-resistant WireGuard)"
+                    echo "    • Telegram MTProxy (fake-TLS, IP only)"
+                    echo "    • Admin dashboard (self-signed certificate)"
                     echo "    • Psiphon Conduit (bandwidth donation)"
                     echo "    • Tor Snowflake (bandwidth donation)"
                     echo ""
 
-                    if confirm "Continue with domain-less mode?" "n"; then
+                    if confirm "Continue with domain-less mode?" "y"; then
                         domainless_mode=true
-                        # Set default profiles to only include domain-less services (admin uses self-signed cert)
-                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"wireguard admin conduit snowflake\"|" .env
-                        # Disable all protocols that need domain (admin works with self-signed cert)
+                        # Set default profiles to include all domain-less services (proxy = Reality)
+                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"proxy wireguard amneziawg telegram admin conduit snowflake\"|" .env
+                        # Disable cert-based protocols (Reality stays — works without domain)
                         # Use grep to check if line exists, then sed to replace, or append if missing
-                        for var in ENABLE_REALITY ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
+                        for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
                             if grep -q "^${var}=" .env 2>/dev/null; then
                                 sed -i "s|^${var}=.*|${var}=false|" .env
                             else
@@ -555,12 +576,12 @@ check_prerequisites() {
                             fi
                         done
                         success "Domain-less mode enabled"
-                        info "WireGuard, Admin (self-signed cert), Conduit, and Snowflake will be available"
+                        info "Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, and Snowflake will be available"
                     else
                         echo ""
                         info "Please enter a domain to use all services."
                         echo "  You can edit .env later and run 'moav bootstrap' again."
-                        return 0
+                        return 1
                     fi
                 fi
                 echo ""
@@ -673,6 +694,70 @@ is_installed() {
     [[ -L "$INSTALL_PATH" ]] && [[ "$(readlink "$INSTALL_PATH")" == "$SCRIPT_DIR/moav.sh" ]]
 }
 
+install_completions() {
+    local comp_src="$SCRIPT_DIR/completions/moav.bash"
+    if [[ ! -f "$comp_src" ]]; then
+        return 0
+    fi
+
+    local installed=false
+
+    # System-wide bash completions
+    if [[ -d "/etc/bash_completion.d" ]]; then
+        if [[ -w "/etc/bash_completion.d" ]]; then
+            cp "$comp_src" "/etc/bash_completion.d/moav"
+        else
+            sudo cp "$comp_src" "/etc/bash_completion.d/moav" 2>/dev/null || true
+        fi
+        installed=true
+    fi
+
+    # User-level bash completions (fallback)
+    if [[ "$installed" != "true" ]]; then
+        local user_comp_dir="${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"
+        mkdir -p "$user_comp_dir" 2>/dev/null
+        cp "$comp_src" "$user_comp_dir/moav" 2>/dev/null || true
+        installed=true
+    fi
+
+    # Zsh completions (if zsh is available)
+    if command -v zsh &>/dev/null; then
+        # Try common zsh completion directories
+        for zsh_dir in "/usr/local/share/zsh/site-functions" "/usr/share/zsh/site-functions"; do
+            if [[ -d "$zsh_dir" ]]; then
+                if [[ -w "$zsh_dir" ]]; then
+                    cp "$comp_src" "$zsh_dir/_moav"
+                else
+                    sudo cp "$comp_src" "$zsh_dir/_moav" 2>/dev/null || true
+                fi
+                break
+            fi
+        done
+    fi
+
+    if [[ "$installed" == "true" ]]; then
+        info "Shell completions installed (restart shell or run: source $comp_src)"
+    fi
+}
+
+uninstall_completions() {
+    local paths=(
+        "/etc/bash_completion.d/moav"
+        "${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions/moav"
+        "/usr/local/share/zsh/site-functions/_moav"
+        "/usr/share/zsh/site-functions/_moav"
+    )
+    for p in "${paths[@]}"; do
+        if [[ -f "$p" ]]; then
+            if [[ -w "$p" ]] || [[ -w "$(dirname "$p")" ]]; then
+                rm -f "$p"
+            else
+                sudo rm -f "$p" 2>/dev/null || true
+            fi
+        fi
+    done
+}
+
 do_install() {
     local script_path="$SCRIPT_DIR/moav.sh"
 
@@ -682,6 +767,7 @@ do_install() {
     # Check if already installed correctly
     if is_installed; then
         success "Already installed at $INSTALL_PATH"
+        install_completions
         return 0
     fi
 
@@ -709,6 +795,10 @@ do_install() {
 
     if is_installed; then
         success "Installed! You can now run 'moav' from anywhere"
+
+        # Install shell completions
+        install_completions
+
         echo ""
         echo "  Examples:"
         echo "    moav              # Interactive menu"
@@ -795,86 +885,89 @@ do_uninstall() {
         echo ""
         info "Removing configuration files..."
 
+        # Helper: rm that falls back to sudo (Docker creates files as root)
+        _wrm() { rm "$@" 2>/dev/null || sudo rm "$@" 2>/dev/null || true; }
+
         # Remove .env
         if [[ -f "$SCRIPT_DIR/.env" ]]; then
-            rm -f "$SCRIPT_DIR/.env"
+            _wrm -f "$SCRIPT_DIR/.env"
             echo "  - .env"
         fi
 
         # Remove generated sing-box config
         if [[ -f "$SCRIPT_DIR/configs/sing-box/config.json" ]]; then
-            rm -f "$SCRIPT_DIR/configs/sing-box/config.json"
+            _wrm -f "$SCRIPT_DIR/configs/sing-box/config.json"
             echo "  - configs/sing-box/config.json"
         fi
 
         # Remove generated dnstt files
-        if ls "$SCRIPT_DIR/configs/dnstt/"*.key "$SCRIPT_DIR/configs/dnstt/server.conf" "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null | head -1 >/dev/null; then
-            rm -f "$SCRIPT_DIR/configs/dnstt/server.conf" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/dnstt/server.pub" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/dnstt/"*.key 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/dnstt/"*.key.hex 2>/dev/null
+        if [[ -d "$SCRIPT_DIR/configs/dnstt" ]] && ls "$SCRIPT_DIR/configs/dnstt/"*.key "$SCRIPT_DIR/configs/dnstt/server.conf" "$SCRIPT_DIR/configs/dnstt/server.pub" &>/dev/null; then
+            _wrm -f "$SCRIPT_DIR/configs/dnstt/server.conf"
+            _wrm -f "$SCRIPT_DIR/configs/dnstt/server.pub"
+            _wrm -f "$SCRIPT_DIR/configs/dnstt/"*.key
+            _wrm -f "$SCRIPT_DIR/configs/dnstt/"*.key.hex
             echo "  - configs/dnstt/*"
         fi
 
         # Remove generated Slipstream files
         if [[ -f "$SCRIPT_DIR/configs/slipstream/cert.pem" ]]; then
-            rm -f "$SCRIPT_DIR/configs/slipstream/cert.pem" 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/slipstream/cert.pem"
             echo "  - configs/slipstream/*"
         fi
 
         # Remove generated WireGuard files
         if [[ -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" ]] || [[ -d "$SCRIPT_DIR/configs/wireguard/wg_confs" ]]; then
-            rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf."* 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/wireguard/server.pub" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/wireguard/server.key" 2>/dev/null
-            rm -rf "$SCRIPT_DIR/configs/wireguard/wg_confs/" 2>/dev/null
-            rm -rf "$SCRIPT_DIR/configs/wireguard/coredns/" 2>/dev/null
-            rm -rf "$SCRIPT_DIR/configs/wireguard/templates/" 2>/dev/null
-            rm -rf "$SCRIPT_DIR/configs/wireguard/peer"* 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf"
+            _wrm -f "$SCRIPT_DIR/configs/wireguard/wg0.conf."*
+            _wrm -f "$SCRIPT_DIR/configs/wireguard/server.pub"
+            _wrm -f "$SCRIPT_DIR/configs/wireguard/server.key"
+            _wrm -rf "$SCRIPT_DIR/configs/wireguard/wg_confs/"
+            _wrm -rf "$SCRIPT_DIR/configs/wireguard/coredns/"
+            _wrm -rf "$SCRIPT_DIR/configs/wireguard/templates/"
+            _wrm -rf "$SCRIPT_DIR/configs/wireguard/peer"*
             echo "  - configs/wireguard/*"
         fi
 
         # Remove generated AmneziaWG files
         if [[ -f "$SCRIPT_DIR/configs/amneziawg/awg0.conf" ]]; then
-            rm -f "$SCRIPT_DIR/configs/amneziawg/awg0.conf" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/amneziawg/server.pub" 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/amneziawg/awg0.conf"
+            _wrm -f "$SCRIPT_DIR/configs/amneziawg/server.pub"
             echo "  - configs/amneziawg/*"
         fi
 
         # Remove generated TrustTunnel files
         if [[ -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" ]]; then
-            rm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml" 2>/dev/null
-            rm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml" 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/trusttunnel/vpn.toml"
+            _wrm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml"
+            _wrm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml"
             echo "  - configs/trusttunnel/*"
         fi
 
         # Remove generated telemt files
         if [[ -f "$SCRIPT_DIR/configs/telemt/config.toml" ]]; then
-            rm -f "$SCRIPT_DIR/configs/telemt/config.toml" 2>/dev/null
+            _wrm -f "$SCRIPT_DIR/configs/telemt/config.toml"
             echo "  - configs/telemt/config.toml"
         fi
 
         # Remove outputs (bundles, keys)
-        if [[ -d "$SCRIPT_DIR/outputs" ]] && [[ -n "$(ls -A "$SCRIPT_DIR/outputs" 2>/dev/null | grep -v .gitkeep)" ]]; then
+        if [[ -d "$SCRIPT_DIR/outputs" ]] && ls -A "$SCRIPT_DIR/outputs" 2>/dev/null | grep -qv .gitkeep; then
             local bundle_count
-            bundle_count=$(find "$SCRIPT_DIR/outputs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
-            find "$SCRIPT_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
+            bundle_count=$(find "$SCRIPT_DIR/outputs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l || echo "0")
+            sudo find "$SCRIPT_DIR/outputs" -mindepth 1 -not -name '.gitkeep' -delete 2>/dev/null || true
             echo "  - outputs/ ($bundle_count user bundles)"
         fi
 
         # Remove state directory (user credentials)
         if [[ -d "$SCRIPT_DIR/state" ]]; then
             local user_count
-            user_count=$(find "$SCRIPT_DIR/state/users" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
-            rm -rf "$SCRIPT_DIR/state/" 2>/dev/null
+            user_count=$(find "$SCRIPT_DIR/state/users" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l || echo "0")
+            sudo rm -rf "$SCRIPT_DIR/state/" 2>/dev/null || true
             echo "  - state/ ($user_count users)"
         fi
 
         # Remove certbot certificates
         if [[ -d "$SCRIPT_DIR/certbot" ]]; then
-            rm -rf "$SCRIPT_DIR/certbot/" 2>/dev/null
+            sudo rm -rf "$SCRIPT_DIR/certbot/" 2>/dev/null || true
             echo "  - certbot/"
         fi
 
@@ -926,6 +1019,9 @@ do_uninstall() {
         fi
     fi
 
+    # Remove shell completions
+    uninstall_completions
+
     # Remove global symlink
     if [[ -e "$INSTALL_PATH" ]]; then
         echo ""
@@ -937,6 +1033,7 @@ do_uninstall() {
                 sudo rm -f "$INSTALL_PATH"
             fi
             echo "  - $INSTALL_PATH"
+            echo "  - shell completions"
             success "Global command removed"
         else
             warn "$INSTALL_PATH is not a symlink, not removing"
@@ -1401,16 +1498,22 @@ check_bootstrap() {
 run_bootstrap() {
     print_section "First-Time Setup (Bootstrap)"
 
+    local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+
     info "Bootstrap will:"
-    echo "  • Generate encryption keys"
-    echo "  • Obtain TLS certificate from Let's Encrypt"
-    echo "  • Create initial users"
-    echo "  • Generate client configuration bundles"
+    echo "  • Generate encryption keys and secrets"
+    if [[ -n "$domain" ]]; then
+        echo "  • Obtain TLS certificate from Let's Encrypt"
+    fi
+    echo "  • Configure enabled protocols"
+    echo "  • Create initial users with connection links"
     echo ""
 
-    warn "Make sure your domain DNS is configured correctly!"
-    echo "  Your domain should point to this server's IP address."
-    echo ""
+    if [[ -n "$domain" ]]; then
+        warn "Make sure your domain DNS is configured correctly!"
+        echo "  Your domain should point to this server's IP address."
+        echo ""
+    fi
 
     # Detect and save SERVER_IP to .env if not already set
     local current_ip=$(grep -E '^SERVER_IP=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
@@ -2851,7 +2954,7 @@ show_usage() {
     echo "  update [-b BRANCH]    Update MoaV (git pull), optionally switch branch"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
-    echo "  domainless            Enable domain-less mode (WireGuard, Conduit, Snowflake only)"
+    echo "  domainless            Enable domain-less mode (WireGuard, AmneziaWG, Telegram MTProxy, etc.)"
     echo "  profiles              Change default services for 'moav start'"
     echo "  start [PROFILE...]    Start services (uses DEFAULT_PROFILES from .env)"
     echo "  stop [SERVICE...] [-r] Stop services (default: all, -r removes containers)"
@@ -2924,12 +3027,16 @@ cmd_domainless() {
     info "Domain-less mode disables TLS-based protocols that require a domain."
     echo ""
     echo -e "  ${YELLOW}Will be disabled:${NC}"
-    echo "    • Reality, Trojan, Hysteria2 (sing-box proxy)"
+    echo "    • Trojan, Hysteria2, CDN VLESS (need TLS certificates)"
+    echo "    • TrustTunnel"
     echo "    • DNS tunnels (dnstt + Slipstream)"
-    echo "    • Admin dashboard with HTTPS"
     echo ""
     echo -e "  ${GREEN}Will remain available:${NC}"
+    echo "    • Reality (VLESS) — uses dl.google.com for TLS camouflage"
     echo "    • WireGuard (direct UDP)"
+    echo "    • AmneziaWG (DPI-resistant WireGuard)"
+    echo "    • Telegram MTProxy (fake-TLS, IP only)"
+    echo "    • Admin dashboard (self-signed certificate)"
     echo "    • Psiphon Conduit (bandwidth donation)"
     echo "    • Tor Snowflake (bandwidth donation)"
     echo ""
@@ -2950,8 +3057,8 @@ cmd_domainless() {
         fi
     fi
 
-    # Disable TLS-based protocols (add if not present, update if present)
-    for var in ENABLE_REALITY ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_ADMIN_UI; do
+    # Disable cert-based protocols (Reality stays — works without domain)
+    for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
         if grep -q "^${var}=" .env; then
             sed -i "s/^${var}=.*/${var}=false/" .env
         else
@@ -2968,9 +3075,9 @@ cmd_domainless() {
 
     # Set default profiles (add if not present)
     if grep -q "^DEFAULT_PROFILES=" .env; then
-        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="wireguard conduit snowflake"/' .env
+        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"/' .env
     else
-        echo 'DEFAULT_PROFILES="wireguard conduit snowflake"' >> .env
+        echo 'DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"' >> .env
     fi
 
     echo ""
@@ -3037,11 +3144,14 @@ cmd_bootstrap() {
         info "Clearing bootstrap flag..."
         docker run --rm -v moav_moav_state:/state alpine rm -f /state/.bootstrapped
     else
+        local domain=$(grep -E '^DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
         info "Bootstrap will perform first-time setup:"
-        echo "  • Generate encryption keys"
-        echo "  • Obtain TLS certificate from Let's Encrypt"
-        echo "  • Create initial users"
-        echo "  • Generate client configuration bundles"
+        echo "  • Generate encryption keys and secrets"
+        if [[ -n "$domain" ]]; then
+            echo "  • Obtain TLS certificate from Let's Encrypt"
+        fi
+        echo "  • Configure enabled protocols"
+        echo "  • Create initial users with connection links"
         echo ""
         if ! confirm "Continue with bootstrap?" "y"; then
             info "Bootstrap cancelled."
@@ -4648,6 +4758,10 @@ cmd_regenerate_users() {
     cdn_ws_path="${cdn_ws_path:-/ws}"
     local cdn_transport=$(grep -E '^CDN_TRANSPORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
     cdn_transport="${cdn_transport:-httpupgrade}"
+    local cdn_sni=$(grep -E '^CDN_SNI=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    cdn_sni="${cdn_sni:-${domain}}"
+    local cdn_address=$(grep -E '^CDN_ADDRESS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    cdn_address="${cdn_address:-${cdn_domain}}"
 
     # Load ENABLE_* settings from .env
     local enable_reality=$(grep -E '^ENABLE_REALITY=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
@@ -4678,6 +4792,8 @@ cmd_regenerate_users() {
             -e "CDN_DOMAIN=$cdn_domain" \
             -e "CDN_WS_PATH=$cdn_ws_path" \
             -e "CDN_TRANSPORT=$cdn_transport" \
+            -e "CDN_SNI=$cdn_sni" \
+            -e "CDN_ADDRESS=$cdn_address" \
             -e "ENABLE_REALITY=${enable_reality:-true}" \
             -e "ENABLE_TROJAN=${enable_trojan:-true}" \
             -e "ENABLE_HYSTERIA2=${enable_hysteria2:-true}" \

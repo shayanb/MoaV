@@ -61,9 +61,13 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
     exit 1
 fi
 
-# Create directories
-mkdir -p "$OUTPUT_DIR"
-mkdir -p "$STATE_DIR/users/$USERNAME"
+# Create directories (may need sudo if Docker created parent as root)
+mkdir -p "$OUTPUT_DIR" 2>/dev/null || sudo mkdir -p "$OUTPUT_DIR" 2>/dev/null || true
+mkdir -p "$STATE_DIR/users/$USERNAME" 2>/dev/null || sudo mkdir -p "$STATE_DIR/users/$USERNAME" 2>/dev/null || true
+# Ensure writable
+if [[ ! -w "$STATE_DIR/users/$USERNAME" ]]; then
+    sudo chmod 777 "$STATE_DIR/users/$USERNAME" 2>/dev/null || true
+fi
 
 # Check if user already exists in config
 if grep -q "\"name\":\"$USERNAME\"" "$CONFIG_FILE" 2>/dev/null; then
@@ -100,19 +104,19 @@ jq --arg name "$USERNAME" --arg uuid "$USER_UUID" \
 jq --arg name "$USERNAME" --arg pass "$USER_PASSWORD" \
     '.inbounds |= map(if .tag == "trojan-tls-in" then .users += [{"name": $name, "password": $pass}] else . end)' \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
-mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+mv -f "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 
 # Add to Hysteria2 users
 jq --arg name "$USERNAME" --arg pass "$USER_PASSWORD" \
     '.inbounds |= map(if .tag == "hysteria2-in" then .users += [{"name": $name, "password": $pass}] else . end)' \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
-mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+mv -f "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 
 # Add to VLESS WS users (CDN)
 jq --arg name "$USERNAME" --arg uuid "$USER_UUID" \
     '.inbounds |= map(if .tag == "vless-ws-in" then .users += [{"name": $name, "uuid": $uuid}] else . end)' \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
-mv "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+mv -f "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
 
 # Validate the new config
 if ! jq empty "$TEMP_CONFIG" 2>/dev/null; then
@@ -122,7 +126,7 @@ if ! jq empty "$TEMP_CONFIG" 2>/dev/null; then
 fi
 
 # Apply the config
-mv "$TEMP_CONFIG" "$CONFIG_FILE"
+mv -f "$TEMP_CONFIG" "$CONFIG_FILE"
 
 log_info "Added $USERNAME to sing-box config"
 
@@ -142,7 +146,7 @@ if [[ -z "${REALITY_PUBLIC_KEY:-}" ]] && [[ -n "${REALITY_PRIVATE_KEY:-}" ]]; th
     log_info "Reality public key missing, deriving from private key..."
     # x25519 uses the same curve as WireGuard — convert base64url→base64, use wg pubkey, convert back
     REALITY_KEY_B64=$(echo "${REALITY_PRIVATE_KEY}==" | tr '_-' '/+' | head -c 44)
-    if docker compose ps wireguard --status running &>/dev/null; then
+    if docker compose ps wireguard --status running 2>/dev/null | tail -n +2 | grep -q .; then
         REALITY_PUBLIC_KEY=$(echo "$REALITY_KEY_B64" | docker compose exec -T wireguard wg pubkey 2>/dev/null | tr '/+' '_-' | sed 's/=*$//' || echo "")
     elif command -v wg &>/dev/null; then
         REALITY_PUBLIC_KEY=$(echo "$REALITY_KEY_B64" | wg pubkey 2>/dev/null | tr '/+' '_-' | sed 's/=*$//' || echo "")
@@ -190,24 +194,30 @@ REALITY_TARGET_HOST=$(echo "$REALITY_TARGET" | cut -d: -f1)
 REALITY_LINK="vless://${USER_UUID}@${SERVER_IP}:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=random&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USERNAME}"
 echo "$REALITY_LINK" > "$OUTPUT_DIR/reality.txt"
 
-# Trojan link (IPv4)
-TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}"
-echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
+# Trojan link (IPv4) — only if domain is set (requires TLS cert)
+if [[ -n "${DOMAIN:-}" ]]; then
+    TROJAN_LINK="trojan://${USER_PASSWORD}@${SERVER_IP}:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}"
+    echo "$TROJAN_LINK" > "$OUTPUT_DIR/trojan.txt"
+fi
 
-# Hysteria2 link (IPv4) - with obfuscation for censorship bypass
-HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}"
-echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
+# Hysteria2 link (IPv4) — only if domain is set (requires TLS cert)
+if [[ -n "${DOMAIN:-}" ]]; then
+    HY2_LINK="hysteria2://${USER_PASSWORD}@${SERVER_IP}:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}"
+    echo "$HY2_LINK" > "$OUTPUT_DIR/hysteria2.txt"
+fi
 
 # Generate IPv6 links if available
 if [[ -n "$SERVER_IPV6" ]]; then
     REALITY_LINK_V6="vless://${USER_UUID}@[${SERVER_IPV6}]:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=${REALITY_TARGET_HOST}&fp=random&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&type=tcp#MoaV-Reality-${USERNAME}-IPv6"
     echo "$REALITY_LINK_V6" > "$OUTPUT_DIR/reality-ipv6.txt"
 
-    TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}-IPv6"
-    echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
+    if [[ -n "${DOMAIN:-}" ]]; then
+        TROJAN_LINK_V6="trojan://${USER_PASSWORD}@[${SERVER_IPV6}]:8443?security=tls&sni=${DOMAIN}&type=tcp#MoaV-Trojan-${USERNAME}-IPv6"
+        echo "$TROJAN_LINK_V6" > "$OUTPUT_DIR/trojan-ipv6.txt"
 
-    HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}-IPv6"
-    echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
+        HY2_LINK_V6="hysteria2://${USER_PASSWORD}@[${SERVER_IPV6}]:443?sni=${DOMAIN}&obfs=salamander&obfs-password=${HYSTERIA2_OBFS_PASSWORD}#MoaV-Hysteria2-${USERNAME}-IPv6"
+        echo "$HY2_LINK_V6" > "$OUTPUT_DIR/hysteria2-ipv6.txt"
+    fi
 
     log_info "Generated IPv6 links (server: $SERVER_IPV6)"
 fi
@@ -215,14 +225,14 @@ fi
 # Generate QR codes
 if command -v qrencode &>/dev/null; then
     qrencode -o "$OUTPUT_DIR/reality-qr.png" -s 6 "$REALITY_LINK" 2>/dev/null || true
-    qrencode -o "$OUTPUT_DIR/trojan-qr.png" -s 6 "$TROJAN_LINK" 2>/dev/null || true
-    qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
+    [[ -n "${TROJAN_LINK:-}" ]] && qrencode -o "$OUTPUT_DIR/trojan-qr.png" -s 6 "$TROJAN_LINK" 2>/dev/null || true
+    [[ -n "${HY2_LINK:-}" ]] && qrencode -o "$OUTPUT_DIR/hysteria2-qr.png" -s 6 "$HY2_LINK" 2>/dev/null || true
 
     # IPv6 QR codes
     if [[ -n "$SERVER_IPV6" ]]; then
         qrencode -o "$OUTPUT_DIR/reality-ipv6-qr.png" -s 6 "$REALITY_LINK_V6" 2>/dev/null || true
-        qrencode -o "$OUTPUT_DIR/trojan-ipv6-qr.png" -s 6 "$TROJAN_LINK_V6" 2>/dev/null || true
-        qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
+        [[ -n "${TROJAN_LINK_V6:-}" ]] && qrencode -o "$OUTPUT_DIR/trojan-ipv6-qr.png" -s 6 "$TROJAN_LINK_V6" 2>/dev/null || true
+        [[ -n "${HY2_LINK_V6:-}" ]] && qrencode -o "$OUTPUT_DIR/hysteria2-ipv6-qr.png" -s 6 "$HY2_LINK_V6" 2>/dev/null || true
     fi
 fi
 
@@ -245,9 +255,13 @@ fi
 CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
 CDN_TRANSPORT="${CDN_TRANSPORT:-$(grep -E '^CDN_TRANSPORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || true)}"
 CDN_TRANSPORT="${CDN_TRANSPORT:-httpupgrade}"
+CDN_SNI="${CDN_SNI:-$(grep -E '^CDN_SNI=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || true)}"
+CDN_SNI="${CDN_SNI:-${DOMAIN_FROM_ENV:-}}"
+CDN_ADDRESS="${CDN_ADDRESS:-$(grep -E '^CDN_ADDRESS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || true)}"
+CDN_ADDRESS="${CDN_ADDRESS:-${CDN_DOMAIN}}"
 
 if [[ -n "$CDN_DOMAIN" ]]; then
-    CDN_LINK="vless://${USER_UUID}@${CDN_DOMAIN}:443?security=tls&type=${CDN_TRANSPORT}&path=${CDN_WS_PATH}&sni=${CDN_DOMAIN}&host=${CDN_DOMAIN}&fp=random&alpn=http/1.1#MoaV-CDN-${USERNAME}"
+    CDN_LINK="vless://${USER_UUID}@${CDN_ADDRESS}:443?security=tls&type=${CDN_TRANSPORT}&path=${CDN_WS_PATH}&sni=${CDN_SNI}&host=${CDN_DOMAIN}&fp=random&alpn=http/1.1#MoaV-CDN-${USERNAME}"
     echo "$CDN_LINK" > "$OUTPUT_DIR/cdn-vless.txt"
 
     if command -v qrencode &>/dev/null; then
@@ -385,7 +399,7 @@ fi
 
 # Try to reload sing-box (hot reload) unless --no-reload was passed
 if [[ "$NO_RELOAD" != "true" ]]; then
-    if docker compose ps sing-box --status running &>/dev/null; then
+    if docker compose ps sing-box --status running 2>/dev/null | tail -n +2 | grep -q .; then
         log_info "Reloading sing-box..."
         if docker compose exec -T sing-box sing-box reload 2>/dev/null; then
             log_info "sing-box reloaded successfully"
@@ -399,7 +413,7 @@ if [[ "$NO_RELOAD" != "true" ]]; then
 
     # Try to reload TrustTunnel (if running)
     if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
-        if docker compose ps trusttunnel --status running &>/dev/null; then
+        if docker compose ps trusttunnel --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Restarting TrustTunnel to apply new credentials..."
             docker compose restart trusttunnel
         fi
@@ -407,7 +421,7 @@ if [[ "$NO_RELOAD" != "true" ]]; then
 
     # Try to reload telemt (if running)
     if [[ -f "$TELEMT_CONFIG" ]]; then
-        if docker compose --profile telegram ps telemt --status running &>/dev/null; then
+        if docker compose --profile telegram ps telemt --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Restarting telemt to apply new user..."
             docker compose --profile telegram restart telemt
         fi
@@ -419,12 +433,16 @@ log_info "=== User '$USERNAME' created ==="
 echo ""
 echo "Reality Link:"
 echo "$REALITY_LINK"
-echo ""
-echo "Trojan Link:"
-echo "$TROJAN_LINK"
-echo ""
-echo "Hysteria2 Link:"
-echo "$HY2_LINK"
+if [[ -n "${TROJAN_LINK:-}" ]]; then
+    echo ""
+    echo "Trojan Link:"
+    echo "$TROJAN_LINK"
+fi
+if [[ -n "${HY2_LINK:-}" ]]; then
+    echo ""
+    echo "Hysteria2 Link:"
+    echo "$HY2_LINK"
+fi
 echo ""
 
 if [[ -n "${SERVER_IPV6:-}" ]]; then
@@ -432,12 +450,16 @@ if [[ -n "${SERVER_IPV6:-}" ]]; then
     echo ""
     echo "Reality (IPv6):"
     echo "$REALITY_LINK_V6"
-    echo ""
-    echo "Trojan (IPv6):"
-    echo "$TROJAN_LINK_V6"
-    echo ""
-    echo "Hysteria2 (IPv6):"
-    echo "$HY2_LINK_V6"
+    if [[ -n "${TROJAN_LINK_V6:-}" ]]; then
+        echo ""
+        echo "Trojan (IPv6):"
+        echo "$TROJAN_LINK_V6"
+    fi
+    if [[ -n "${HY2_LINK_V6:-}" ]]; then
+        echo ""
+        echo "Hysteria2 (IPv6):"
+        echo "$HY2_LINK_V6"
+    fi
     echo ""
 fi
 
@@ -460,7 +482,7 @@ fi
 if [[ -n "${TELEMT_SECRET:-}" ]] && [[ -f "$TELEMT_CONFIG" ]]; then
     PORT_TELEMT="${PORT_TELEMT:-993}"
     TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
-    HEX_DOMAIN=$(printf '%s' "$TELEMT_TLS_DOMAIN" | xxd -p | tr -d '\n')
+    HEX_DOMAIN=$(printf '%s' "$TELEMT_TLS_DOMAIN" | od -An -tx1 | tr -d ' \n')
     echo "Telegram MTProxy:"
     echo "  tg://proxy?server=${SERVER_IP}&port=${PORT_TELEMT}&secret=ee${TELEMT_SECRET}${HEX_DOMAIN}"
     echo ""

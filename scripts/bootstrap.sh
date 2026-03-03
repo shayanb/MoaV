@@ -32,9 +32,10 @@ done
 
 # Check if DOMAIN is required (needed for TLS-based protocols)
 # Domain is required if ANY of: Reality, Trojan, Hysteria2, or dnstt is enabled
+# Note: Reality works without a domain (uses REALITY_TARGET for TLS camouflage)
 # Note: Admin UI works without domain using self-signed certificates
+# Note: Telegram MTProxy works without domain (IP only + fake-TLS)
 domain_required=false
-[[ "${ENABLE_REALITY:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_TROJAN:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && domain_required=true
 [[ "${ENABLE_DNSTT:-true}" == "true" ]] && domain_required=true
@@ -42,27 +43,25 @@ domain_required=false
 [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]] && domain_required=true
 
 if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
-    log_error "DOMAIN is required when TLS-based protocols are enabled"
+    log_error "DOMAIN is required when TLS-cert protocols are enabled"
     log_error ""
     log_error "Option 1: Set a domain in .env"
     log_error "  DOMAIN=your-domain.com"
     log_error ""
-    log_error "Option 2: Run in domain-less mode (WireGuard, Conduit, Snowflake, Admin)"
-    log_error "  Add these lines to your .env file:"
-    log_error "    ENABLE_REALITY=false"
+    log_error "Option 2: Run in domain-less mode"
+    log_error "  Disable cert-based protocols (Reality still works without domain):"
     log_error "    ENABLE_TROJAN=false"
     log_error "    ENABLE_HYSTERIA2=false"
     log_error "    ENABLE_DNSTT=false"
     log_error "    ENABLE_TRUSTTUNNEL=false"
     log_error ""
-    log_error "  Or run this command to disable them:"
-    log_error "    sed -i 's/^ENABLE_REALITY=.*/ENABLE_REALITY=false/; s/^ENABLE_TROJAN=.*/ENABLE_TROJAN=false/; s/^ENABLE_HYSTERIA2=.*/ENABLE_HYSTERIA2=false/; s/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/; s/^ENABLE_TRUSTTUNNEL=.*/ENABLE_TRUSTTUNNEL=false/' .env"
+    log_error "  Or run: moav domainless"
     exit 1
 fi
 
 # Domain-less mode notice
 if [[ -z "${DOMAIN:-}" ]]; then
-    log_info "Running in domain-less mode (WireGuard, Conduit, Snowflake, Admin)"
+    log_info "Running in domain-less mode (Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, Snowflake)"
 
     # Generate self-signed certificate for admin UI (if not exists)
     if [[ "${ENABLE_ADMIN_UI:-true}" == "true" ]]; then
@@ -278,6 +277,8 @@ if [[ -z "${CDN_WS_PATH:-}" || "${CDN_WS_PATH}" == "/ws" ]]; then
 fi
 export CDN_WS_PATH
 export CDN_TRANSPORT="${CDN_TRANSPORT:-httpupgrade}"
+export CDN_SNI="${CDN_SNI:-${DOMAIN:-}}"
+export CDN_ADDRESS="${CDN_ADDRESS:-${CDN_DOMAIN:-}}"
 
 # -----------------------------------------------------------------------------
 # Generate WireGuard server config (before creating users)
@@ -619,6 +620,25 @@ if [[ "$singbox_needed" == "true" ]]; then
     export LOG_LEVEL="${LOG_LEVEL:-info}"
 
     envsubst < /configs/sing-box/config.json.template > /configs/sing-box/config.json
+
+    # Remove disabled protocol inbounds from the generated config
+    config_file="/configs/sing-box/config.json"
+    if [[ "${ENABLE_TROJAN:-true}" != "true" ]]; then
+        jq 'del(.inbounds[] | select(.tag == "trojan-tls-in"))' "$config_file" > "${config_file}.tmp" && mv -f "${config_file}.tmp" "$config_file"
+        log_info "  Removed Trojan inbound (disabled)"
+    fi
+    if [[ "${ENABLE_HYSTERIA2:-true}" != "true" ]]; then
+        jq 'del(.inbounds[] | select(.tag == "hysteria2-in"))' "$config_file" > "${config_file}.tmp" && mv -f "${config_file}.tmp" "$config_file"
+        log_info "  Removed Hysteria2 inbound (disabled)"
+    fi
+    if [[ -z "${CDN_DOMAIN:-}" ]]; then
+        jq 'del(.inbounds[] | select(.tag == "vless-ws-in"))' "$config_file" > "${config_file}.tmp" && mv -f "${config_file}.tmp" "$config_file"
+        log_info "  Removed CDN VLESS inbound (no CDN domain)"
+    fi
+    if [[ "${ENABLE_REALITY:-true}" != "true" ]]; then
+        jq 'del(.inbounds[] | select(.tag == "vless-reality-in"))' "$config_file" > "${config_file}.tmp" && mv -f "${config_file}.tmp" "$config_file"
+        log_info "  Removed Reality inbound (disabled)"
+    fi
 
     log_info "sing-box configuration written to /configs/sing-box/config.json"
 else

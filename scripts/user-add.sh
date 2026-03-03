@@ -134,6 +134,32 @@ fi
 CREATED_USERS=()
 FAILED_USERS=()
 
+# Ensure directories exist and are writable (Docker creates them as root)
+for _dir in "outputs/bundles" "state/users" "configs/amneziawg" "configs/wireguard"; do
+    mkdir -p "$_dir" 2>/dev/null || sudo mkdir -p "$_dir" 2>/dev/null || true
+    if [[ ! -w "$_dir" ]]; then
+        if command -v sudo &>/dev/null; then
+            sudo chmod 777 "$_dir" 2>/dev/null || true
+        fi
+    fi
+done
+# Also fix state/ parent and config files that may be root-owned
+for _dir in "state" "configs/amneziawg" "configs/wireguard"; do
+    if [[ -d "$_dir" ]] && [[ ! -w "$_dir" ]]; then
+        sudo chmod 777 "$_dir" 2>/dev/null || true
+    fi
+    # Fix root-owned config files so we can append peers
+    for _f in "$_dir"/*.conf; do
+        if [[ -f "$_f" ]] && [[ ! -w "$_f" ]]; then
+            sudo chmod 666 "$_f" 2>/dev/null || true
+        fi
+    done
+done
+if [[ ! -w "outputs/bundles" ]]; then
+    log_error "Cannot write to outputs/bundles/ — try: sudo chmod 777 outputs/bundles"
+    exit 1
+fi
+
 # -----------------------------------------------------------------------------
 # Create each user
 # -----------------------------------------------------------------------------
@@ -175,12 +201,17 @@ for USERNAME in "${USERNAMES[@]}"; do
     # Add to WireGuard
     # -------------------------------------------------------------------------
     if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]] && [[ -f "configs/wireguard/wg0.conf" ]]; then
-        log_info "[2/3] Adding to WireGuard..."
-        if "$SCRIPT_DIR/wg-user-add.sh" "$USERNAME" $RELOAD_FLAG; then
-            log_info "✓ WireGuard peer added"
+        # Check if WireGuard service is actually running or wg tools are available
+        if docker compose ps wireguard --status running 2>/dev/null | tail -n +2 | grep -q . || command -v wg &>/dev/null; then
+            log_info "[2/3] Adding to WireGuard..."
+            if "$SCRIPT_DIR/wg-user-add.sh" "$USERNAME" $RELOAD_FLAG; then
+                log_info "✓ WireGuard peer added"
+            else
+                ERRORS+=("wireguard")
+                log_error "✗ Failed to add WireGuard peer"
+            fi
         else
-            ERRORS+=("wireguard")
-            log_error "✗ Failed to add WireGuard peer"
+            log_info "[2/3] Skipping WireGuard (service not running)"
         fi
     else
         log_info "[2/3] Skipping WireGuard (not enabled or not configured)"
@@ -196,10 +227,10 @@ for USERNAME in "${USERNAMES[@]}"; do
         (
             # Generate client keys (standard WG key format, compatible with AWG)
             # Use running container for key generation (host may not have wg/awg)
-            if docker compose ps amneziawg --status running &>/dev/null; then
+            if docker compose ps amneziawg --status running 2>/dev/null | tail -n +2 | grep -q .; then
                 AWG_CLIENT_PRIVATE=$(docker compose exec -T amneziawg awg genkey)
                 AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | docker compose exec -T amneziawg awg pubkey)
-            elif docker compose ps wireguard --status running &>/dev/null; then
+            elif docker compose ps wireguard --status running 2>/dev/null | tail -n +2 | grep -q .; then
                 AWG_CLIENT_PRIVATE=$(docker compose exec -T wireguard wg genkey)
                 AWG_CLIENT_PUBLIC=$(echo "$AWG_CLIENT_PRIVATE" | docker compose exec -T wireguard wg pubkey)
             elif command -v wg &>/dev/null; then
@@ -211,9 +242,9 @@ for USERNAME in "${USERNAMES[@]}"; do
             fi
 
             # Find next available IP (extract actual used IPs from config AND running interface)
-            USED_AWG_IPS=$(grep -oP 'AllowedIPs = 10\.67\.67\.\K[0-9]+' "configs/amneziawg/awg0.conf" 2>/dev/null || echo "")
-            if docker compose ps amneziawg --status running &>/dev/null; then
-                RUNNING_AWG_IPS=$(docker compose exec -T amneziawg awg show awg0 allowed-ips 2>/dev/null | grep -oP '10\.67\.67\.\K[0-9]+' || echo "")
+            USED_AWG_IPS=$(grep 'AllowedIPs = 10\.67\.67\.' "configs/amneziawg/awg0.conf" 2>/dev/null | sed 's/.*10\.67\.67\.\([0-9]*\).*/\1/' || echo "")
+            if docker compose ps amneziawg --status running 2>/dev/null | tail -n +2 | grep -q .; then
+                RUNNING_AWG_IPS=$(docker compose exec -T amneziawg awg show awg0 allowed-ips 2>/dev/null | grep '10\.67\.67\.' | sed 's/.*10\.67\.67\.\([0-9]*\).*/\1/' || echo "")
                 USED_AWG_IPS="$USED_AWG_IPS $RUNNING_AWG_IPS"
             fi
             AWG_NEXT_IP=2  # Start from .2 (server is .1)
@@ -261,7 +292,7 @@ PEEREOF
 
             # Hot-add peer to running AmneziaWG (unless batch mode — batch reloads later)
             if [[ "$BATCH_MODE" != "true" ]]; then
-                if docker compose ps amneziawg --status running &>/dev/null; then
+                if docker compose ps amneziawg --status running 2>/dev/null | tail -n +2 | grep -q .; then
                     log_info "Adding peer to running AmneziaWG..."
                     if docker compose exec -T amneziawg awg set awg0 peer "$AWG_CLIENT_PUBLIC" allowed-ips "$AWG_ALLOWED" 2>/dev/null; then
                         log_info "Peer added to running AmneziaWG (hot reload)"
@@ -408,7 +439,7 @@ if [[ "${ENABLE_TELEMT:-true}" == "true" ]] && [[ -f "configs/telemt/config.toml
     if [[ -n "$TELEMT_SECRET" ]]; then
         PORT_TELEMT="${PORT_TELEMT:-993}"
         TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
-        HEX_DOMAIN=$(printf '%s' "$TELEMT_TLS_DOMAIN" | xxd -p | tr -d '\n')
+        HEX_DOMAIN=$(printf '%s' "$TELEMT_TLS_DOMAIN" | od -An -tx1 | tr -d ' \n')
 
         TG_LINK="tg://proxy?server=${SERVER_IP}&port=${PORT_TELEMT}&secret=ee${TELEMT_SECRET}${HEX_DOMAIN}"
         HTTPS_LINK="https://t.me/proxy?server=${SERVER_IP}&port=${PORT_TELEMT}&secret=ee${TELEMT_SECRET}${HEX_DOMAIN}"
@@ -496,6 +527,10 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
             CDN_DOMAIN="${_cdn_sub}.${_cdn_dom}"
         fi
     fi
+    # CDN split SNI/Address for anti-DPI stealth
+    CDN_SNI="${CDN_SNI:-${DOMAIN:-}}"
+    CDN_ADDRESS="${CDN_ADDRESS:-${CDN_DOMAIN}}"
+    export CDN_SNI CDN_ADDRESS
 
     # Read user password from trusttunnel.json or credentials
     if [[ -f "$OUTPUT_DIR/trusttunnel.json" ]]; then
@@ -709,7 +744,7 @@ if [[ "$BATCH_MODE" == "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
 
     # Reload sing-box
     if [[ -f "configs/sing-box/config.json" ]]; then
-        if docker compose ps sing-box --status running &>/dev/null; then
+        if docker compose ps sing-box --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Reloading sing-box..."
             if docker compose exec -T sing-box sing-box reload 2>/dev/null; then
                 log_info "✓ sing-box reloaded"
@@ -722,7 +757,7 @@ if [[ "$BATCH_MODE" == "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
 
     # Reload WireGuard (needs to sync peers)
     if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]] && [[ -f "configs/wireguard/wg0.conf" ]]; then
-        if docker compose ps wireguard --status running &>/dev/null; then
+        if docker compose ps wireguard --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Syncing WireGuard peers..."
             docker compose exec -T wireguard wg syncconf wg0 <(docker compose exec -T wireguard wg-quick strip wg0) 2>/dev/null || \
                 docker compose restart wireguard
@@ -732,7 +767,7 @@ if [[ "$BATCH_MODE" == "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
 
     # Reload AmneziaWG
     if [[ "${ENABLE_AMNEZIAWG:-true}" == "true" ]] && [[ -f "configs/amneziawg/awg0.conf" ]]; then
-        if docker compose ps amneziawg --status running &>/dev/null; then
+        if docker compose ps amneziawg --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Restarting AmneziaWG..."
             docker compose restart amneziawg
             log_info "✓ AmneziaWG restarted"
@@ -741,7 +776,7 @@ if [[ "$BATCH_MODE" == "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
 
     # Reload TrustTunnel
     if [[ -f "configs/trusttunnel/credentials.toml" ]]; then
-        if docker compose ps trusttunnel --status running &>/dev/null; then
+        if docker compose ps trusttunnel --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Restarting TrustTunnel..."
             docker compose restart trusttunnel
             log_info "✓ TrustTunnel restarted"
@@ -750,7 +785,7 @@ if [[ "$BATCH_MODE" == "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
 
     # Reload telemt
     if [[ -f "configs/telemt/config.toml" ]]; then
-        if docker compose --profile telegram ps telemt --status running &>/dev/null; then
+        if docker compose --profile telegram ps telemt --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Restarting telemt..."
             docker compose --profile telegram restart telemt
             log_info "✓ telemt restarted"

@@ -4,474 +4,550 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MoaV Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
         :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --border: #334155;
-            --text: #e2e8f0;
-            --text-muted: #94a3b8;
-            --accent: #3b82f6;
-            --success: #22c55e;
-            --warning: #eab308;
-            --error: #ef4444;
+            --bg: #0a0e17;
+            --surface: #111827;
+            --surface2: #1a2233;
+            --border: #1e2d3d;
+            --text: #c9d1d9;
+            --text-dim: #6e7681;
+            --green: #3fb950;
+            --green-dim: rgba(63, 185, 80, 0.15);
+            --blue: #58a6ff;
+            --blue-dim: rgba(88, 166, 255, 0.1);
+            --red: #f85149;
+            --red-dim: rgba(248, 81, 73, 0.15);
+            --yellow: #d29922;
+            --yellow-dim: rgba(210, 153, 34, 0.15);
+            --orange: #db6d28;
+            --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
-            padding: 2rem;
         }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header {
+
+        /* Layout */
+        .shell {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+        }
+
+        /* Header */
+        .topbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
             padding-bottom: 1rem;
+            margin-bottom: 1.25rem;
             border-bottom: 1px solid var(--border);
         }
-        h1 { font-size: 1.5rem; font-weight: 600; }
-        .timestamp { color: var(--text-muted); font-size: 0.875rem; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+        .topbar h1 {
+            font-family: var(--mono);
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
         }
-        .card {
-            background: var(--card);
+        .topbar h1 span { color: var(--green); }
+        .logo { height: 22px; vertical-align: middle; margin-right: 0.2rem; }
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .topbar-right .ts {
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 0.7rem;
+        }
+        .btn {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 4px;
             border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            padding: 1.5rem;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: border-color 0.15s;
         }
-        .card-title {
-            color: var(--text-muted);
-            font-size: 0.875rem;
+        .btn:hover { border-color: var(--text-dim); }
+        .btn-green { border-color: var(--green); color: var(--green); }
+        .btn-green:hover { background: var(--green-dim); }
+        .btn-blue { border-color: var(--blue); color: var(--blue); }
+        .btn-blue:hover { background: var(--blue-dim); }
+        .btn-orange { border-color: var(--orange); color: var(--orange); }
+        .btn-orange:hover { background: rgba(219, 109, 40, 0.15); }
+
+        /* Update banner */
+        .banner {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .banner-update {
+            background: var(--green-dim);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            color: var(--green);
+        }
+        .banner-error {
+            background: var(--red-dim);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            color: var(--red);
+        }
+        .banner code {
+            background: rgba(0,0,0,0.3);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        /* Stats strip */
+        .stats {
+            display: flex;
+            gap: 1px;
+            background: var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+        }
+        .stat {
+            flex: 1;
+            background: var(--surface);
+            padding: 0.85rem 1rem;
+            min-width: 0;
+        }
+        .stat:first-child { border-radius: 6px 0 0 6px; }
+        .stat:last-child { border-radius: 0 6px 6px 0; }
+        .stat-label {
+            font-family: var(--mono);
+            font-size: 0.6rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+            margin-bottom: 0.3rem;
         }
-        .card-value {
-            font-size: 2rem;
+        .stat-val {
+            font-family: var(--mono);
+            font-size: 1.15rem;
             font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
-        .card-value.success { color: var(--success); }
-        .card-value.warning { color: var(--warning); }
-        .card-value.error { color: var(--error); }
-        h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
+        .stat-val.ok { color: var(--green); }
+        .stat-val.off { color: var(--text-dim); }
+
+        /* Sections */
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 1.25rem;
+            overflow: hidden;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            text-align: left;
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--border);
         }
-        th {
-            color: var(--text-muted);
-            font-weight: 500;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-        }
-        td { font-variant-numeric: tabular-nums; }
-        .status-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-        }
-        .status-dot.running {
-            background: var(--success);
-            box-shadow: 0 0 6px var(--success);
-        }
-        .status-dot.stopped {
-            background: var(--error);
-        }
-        .status-dot.starting {
-            background: var(--warning);
-            animation: pulse 1s infinite;
-        }
-        .status-dot.unknown {
-            background: var(--text-muted);
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .status-text {
+        .section-head h2 {
+            font-family: var(--mono);
             font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
+            font-weight: 600;
             text-transform: uppercase;
-            font-weight: 500;
+            letter-spacing: 0.06em;
+            color: var(--text-dim);
         }
-        .status-text.running {
-            background: rgba(34, 197, 94, 0.2);
-            color: var(--success);
-        }
-        .status-text.stopped {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--error);
-        }
-        .status-text.starting {
-            background: rgba(234, 179, 8, 0.2);
-            color: var(--warning);
-        }
-        .error-box {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid var(--error);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            color: var(--error);
-        }
-        .info-box {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid var(--accent);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            color: var(--accent);
-            font-size: 0.875rem;
-        }
-        .update-banner {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid var(--success);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            color: var(--success);
-            font-size: 0.875rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .update-banner a {
-            color: var(--success);
-            text-decoration: underline;
-        }
-        .refresh-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            font-size: 0.875rem;
-        }
-        .refresh-btn:hover { opacity: 0.9; }
-        .profile-tag {
-            font-size: 0.7rem;
-            background: var(--border);
-            padding: 0.15rem 0.4rem;
-            border-radius: 0.2rem;
-            margin-left: 0.5rem;
-            color: var(--text-muted);
-        }
-        .section-grid {
+        .section-body { padding: 0.75rem 1rem; }
+
+        /* Services grid */
+        .svc-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 0.45rem;
         }
-        .protocol-tag {
-            font-size: 0.65rem;
-            background: var(--border);
-            padding: 0.15rem 0.4rem;
-            border-radius: 0.2rem;
-            margin-right: 0.25rem;
-            color: var(--text-muted);
-            display: inline-block;
-        }
-        .download-btn {
-            background: var(--accent);
-            color: white;
-            padding: 0.4rem 0.75rem;
-            border-radius: 0.25rem;
-            text-decoration: none;
-            font-size: 0.8rem;
-            display: inline-block;
-            transition: opacity 0.2s;
-        }
-        .download-btn:hover {
-            opacity: 0.85;
-        }
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        .toggle-create-btn {
-            background: var(--success);
-            color: white;
-            border: none;
-            padding: 0.4rem 1rem;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .toggle-create-btn:hover { opacity: 0.9; }
-        .create-panel {
-            display: none;
+        .svc-card {
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 0.375rem;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1.25rem;
+            border-radius: 5px;
+            padding: 0.5rem 0.65rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: border-color 0.15s;
+        }
+        .svc-card.running {
+            border-color: rgba(63, 185, 80, 0.3);
+            background: rgba(63, 185, 80, 0.03);
+        }
+        .svc-card.stopped { opacity: 0.45; }
+        .svc-card.unknown { opacity: 0.6; cursor: help; }
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot.running { background: var(--green); box-shadow: 0 0 4px var(--green); }
+        .dot.stopped { background: #484848; }
+        .dot.starting { background: var(--yellow); animation: pulse 1.2s infinite; }
+        .dot.unknown { background: var(--text-dim); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .svc-name {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .svc-port {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            color: var(--text-dim);
+            margin-left: auto;
+        }
+
+        /* Conduit regions */
+        .regions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.4rem 1.5rem;
+        }
+        .region-row {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            padding: 0.2rem 0;
+        }
+        .region-name { color: var(--text); }
+        .region-val { color: var(--text-dim); }
+
+        /* Table */
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            font-size: 0.85rem;
+            padding: 0.55rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-variant-numeric: tabular-nums;
+        }
+        tr:last-child td { border-bottom: none; }
+        .user-name {
+            font-family: var(--mono);
+            font-weight: 500;
+        }
+        .user-date {
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 0.75rem;
+        }
+        .tag {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            margin-right: 0.2rem;
+            margin-bottom: 0.15rem;
+        }
+        .dl-link {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--blue);
+            text-decoration: none;
+        }
+        .dl-link:hover { text-decoration: underline; }
+        .empty-msg {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            padding: 1rem 0.75rem;
+        }
+        .empty-msg code {
+            font-family: var(--mono);
+            background: var(--surface2);
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        /* Create user panel */
+        .create-panel {
+            display: none;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
         }
         .create-panel.open { display: block; }
         .create-form {
             display: flex;
-            gap: 0.75rem;
+            gap: 0.6rem;
             align-items: flex-end;
             flex-wrap: wrap;
         }
+        .field-label {
+            display: block;
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-dim);
+            margin-bottom: 0.2rem;
+        }
         .create-form input[type="text"],
         .create-form input[type="number"] {
-            background: var(--card);
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            background: var(--surface);
             border: 1px solid var(--border);
             color: var(--text);
-            padding: 0.5rem 0.75rem;
-            border-radius: 0.25rem;
-            font-size: 0.9rem;
-            font-family: inherit;
-            width: 180px;
+            padding: 0.4rem 0.6rem;
+            border-radius: 4px;
+            width: 160px;
         }
-        .create-form input:focus { outline: none; border-color: var(--accent); }
-        .create-form label.field-label {
-            display: block;
-            color: var(--text-muted);
-            font-size: 0.7rem;
-            margin-bottom: 0.25rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
+        .create-form input:focus { outline: none; border-color: var(--blue); }
         .batch-toggle {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
-            padding-bottom: 0.35rem;
+            gap: 0.3rem;
+            padding-bottom: 0.25rem;
             cursor: pointer;
-            color: var(--text-muted);
-            font-size: 0.85rem;
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 0.75rem;
             user-select: none;
         }
         .batch-toggle input[type="checkbox"] {
-            accent-color: var(--accent);
+            accent-color: var(--blue);
             cursor: pointer;
         }
-        .submit-btn {
-            background: var(--success);
-            color: white;
-            border: none;
-            padding: 0.5rem 1.25rem;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-        .submit-btn:hover { opacity: 0.9; }
-        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .create-result {
-            margin-top: 0.75rem;
-            padding: 0.75rem 1rem;
-            border-radius: 0.25rem;
-            font-size: 0.8rem;
+            margin-top: 0.6rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
             display: none;
             white-space: pre-wrap;
-            font-family: monospace;
-            max-height: 300px;
+            font-family: var(--mono);
+            max-height: 240px;
             overflow-y: auto;
             line-height: 1.4;
             position: relative;
         }
         .create-result.success {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid var(--success);
-            color: var(--success);
+            background: var(--green-dim);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            color: var(--green);
         }
         .create-result.error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid var(--error);
-            color: var(--error);
+            background: var(--red-dim);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            color: var(--red);
         }
         .result-dismiss {
             position: absolute;
-            top: 0.4rem;
-            right: 0.5rem;
+            top: 0.3rem;
+            right: 0.4rem;
             background: none;
             border: none;
             color: inherit;
             cursor: pointer;
-            font-size: 1rem;
-            opacity: 0.6;
+            font-size: 0.9rem;
+            opacity: 0.5;
             line-height: 1;
-            padding: 0.2rem;
         }
         .result-dismiss:hover { opacity: 1; }
+
+        /* Spinner */
         .spinner {
             display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
+            width: 12px; height: 12px;
+            border: 2px solid rgba(255,255,255,0.2);
             border-radius: 50%;
             border-top-color: white;
-            animation: spin 0.8s linear infinite;
-            margin-right: 0.5rem;
+            animation: spin 0.7s linear infinite;
+            margin-right: 0.4rem;
             vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Footer */
+        .footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 1.25rem 0 0.5rem;
+            margin-top: 0.5rem;
+            border-top: 1px solid var(--border);
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            color: var(--text-dim);
+        }
+        .footer a {
+            color: var(--text-dim);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            transition: color 0.15s;
+        }
+        .footer a:hover { color: var(--text); }
+        .footer-sep { opacity: 0.4; }
+
+        /* Responsive */
         @media (max-width: 640px) {
-            body { padding: 1rem; }
-            .card-value { font-size: 1.5rem; }
-            .section-grid { grid-template-columns: 1fr; }
+            .shell { padding: 1rem; }
+            .stats { flex-direction: column; }
+            .stat:first-child { border-radius: 6px 6px 0 0; }
+            .stat:last-child { border-radius: 0 0 6px 6px; }
+            .svc-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>MoaV Dashboard</h1>
-            <div>
-                <span class="timestamp">{{ timestamp }}</span>
-                <a id="grafana-link" href="#" target="_blank" class="refresh-btn" style="margin-right: 0.5rem; background: #ff6600; text-decoration: none;">Grafana</a>
-                <script>document.getElementById('grafana-link').href = 'https://' + location.hostname + ':9444';</script>
-                <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+    <div class="shell">
+        <div class="topbar">
+            <h1><img src="/logo.png" alt="" class="logo">MoaV</h1>
+            <div class="topbar-right">
+                <span class="ts">{{ timestamp }}</span>
+                {% if services|selectattr('name', 'equalto', 'grafana')|selectattr('status', 'equalto', 'running')|list %}
+                <a id="grafana-link" href="#" target="_blank" class="btn btn-orange">Grafana</a>
+                <script>document.getElementById('grafana-link').href='https://'+location.hostname+':9444';</script>
+                {% endif %}
+                <button class="btn" onclick="location.reload()">Refresh</button>
             </div>
-        </header>
-
-        {% if error %}
-        <div class="error-box">
-            <strong>Error:</strong> {{ error }}
         </div>
-        {% endif %}
 
         {% if update_available %}
-        <div class="update-banner">
+        <div class="banner banner-update">
             <span>Update available: <strong>v{{ latest_version }}</strong> (current: v{{ current_version }})</span>
-            <span>Run <code>moav update</code> to upgrade</span>
+            <span>Run <code>moav update</code></span>
         </div>
         {% endif %}
 
-        <div class="grid">
-            <div class="card">
-                <div class="card-title">Total Upload</div>
-                <div class="card-value">{{ total_upload }}</div>
+        {% if error %}
+        <div class="banner banner-error">{{ error }}</div>
+        {% endif %}
+
+        <!-- Stats -->
+        <div class="stats">
+            {% if not error %}
+            <div class="stat">
+                <div class="stat-label">Connections</div>
+                <div class="stat-val">{{ active_connections }}</div>
             </div>
-            <div class="card">
-                <div class="card-title">Total Download</div>
-                <div class="card-value">{{ total_download }}</div>
+            <div class="stat">
+                <div class="stat-label">Upload</div>
+                <div class="stat-val">{{ total_upload }}</div>
             </div>
-            <div class="card">
-                <div class="card-title">Conduit</div>
-                <div class="card-value {% if conduit_stats.running %}success{% else %}error{% endif %}">
-                    {% if conduit_stats.running %}Active{% else %}Off{% endif %}
-                </div>
+            <div class="stat">
+                <div class="stat-label">Download</div>
+                <div class="stat-val">{{ total_download }}</div>
             </div>
+            {% endif %}
             {% if conduit_stats.running %}
-            <div class="card">
-                <div class="card-title">Conduit Up</div>
-                <div class="card-value">{{ conduit_stats.bandwidth.upload }}</div>
+            <div class="stat">
+                <div class="stat-label">Conduit</div>
+                <div class="stat-val ok">Active</div>
             </div>
-            <div class="card">
-                <div class="card-title">Conduit Down</div>
-                <div class="card-value">{{ conduit_stats.bandwidth.download }}</div>
+            <div class="stat">
+                <div class="stat-label">Conduit Up</div>
+                <div class="stat-val">{{ conduit_stats.bandwidth.upload }}</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Conduit Down</div>
+                <div class="stat-val">{{ conduit_stats.bandwidth.download }}</div>
             </div>
             {% endif %}
         </div>
 
-        <div class="section-grid">
-            <div class="card">
+        <!-- Services -->
+        <div class="section">
+            <div class="section-head">
                 <h2>Services</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Service</th>
-                            <th>Status</th>
-                            <th>Ports</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for service in services %}
-                        <tr>
-                            <td>
-                                <span class="status-dot {{ service.status }}"></span>
-                                {{ service.name }}
-                                <span class="profile-tag">{{ service.profile }}</span>
-                            </td>
-                            <td>
-                                <span class="status-text {{ service.status }}">{{ service.status }}</span>
-                            </td>
-                            <td>{{ service.ports }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            </div>
+            <div class="section-body">
+                <div class="svc-grid">
+                    {% for service in services %}
+                    <div class="svc-card {{ service.status }}"{% if service.status == 'unknown' %} title="Status unknown — this service uses host networking and can't be detected from the dashboard"{% endif %}>
+                        <span class="dot {{ service.status }}"></span>
+                        <span class="svc-name">{{ service.name }}</span>
+                        {% if service.status == 'unknown' %}<span class="svc-port">?</span>
+                        {% elif service.ports and service.ports != '—' %}<span class="svc-port">:{{ service.ports }}</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
+        <!-- Conduit Regions -->
         {% if conduit_stats.running and conduit_stats.regions %}
-        <div class="section-grid">
-            <div class="card">
-                <h2>Conduit Regions <span style="font-weight: normal; font-size: 0.75rem; color: var(--text-muted);">(connected clients by region)</span></h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Region</th>
-                            <th>Connected</th>
-                            <th>Download</th>
-                            <th>Upload</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in conduit_stats.regions[:15] %}
-                        <tr>
-                            <td>{{ item.region }}</td>
-                            <td>{{ item.connected }}</td>
-                            <td>{{ item.download }}</td>
-                            <td>{{ item.upload }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="section">
+            <div class="section-head">
+                <h2>Conduit Regions</h2>
+                <span style="font-family:var(--mono);font-size:0.6rem;color:var(--text-dim);">{{ conduit_stats.regions|length }} regions</span>
+            </div>
+            <div class="section-body">
+                <div class="regions-grid">
+                    {% for item in conduit_stats.regions[:15] %}
+                    <div class="region-row">
+                        <span class="region-name">{{ item.region }}</span>
+                        <span class="region-val">{{ item.connected }}c / {{ item.download }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
         {% endif %}
 
-        <!-- User Bundles Section -->
-        <div class="card" style="margin-bottom: 2rem;">
-            <div class="section-header">
-                <h2>User Bundles</h2>
-                <button class="toggle-create-btn" onclick="toggleCreatePanel()">+ Create User</button>
+        <!-- Users -->
+        <div class="section">
+            <div class="section-head">
+                <h2>Users</h2>
+                <button class="btn btn-green" onclick="toggleCreatePanel()">+ New</button>
             </div>
             <div id="create-panel" class="create-panel">
                 <form class="create-form" onsubmit="return createUser(event)">
                     <div>
                         <label class="field-label">Username</label>
                         <input type="text" id="new-username" pattern="[a-zA-Z0-9_\-]+"
-                               placeholder="e.g. alice" autocomplete="off" required>
+                               placeholder="alice" autocomplete="off" required>
                     </div>
                     <label class="batch-toggle">
                         <input type="checkbox" id="batch-toggle" onchange="toggleBatch()">
                         Batch
                     </label>
-                    <div id="batch-options" style="display: none;">
+                    <div id="batch-options" style="display:none;">
                         <label class="field-label">Count</label>
-                        <input type="number" id="batch-count" min="1" max="50" placeholder="5" style="width: 80px;">
+                        <input type="number" id="batch-count" min="1" max="50" placeholder="5" style="width:70px;">
                     </div>
-                    <button type="submit" class="submit-btn" id="create-btn">Create</button>
+                    <button type="submit" class="btn btn-green" id="create-btn">Create</button>
                 </form>
                 <div id="create-result" class="create-result"></div>
             </div>
@@ -482,72 +558,85 @@
                         <th>User</th>
                         <th>Created</th>
                         <th>Protocols</th>
-                        <th>Download</th>
+                        <th style="text-align:right;">Bundle</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for user in all_users %}
                     <tr>
-                        <td>{{ user.username }}</td>
-                        <td style="color: var(--text-muted); font-size: 0.85em;">{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><span class="user-name">{{ user.username }}</span></td>
+                        <td><span class="user-date">{{ user.created_at.strftime('%Y-%m-%d') }}</span></td>
                         <td>
-                            {% if user.has_reality %}<span class="protocol-tag">Reality</span>{% endif %}
-                            {% if user.has_trojan %}<span class="protocol-tag">Trojan</span>{% endif %}
-                            {% if user.has_hysteria2 %}<span class="protocol-tag">Hy2</span>{% endif %}
-                            {% if user.has_wireguard %}<span class="protocol-tag">WG</span>{% endif %}
-                            {% if user.has_trusttunnel %}<span class="protocol-tag">TT</span>{% endif %}
+                            {% if user.has_reality %}<span class="tag">Reality</span>{% endif %}
+                            {% if user.has_trojan %}<span class="tag">Trojan</span>{% endif %}
+                            {% if user.has_hysteria2 %}<span class="tag">Hy2</span>{% endif %}
+                            {% if user.has_cdn %}<span class="tag">CDN</span>{% endif %}
+                            {% if user.has_wireguard %}<span class="tag">WG</span>{% endif %}
+                            {% if user.has_amneziawg %}<span class="tag">AWG</span>{% endif %}
+                            {% if user.has_trusttunnel %}<span class="tag">TT</span>{% endif %}
+                            {% if user.has_telemt %}<span class="tag">MTProxy</span>{% endif %}
+                            {% if user.has_dnstt %}<span class="tag">dnstt</span>{% endif %}
+                            {% if user.has_slipstream %}<span class="tag">Slip</span>{% endif %}
                         </td>
-                        <td>
-                            <a href="/download/{{ user.username }}" class="download-btn">
-                                Download .zip
-                            </a>
+                        <td style="text-align:right;">
+                            <a href="/download/{{ user.username }}" class="dl-link">.zip</a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <p style="color: var(--text-muted);">No user bundles found. Run bootstrap or add users with <code>moav user add</code></p>
+            <div class="empty-msg">No users yet. Create one above or run <code>moav user add</code></div>
             {% endif %}
         </div>
 
-        <div class="info-box">
-            <strong>Tip:</strong> Start services with:
-            <code>docker compose --profile all up -d</code> or combine profiles like
-            <code>docker compose --profile proxy --profile admin up -d</code>
-        </div>
+        <footer class="footer">
+            <a href="https://moav.sh" target="_blank">MoaV.sh</a>
+            <span class="footer-sep">|</span>
+            <span>v{{ current_version }}</span>
+            <span class="footer-sep">|</span>
+            <a href="https://github.com/shayanb/MoaV" target="_blank" title="GitHub">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            </a>
+        </footer>
     </div>
 
     <script>
-        // Auto-refresh: pause while user creation is in progress
         let creating = false;
-        let refreshTimer = setTimeout(() => { if (!creating) location.reload(); }, 30000);
+        let panelOpen = false;
+        function scheduleRefresh() {
+            return setTimeout(() => {
+                if (!creating && !panelOpen) location.reload();
+                else refreshTimer = scheduleRefresh();
+            }, 60000);
+        }
+        let refreshTimer = scheduleRefresh();
 
         function toggleCreatePanel() {
             const panel = document.getElementById('create-panel');
             const btn = event.target;
             panel.classList.toggle('open');
-            btn.textContent = panel.classList.contains('open') ? '- Close' : '+ Create User';
+            panelOpen = panel.classList.contains('open');
+            btn.textContent = panelOpen ? '- Close' : '+ New';
         }
 
         function toggleBatch() {
-            const checked = document.getElementById('batch-toggle').checked;
-            document.getElementById('batch-options').style.display = checked ? '' : 'none';
-            if (!checked) document.getElementById('batch-count').value = '';
+            const c = document.getElementById('batch-toggle').checked;
+            document.getElementById('batch-options').style.display = c ? '' : 'none';
+            if (!c) document.getElementById('batch-count').value = '';
         }
 
         function showResult(el, cls, text) {
             el.className = 'create-result ' + cls;
-            el.innerHTML = '<button class="result-dismiss" onclick="dismissResult()" title="Dismiss">&times;</button>';
-            const pre = document.createElement('span');
-            pre.textContent = text;
-            el.appendChild(pre);
+            el.innerHTML = '<button class="result-dismiss" onclick="dismissResult()">&times;</button>';
+            const s = document.createElement('span');
+            s.textContent = text;
+            el.appendChild(s);
             el.style.display = 'block';
         }
 
         function dismissResult() {
-            const el = document.getElementById('create-result');
-            el.style.display = 'none';
+            document.getElementById('create-result').style.display = 'none';
         }
 
         async function createUser(e) {
@@ -561,7 +650,6 @@
             if (!username) { alert('Enter a username'); return false; }
             if (batchOn && batch < 1) { alert('Enter a batch count'); return false; }
 
-            // Pause auto-refresh during creation
             creating = true;
             clearTimeout(refreshTimer);
             btn.disabled = true;
@@ -576,13 +664,11 @@
                     signal: AbortSignal.timeout(600000),
                 });
                 const data = await resp.json();
-
                 if (data.success) {
-                    showResult(result, 'success', data.output || 'User created successfully');
-                    // Refresh table after a short delay
+                    showResult(result, 'success', data.output || 'User created');
                     setTimeout(() => location.reload(), 2000);
                 } else {
-                    showResult(result, 'error', data.errors || data.output || 'Creation failed');
+                    showResult(result, 'error', data.errors || data.output || 'Failed');
                 }
             } catch (err) {
                 showResult(result, 'error', 'Request failed: ' + err.message);
@@ -590,8 +676,7 @@
                 creating = false;
                 btn.disabled = false;
                 btn.innerHTML = 'Create';
-                // Resume auto-refresh
-                refreshTimer = setTimeout(() => { if (!creating) location.reload(); }, 30000);
+                refreshTimer = scheduleRefresh();
             }
             return false;
         }

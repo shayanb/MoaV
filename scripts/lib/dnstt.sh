@@ -45,7 +45,7 @@ generate_dnstt_config() {
 
         # Extract raw private key (last 32 bytes of DER) as hex
         log_info "Extracting private key to $STATE_DIR/keys/dnstt-server.key.hex"
-        openssl pkey -in "$STATE_DIR/keys/dnstt-temp.pem" -outform DER 2>/dev/null | tail -c 32 | xxd -p -c 64 > "$STATE_DIR/keys/dnstt-server.key.hex"
+        openssl pkey -in "$STATE_DIR/keys/dnstt-temp.pem" -outform DER 2>/dev/null | tail -c 32 | od -An -tx1 | tr -d ' \n' > "$STATE_DIR/keys/dnstt-server.key.hex"
 
         # Verify private key was written
         if [[ ! -f "$STATE_DIR/keys/dnstt-server.key.hex" ]]; then
@@ -60,7 +60,7 @@ generate_dnstt_config() {
 
         # Extract raw public key (last 32 bytes of DER pubkey) as hex
         log_info "Extracting public key to $STATE_DIR/keys/dnstt-server.pub.hex"
-        openssl pkey -in "$STATE_DIR/keys/dnstt-temp.pem" -pubout -outform DER 2>/dev/null | tail -c 32 | xxd -p -c 64 > "$STATE_DIR/keys/dnstt-server.pub.hex"
+        openssl pkey -in "$STATE_DIR/keys/dnstt-temp.pem" -pubout -outform DER 2>/dev/null | tail -c 32 | od -An -tx1 | tr -d ' \n' > "$STATE_DIR/keys/dnstt-server.pub.hex"
 
         rm -f "$STATE_DIR/keys/dnstt-temp.pem"
 

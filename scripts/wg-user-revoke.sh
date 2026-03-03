@@ -62,12 +62,12 @@ awk -v user="$USERNAME" '
     { print }
 ' "$WG_CONFIG_FILE" > "$TEMP_CONFIG"
 
-mv "$TEMP_CONFIG" "$WG_CONFIG_FILE"
+mv -f "$TEMP_CONFIG" "$WG_CONFIG_FILE"
 
 log_info "Removed peer from wg0.conf"
 
 # Remove from running WireGuard if available
-if docker compose ps wireguard --status running &>/dev/null && [[ -n "$PUBLIC_KEY" ]]; then
+if docker compose ps wireguard --status running 2>/dev/null | tail -n +2 | grep -q . && [[ -n "$PUBLIC_KEY" ]]; then
     log_info "Removing peer from running WireGuard..."
     if docker compose exec -T wireguard wg set wg0 peer "$PUBLIC_KEY" remove 2>/dev/null; then
         log_info "Peer removed from running WireGuard"

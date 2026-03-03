@@ -266,7 +266,7 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.telemt
       args:
-        TELEMT_VERSION: ${TELEMT_VERSION:-3.1.3}
+        TELEMT_VERSION: ${TELEMT_VERSION:-3.1.5}
     container_name: moav-telemt
     restart: unless-stopped
     networks:
@@ -704,6 +704,8 @@ services:
       - CDN_DOMAIN=${CDN_DOMAIN:-}
       - CDN_WS_PATH=${CDN_WS_PATH:-/ws}
       - CDN_TRANSPORT=${CDN_TRANSPORT:-httpupgrade}
+      - CDN_SNI=${CDN_SNI:-}
+      - CDN_ADDRESS=${CDN_ADDRESS:-}
     profiles:
       - setup
 

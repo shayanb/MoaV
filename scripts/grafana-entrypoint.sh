@@ -180,15 +180,18 @@ star_dashboards() {
 
     # Get admin password from env
     ADMIN_PASS="${GF_SECURITY_ADMIN_PASSWORD:-admin}"
-    AUTH="admin:${ADMIN_PASS}"
     API="${PROTO}://localhost:3000/api"
 
+    # Build Basic auth header (works with both BusyBox wget and GNU wget)
+    AUTH_B64=$(printf 'admin:%s' "$ADMIN_PASS" | base64 2>/dev/null || echo "")
+    AUTH_HEADER="Authorization: Basic ${AUTH_B64}"
+
     # Star all MoaV dashboards
-    for uid in moav-system moav-containers moav-singbox moav-wireguard moav-snowflake moav-conduit moav-telemt; do
-        wget -q -O /dev/null $WGET_OPTS --header="Content-Type: application/json" \
+    for uid in moav-system moav-containers moav-singbox moav-wireguard moav-amneziawg moav-snowflake moav-conduit moav-telemt; do
+        wget -q -O /dev/null $WGET_OPTS \
+            --header="$AUTH_HEADER" \
+            --header="Content-Type: application/json" \
             --post-data="" \
-            --auth-no-challenge \
-            --user="admin" --password="${ADMIN_PASS}" \
             "${API}/user/stars/dashboard/uid/${uid}" 2>/dev/null && \
             echo "[grafana] Starred dashboard: ${uid}"
     done

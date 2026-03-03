@@ -15,7 +15,7 @@ echo "=========================================="
 echo ""
 
 # Check if container is running
-if ! docker compose ps psiphon-conduit --status running &>/dev/null; then
+if ! docker compose ps psiphon-conduit --status running 2>/dev/null | tail -n +2 | grep -q .; then
     echo "ERROR: Conduit container is not running"
     echo "Start with: docker compose --profile conduit up -d psiphon-conduit"
     exit 1

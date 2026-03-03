@@ -243,6 +243,8 @@ fi
 if [[ -n "${CDN_DOMAIN:-}" ]]; then
     CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
     CDN_TRANSPORT="${CDN_TRANSPORT:-httpupgrade}"
+    CDN_SNI="${CDN_SNI:-${DOMAIN:-${CDN_DOMAIN}}}"
+    CDN_ADDRESS="${CDN_ADDRESS:-${CDN_DOMAIN}}"
 
     cat > "$OUTPUT_DIR/cdn-vless-singbox.json" <<EOF
 {
@@ -254,12 +256,12 @@ if [[ -n "${CDN_DOMAIN:-}" ]]; then
     {
       "type": "vless",
       "tag": "proxy",
-      "server": "${CDN_DOMAIN}",
+      "server": "${CDN_ADDRESS}",
       "server_port": 443,
       "uuid": "${USER_UUID}",
       "tls": {
         "enabled": true,
-        "server_name": "${CDN_DOMAIN}",
+        "server_name": "${CDN_SNI}",
         "utls": {"enabled": true, "fingerprint": "random"},
         "alpn": ["http/1.1"]
       },
@@ -283,7 +285,7 @@ if [[ -n "${CDN_DOMAIN:-}" ]]; then
 }
 EOF
 
-    CDN_LINK="vless://${USER_UUID}@${CDN_DOMAIN}:443?security=tls&type=${CDN_TRANSPORT}&path=${CDN_WS_PATH}&sni=${CDN_DOMAIN}&host=${CDN_DOMAIN}&fp=random&alpn=http/1.1#MoaV-CDN-${USER_ID}"
+    CDN_LINK="vless://${USER_UUID}@${CDN_ADDRESS}:443?security=tls&type=${CDN_TRANSPORT}&path=${CDN_WS_PATH}&sni=${CDN_SNI}&host=${CDN_DOMAIN}&fp=random&alpn=http/1.1#MoaV-CDN-${USER_ID}"
     echo "$CDN_LINK" > "$OUTPUT_DIR/cdn-vless.txt"
     qrencode -o "$OUTPUT_DIR/cdn-vless-qr.png" -s 6 "$CDN_LINK" 2>/dev/null || true
 

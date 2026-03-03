@@ -118,10 +118,12 @@ TTL: 300
 | NS | t | dns.yourdomain.com | - |
 | NS | s | dns.yourdomain.com | - |
 | A | cdn | YOUR_IP | **Proxied** (orange cloud) |
+| A | www | YOUR_IP | **Proxied** (orange cloud) |
 | A | grafana | YOUR_IP | **Proxied** (orange cloud) |
 
-> The `cdn` and `grafana` records are optional:
-> - `cdn` — Only needed if you want CDN-fronted VLESS+WS
+> The `cdn`, `www`, and `grafana` records are optional:
+> - `cdn` — Required if you want CDN-fronted VLESS
+> - `www` — Recommended for CDN stealth. Used as the CDN connect address so DNS queries don't reveal the "cdn" subdomain to DPI. Set `CDN_ADDRESS=www.yourdomain.com` in `.env`
 > - `grafana` — Only needed if you want faster Grafana loading via CDN (see [Monitoring Guide](MONITORING.md#cloudflare-cdn-for-faster-grafana-recommended))
 >
 > All other records **must** be DNS only (gray cloud).
