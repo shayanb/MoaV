@@ -96,7 +96,7 @@ telemt_build_tg_link() {
 
     # Hex-encode the TLS domain
     local hex_domain
-    hex_domain=$(printf '%s' "$tls_domain" | xxd -p | tr -d '\n')
+    hex_domain=$(printf '%s' "$tls_domain" | od -An -tx1 | tr -d ' \n')
 
     # ee prefix = fake-TLS mode
     echo "tg://proxy?server=${server}&port=${port}&secret=ee${secret}${hex_domain}"
@@ -154,7 +154,7 @@ $https_link
 
 # Server: ${SERVER_IP}
 # Port: ${PORT_TELEMT:-993}
-# Secret: ee${telemt_secret}$(printf '%s' "${TELEMT_TLS_DOMAIN:-dl.google.com}" | xxd -p | tr -d '\n')
+# Secret: ee${telemt_secret}$(printf '%s' "${TELEMT_TLS_DOMAIN:-dl.google.com}" | od -An -tx1 | tr -d ' \n')
 
 # iOS:
 #   Settings → Data and Storage → Proxy → Add Proxy → MTProto

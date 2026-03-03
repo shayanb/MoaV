@@ -767,6 +767,7 @@ do_install() {
     # Check if already installed correctly
     if is_installed; then
         success "Already installed at $INSTALL_PATH"
+        install_completions
         return 0
     fi
 

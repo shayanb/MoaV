@@ -482,7 +482,7 @@ fi
 if [[ -n "${TELEMT_SECRET:-}" ]] && [[ -f "$TELEMT_CONFIG" ]]; then
     PORT_TELEMT="${PORT_TELEMT:-993}"
     TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
-    HEX_DOMAIN=$(printf '%s' "$TELEMT_TLS_DOMAIN" | xxd -p | tr -d '\n')
+    HEX_DOMAIN=$(printf '%s' "$TELEMT_TLS_DOMAIN" | od -An -tx1 | tr -d ' \n')
     echo "Telegram MTProxy:"
     echo "  tg://proxy?server=${SERVER_IP}&port=${PORT_TELEMT}&secret=ee${TELEMT_SECRET}${HEX_DOMAIN}"
     echo ""
