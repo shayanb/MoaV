@@ -146,7 +146,7 @@ if [[ -z "${REALITY_PUBLIC_KEY:-}" ]] && [[ -n "${REALITY_PRIVATE_KEY:-}" ]]; th
     log_info "Reality public key missing, deriving from private key..."
     # x25519 uses the same curve as WireGuard — convert base64url→base64, use wg pubkey, convert back
     REALITY_KEY_B64=$(echo "${REALITY_PRIVATE_KEY}==" | tr '_-' '/+' | head -c 44)
-    if docker compose ps wireguard --status running 2>/dev/null | grep -q .; then
+    if docker compose ps wireguard --status running 2>/dev/null | tail -n +2 | grep -q .; then
         REALITY_PUBLIC_KEY=$(echo "$REALITY_KEY_B64" | docker compose exec -T wireguard wg pubkey 2>/dev/null | tr '/+' '_-' | sed 's/=*$//' || echo "")
     elif command -v wg &>/dev/null; then
         REALITY_PUBLIC_KEY=$(echo "$REALITY_KEY_B64" | wg pubkey 2>/dev/null | tr '/+' '_-' | sed 's/=*$//' || echo "")
@@ -399,7 +399,7 @@ fi
 
 # Try to reload sing-box (hot reload) unless --no-reload was passed
 if [[ "$NO_RELOAD" != "true" ]]; then
-    if docker compose ps sing-box --status running 2>/dev/null | grep -q .; then
+    if docker compose ps sing-box --status running 2>/dev/null | tail -n +2 | grep -q .; then
         log_info "Reloading sing-box..."
         if docker compose exec -T sing-box sing-box reload 2>/dev/null; then
             log_info "sing-box reloaded successfully"
@@ -413,7 +413,7 @@ if [[ "$NO_RELOAD" != "true" ]]; then
 
     # Try to reload TrustTunnel (if running)
     if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
-        if docker compose ps trusttunnel --status running 2>/dev/null | grep -q .; then
+        if docker compose ps trusttunnel --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Restarting TrustTunnel to apply new credentials..."
             docker compose restart trusttunnel
         fi
@@ -421,7 +421,7 @@ if [[ "$NO_RELOAD" != "true" ]]; then
 
     # Try to reload telemt (if running)
     if [[ -f "$TELEMT_CONFIG" ]]; then
-        if docker compose --profile telegram ps telemt --status running 2>/dev/null | grep -q .; then
+        if docker compose --profile telegram ps telemt --status running 2>/dev/null | tail -n +2 | grep -q .; then
             log_info "Restarting telemt to apply new user..."
             docker compose --profile telegram restart telemt
         fi

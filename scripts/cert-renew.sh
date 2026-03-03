@@ -16,7 +16,7 @@ log_info "Checking certificate renewal..."
 docker compose run --rm certbot renew --quiet
 
 # Reload sing-box to pick up new certs
-if docker compose ps sing-box --status running 2>/dev/null | grep -q .; then
+if docker compose ps sing-box --status running 2>/dev/null | tail -n +2 | grep -q .; then
     log_info "Reloading sing-box..."
     docker compose exec sing-box sing-box reload 2>/dev/null || \
         docker compose restart sing-box

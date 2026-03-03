@@ -67,7 +67,7 @@ mv -f "$TEMP_CONFIG" "$AWG_CONFIG_FILE"
 log_info "Removed peer from awg0.conf"
 
 # Remove from running AmneziaWG if available
-if docker compose ps amneziawg --status running 2>/dev/null | grep -q . && [[ -n "$PUBLIC_KEY" ]]; then
+if docker compose ps amneziawg --status running 2>/dev/null | tail -n +2 | grep -q . && [[ -n "$PUBLIC_KEY" ]]; then
     log_info "Removing peer from running AmneziaWG..."
     if docker compose exec -T amneziawg awg set awg0 peer "$PUBLIC_KEY" remove 2>/dev/null; then
         log_info "Peer removed from running AmneziaWG"

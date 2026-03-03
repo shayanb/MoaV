@@ -86,8 +86,24 @@ if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
     fi
 fi
 
+# Remove from telemt (if config exists)
+TELEMT_CONFIG="configs/telemt/config.toml"
+if [[ -f "$TELEMT_CONFIG" ]]; then
+    if grep -q "^${USERNAME} = " "$TELEMT_CONFIG" 2>/dev/null; then
+        log_info "Removing $USERNAME from telemt..."
+
+        # Remove user from all three sections:
+        # [access.users]: username = "secret"
+        # [access.user_max_tcp_conns]: username = N
+        # [access.user_max_unique_ips]: username = N
+        sed -i "/^${USERNAME} = /d" "$TELEMT_CONFIG"
+
+        log_info "Removed $USERNAME from telemt config"
+    fi
+fi
+
 # Reload sing-box
-if docker compose ps sing-box --status running 2>/dev/null | grep -q .; then
+if docker compose ps sing-box --status running 2>/dev/null | tail -n +2 | grep -q .; then
     log_info "Reloading sing-box..."
     if docker compose exec -T sing-box sing-box reload 2>/dev/null; then
         log_info "sing-box reloaded"
@@ -98,9 +114,17 @@ fi
 
 # Reload TrustTunnel (if running)
 if [[ -f "$TRUSTTUNNEL_CREDS" ]]; then
-    if docker compose ps trusttunnel --status running 2>/dev/null | grep -q .; then
+    if docker compose ps trusttunnel --status running 2>/dev/null | tail -n +2 | grep -q .; then
         log_info "Restarting TrustTunnel..."
         docker compose restart trusttunnel
+    fi
+fi
+
+# Reload telemt (if running)
+if [[ -f "$TELEMT_CONFIG" ]]; then
+    if docker compose --profile telegram ps telemt --status running 2>/dev/null | tail -n +2 | grep -q .; then
+        log_info "Restarting telemt..."
+        docker compose --profile telegram restart telemt
     fi
 fi
 
