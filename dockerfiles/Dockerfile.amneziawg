@@ -3,19 +3,25 @@
 FROM golang:1.24-alpine AS builder
 
 ARG AMNEZIAWG_GO_VERSION=v0.2.16
+ARG AWGTOOLS_VERSION=1.0.20260223
 
-RUN apk add --no-cache git gcc musl-dev
+RUN apk add --no-cache git gcc musl-dev make linux-headers
 
-RUN git clone --branch ${AMNEZIAWG_GO_VERSION} --depth 1 https://github.com/amnezia-vpn/amneziawg-go.git /src
+# Build amneziawg-go
+RUN git clone --branch ${AMNEZIAWG_GO_VERSION} --depth 1 https://github.com/amnezia-vpn/amneziawg-go.git /src/go
 
-WORKDIR /src
+WORKDIR /src/go
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go build -ldflags '-linkmode external -extldflags "-fno-PIC -static"' -o /usr/bin/amneziawg-go
 
-FROM alpine:3.21
+# Build awg-tools from source (ensures correct architecture)
+RUN git clone --branch v${AWGTOOLS_VERSION} --depth 1 https://github.com/amnezia-vpn/amneziawg-tools.git /src/tools
 
-ARG AWGTOOLS_VERSION=1.0.20260223
+WORKDIR /src/tools/src
+RUN make && cp wg /usr/bin/awg
+
+FROM alpine:3.21
 
 RUN apk add --no-cache \
     iproute2 \
@@ -25,14 +31,8 @@ RUN apk add --no-cache \
     curl \
     jq
 
-# Install awg-tools (awg, awg-quick)
-RUN cd /usr/bin && \
-    wget -qO awg-tools.zip "https://github.com/amnezia-vpn/amneziawg-tools/releases/download/v${AWGTOOLS_VERSION}/alpine-3.19-amneziawg-tools.zip" && \
-    unzip -j awg-tools.zip && \
-    rm -f awg-tools.zip && \
-    chmod +x /usr/bin/awg /usr/bin/awg-quick
-
 COPY --from=builder /usr/bin/amneziawg-go /usr/bin/amneziawg-go
+COPY --from=builder /usr/bin/awg /usr/bin/awg
 
 # Create config directory
 RUN mkdir -p /etc/amneziawg

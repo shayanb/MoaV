@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MoaV Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
         :root {
             --bg: #0a0e17;
@@ -54,6 +55,7 @@
             letter-spacing: -0.02em;
         }
         .topbar h1 span { color: var(--green); }
+        .logo { height: 22px; vertical-align: middle; margin-right: 0.2rem; }
         .topbar-right {
             display: flex;
             align-items: center;
@@ -176,17 +178,25 @@
         /* Services grid */
         .svc-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 0.45rem;
         }
-        .svc {
+        .svc-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 0.5rem 0.65rem;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 0.6rem;
-            border-bottom: 1px solid var(--border);
+            gap: 0.4rem;
+            transition: border-color 0.15s;
         }
-        .svc-grid .svc:nth-last-child(-n+3) { border-bottom: none; }
+        .svc-card.running {
+            border-color: rgba(63, 185, 80, 0.3);
+            background: rgba(63, 185, 80, 0.03);
+        }
+        .svc-card.stopped { opacity: 0.45; }
+        .svc-card.unknown { opacity: 0.6; }
         .dot {
             width: 7px;
             height: 7px;
@@ -200,13 +210,12 @@
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
         .svc-name {
             font-family: var(--mono);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 500;
         }
-        .svc.off .svc-name { color: var(--text-dim); }
         .svc-port {
             font-family: var(--mono);
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             color: var(--text-dim);
             margin-left: auto;
         }
@@ -390,8 +399,9 @@
         /* Footer */
         .footer {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
+            gap: 0.6rem;
             padding: 1.25rem 0 0.5rem;
             margin-top: 0.5rem;
             border-top: 1px solid var(--border);
@@ -399,19 +409,15 @@
             font-size: 0.65rem;
             color: var(--text-dim);
         }
-        .footer-links {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .footer-links a {
+        .footer a {
             color: var(--text-dim);
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             transition: color 0.15s;
         }
-        .footer-links a:hover { color: var(--text); }
+        .footer a:hover { color: var(--text); }
+        .footer-sep { opacity: 0.4; }
 
         /* Responsive */
         @media (max-width: 640px) {
@@ -426,7 +432,7 @@
 <body>
     <div class="shell">
         <div class="topbar">
-            <h1><span>&gt;</span> MoaV</h1>
+            <h1><img src="/logo.png" alt="" class="logo">MoaV</h1>
             <div class="topbar-right">
                 <span class="ts">{{ timestamp }}</span>
                 {% if services|selectattr('name', 'equalto', 'grafana')|selectattr('status', 'equalto', 'running')|list %}
@@ -488,10 +494,10 @@
             <div class="section-body">
                 <div class="svc-grid">
                     {% for service in services %}
-                    <div class="svc{{ ' off' if service.status != 'running' else '' }}">
+                    <div class="svc-card {{ service.status }}">
                         <span class="dot {{ service.status }}"></span>
                         <span class="svc-name">{{ service.name }}</span>
-                        {% if service.ports and service.ports != '—' and service.status == 'running' %}
+                        {% if service.ports and service.ports != '—' %}
                         <span class="svc-port">:{{ service.ports }}</span>
                         {% endif %}
                     </div>
@@ -583,13 +589,13 @@
         </div>
 
         <footer class="footer">
-            <span>MoaV v{{ current_version }}</span>
-            <span class="footer-links">
-                <a href="https://moav.sh" target="_blank">moav.sh</a>
-                <a href="https://github.com/shayanb/MoaV" target="_blank" title="GitHub">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-                </a>
-            </span>
+            <a href="https://moav.sh" target="_blank">MoaV.sh</a>
+            <span class="footer-sep">|</span>
+            <span>v{{ current_version }}</span>
+            <span class="footer-sep">|</span>
+            <a href="https://github.com/shayanb/MoaV" target="_blank" title="GitHub">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            </a>
         </footer>
     </div>
 
