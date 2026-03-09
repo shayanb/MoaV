@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.5] - 2026-03-09
+
+### Fixed
+- **Snowflake build failing in Russia** — `git clone` from `gitlab.torproject.org` times out in countries where it's blocked; replaced with `go install` via Go module proxy (`proxy.golang.org`, Google CDN) which bypasses the block. Applies to both `Dockerfile.snowflake` (proxy) and `Dockerfile.client` (snowflake-client)
+
+### Changed
+- **DNS documentation refreshed** — New "Do I Need a Domain?" section, domain-less mode guide, split port forwarding tables (domain-less vs with domain), all protocols/ports updated, Raspberry Pi tips, CGNAT troubleshooting
+- **telemt** updated to 3.3.14
+- **TrustTunnel** updated to 1.0.13
+- **TrustTunnel Client** updated to 1.0.19
+
 ## [1.4.4] - 2026-03-03
 
 ### Added
@@ -668,7 +679,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.4...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.5...HEAD
+[1.4.5]: https://github.com/shayanb/MoaV/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/shayanb/MoaV/compare/v1.4.1...v1.4.4
 [1.4.2]: https://github.com/shayanb/MoaV/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/shayanb/MoaV/compare/v1.4.0...v1.4.1
