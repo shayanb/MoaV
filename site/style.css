@@ -294,14 +294,18 @@ body {
 }
 
 .btn-secondary {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.3);
     color: var(--text-primary);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.1);
 }
 
 .btn-secondary:hover {
     border-color: var(--accent-cyan);
     color: var(--accent-cyan);
+    background: rgba(0, 212, 255, 0.15);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.25);
+    transform: translateY(-2px);
 }
 
 /* =============================================================================
