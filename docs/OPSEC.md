@@ -54,6 +54,7 @@ Security recommendations for running and using MoaV safely.
    ufw allow 4443/tcp    # TrustTunnel (HTTP/2)
    ufw allow 4443/udp    # TrustTunnel (HTTP/3 QUIC)
    ufw allow 993/tcp     # Telegram MTProxy (telemt)
+   ufw allow 2096/tcp    # XHTTP (VLESS+XHTTP+Reality)
    ufw allow 53/udp      # DNS tunnels (dnstt + Slipstream)
    ufw allow 2082/tcp    # CDN WebSocket (VLESS+WS via Cloudflare)
    ufw allow 9443/tcp    # Admin dashboard

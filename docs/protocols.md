@@ -1,6 +1,6 @@
 # Supported Protocols
 
-MoaV deploys 12 protocols, each with different stealth characteristics, speed profiles, and network requirements. This diversity ensures that when one protocol is blocked, others remain available.
+MoaV deploys 13 protocols, each with different stealth characteristics, speed profiles, and network requirements. This diversity ensures that when one protocol is blocked, others remain available.
 
 ## Protocol Overview
 
@@ -18,6 +18,7 @@ MoaV deploys 12 protocols, each with different stealth characteristics, speed pr
 | [dnstt](#dnstt) | 53/udp | Medium | Low | Yes |
 | [Slipstream](#slipstream) | 53/udp | Medium | Low-Medium | Yes |
 | [Psiphon Conduit](#psiphon-conduit) | dynamic | High | Medium | No |
+| [XHTTP (VLESS+XHTTP+Reality)](#xhttp-vlessxhttpreality) | 2096/tcp | Very High | High | No |
 | [Tor Snowflake](#tor-snowflake) | dynamic | High | Low | No |
 | [MahsaNet](#mahsanet) | — | — | — | No |
 
@@ -113,6 +114,15 @@ QUIC-over-DNS tunnel. Similar to dnstt but uses QUIC for better throughput — t
 - **Port:** 53/udp
 - **Engine:** [slipstream](https://github.com/Mygod/slipstream-rust) (Rust) / [pre-built binaries](https://github.com/net2share/slipstream-rust-build/releases)
 - **Requires:** Domain with NS delegation
+
+### XHTTP (VLESS+XHTTP+Reality)
+
+**Experimental.** VLESS over XHTTP transport with Reality TLS camouflage, powered by Xray-core. Uses the XHTTP (formerly splithttp) transport for multiplexed HTTP requests, making traffic look like regular web browsing. Reality handles TLS without needing a domain.
+
+- **Port:** 2096/tcp
+- **Engine:** [Xray-core](https://github.com/XTLS/Xray-core)
+- **Clients:** V2rayNG, Hiddify, Streisand, V2Box, V2rayN, V2rayU, NekoBox
+- **Note:** Experimental protocol, opt-in via `ENABLE_XHTTP=false` in `.env`.
 
 ### Psiphon Conduit
 

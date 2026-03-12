@@ -8,7 +8,7 @@ Multi-protocol censorship circumvention stack optimized for hostile network envi
 
 ## Features
 
-- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard (direct & wstunnel), DNS tunnels (dnstt + Slipstream), Telegram MTProxy, CDN (VLESS+WS)
+- **Multiple protocols** - Reality (VLESS), Trojan, Hysteria2, XHTTP (VLESS+XHTTP+Reality), TrustTunnel, AmneziaWG, WireGuard (direct & wstunnel), DNS tunnels (dnstt + Slipstream), Telegram MTProxy, CDN (VLESS+WS)
 - **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, DNS, or IMAPS
 - **Per-user credentials** - Create, revoke, and manage users independently
 - **Easy deployment** - Docker Compose based, single command setup
@@ -139,6 +139,7 @@ See the [Setup Guide](docs/SETUP.md) for complete instructions, the [CLI Referen
 | DNS Tunnel (dnstt) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort, hard to block |
 | Slipstream | 53/udp | ★★★☆☆ | ★★☆☆☆ | QUIC-over-DNS, 1.5-5x faster than dnstt |
 | Telegram MTProxy | 993/tcp | ★★★★☆ | ★★★☆☆ | Fake-TLS V2, direct Telegram access |
+| XHTTP (VLESS+XHTTP+Reality) | 2096/tcp | ★★★★★ | ★★★★☆ | Xray-core, experimental, no domain needed |
 | Psiphon | - | ★★★★☆ | ★★★☆☆ | Standalone, no server needed |
 | Tor (Snowflake) | - | ★★★★☆ | ★★☆☆☆ | Standalone, uses Tor network |
 
@@ -189,7 +190,7 @@ moav logs conduit         # View specific service logs
 moav build                # Build/rebuild all containers
 ```
 
-**Profiles:** `proxy`, `wireguard`, `amneziawg`, `dnstunnel`, `trusttunnel`, `telegram`, `admin`, `conduit`, `snowflake`, `monitoring`, `all`
+**Profiles:** `proxy`, `wireguard`, `amneziawg`, `dnstunnel`, `trusttunnel`, `telegram`, `xhttp`, `admin`, `conduit`, `snowflake`, `monitoring`, `all`
 
 ## Server Migration
 
@@ -297,6 +298,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 51821/udp | UDP | AmneziaWG | No |
 | 8080/tcp | TCP | wstunnel | No |
 | 993/tcp | TCP | Telegram MTProxy | No |
+| 2096/tcp | TCP | XHTTP (VLESS+XHTTP+Reality) | No |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 9444/tcp | TCP | Grafana (monitoring) | No |
 | 53/udp | UDP | DNS tunnel | Yes |
@@ -308,6 +310,7 @@ Don't have a domain? MoaV can run in **domain-less mode** with:
 - **WireGuard** (direct UDP + WebSocket tunnel)
 - **AmneziaWG** (obfuscated WireGuard, defeats DPI)
 - **Telegram MTProxy** (fake-TLS, direct Telegram access)
+- **XHTTP** (VLESS+XHTTP+Reality, no domain needed)
 - **Admin dashboard** (uses self-signed certificate)
 - **Conduit** (Psiphon bandwidth donation)
 - **Snowflake** (Tor bandwidth donation)

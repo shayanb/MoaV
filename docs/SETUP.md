@@ -56,6 +56,7 @@ Complete guide to deploy MoaV on a VPS or home server.
 | 9443/tcp | TCP | Admin dashboard | No |
 | 9444/tcp | TCP | Grafana (monitoring) | No |
 | 993/tcp | TCP | Telegram MTProxy (telemt) | No |
+| 2096/tcp | TCP | XHTTP (VLESS+XHTTP+Reality) | No |
 | 53/udp | UDP | DNS tunnels (dnstt + Slipstream) | Yes |
 | 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
@@ -253,6 +254,7 @@ moav start all                   # Everything
 - `dnstt` - DNS tunnel
 - `trusttunnel` - TrustTunnel VPN
 - `telegram` - Telegram MTProxy (fake-TLS)
+- `xhttp` - XHTTP (VLESS+XHTTP+Reality via Xray-core)
 - `admin` - Admin dashboard
 - `conduit` - Psiphon bandwidth donation
 - `snowflake` - Tor bandwidth donation
@@ -279,6 +281,9 @@ ufw allow 8080/tcp   # wstunnel
 
 # AmneziaWG
 ufw allow 51821/udp   # Obfuscated WireGuard
+
+# XHTTP
+ufw allow 2096/tcp   # VLESS+XHTTP+Reality
 
 # DNS tunnel
 ufw allow 53/udp
@@ -318,6 +323,7 @@ ls outputs/bundles/
 - `wireguard-wstunnel.conf` - WireGuard over WebSocket
 - `amneziawg.conf` - AmneziaWG config (if enabled)
 - `trusttunnel.txt` - TrustTunnel credentials (if enabled)
+- `xhttp.txt` - XHTTP share link (if enabled)
 - `dnstt-instructions.txt` - DNS tunnel instructions
 
 **Download Options:**
@@ -377,6 +383,7 @@ Don't have a domain? MoaV can run with limited but useful services.
 | AmneziaWG | 51821/udp | Obfuscated WireGuard, defeats DPI |
 | wstunnel | 8080/tcp | WireGuard over WebSocket (when UDP blocked) |
 | Telegram MTProxy | 993/tcp | Fake-TLS, works with IP only |
+| XHTTP | 2096/tcp | VLESS+XHTTP+Reality, no domain needed |
 | Admin | 9443/tcp | Dashboard with self-signed certificate |
 | Conduit | dynamic | Psiphon bandwidth donation |
 | Snowflake | dynamic | Tor bandwidth donation |

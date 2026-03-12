@@ -539,6 +539,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     CONFIG_WIREGUARD=$(cat "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || echo "")
     CONFIG_WIREGUARD_WSTUNNEL=$(cat "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || echo "")
     CONFIG_AMNEZIAWG=$(cat "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || echo "")
+    CONFIG_XHTTP=$(cat "$OUTPUT_DIR/xhttp-vless.txt" 2>/dev/null | tr -d '\n' || echo "")
 
     # Construct CDN_DOMAIN from CDN_SUBDOMAIN + DOMAIN if not explicitly set
     CDN_DOMAIN="${CDN_DOMAIN:-}"
@@ -591,6 +592,7 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
     QR_WIREGUARD_WSTUNNEL_B64=$(qr_to_base64 "$OUTPUT_DIR/wireguard-wstunnel-qr.png")
     QR_AMNEZIAWG_B64=$(qr_to_base64 "$OUTPUT_DIR/amneziawg-qr.png")
     QR_TELEMT_B64=$(qr_to_base64 "$OUTPUT_DIR/telegram-proxy-qr.png")
+    QR_XHTTP_B64=$(qr_to_base64 "$OUTPUT_DIR/xhttp-qr.png")
 
     # Copy template
     cp "$TEMPLATE_FILE" "$OUTPUT_HTML"
@@ -640,6 +642,7 @@ with open(filepath, 'w') as f:
     sed -i.bak "s|{{QR_WIREGUARD_WSTUNNEL}}|$QR_WIREGUARD_WSTUNNEL_B64|g" "$OUTPUT_HTML"
     sed -i.bak "s|{{QR_AMNEZIAWG}}|$QR_AMNEZIAWG_B64|g" "$OUTPUT_HTML"
     sed -i.bak "s|{{QR_TELEMT}}|$QR_TELEMT_B64|g" "$OUTPUT_HTML"
+    sed -i.bak "s|{{QR_XHTTP}}|$QR_XHTTP_B64|g" "$OUTPUT_HTML"
 
     if [[ -n "$CONFIG_REALITY" ]]; then
         replace_placeholder "{{CONFIG_REALITY}}" "$CONFIG_REALITY"
@@ -704,6 +707,13 @@ with open(filepath, 'w') as f:
         replace_placeholder "{{CONFIG_TELEMT}}" "$CONFIG_TELEMT"
     else
         replace_placeholder "{{CONFIG_TELEMT}}" "Telegram MTProxy not enabled"
+    fi
+
+    # XHTTP (Xray-core) share link
+    if [[ -n "${CONFIG_XHTTP:-}" ]]; then
+        replace_placeholder "{{CONFIG_XHTTP}}" "$CONFIG_XHTTP"
+    else
+        replace_placeholder "{{CONFIG_XHTTP}}" "XHTTP not enabled"
     fi
 
     # Clean up backup files
@@ -802,6 +812,15 @@ if [[ "$BATCH_MODE" == "true" ]] && [[ ${#CREATED_USERS[@]} -gt 0 ]]; then
             log_info "Restarting TrustTunnel..."
             docker compose restart trusttunnel
             log_info "✓ TrustTunnel restarted"
+        fi
+    fi
+
+    # Reload Xray (XHTTP)
+    if [[ -f "configs/xray/config.json" ]]; then
+        if docker compose --profile xhttp ps xray --status running 2>/dev/null | tail -n +2 | grep -q .; then
+            log_info "Restarting Xray..."
+            docker compose --profile xhttp restart xray
+            log_info "✓ Xray restarted"
         fi
     fi
 

@@ -45,6 +45,7 @@ This guide explains how to connect to MoaV from various devices.
 | [DNS Tunnel (dnstt)](https://www.bamsoftware.com/software/dnstt/) | 53/udp | Last resort, slow but hard to block |
 | [Slipstream](https://github.com/Mygod/slipstream-rust) | 53/udp | QUIC-over-DNS, 1.5-5x faster than dnstt |
 | [Telegram MTProxy](https://github.com/telemt/telemt) | 993/tcp | Fake-TLS V2, direct Telegram access |
+| [XHTTP (VLESS+XHTTP+Reality)](https://github.com/XTLS/Xray-core) | 2096/tcp | XHTTP transport with Reality TLS, experimental |
 | [Psiphon](https://psiphon.ca/) | Various | Standalone app, uses Psiphon network |
 | [Tor](https://www.torproject.org/) (Snowflake) | Various | Uses Tor network |
 
@@ -715,6 +716,37 @@ If enabled on your MoaV server, Snowflake acts as a proxy for the [Tor network](
 
 **Can I run both Conduit and Snowflake?**
 Yes! Both services can run simultaneously without conflicts. They donate bandwidth to different networks (Psiphon and Tor respectively).
+
+---
+
+## XHTTP Setup
+
+XHTTP uses VLESS with XHTTP transport and Reality TLS camouflage, powered by Xray-core. No domain is required.
+
+**Your config file:** `xhttp.txt`
+
+### Compatible Client Apps
+
+XHTTP requires Xray-based clients that support the XHTTP transport:
+
+| Platform | App | Link |
+|----------|-----|------|
+| Android | [V2rayNG](https://github.com/2dust/v2rayNG) | [GitHub](https://github.com/2dust/v2rayNG/releases) |
+| Android | [Hiddify](https://hiddify.com/) | [GitHub](https://github.com/hiddify/hiddify-app/releases) |
+| Android | [NekoBox](https://github.com/MatsuriDayo/NekoBoxForAndroid) | [GitHub](https://github.com/MatsuriDayo/NekoBoxForAndroid/releases) |
+| iOS | [Streisand](https://apps.apple.com/us/app/streisand/id6450534064) | [App Store (Free)](https://apps.apple.com/us/app/streisand/id6450534064) |
+| iOS | [Hiddify](https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532) | [App Store (Free)](https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532) |
+| iOS | [V2Box](https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690) | [App Store](https://apps.apple.com/ca/app/v2box-v2ray-client/id6446814690) |
+| Windows | [V2rayN](https://github.com/2dust/v2rayN) | [GitHub](https://github.com/2dust/v2rayN/releases) |
+| macOS | [V2rayU](https://github.com/yanue/V2rayU) | [GitHub](https://github.com/yanue/V2rayU/releases) |
+
+### Import
+
+1. Copy the link from `xhttp.txt`
+2. Import into your client app (V2rayNG, Hiddify, Streisand, etc.)
+3. Connect
+
+**Note:** XHTTP is experimental and opt-in (`ENABLE_XHTTP=false` by default). Enable it in `.env` before generating user bundles.
 
 ---
 

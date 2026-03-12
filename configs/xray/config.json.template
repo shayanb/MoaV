@@ -1,0 +1,36 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "tag": "vless-xhttp-reality",
+      "listen": "0.0.0.0",
+      "port": ${PORT_XHTTP},
+      "protocol": "vless",
+      "settings": {
+        "clients": [${XRAY_USERS_JSON}],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "xhttp",
+        "xhttpSettings": {
+          "mode": "auto"
+        },
+        "security": "reality",
+        "realitySettings": {
+          "dest": "${XHTTP_REALITY_TARGET}",
+          "serverNames": ["${XHTTP_REALITY_TARGET_HOST}"],
+          "privateKey": "${REALITY_PRIVATE_KEY}",
+          "shortIds": ["${REALITY_SHORT_ID}"]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    }
+  ]
+}

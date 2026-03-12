@@ -241,6 +241,9 @@ export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_SLIPSTREAM="${ENABLE_SLIPSTREAM:-false}"
 export SLIPSTREAM_SUBDOMAIN="${SLIPSTREAM_SUBDOMAIN:-s}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+export ENABLE_XHTTP="${ENABLE_XHTTP:-false}"
+export PORT_XHTTP="${PORT_XHTTP:-2096}"
+export XHTTP_REALITY_TARGET="${XHTTP_REALITY_TARGET:-dl.google.com:443}"
 export ENABLE_TELEMT="${ENABLE_TELEMT:-true}"
 export PORT_TELEMT="${PORT_TELEMT:-993}"
 export TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
@@ -383,6 +386,7 @@ TROJAN_USERS_JSON="["
 HYSTERIA2_USERS_JSON="["
 VLESS_WS_USERS_JSON="["
 TRUSTTUNNEL_CREDENTIALS=""
+XRAY_USERS_JSON=""
 TELEMT_USERS_TOML=""
 TELEMT_CONNS_TOML=""
 TELEMT_IPS_TOML=""
@@ -434,6 +438,12 @@ username = \"$USER_ID\"
 password = \"$USER_PASSWORD\"
 
 "
+
+    # Xray user entry (XHTTP - flow MUST be empty for XHTTP transport)
+    if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+        [[ -n "$XRAY_USERS_JSON" ]] && XRAY_USERS_JSON+=","
+        XRAY_USERS_JSON+="{\"id\":\"$USER_UUID\",\"email\":\"${USER_ID}@moav\",\"flow\":\"\"}"
+    fi
 
     # telemt (Telegram MTProxy) per-user secret
     if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
@@ -538,6 +548,12 @@ password = \"$USER_PASSWORD\"
 
 "
 
+    # Xray user entry for extra user
+    if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+        [[ -n "$XRAY_USERS_JSON" ]] && XRAY_USERS_JSON+=","
+        XRAY_USERS_JSON+="{\"id\":\"$USER_UUID\",\"email\":\"${EXTRA_USER_ID}@moav\",\"flow\":\"\"}"
+    fi
+
     # telemt secret for extra user
     if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
         telemt_generate_secret "$EXTRA_USER_ID"
@@ -584,6 +600,29 @@ if [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]]; then
     envsubst < /configs/trusttunnel/vpn.toml.template > /configs/trusttunnel/vpn.toml
 
     log_info "TrustTunnel configuration written to /configs/trusttunnel/"
+fi
+
+# -----------------------------------------------------------------------------
+# Generate Xray config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+    log_info "Generating Xray-core (XHTTP) configuration..."
+
+    export XRAY_USERS_JSON
+    export PORT_XHTTP
+    export XHTTP_REALITY_TARGET
+
+    # Extract host from target (e.g., "dl.google.com:443" -> "dl.google.com")
+    XHTTP_REALITY_TARGET_HOST="${XHTTP_REALITY_TARGET%%:*}"
+    export XHTTP_REALITY_TARGET_HOST
+
+    # Reuse Reality keys from sing-box
+    export REALITY_PRIVATE_KEY
+    export REALITY_SHORT_ID
+
+    envsubst < /configs/xray/config.json.template > /configs/xray/config.json
+
+    log_info "Xray configuration written to /configs/xray/config.json"
 fi
 
 # -----------------------------------------------------------------------------
