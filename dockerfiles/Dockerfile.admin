@@ -11,6 +11,8 @@ RUN apk add --no-cache \
     openssl \
     libqrencode-tools
 
+RUN addgroup -S moav && adduser -S moav -G moav
+
 WORKDIR /app
 
 COPY admin/requirements.txt /app/
@@ -19,10 +21,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY admin/ /app/
 COPY scripts/admin-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && chown -R moav:moav /app
 
 EXPOSE 8443
 
 ENV PYTHONUNBUFFERED=1
 
+USER moav
 ENTRYPOINT ["/entrypoint.sh"]

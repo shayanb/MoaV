@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd -r moav && useradd -r -g moav moav
+
 # Architecture mapping and binary download
 # slipstream-rust-build uses: linux-amd64, linux-arm64
 RUN ARCH="${TARGETARCH:-amd64}" && \
@@ -34,7 +36,8 @@ RUN ARCH="${TARGETARCH:-amd64}" && \
     { echo "slipstream-server: download failed"; exit 1; }
 
 # Create directories
-RUN mkdir -p /app /state/keys /etc/slipstream
+RUN mkdir -p /app /state/keys /etc/slipstream && \
+    chown -R moav:moav /app /state /etc/slipstream
 
 # Copy entrypoint
 COPY scripts/slipstream-entrypoint.sh /app/entrypoint.sh
@@ -42,4 +45,5 @@ RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 5354/udp
 
+USER moav
 ENTRYPOINT ["/app/entrypoint.sh"]

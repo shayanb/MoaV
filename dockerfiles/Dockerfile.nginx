@@ -7,11 +7,14 @@
 
 FROM alpine:3.21
 
-RUN apk add --no-cache nginx tzdata
+RUN apk add --no-cache nginx libcap tzdata
+
+# Allow binding to privileged ports without root
+RUN setcap cap_net_bind_service=+ep /usr/sbin/nginx
 
 # Create nginx user and directories
 RUN mkdir -p /run/nginx /var/lib/nginx /var/log/nginx && \
-    chown -R nginx:nginx /var/lib/nginx /var/log/nginx
+    chown -R nginx:nginx /var/lib/nginx /var/log/nginx /run/nginx /etc/nginx
 
 # Copy default config
 RUN echo 'worker_processes auto;' > /etc/nginx/nginx.conf && \
@@ -42,4 +45,5 @@ EXPOSE 80
 
 STOPSIGNAL SIGQUIT
 
+USER nginx
 CMD ["nginx", "-g", "daemon off;"]

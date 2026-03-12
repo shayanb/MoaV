@@ -429,6 +429,24 @@ services:
   # ===========================================================================
   # ADMIN: Stats dashboard + User management API
   # ===========================================================================
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: moav-docker-proxy
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Read-only by default; only enable what admin needs
+      - CONTAINERS=1        # docker compose ps, inspect, restart
+      - POST=1              # restart, exec create
+      - EXEC=1              # docker compose exec
+      - NETWORKS=1          # docker compose networking
+    profiles:
+      - admin
+      - all
+
   admin:
     build:
       context: .
@@ -440,14 +458,18 @@ services:
     ports:
       - "${PORT_ADMIN:-9443}:8443"
     volumes:
-      - .:/project                               # Full project for running user-add.sh
-      - /var/run/docker.sock:/var/run/docker.sock # Docker CLI for script service reloads
-      - moav_state:/state:ro                      # Dashboard reads keys from Docker volume
-      - moav_certs:/certs:ro                      # SSL certificates
+      - .:/project:ro                              # Scripts and assets (read-only)
+      - ./outputs:/project/outputs                 # User bundles (read-write for user-add.sh)
+      - ./configs:/project/configs                 # Config updates (read-write for peer addition)
+      - moav_state:/state:ro                       # Dashboard reads keys from Docker volume
+      - moav_certs:/certs:ro                       # SSL certificates
     environment:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_IP_WHITELIST=${ADMIN_IP_WHITELIST:-}
+      - DOCKER_HOST=tcp://docker-proxy:2375
       - TZ=${TZ:-UTC}
+    depends_on:
+      - docker-proxy
     profiles:
       - admin
       - all

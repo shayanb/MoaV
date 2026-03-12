@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd -r moav && useradd -r -g moav moav
+
 WORKDIR /opt/trusttunnel
 
 # Map Docker arch to TrustTunnel arch naming
@@ -27,7 +29,8 @@ RUN ARCH=$(case "${TARGETARCH}" in \
     rm trusttunnel.tar.gz && \
     chmod +x trusttunnel_endpoint setup_wizard
 
-RUN mkdir -p /etc/trusttunnel /var/log/trusttunnel /state
+RUN mkdir -p /etc/trusttunnel /var/log/trusttunnel /state && \
+    chown -R moav:moav /opt/trusttunnel /etc/trusttunnel /var/log/trusttunnel /state
 
 COPY scripts/trusttunnel-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
@@ -35,4 +38,5 @@ RUN chmod +x /entrypoint.sh
 # TrustTunnel port (HTTP/2 TCP + HTTP/3 QUIC/UDP)
 EXPOSE 4443/tcp 4443/udp
 
+USER moav
 ENTRYPOINT ["/entrypoint.sh"]
