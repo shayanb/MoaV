@@ -11,6 +11,7 @@ This guide explains how to configure DNS records for MoaV.
   - [Full Setup (With DNS Tunnels)](#full-setup-with-dns-tunnels)
 - [Provider-Specific Instructions](#provider-specific-instructions)
   - [Cloudflare](#cloudflare)
+  - [AWS CloudFront (Alternative CDN)](#aws-cloudfront-alternative-cdn)
   - [Namecheap](#namecheap)
   - [Google Domains / Squarespace](#google-domains--squarespace)
   - [Hetzner DNS](#hetzner-dns)
@@ -43,7 +44,7 @@ This guide explains how to configure DNS records for MoaV.
 | Trojan | **Yes** | 8443/tcp |
 | Hysteria2 | **Yes** | 443/udp |
 | TrustTunnel | **Yes** | 4443/tcp+udp |
-| CDN (VLESS+WebSocket) | **Yes** (Cloudflare) | 2082/tcp |
+| CDN (VLESS+WebSocket) | **Yes** (Cloudflare) or **No** (CloudFront) | 2082/tcp |
 | dnstt (DNS tunnel) | **Yes** (NS records) | 53/udp |
 | Slipstream (QUIC-over-DNS) | **Yes** (NS records) | 53/udp |
 
@@ -238,6 +239,95 @@ A `400` or `404` response means sing-box is receiving the request.
 > **Important:** Cloudflare SSL/TLS mode must be set to **Flexible** for CDN mode. MoaV's CDN inbound on port 2082 is plain HTTP (Cloudflare terminates TLS). If you need Full SSL for other subdomains, use a Configuration Rule to set Flexible for just `cdn.yourdomain.com`.
 
 See [CDN Setup Guide](SETUP.md#cdn-fronted-vlesswebsocket-cloudflare) for complete CDN configuration.
+
+### AWS CloudFront (Alternative CDN)
+
+CloudFront can be used as an alternative to Cloudflare for CDN-fronted VLESS. The main advantage: **no domain required** — CloudFront gives you a `*.cloudfront.net` domain automatically. This is useful when you can't register a domain or want an additional CDN fallback.
+
+**How it works:** Client connects to CloudFront (AWS CDN IPs) → CloudFront forwards to your server on port 2082 → sing-box handles the VLESS+WS connection. DPI only sees connections to AWS infrastructure.
+
+#### Step 1: Create CloudFront Distribution
+
+1. Log into [AWS Console](https://console.aws.amazon.com/cloudfront/)
+2. Click **Create Distribution**
+3. Configure origin:
+
+| Setting | Value |
+|---------|-------|
+| Origin domain | `YOUR_SERVER_IP` (or your domain) |
+| Protocol | **HTTP only** |
+| HTTP port | `2082` |
+| HTTPS port | `443` |
+
+4. Configure behavior:
+
+| Setting | Value |
+|---------|-------|
+| Viewer protocol policy | **HTTPS only** |
+| Allowed HTTP methods | **GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE** |
+| Cache policy | **CachingDisabled** |
+| Origin request policy | **AllViewer** |
+
+5. Configure WebSocket support:
+
+| Setting | Value |
+|---------|-------|
+| Response headers policy | None |
+
+> CloudFront supports WebSocket natively — no extra configuration needed.
+
+6. Click **Create Distribution** and wait for deployment (5-15 minutes)
+7. Note your distribution domain: `d1234abcd.cloudfront.net`
+
+#### Step 2: Configure MoaV
+
+In your `.env` file:
+
+```bash
+# Use CloudFront instead of Cloudflare for CDN
+CDN_SUBDOMAIN=           # Leave empty (not using Cloudflare subdomain)
+CDN_DOMAIN=d1234abcd.cloudfront.net
+CDN_ADDRESS=d1234abcd.cloudfront.net
+CDN_SNI=d1234abcd.cloudfront.net
+CDN_TRANSPORT=ws         # Use 'ws' for widest CDN compatibility
+```
+
+Then re-bootstrap to regenerate configs:
+```bash
+moav bootstrap
+```
+
+#### Step 3: Verify
+
+```bash
+# Should return 400 (sing-box responding)
+curl -s -o /dev/null -w "%{http_code}" https://d1234abcd.cloudfront.net/test
+```
+
+#### CloudFront vs Cloudflare
+
+| Feature | Cloudflare | CloudFront |
+|---------|-----------|------------|
+| Cost | Free tier | ~$0.085/GB (1TB free/month for 12 months) |
+| Domain required | Yes | **No** (get `*.cloudfront.net`) |
+| Setup complexity | DNS + Origin Rule | AWS Console distribution |
+| WebSocket support | Yes | Yes |
+| Origin port config | Needs Origin Rule to rewrite to 2082 | Direct port configuration |
+| SNI flexibility | Can use root domain for stealth | Must use `*.cloudfront.net` or your CNAME |
+| Domain fronting | Partially supported | **Blocked since 2018** |
+| Global edge network | Yes (larger) | Yes |
+
+> **SNI note:** CloudFront validates that the TLS SNI matches your distribution domain or a configured CNAME. You cannot use an arbitrary domain (like `google.com`) as SNI — AWS blocked domain fronting in 2018. For Reality-based protocols (XHTTP, VLESS+Reality), SNI camouflage works differently and does not rely on the CDN.
+
+#### Using Both Cloudflare and CloudFront
+
+You can run both CDN providers simultaneously for redundancy. Users get two CDN share links — if one CDN's IPs get blocked, the other likely still works:
+
+1. Set up Cloudflare CDN as described above (requires domain)
+2. Set up CloudFront as a second distribution pointing to the same server
+3. Share both links with users
+
+To generate links for both, you'd need to run bootstrap with Cloudflare settings first, then manually create CloudFront share links using the same UUID and WS path.
 
 ### Namecheap
 

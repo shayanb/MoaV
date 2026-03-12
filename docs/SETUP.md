@@ -49,7 +49,7 @@ Complete guide to deploy MoaV on a VPS or home server.
 | 443/udp | UDP | Hysteria2 | Yes |
 | 8443/tcp | TCP | Trojan | Yes |
 | 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
-| 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) |
+| 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) or No (CloudFront) |
 | 51820/udp | UDP | WireGuard | No |
 | 51821/udp | UDP | AmneziaWG | No |
 | 8080/tcp | TCP | wstunnel | No |
@@ -500,6 +500,31 @@ Client --HTTPS:443--> Cloudflare CDN --HTTP:2082--> Your Server
    ```
 
 User bundles will now include `cdn-vless.txt` with Cloudflare-routed connection.
+
+### Alternative: AWS CloudFront (No Domain Required)
+
+If you don't have a domain, you can use AWS CloudFront instead of Cloudflare. CloudFront gives you a `*.cloudfront.net` domain automatically.
+
+```
+Client --HTTPS:443--> CloudFront CDN --HTTP:2082--> Your Server
+```
+
+1. Create a CloudFront distribution with your server IP as origin (HTTP, port 2082)
+2. Set viewer protocol to HTTPS only, cache policy to CachingDisabled
+3. Configure MoaV:
+
+```bash
+# In .env
+CDN_SUBDOMAIN=
+CDN_DOMAIN=d1234abcd.cloudfront.net
+CDN_ADDRESS=d1234abcd.cloudfront.net
+CDN_SNI=d1234abcd.cloudfront.net
+CDN_TRANSPORT=ws
+```
+
+4. Run `moav bootstrap` to regenerate configs
+
+See [DNS Configuration — AWS CloudFront](DNS.md#aws-cloudfront-alternative-cdn) for detailed setup instructions.
 
 ---
 
