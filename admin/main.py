@@ -392,6 +392,7 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
         "current_version": update_info["current_version"],
         "mahsanet_configured": bool(MAHSANET_API_KEY),
         "mahsanet_protocols": MAHSANET_PROTOCOLS,
+        "mahsanet_all_protocols": list(PROTOCOL_FILE_MAP.keys()),
     })
 
 

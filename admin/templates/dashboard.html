@@ -632,8 +632,8 @@
                     <div>
                         <label class="field-label">Protocols</label>
                         <div class="proto-checks">
-                            {% for p in mahsanet_protocols %}
-                            <label><input type="checkbox" name="donate-proto" value="{{ p }}" checked> {{ p }}</label>
+                            {% for p in mahsanet_all_protocols %}
+                            <label><input type="checkbox" name="donate-proto" value="{{ p }}" {% if p in mahsanet_protocols %}checked{% endif %}> {{ p }}</label>
                             {% endfor %}
                         </div>
                     </div>
