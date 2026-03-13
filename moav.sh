@@ -417,6 +417,43 @@ install_qrencode() {
     fi
 }
 
+ensure_admin_password() {
+    # Check if admin password is unset, empty, or still the insecure default
+    local current_password=""
+    if [[ -f ".env" ]]; then
+        current_password=$(grep -E "^ADMIN_PASSWORD=" .env 2>/dev/null | cut -d= -f2 | tr -d '"' | tr -d "'")
+    fi
+
+    if [[ -z "$current_password" || "$current_password" == "change_me_to_something_secure" || "$current_password" == "admin" ]]; then
+        echo ""
+        echo -e "${WHITE}Admin dashboard password${NC}"
+        echo "  Press Enter to generate a random password, or type your own"
+        printf "  Password: "
+        read -r input_password
+        if [[ -z "$input_password" ]]; then
+            input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+        fi
+
+        if grep -q "^ADMIN_PASSWORD=" .env 2>/dev/null; then
+            sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
+        else
+            echo "ADMIN_PASSWORD=\"$input_password\"" >> .env
+        fi
+        success "Admin password configured"
+        echo ""
+
+        # Show password prominently
+        echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+        echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
+        echo ""
+        echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
+        echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+        echo ""
+        return 0
+    fi
+    return 1  # password already set (no change needed)
+}
+
 check_prerequisites() {
     local missing=0
 
@@ -587,27 +624,11 @@ check_prerequisites() {
                 echo ""
 
                 # Generate or ask for admin password
-                echo -e "${WHITE}Admin dashboard password${NC}"
                 if [[ "$domainless_mode" == "true" ]]; then
+                    echo ""
                     echo "  (Admin will use self-signed certificate in domain-less mode)"
                 fi
-                echo "  Press Enter to generate a random password, or type your own"
-                printf "  Password: "
-                read -r input_password
-                if [[ -z "$input_password" ]]; then
-                    input_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
-                fi
-                sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$input_password\"|" .env
-                success "Admin password configured"
-                echo ""
-
-                # Show password prominently
-                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                echo -e "  ${WHITE}Admin Password:${NC} ${CYAN}$input_password${NC}"
-                echo ""
-                echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
-                echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
-                echo ""
+                ensure_admin_password
             else
                 missing=1
             fi
@@ -2973,6 +2994,7 @@ show_usage() {
     echo "  user list             List all users"
     echo "  user add NAME [NAME2...] [-p]  Add user(s) (--package creates zip)"
     echo "  user add --batch N [--prefix P]  Create N users (e.g., user01, user02...)"
+    echo "  admin password        Reset admin dashboard password"
     echo "  user revoke NAME      Revoke a user"
     echo "  user package NAME     Create distributable zip for existing user"
     echo "  build [SERVICE|PROFILE] [--no-cache]  Build services or profile"
@@ -3025,6 +3047,60 @@ show_usage() {
 cmd_check() {
     print_header
     check_prerequisites
+}
+
+cmd_admin() {
+    local action="${1:-}"
+
+    case "$action" in
+        password|reset-password|passwd)
+            if [[ ! -f ".env" ]]; then
+                error ".env file not found. Run 'moav setup' first."
+                return 1
+            fi
+
+            echo ""
+            echo -e "${WHITE}Reset admin dashboard password${NC}"
+            echo "  Press Enter to generate a random password, or type your own"
+            printf "  New password: "
+            read -r new_password
+            if [[ -z "$new_password" ]]; then
+                new_password=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
+            fi
+
+            if grep -q "^ADMIN_PASSWORD=" .env 2>/dev/null; then
+                sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$new_password\"|" .env
+            else
+                echo "ADMIN_PASSWORD=\"$new_password\"" >> .env
+            fi
+
+            echo ""
+            echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+            echo -e "  ${WHITE}New Admin Password:${NC} ${CYAN}$new_password${NC}"
+            echo ""
+            echo -e "  ${YELLOW}⚠ IMPORTANT: Save this password! It's also stored in .env${NC}"
+            echo -e "${GREEN}════════════════════════════════════════════════════════════════${NC}"
+            echo ""
+
+            # Restart admin container if running
+            if docker compose ps --status running 2>/dev/null | grep -q "admin"; then
+                info "Restarting admin container to apply new password..."
+                docker compose --profile admin restart admin
+                success "Admin container restarted with new password"
+            else
+                info "Admin container is not running. New password will take effect on next start."
+            fi
+            ;;
+        *)
+            echo "Usage: moav admin <command>"
+            echo ""
+            echo "Commands:"
+            echo "  password    Reset admin dashboard password"
+            echo ""
+            echo "Examples:"
+            echo "  moav admin password           # Generate random password"
+            ;;
+    esac
 }
 
 cmd_domainless() {
@@ -3087,6 +3163,9 @@ cmd_domainless() {
     else
         echo 'DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"' >> .env
     fi
+
+    # Ensure admin password is set (not the insecure default)
+    ensure_admin_password
 
     echo ""
     success "Domain-less mode enabled!"
@@ -4925,6 +5004,10 @@ main() {
             ;;
         domainless|domain-less|no-domain)
             cmd_domainless
+            ;;
+        admin)
+            shift
+            cmd_admin "$@"
             ;;
         profiles)
             cmd_profiles
