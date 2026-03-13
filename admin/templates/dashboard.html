@@ -396,6 +396,92 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* MahsaNet donation */
+        .mahsa-stats {
+            display: flex;
+            gap: 1.5rem;
+            padding: 0.5rem 0;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+        }
+        .mahsa-stats .stat-label { color: var(--text-dim); margin-right: 0.3rem; }
+        .mahsa-stats .stat-val { font-weight: 600; }
+        .mahsa-stats .stat-val.green { color: var(--green); }
+        .mahsa-stats .stat-val.yellow { color: var(--yellow); }
+        .mahsa-stats .stat-val.blue { color: var(--blue); }
+        .donate-form {
+            display: flex;
+            gap: 0.6rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .donate-form input[type="text"],
+        .donate-form input[type="number"] {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.4rem 0.6rem;
+            border-radius: 4px;
+            width: 120px;
+        }
+        .donate-form input:focus { outline: none; border-color: var(--blue); }
+        .proto-checks {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            padding-bottom: 0.25rem;
+        }
+        .proto-checks label {
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            cursor: pointer;
+        }
+        .proto-checks input[type="checkbox"] {
+            accent-color: var(--blue);
+            cursor: pointer;
+        }
+        .config-url {
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+        }
+        .btn-del {
+            background: none;
+            border: 1px solid var(--red);
+            color: var(--red);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: var(--mono);
+            font-size: 0.6rem;
+        }
+        .btn-del:hover { background: var(--red-dim); }
+        .badge-active {
+            color: var(--green);
+            background: var(--green-dim);
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-family: var(--mono);
+        }
+        .badge-inactive {
+            color: var(--yellow);
+            background: var(--yellow-dim);
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-family: var(--mono);
+        }
+
         /* Footer */
         .footer {
             display: flex;
@@ -522,6 +608,59 @@
                     </div>
                     {% endfor %}
                 </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- MahsaNet Donation -->
+        {% if mahsanet_configured %}
+        <div class="section">
+            <div class="section-head">
+                <h2>MahsaNet</h2>
+                <button class="btn btn-green" onclick="toggleDonatePanel()">+ Donate</button>
+            </div>
+            <div id="donate-panel" class="create-panel">
+                <form class="donate-form" onsubmit="return donateMahsanet(event)">
+                    <div>
+                        <label class="field-label">Count</label>
+                        <input type="number" id="donate-count" min="1" max="50" value="1" style="width:70px;">
+                    </div>
+                    <div>
+                        <label class="field-label">Prefix</label>
+                        <input type="text" id="donate-prefix" value="mahsa" pattern="[a-zA-Z0-9_\-]+" style="width:100px;">
+                    </div>
+                    <div>
+                        <label class="field-label">Protocols</label>
+                        <div class="proto-checks">
+                            {% for p in mahsanet_protocols %}
+                            <label><input type="checkbox" name="donate-proto" value="{{ p }}" checked> {{ p }}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-green" id="donate-btn">Donate</button>
+                </form>
+                <div id="donate-result" class="create-result"></div>
+            </div>
+            <div class="section-body">
+                <div id="mahsa-stats" class="mahsa-stats">
+                    <span><span class="stat-label">Total:</span><span class="stat-val blue" id="mahsa-total">-</span></span>
+                    <span><span class="stat-label">Active:</span><span class="stat-val green" id="mahsa-active">-</span></span>
+                    <span><span class="stat-label">Inactive:</span><span class="stat-val yellow" id="mahsa-inactive">-</span></span>
+                </div>
+                <table id="mahsa-configs-table" style="margin-top:0.5rem;">
+                    <thead>
+                        <tr>
+                            <th>Config URL</th>
+                            <th>Status</th>
+                            <th>Health</th>
+                            <th>Used</th>
+                            <th style="text-align:right;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="mahsa-configs-body">
+                        <tr><td colspan="5" style="color:var(--text-dim);font-size:0.75rem;">Loading...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
         {% endif %}
@@ -680,6 +819,132 @@
             }
             return false;
         }
+
+        {% if mahsanet_configured %}
+        /* MahsaNet donation functions */
+        let donating = false;
+        let donatePanelOpen = false;
+
+        function toggleDonatePanel() {
+            const panel = document.getElementById('donate-panel');
+            const btn = event.target;
+            panel.classList.toggle('open');
+            donatePanelOpen = panel.classList.contains('open');
+            btn.textContent = donatePanelOpen ? '- Close' : '+ Donate';
+        }
+
+        function showDonateResult(cls, text) {
+            const el = document.getElementById('donate-result');
+            el.className = 'create-result ' + cls;
+            el.innerHTML = '<button class="result-dismiss" onclick="document.getElementById(\'donate-result\').style.display=\'none\'">&times;</button>';
+            const s = document.createElement('span');
+            s.textContent = text;
+            el.appendChild(s);
+            el.style.display = 'block';
+        }
+
+        async function donateMahsanet(e) {
+            e.preventDefault();
+            const count = parseInt(document.getElementById('donate-count').value) || 1;
+            const prefix = document.getElementById('donate-prefix').value.trim();
+            const checked = document.querySelectorAll('input[name="donate-proto"]:checked');
+            const protocols = Array.from(checked).map(c => c.value);
+            const btn = document.getElementById('donate-btn');
+
+            if (!prefix) { alert('Enter a prefix'); return false; }
+            if (protocols.length === 0) { alert('Select at least one protocol'); return false; }
+
+            donating = true;
+            creating = true;
+            clearTimeout(refreshTimer);
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Donating...';
+            document.getElementById('donate-result').style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/mahsanet/donate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ count, prefix, protocols }),
+                    signal: AbortSignal.timeout(600000),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    let msg = `Donated ${data.donated} config(s) for ${data.users.length} user(s)`;
+                    if (data.errors.length) msg += `\nWarnings: ${data.errors.join('\n')}`;
+                    showDonateResult('success', msg);
+                    loadMahsanetConfigs();
+                    setTimeout(() => location.reload(), 3000);
+                } else {
+                    showDonateResult('error', data.detail || data.errors?.join('\n') || 'Failed');
+                }
+            } catch (err) {
+                showDonateResult('error', 'Request failed: ' + err.message);
+            } finally {
+                donating = false;
+                creating = false;
+                btn.disabled = false;
+                btn.innerHTML = 'Donate';
+                refreshTimer = scheduleRefresh();
+            }
+            return false;
+        }
+
+        async function loadMahsanetConfigs() {
+            try {
+                /* Load status */
+                const statusResp = await fetch('/api/mahsanet/status');
+                const status = await statusResp.json();
+                if (status.configured && !status.error) {
+                    document.getElementById('mahsa-total').textContent = status.total;
+                    document.getElementById('mahsa-active').textContent = status.active;
+                    document.getElementById('mahsa-inactive').textContent = status.inactive;
+                }
+
+                /* Load configs */
+                const configResp = await fetch('/api/mahsanet/configs');
+                if (!configResp.ok) return;
+                const data = await configResp.json();
+                const tbody = document.getElementById('mahsa-configs-body');
+
+                if (!data.results || data.results.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-dim);font-size:0.75rem;">No configs donated yet</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.results.map(c => `
+                    <tr>
+                        <td><div class="config-url" title="${c.url}">${c.url}</div></td>
+                        <td><span class="${c.is_active ? 'badge-active' : 'badge-inactive'}">${c.is_active ? 'active' : 'inactive'}</span></td>
+                        <td style="font-family:var(--mono);font-size:0.7rem;">${c.health_status_percent || '—'}</td>
+                        <td style="font-family:var(--mono);font-size:0.7rem;">${c.num_consumed || 0}</td>
+                        <td style="text-align:right;">
+                            <button class="btn-del" onclick="deleteMahsaConfig('${c.hash}')">del</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('MahsaNet load error:', e);
+            }
+        }
+
+        async function deleteMahsaConfig(hash) {
+            if (!confirm('Remove this config from MahsaNet?')) return;
+            try {
+                const resp = await fetch(`/api/mahsanet/configs/${hash}`, { method: 'DELETE' });
+                if (resp.ok) {
+                    loadMahsanetConfigs();
+                } else {
+                    alert('Failed to delete config');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        /* Load on page load */
+        loadMahsanetConfigs();
+        {% endif %}
     </script>
 </body>
 </html>

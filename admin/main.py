@@ -390,6 +390,8 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
         "update_available": update_info["update_available"],
         "latest_version": update_info["latest_version"],
         "current_version": update_info["current_version"],
+        "mahsanet_configured": bool(MAHSANET_API_KEY),
+        "mahsanet_protocols": MAHSANET_PROTOCOLS,
     })
 
 
@@ -604,6 +606,215 @@ async def download_bundle(username: str, _: str = Depends(verify_auth)):
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename={username}.zip"}
     )
+
+
+# =============================================================================
+# MahsaNet Config Donation API
+# =============================================================================
+
+MAHSANET_API_URL = "https://www.mahsaserver.com/backend/api/v1/config/"
+MAHSANET_API_KEY = os.environ.get("MAHSANET_API_KEY", "")
+MAHSANET_PROTOCOLS = os.environ.get("MAHSANET_PROTOCOLS", "reality hysteria2").split()
+MAHSANET_POOL = os.environ.get("MAHSANET_POOL", "mahsa")
+
+PROTOCOL_FILE_MAP = {
+    "reality": "reality.txt",
+    "hysteria2": "hysteria2.txt",
+    "trojan": "trojan.txt",
+    "cdn": "cdn-vless.txt",
+    "xhttp": "xhttp-vless.txt",
+}
+
+PROTOCOL_PREFIX_MAP = {
+    "reality": "vless://",
+    "hysteria2": "hysteria2://",
+    "trojan": "trojan://",
+    "cdn": "vless://",
+    "xhttp": "vless://",
+}
+
+
+def validate_share_link(link: str, protocol: str) -> bool:
+    """Validate a share link has correct format."""
+    if not link or len(link) < 50:
+        return False
+    if "@" not in link or "#" not in link:
+        return False
+    expected_prefix = PROTOCOL_PREFIX_MAP.get(protocol, "")
+    if expected_prefix and not link.startswith(expected_prefix):
+        return False
+    return True
+
+
+async def mahsanet_api_call(method: str, endpoint: str = "", data: dict = None):
+    """Make an API call to MahsaNet."""
+    url = f"{MAHSANET_API_URL}{endpoint}"
+    headers = {
+        "Authorization": f"Token {MAHSANET_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        if method == "GET":
+            resp = await client.get(url, headers=headers)
+        elif method == "POST":
+            resp = await client.post(url, headers=headers, json=data)
+        elif method == "DELETE":
+            resp = await client.delete(url, headers=headers)
+        else:
+            raise ValueError(f"Unsupported method: {method}")
+    return resp
+
+
+@app.get("/api/mahsanet/status")
+async def mahsanet_status(_: str = Depends(verify_auth)):
+    """Get MahsaNet donation status."""
+    if not MAHSANET_API_KEY:
+        return {"configured": False}
+
+    try:
+        resp = await mahsanet_api_call("GET", "?limit=1")
+        if resp.status_code != 200:
+            return {"configured": True, "error": f"API error (HTTP {resp.status_code})"}
+
+        total = resp.json().get("count", 0)
+
+        # Get active count
+        active_resp = await mahsanet_api_call("GET", "?limit=1&is_active=true")
+        active = active_resp.json().get("count", 0) if active_resp.status_code == 200 else 0
+
+        return {
+            "configured": True,
+            "total": total,
+            "active": active,
+            "inactive": total - active,
+        }
+    except Exception as e:
+        return {"configured": True, "error": str(e)}
+
+
+@app.get("/api/mahsanet/configs")
+async def mahsanet_configs(_: str = Depends(verify_auth)):
+    """List donated configs from MahsaNet."""
+    if not MAHSANET_API_KEY:
+        raise HTTPException(status_code=400, detail="MahsaNet API key not configured")
+
+    try:
+        resp = await mahsanet_api_call("GET", "?limit=100")
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="MahsaNet API error")
+        return resp.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"MahsaNet API unreachable: {e}")
+
+
+@app.post("/api/mahsanet/donate")
+async def mahsanet_donate(request: Request, _: str = Depends(verify_auth)):
+    """Generate users and donate configs to MahsaNet."""
+    if not MAHSANET_API_KEY:
+        raise HTTPException(status_code=400, detail="MahsaNet API key not configured")
+
+    body = await request.json()
+    count = int(body.get("count", 1))
+    prefix = body.get("prefix", "mahsa").strip()
+    protocols = body.get("protocols", MAHSANET_PROTOCOLS)
+
+    # Validate
+    if count < 1 or count > 50:
+        raise HTTPException(status_code=400, detail="Count must be 1-50")
+    if not re.match(r'^[a-zA-Z0-9_-]+$', prefix):
+        raise HTTPException(status_code=400, detail="Invalid prefix")
+
+    # Generate users via user-add.sh
+    if not USER_ADD_SCRIPT.exists():
+        raise HTTPException(status_code=500, detail="user-add.sh not found")
+
+    cmd = ["bash", str(USER_ADD_SCRIPT), "--batch", str(count), "--prefix", prefix]
+    script_timeout = max(120, count * 60)
+
+    try:
+        result = subprocess.run(
+            cmd, cwd=str(PROJECT_DIR),
+            capture_output=True, text=True, timeout=script_timeout,
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail=f"User creation timed out ({script_timeout}s)")
+
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=f"User creation failed: {result.stderr}")
+
+    # Find generated user directories and donate their configs
+    bundle_path = get_bundle_path()
+    donated = []
+    errors = []
+    generated_users = []
+
+    for i in range(1, count + 1):
+        username = f"{prefix}{i:02d}"
+        user_dir = bundle_path / username
+        if not user_dir.exists():
+            continue
+        generated_users.append(username)
+
+        for protocol in protocols:
+            link_file = PROTOCOL_FILE_MAP.get(protocol)
+            if not link_file:
+                errors.append(f"{username}: unknown protocol '{protocol}'")
+                continue
+
+            filepath = user_dir / link_file
+            if not filepath.exists():
+                errors.append(f"{username}: {link_file} not found")
+                continue
+
+            link = filepath.read_text().strip().split("\n")[0]
+            if not validate_share_link(link, protocol):
+                errors.append(f"{username}: {protocol} link failed validation")
+                continue
+
+            # POST to MahsaNet
+            try:
+                resp = await mahsanet_api_call("POST", "", {
+                    "url": link,
+                    "ads_url": "",
+                    "pool": MAHSANET_POOL,
+                    "use_mux": False,
+                    "use_fragment": False,
+                })
+                if resp.status_code == 201:
+                    config_data = resp.json()
+                    donated.append({
+                        "user": username,
+                        "protocol": protocol,
+                        "id": config_data.get("hash", config_data.get("id", "unknown")),
+                    })
+                else:
+                    err_detail = resp.text[:200]
+                    errors.append(f"{username}/{protocol}: HTTP {resp.status_code} - {err_detail}")
+            except Exception as e:
+                errors.append(f"{username}/{protocol}: {str(e)}")
+
+    return {
+        "success": len(donated) > 0,
+        "users": generated_users,
+        "donated": len(donated),
+        "donated_configs": donated,
+        "errors": errors,
+    }
+
+
+@app.delete("/api/mahsanet/configs/{config_id}")
+async def mahsanet_delete_config(config_id: str, _: str = Depends(verify_auth)):
+    """Delete a donated config from MahsaNet."""
+    if not MAHSANET_API_KEY:
+        raise HTTPException(status_code=400, detail="MahsaNet API key not configured")
+
+    try:
+        resp = await mahsanet_api_call("DELETE", f"{config_id}/")
+        if resp.status_code in (200, 204):
+            return {"success": True}
+        raise HTTPException(status_code=resp.status_code, detail="Failed to delete config")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"MahsaNet API unreachable: {e}")
 
 
 def find_certificates(wait_for_letsencrypt=True, max_wait=60):
