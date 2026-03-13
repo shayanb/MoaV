@@ -248,6 +248,8 @@ CloudFront can be used as an alternative to Cloudflare for CDN-fronted VLESS. Th
 
 #### Step 1: Create CloudFront Distribution
 
+##### Option A: AWS Console (Web UI)
+
 1. Log into [AWS Console](https://console.aws.amazon.com/cloudfront/)
 2. Click **Create Distribution**
 3. Configure origin:
@@ -278,6 +280,82 @@ CloudFront can be used as an alternative to Cloudflare for CDN-fronted VLESS. Th
 
 6. Click **Create Distribution** and wait for deployment (5-15 minutes)
 7. Note your distribution domain: `d1234abcd.cloudfront.net`
+
+##### Option B: AWS CLI
+
+Install and configure the CLI first:
+
+```bash
+# Install AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+unzip awscliv2.zip && sudo ./aws/install
+
+# Configure (needs AWS Access Key + Secret Key from IAM)
+aws configure
+```
+
+Create the distribution (replace `YOUR_SERVER_IP`):
+
+```bash
+aws cloudfront create-distribution --distribution-config '{
+  "CallerReference": "moav-cdn-'$(date +%s)'",
+  "Comment": "MoaV CDN",
+  "Enabled": true,
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "moav-origin",
+        "DomainName": "YOUR_SERVER_IP",
+        "CustomOriginConfig": {
+          "HTTPPort": 2082,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "http-only"
+        }
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "moav-origin",
+    "ViewerProtocolPolicy": "https-only",
+    "AllowedMethods": {
+      "Quantity": 7,
+      "Items": ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"],
+      "CachedMethods": {"Quantity": 2, "Items": ["GET","HEAD"]}
+    },
+    "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+    "OriginRequestPolicyId": "216adef6-5c7f-47e4-b989-5492eafa07d3",
+    "Compress": false
+  },
+  "PriceClass": "PriceClass_200"
+}'
+```
+
+The `PriceClass` controls which edge locations (regions) are used:
+
+| PriceClass | Regions | Cost |
+|-----------|---------|------|
+| `PriceClass_100` | US, Canada, Europe | Cheapest |
+| `PriceClass_200` | + Asia, Middle East, Africa | Mid-tier |
+| `PriceClass_All` | All edge locations worldwide | Most expensive |
+
+> For users in Iran/Middle East, use `PriceClass_200` or `PriceClass_All` for better latency — these include Middle East and Asia edge nodes.
+
+> **Note:** You can't pick a specific datacenter/city. CloudFront is an anycast CDN — it automatically routes users to the nearest edge location within your selected price class.
+
+Get your distribution domain:
+
+```bash
+aws cloudfront list-distributions \
+  --query 'DistributionList.Items[0].DomainName' --output text
+```
+
+Wait for deployment to complete (status changes from `InProgress` to `Deployed`):
+
+```bash
+aws cloudfront list-distributions \
+  --query 'DistributionList.Items[*].[Id,DomainName,Status]' --output table
+```
 
 #### Step 2: Configure MoaV
 
@@ -328,6 +406,32 @@ You can run both CDN providers simultaneously for redundancy. Users get two CDN 
 3. Share both links with users
 
 To generate links for both, you'd need to run bootstrap with Cloudflare settings first, then manually create CloudFront share links using the same UUID and WS path.
+
+#### CloudFront CLI Management
+
+```bash
+# List all distributions
+aws cloudfront list-distributions \
+  --query 'DistributionList.Items[*].[Id,DomainName,Status]' --output table
+
+# Check which edge location a user is hitting
+curl -sI https://d1234abcd.cloudfront.net/ | grep x-amz-cf-pop
+# Example output: x-amz-cf-pop: FRA56-P4 (Frankfurt)
+
+# Disable a distribution (must disable before deleting)
+# First get the ETag:
+ETAG=$(aws cloudfront get-distribution-config --id DIST_ID \
+  --query 'ETag' --output text)
+# Then disable:
+aws cloudfront get-distribution-config --id DIST_ID \
+  --query 'DistributionConfig' --output json \
+  | jq '.Enabled = false' \
+  | aws cloudfront update-distribution --id DIST_ID \
+    --if-match "$ETAG" --distribution-config file:///dev/stdin
+
+# Delete (only after status is "Deployed" and distribution is disabled)
+aws cloudfront delete-distribution --id DIST_ID --if-match "$ETAG"
+```
 
 ### Namecheap
 
