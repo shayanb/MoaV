@@ -19,6 +19,7 @@ MoaV deploys 12 protocols, each with different stealth characteristics, speed pr
 | [Slipstream](#slipstream) | 53/udp | Medium | Low-Medium | Yes |
 | [Psiphon Conduit](#psiphon-conduit) | dynamic | High | Medium | No |
 | [Tor Snowflake](#tor-snowflake) | dynamic | High | Low | No |
+| [MahsaNet](#mahsanet) | — | — | — | No |
 
 ## Protocols in Detail
 
@@ -127,6 +128,15 @@ Bandwidth donation to the Tor network. Acts as a Snowflake proxy, helping Tor us
 - **Engine:** [Snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake)
 - **Clients:** [Tor Browser](https://www.torproject.org/) with Snowflake bridge
 
+### MahsaNet
+
+Config donation to [MahsaServer.com](https://www.mahsaserver.com/), a decentralized VPN config sharing platform for the [Mahsa VPN](https://www.mahsaserver.com/) app. With over 2 million users in Iran, Mahsa VPN connects to donated VPN configurations from servers worldwide. Unlike Conduit and Snowflake (which donate bandwidth), MahsaNet donates your server's VPN config links — Mahsa VPN users then connect directly to your server.
+
+- **Supported protocols:** Reality (VLESS), Hysteria2, Trojan, CDN (VLESS+WS)
+- **Clients:** [Mahsa VPN](https://www.mahsaserver.com/) app (Android, iOS)
+- **Setup:** Register on MahsaServer.com, get API key, then `moav donate mahsanet`
+- **Dashboard:** Donate, list, and manage configs from the Admin Dashboard
+
 ## Choosing Protocols
 
 **For censored networks (Iran, China, Russia):**
@@ -145,3 +155,4 @@ Bandwidth donation to the Tor network. Acts as a Snowflake proxy, helping Tor us
 
 1. **Conduit** — donate bandwidth to Psiphon users
 2. **Snowflake** — donate bandwidth to Tor users
+3. **MahsaNet** — donate VPN configs to Mahsa VPN users in Iran

@@ -50,6 +50,8 @@ moav user add NAME        # Add new user
 moav user add --batch 5   # Batch create 5 users
 moav user revoke NAME     # Revoke user
 moav test USERNAME        # Test connectivity
+moav admin password       # Reset admin password
+moav donate mahsanet      # Donate configs to MahsaNet
 ```
 
 ---
@@ -407,6 +409,67 @@ moav client build
 
 ---
 
+### Admin
+
+#### `moav admin password`
+Reset the admin dashboard password.
+
+```bash
+moav admin password          # Prompts for new password (or generates random)
+```
+
+---
+
+### Config Donation
+
+#### `moav donate`
+Donate VPN configs to sharing platforms.
+
+```bash
+moav donate                  # Show available donation services
+```
+
+#### `moav donate mahsanet`
+Donate configs to MahsaServer.com (Mahsa VPN, 2M+ users in Iran).
+
+```bash
+# Set up API key (one-time)
+moav donate mahsanet --setup
+
+# Generate users and donate configs (interactive)
+moav donate mahsanet
+
+# List donated configs
+moav donate mahsanet --list
+
+# Show donation summary
+moav donate mahsanet --status
+
+# Remove all donated configs
+moav donate mahsanet --remove
+```
+
+**Options:**
+- `--setup` — Interactive API key setup with validation
+- `--list` — List all donated configs with status and health
+- `--status` — Show total/active/inactive config count
+- `--remove` — Remove all donated configs (with confirmation)
+
+**Default action (no flag):**
+1. Prompts for number of users to create and prefix
+2. Generates new dedicated users via the standard pipeline
+3. Reads share links and validates them
+4. Submits to MahsaNet API
+
+**Configuration in `.env`:**
+```bash
+MAHSANET_API_KEY=            # API key from mahsaserver.com/user/api
+MAHSANET_PROTOCOLS="reality hysteria2"   # Protocols to donate
+MAHSANET_POOL=mahsa          # Pool: mahsa, warp, popup, telegram
+```
+
+---
+
 ### Migration
 
 #### `moav export`
@@ -520,6 +583,9 @@ Key variables in `.env` that affect CLI behavior:
 | `CLIENT_SOCKS_PORT` | SOCKS5 port for client mode | `10800` |
 | `CLIENT_HTTP_PORT` | HTTP port for client mode | `18080` |
 | `INITIAL_USERS` | Users created during bootstrap | `5` |
+| `MAHSANET_API_KEY` | MahsaNet API key for config donation | (empty) |
+| `MAHSANET_PROTOCOLS` | Protocols to donate to MahsaNet | `reality hysteria2` |
+| `MAHSANET_POOL` | MahsaNet pool for donated configs | `mahsa` |
 
 ---
 
@@ -601,6 +667,26 @@ moav restart
 
 # Return to stable
 moav update -b main
+```
+
+### Config Donation to MahsaNet
+
+```bash
+# One-time: set up API key
+moav donate mahsanet --setup
+
+# Donate 5 configs with Reality and Hysteria2
+moav donate mahsanet
+# Enter: 5 for count, "mahsa" for prefix
+
+# Check status
+moav donate mahsanet --status
+
+# List all donated configs
+moav donate mahsanet --list
+
+# Remove all donations
+moav donate mahsanet --remove
 ```
 
 ### Domain-less Quick Setup

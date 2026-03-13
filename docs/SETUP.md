@@ -665,6 +665,94 @@ Both can run simultaneously without conflicts.
 
 ---
 
+## MahsaNet Config Donation
+
+Donate your server's VPN configs to [MahsaServer.com](https://www.mahsaserver.com/), a decentralized config sharing platform for the Mahsa VPN app (2M+ users in Iran). Mahsa VPN users connect directly to your donated configs.
+
+### Prerequisites
+
+1. **Register** at [mahsaserver.com](https://www.mahsaserver.com/) and verify your email
+2. **Become a verified donor** — fill out the verified donor form on the website
+3. **Generate an API key** at [mahsaserver.com/user/api](https://www.mahsaserver.com/user/api)
+
+### Setup
+
+```bash
+# Set up your API key (interactive — validates the key)
+moav donate mahsanet --setup
+```
+
+Or manually add to `.env`:
+```bash
+MAHSANET_API_KEY=your_api_key_here
+```
+
+### Configuration
+
+Configure in `.env`:
+
+```bash
+# Protocols to donate (space-separated)
+# Supported: reality, hysteria2, trojan, cdn, xhttp
+MAHSANET_PROTOCOLS="reality hysteria2"
+
+# Pool determines where configs appear in the Mahsa VPN app
+# Options: mahsa (default), warp, popup, telegram
+MAHSANET_POOL=mahsa
+```
+
+**Protocol notes:**
+- `reality` — VLESS+Reality, works without a domain, recommended
+- `hysteria2` — QUIC-based, fast, requires domain + UDP
+- `trojan` — TLS-based, requires domain
+- `cdn` — VLESS+WS via Cloudflare, requires CDN setup
+- `xhttp` — VLESS+XHTTP+Reality via Xray-core, requires xhttp profile
+
+### Donating Configs
+
+```bash
+# Generate new users and donate their configs
+moav donate mahsanet
+
+# You'll be prompted for:
+#   - Number of users to create (default: 1)
+#   - Username prefix (default: mahsa)
+```
+
+This creates dedicated users (e.g., `mahsa01`, `mahsa02`) and submits their config share links to MahsaNet.
+
+### Managing Donations
+
+```bash
+# List your donated configs
+moav donate mahsanet --list
+
+# Show donation summary (total/active/inactive)
+moav donate mahsanet --status
+
+# Remove all donated configs from MahsaNet
+moav donate mahsanet --remove
+```
+
+### Admin Dashboard
+
+When `MAHSANET_API_KEY` is set, the Admin Dashboard shows a **MahsaNet** section where you can:
+
+- View donation stats (total, active, inactive configs)
+- Donate new configs (with count, prefix, and protocol selection)
+- See all donated configs with health status and usage count
+- Delete individual configs
+
+### How It Works
+
+1. `moav donate mahsanet` creates new MoaV users with the standard user provisioning pipeline
+2. For each user, it reads the share link files (e.g., `reality.txt`, `hysteria2.txt`)
+3. Each link is validated (correct prefix, structure, length)
+4. Links are submitted to the MahsaNet API as config donations
+5. Mahsa VPN users worldwide can then connect through your server
+
+---
+
 ## Monitoring (Grafana + Prometheus)
 
 MoaV includes an optional monitoring stack for real-time observability.
