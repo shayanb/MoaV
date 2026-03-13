@@ -753,18 +753,30 @@ async def mahsanet_donate(request: Request, _: str = Depends(verify_auth)):
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=f"User creation failed: {result.stderr}")
 
-    # Find generated user directories and donate their configs
+    # Find generated user directories by parsing script output for created usernames
+    # user-add.sh logs: "✓ User 'mahsa05' created successfully"
     bundle_path = get_bundle_path()
     donated = []
     errors = []
     generated_users = []
 
-    for i in range(1, count + 1):
-        username = f"{prefix}{i:02d}"
+    # Extract usernames from script output
+    for match in re.finditer(r"User '([^']+)' created", result.stdout or ""):
+        uname = match.group(1)
+        if (bundle_path / uname).exists():
+            generated_users.append(uname)
+
+    # Fallback: guess names if parsing failed (first run starts at 01)
+    if not generated_users:
+        for i in range(1, 100):
+            username = f"{prefix}{i:02d}"
+            if (bundle_path / username).exists():
+                generated_users.append(username)
+            if len(generated_users) >= count:
+                break
+
+    for username in generated_users:
         user_dir = bundle_path / username
-        if not user_dir.exists():
-            continue
-        generated_users.append(username)
 
         for protocol in protocols:
             link_file = PROTOCOL_FILE_MAP.get(protocol)
