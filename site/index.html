@@ -6,8 +6,8 @@
     <title>MoaV - Mother of all VPNs | Multi-Protocol Censorship Circumvention</title>
 
     <!-- Primary SEO Meta Tags -->
-    <meta name="description" content="MoaV (Mother of all VPNs) is a free, open-source censorship circumvention stack built for hostile network environments. Docker-based deployment of Reality (VLESS), Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN WebSocket, WireGuard, DNS tunneling (dnstt + Slipstream), Telegram MTProxy, Psiphon Conduit, and Tor Snowflake. Web admin dashboard, Grafana monitoring, and automatic protocol fallback. Internet freedom is a human right.">
-    <meta name="keywords" content="VPN, censorship circumvention, privacy, internet freedom, Reality protocol, VLESS, Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunnel, Slipstream, Telegram MTProxy, anti-censorship, proxy, sing-box, bypass firewall, GFW, psiphon, conduit, tor, snowflake, open source VPN, self-hosted VPN, Docker VPN, internet shutdown, digital rights, human rights, Cloudflare CDN, WebSocket tunnel, Grafana monitoring">
+    <meta name="description" content="MoaV (Mother of all VPNs) is a free, open-source censorship circumvention stack with 13+ protocols for hostile network environments. Docker-based deployment of Reality (VLESS), XHTTP (Xray-core), Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN (Cloudflare/CloudFront), WireGuard, DNS tunneling (dnstt + Slipstream), Telegram MTProxy, Psiphon Conduit, and Tor Snowflake. Donate configs to Mahsa VPN (2M+ users in Iran). Web admin dashboard, Grafana monitoring with per-user traffic metrics, and automatic protocol fallback. Internet freedom is a human right.">
+    <meta name="keywords" content="VPN, censorship circumvention, privacy, internet freedom, Reality protocol, VLESS, XHTTP, Xray-core, Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunnel, Slipstream, Telegram MTProxy, anti-censorship, proxy, sing-box, bypass firewall, GFW, DPI, psiphon, conduit, tor, snowflake, open source VPN, self-hosted VPN, Docker VPN, internet shutdown, digital rights, human rights, Cloudflare CDN, CloudFront, WebSocket tunnel, Grafana monitoring, MahsaNet, Mahsa VPN, Iran, config donation">
     <meta name="author" content="MoaV Contributors">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <link rel="canonical" href="https://moav.sh">
@@ -16,7 +16,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://moav.sh">
     <meta property="og:title" content="MoaV - Mother of all VPNs | Internet Freedom Stack">
-    <meta property="og:description" content="Open-source multi-protocol circumvention stack for hostile networks. One-command Docker deployment. Reality, Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN mode, WireGuard, DNS tunneling, Slipstream, Telegram MTProxy, Psiphon Conduit, and Tor Snowflake. Web admin, Grafana monitoring, automatic protocol fallback. Internet access is a human right.">
+    <meta property="og:description" content="Open-source 13+ protocol circumvention stack for hostile networks. One-command Docker deployment. Reality, XHTTP (Xray-core), Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN, WireGuard, DNS tunneling, Telegram MTProxy, Psiphon Conduit, Tor Snowflake. Donate configs to Mahsa VPN (2M+ users in Iran). Per-user Grafana monitoring. Internet access is a human right.">
     <meta property="og:image" content="https://moav.sh/assets/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -27,7 +27,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://moav.sh">
     <meta name="twitter:title" content="MoaV - Mother of all VPNs | Internet Freedom Stack">
-    <meta name="twitter:description" content="Open-source censorship circumvention for hostile networks. Docker-based multi-protocol stack: Reality, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunneling, Telegram MTProxy, and more. Internet access is a human right.">
+    <meta name="twitter:description" content="Open-source 13+ protocol censorship circumvention for hostile networks. Reality, XHTTP, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunneling, Telegram MTProxy, and more. Donate configs to Mahsa VPN (2M+ users in Iran). Internet access is a human right.">
     <meta name="twitter:image" content="https://moav.sh/assets/og-image.png">
 
     <!-- Additional SEO -->
@@ -42,7 +42,7 @@
         "@type": "SoftwareApplication",
         "name": "MoaV",
         "alternateName": "Mother of all VPNs",
-        "description": "MoaV is a free, open-source multi-protocol censorship circumvention stack that deploys Reality (VLESS), Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN WebSocket, WireGuard, Telegram MTProxy, Psiphon Conduit, Tor Snowflake, and DNS tunneling (dnstt + Slipstream) protocols. Designed for hostile network environments, it provides automatic protocol fallback, multi-user management, web admin dashboard, Grafana monitoring, and stealth operation. Single-command deployment with Docker Compose.",
+        "description": "MoaV is a free, open-source multi-protocol censorship circumvention stack with 13+ protocols: Reality (VLESS), XHTTP (Xray-core), Trojan, Hysteria2, TrustTunnel, AmneziaWG, CDN (Cloudflare/CloudFront), WireGuard, Telegram MTProxy, Psiphon Conduit, Tor Snowflake, and DNS tunneling (dnstt + Slipstream). Designed for hostile network environments with automatic protocol fallback, multi-user management, web admin dashboard, per-user Grafana monitoring, and MahsaNet config donation to Mahsa VPN (2M+ users in Iran). Single-command deployment with Docker Compose.",
         "url": "https://moav.sh",
         "applicationCategory": "NetworkApplication",
         "operatingSystem": "Linux, Docker",
@@ -55,25 +55,28 @@
             "priceCurrency": "USD"
         },
         "featureList": [
-            "Reality (VLESS) protocol - TLS camouflage",
+            "Reality (VLESS) protocol - TLS camouflage on port 443",
+            "XHTTP (Xray-core) - Multiplexed HTTP with Reality camouflage, no domain needed",
             "Trojan protocol - HTTPS mimicry",
             "Hysteria2 - QUIC-based fast protocol",
             "TrustTunnel - HTTP/2 and QUIC tunneling",
             "AmneziaWG - Obfuscated WireGuard defeating DPI",
-            "CDN mode - VLESS over WebSocket via Cloudflare",
+            "CDN mode - VLESS via Cloudflare or AWS CloudFront",
             "WireGuard - Full VPN mode (direct and wstunnel)",
             "DNS Tunneling (dnstt + Slipstream) - Works when only DNS allowed",
             "Telegram MTProxy - Fake-TLS V2 for direct Telegram access",
             "Tor Snowflake - Donate bandwidth to Tor network",
             "Psiphon Conduit - Donate bandwidth to Psiphon network",
-            "Grafana monitoring dashboard",
-            "Web admin panel with user management",
+            "MahsaNet config donation - Share VPN configs with Mahsa VPN (2M+ users in Iran)",
+            "Grafana monitoring with per-user traffic metrics",
+            "Web admin panel with user management and config donation",
             "Multi-user credential management with QR codes",
             "Automatic protocol fallback",
-            "Docker Compose deployment",
-            "Decoy website included"
+            "Docker Compose single-command deployment",
+            "Shell autocompletion (bash/zsh)",
+            "Decoy website with anti-fingerprinting"
         ],
-        "keywords": "VPN, censorship circumvention, privacy, Reality, Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunnel, Slipstream, Telegram MTProxy, proxy, anti-censorship, Cloudflare CDN, WebSocket, Grafana monitoring",
+        "keywords": "VPN, censorship circumvention, privacy, Reality, XHTTP, Xray-core, Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, DNS tunnel, Slipstream, Telegram MTProxy, proxy, anti-censorship, Cloudflare CDN, CloudFront, Grafana monitoring, MahsaNet, Mahsa VPN, Iran",
         "downloadUrl": "https://github.com/shayanb/MoaV",
         "installUrl": "https://moav.sh/install.sh",
         "codeRepository": "https://github.com/shayanb/MoaV",
@@ -97,7 +100,7 @@
                 "name": "What is MoaV?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "MoaV (Mother of all VPNs) is a free, open-source multi-protocol censorship circumvention stack that combines Reality (VLESS), Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, Telegram MTProxy, Tor Snowflake, Psiphon Conduit, and DNS tunneling (dnstt + Slipstream) into a single Docker-based deployment."
+                    "text": "MoaV (Mother of all VPNs) is a free, open-source multi-protocol censorship circumvention stack with 13+ protocols including Reality (VLESS), XHTTP (Xray-core), Trojan, Hysteria2, TrustTunnel, AmneziaWG, WireGuard, Telegram MTProxy, Tor Snowflake, Psiphon Conduit, and DNS tunneling (dnstt + Slipstream) in a single Docker deployment. It also supports donating VPN configs to Mahsa VPN (2M+ users in Iran) via MahsaNet."
                 }
             },
             {
@@ -113,7 +116,7 @@
                 "name": "Which VPN protocols does MoaV support?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "MoaV supports Reality (VLESS) on 443/tcp, Hysteria2 on 443/udp, Trojan on 8443/tcp, TrustTunnel on 4443/tcp+udp, AmneziaWG on 51821/udp, CDN mode (VLESS over WebSocket via Cloudflare), WireGuard on 51820/udp (and via WebSocket on 8080/tcp), DNS tunneling on 53/udp (dnstt + Slipstream), Telegram MTProxy on 993/tcp, Psiphon Conduit, and Tor Snowflake."
+                    "text": "MoaV supports 13+ protocols: Reality (VLESS) on 443/tcp, XHTTP (Xray-core) on 2096/tcp, Hysteria2 on 443/udp, Trojan on 8443/tcp, TrustTunnel on 4443/tcp+udp, AmneziaWG on 51821/udp, CDN mode (VLESS via Cloudflare or CloudFront), WireGuard on 51820/udp (and via WebSocket on 8080/tcp), DNS tunneling on 53/udp (dnstt + Slipstream), Telegram MTProxy on 993/tcp, Psiphon Conduit, and Tor Snowflake."
                 }
             },
             {
@@ -122,6 +125,14 @@
                 "acceptedAnswer": {
                     "@type": "Answer",
                     "text": "Yes, MoaV includes a web-based admin dashboard on port 9443. It shows service status, user management, downloadable config bundles with QR codes, and traffic statistics. Optional Grafana monitoring is available on port 9444 for detailed metrics."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I donate VPN configs to help people in Iran?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, MoaV integrates with MahsaNet (MahsaServer.com) to donate VPN configurations to Mahsa VPN, which has over 2 million users in Iran. You can donate configs directly from the admin dashboard or using 'moav donate mahsanet' from the CLI. You can also donate bandwidth through Psiphon Conduit and Tor Snowflake."
                 }
             },
             {
@@ -226,6 +237,19 @@
                     <h3>Stealth Proxies</h3>
                     <p>Reality (VLESS), Hysteria2, Trojan. Look like normal HTTPS. CDN mode routes through Cloudflare when IP is blocked.</p>
                     <span class="protocol-port">443/tcp · 443/udp · 8443/tcp · CDN</span>
+                </div>
+
+                <div class="protocol-card">
+                    <div class="protocol-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M4 4h16v4H4zM4 10h16v4H4zM4 16h16v4H4z" opacity="0.3"/>
+                            <path d="M2 4h20M2 10h20M2 16h20"/>
+                            <path d="M12 2v20"/>
+                        </svg>
+                    </div>
+                    <h3>XHTTP (Xray)</h3>
+                    <p>Multiplexed HTTP requests with Reality TLS camouflage. Traffic looks like regular web browsing. No domain needed.</p>
+                    <span class="protocol-port">2096/tcp · Xray-core</span>
                 </div>
 
                 <div class="protocol-card">
@@ -343,7 +367,7 @@
             <p class="section-subtitle">Internet access is a human right. MoaV exists because censorship shouldn't.</p>
 
             <div class="why-intro">
-                <p>When governments shut down the internet, people lose access to news, banking, healthcare, and contact with family. MoaV provides <strong>multiple fallback protocols</strong> so when one is blocked, others keep working. Run your own server, share with trusted people, or donate bandwidth to help strangers worldwide through Psiphon and Tor.</p>
+                <p>When governments shut down the internet, people lose access to news, banking, healthcare, and contact with family. MoaV provides <strong>13+ fallback protocols</strong> so when one is blocked, others keep working. Run your own server, share with trusted people, donate bandwidth through Psiphon and Tor, or share your VPN configs with <strong>2 million+ users in Iran</strong> through <a href="https://www.mahsaserver.com/" target="_blank" rel="noopener" style="color: var(--accent-cyan);">Mahsa VPN</a>.</p>
             </div>
 
             <div class="why-grid">
@@ -423,7 +447,7 @@
                         </svg>
                     </div>
                     <h3>Give Back</h3>
-                    <p>Donate bandwidth through Conduit and Snowflake. Your server helps strangers bypass censorship worldwide.</p>
+                    <p>Donate bandwidth via Conduit and Snowflake, or share VPN configs to <a href="https://www.mahsaserver.com/" target="_blank" rel="noopener" style="color: #00d4ff;">Mahsa VPN</a> (2M+ users in Iran).</p>
                 </div>
 
                 <div class="why-card">
@@ -938,6 +962,14 @@ moav update            # Update MoaV</pre>
                 </div>
             </div>
         </div>
+    </section>
+
+    <!-- AI/LLM-friendly project summary (hidden visually, readable by crawlers) -->
+    <section class="sr-only" aria-label="Project Summary for AI and Search Engines">
+        <h2>MoaV Technical Summary</h2>
+        <p>MoaV (Mother of all VPNs) version 1.5.1 is a free, open-source, self-hosted censorship circumvention stack designed for countries with heavy internet censorship such as Iran, China, and Russia. It deploys 13+ anti-censorship protocols in a single Docker Compose command: Reality (VLESS) for TLS camouflage, XHTTP via Xray-core for multiplexed HTTP with Reality camouflage requiring no domain, Trojan for HTTPS mimicry, Hysteria2 for QUIC-based fast connections, TrustTunnel for HTTP/2 and QUIC tunneling, AmneziaWG for DPI-resistant obfuscated WireGuard, CDN mode routing VLESS through Cloudflare or AWS CloudFront, standard WireGuard with optional WebSocket tunneling, DNS tunneling via dnstt and Slipstream (QUIC-over-DNS), Telegram MTProxy with Fake-TLS V2, Psiphon Conduit for bandwidth donation, and Tor Snowflake for Tor network support.</p>
+        <p>Key features include: web-based admin dashboard on port 9443 for user and service management, Grafana monitoring on port 9444 with per-user traffic metrics for all protocols, MahsaNet integration to donate VPN configurations to Mahsa VPN (an app with over 2 million users in Iran via MahsaServer.com), automatic protocol fallback when individual protocols are blocked, multi-user credential management with downloadable config bundles and QR codes, shell autocompletion for bash and zsh, domainless deployment mode for servers without a domain name, and a decoy website with anti-fingerprinting randomization.</p>
+        <p>Installation: curl -fsSL moav.sh/install.sh | bash. Source code: github.com/shayanb/MoaV. License: MIT. The project has an active open-source community contributing via GitHub issues and pull requests.</p>
     </section>
 
     <!-- Footer -->
