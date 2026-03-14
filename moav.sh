@@ -1572,8 +1572,13 @@ run_bootstrap() {
         fi
     fi
 
-    info "Building bootstrap container..."
-    docker compose --profile setup build bootstrap
+    # Only build if the bootstrap image doesn't exist yet
+    if ! docker image inspect moav-bootstrap >/dev/null 2>&1; then
+        info "Building bootstrap container (first time, may take a minute)..."
+        docker compose --profile setup build bootstrap
+    else
+        info "Using cached bootstrap container"
+    fi
 
     echo ""
     info "Running bootstrap..."
@@ -3293,7 +3298,7 @@ cmd_donate_mahsanet_list() {
     echo "$body" | jq -r '.results[] | [
         (.url[:38] + (if (.url | length) > 38 then ".." else "" end)),
         (if .is_active then "active" else "inactive" end),
-        (if .health_status_percent != null then (.health_status_percent | tostring) + "%" else "—" end),
+        (if .health_status_percent == null then "—" elif (.health_status_percent | type) == "number" then (.health_status_percent | tostring) + "%" elif (.health_status_percent | type) == "string" then .health_status_percent + "%" else "—" end),
         (.num_consumed // 0 | tostring)
     ] | @tsv' 2>/dev/null | while IFS=$'\t' read -r url status health used; do
         printf "  %-42s %-10s %6s  %4s\n" "$url" "$status" "$health" "$used"

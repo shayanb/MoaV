@@ -903,7 +903,7 @@
                     <tr>
                         <td><div class="config-url" title="${c.url}">${c.url}</div></td>
                         <td><span class="${c.is_active ? 'badge-active' : 'badge-inactive'}">${c.is_active ? 'active' : 'inactive'}</span></td>
-                        <td style="font-family:var(--mono);font-size:0.7rem;">${c.health_status_percent || '—'}</td>
+                        <td style="font-family:var(--mono);font-size:0.7rem;">${typeof c.health_status_percent === 'number' ? c.health_status_percent + '%' : (typeof c.health_status_percent === 'string' ? c.health_status_percent + '%' : '—')}</td>
                         <td style="font-family:var(--mono);font-size:0.7rem;">${c.num_consumed || 0}</td>
                         <td style="text-align:right;">
                             <button class="btn-del" onclick="deleteMahsaConfig('${c.hash}')">del</button>

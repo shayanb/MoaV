@@ -734,11 +734,15 @@ services:
     build:
       context: .
       dockerfile: dockerfiles/Dockerfile.bootstrap
+      args:
+        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.13.2}
     container_name: moav-bootstrap
     volumes:
       - ./configs:/configs
       - ./outputs:/outputs
-      - ./scripts:/scripts:ro
+      - ./scripts/bootstrap.sh:/app/bootstrap.sh:ro
+      - ./scripts/generate-user.sh:/app/generate-user.sh:ro
+      - ./scripts/lib:/app/lib:ro
       - ./docs:/docs:ro
       - moav_state:/state
       - moav_certs:/certs

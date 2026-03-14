@@ -83,7 +83,7 @@ If any component versions were bumped in this release, verify they are consisten
 
 | Component | `.env.example` | `docker-compose.yml` (build args) | `Dockerfile` (ARG default) |
 |-----------|---------------|-----------------------------------|---------------------------|
-| sing-box | `SINGBOX_VERSION` | sing-box + client build args | `Dockerfile.sing-box`, `Dockerfile.client` |
+| sing-box | `SINGBOX_VERSION` | sing-box + client + bootstrap build args | `Dockerfile.sing-box`, `Dockerfile.client`, `Dockerfile.bootstrap` |
 | wstunnel | `WSTUNNEL_VERSION` | client build args | `Dockerfile.client` |
 | snowflake | `SNOWFLAKE_VERSION` | client + snowflake build args | `Dockerfile.client` |
 | TrustTunnel | `TRUSTTUNNEL_VERSION` | trusttunnel build args | `Dockerfile.trusttunnel` |

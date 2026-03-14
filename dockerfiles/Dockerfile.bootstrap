@@ -13,15 +13,19 @@ RUN apk add --no-cache \
     xxd \
     python3
 
-# Install sing-box for key generation
-COPY --from=ghcr.io/sagernet/sing-box:latest /usr/local/bin/sing-box /usr/local/bin/sing-box
+# Install sing-box for key generation (download binary directly to avoid
+# pulling the full container image, which hangs in censored networks)
+ARG SINGBOX_VERSION=1.13.2
+RUN ARCH=$(case "$(uname -m)" in x86_64) echo amd64;; aarch64) echo arm64;; armv7l) echo armv7;; *) echo amd64;; esac) && \
+    curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-${ARCH}.tar.gz" \
+      -o /tmp/sing-box.tar.gz && \
+    tar -xzf /tmp/sing-box.tar.gz -C /tmp && \
+    mv /tmp/sing-box-${SINGBOX_VERSION}-linux-${ARCH}/sing-box /usr/local/bin/sing-box && \
+    chmod +x /usr/local/bin/sing-box && \
+    rm -rf /tmp/sing-box*
 
 WORKDIR /app
 
-COPY scripts/bootstrap.sh /app/bootstrap.sh
-COPY scripts/generate-user.sh /app/generate-user.sh
-COPY scripts/lib/ /app/lib/
-
-RUN chmod +x /app/*.sh
-
+# Scripts are volume-mounted at runtime (not COPY'd) so the image
+# layer containing tools + sing-box stays fully cached across rebuilds.
 ENTRYPOINT ["/app/bootstrap.sh"]
