@@ -54,11 +54,22 @@
     }
   ],
   "routing": {
+    "domainStrategy": "IPIfNonMatch",
     "rules": [
       {
         "inboundTag": ["api-in"],
         "outboundTag": "api",
         "type": "field"
+      },
+      {
+        "type": "field",
+        "ip": ["::1/128"],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "ip": ["::/0"],
+        "outboundTag": "block-ipv6"
       },
       {
         "outboundTag": "direct",
@@ -74,6 +85,10 @@
       "settings": {
         "domainStrategy": "UseIPv4"
       }
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block-ipv6"
     }
   ]
 }
