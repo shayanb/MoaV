@@ -17,8 +17,11 @@ ARG TELEMT_VERSION=3.3.14
 RUN apk add --no-cache \
     bash \
     ca-certificates \
+    libcap \
     tzdata \
     && rm -rf /var/cache/apk/*
+
+RUN addgroup -S moav && adduser -S moav -G moav
 
 # Architecture mapping and binary download
 # telemt releases use: x86_64, aarch64
@@ -35,8 +38,12 @@ RUN case "${TARGETARCH:-amd64}" in \
     echo "telemt v${TELEMT_VERSION} installed (${ARCH}-musl)" || \
     { echo "telemt: download failed"; exit 1; }
 
+# Allow binding to privileged ports without root
+RUN setcap cap_net_bind_service=+ep /usr/local/bin/telemt
+
 # Create directories
-RUN mkdir -p /app /etc/telemt /app/tlsfront
+RUN mkdir -p /app /etc/telemt /app/tlsfront && \
+    chown -R moav:moav /app /etc/telemt
 
 # Copy entrypoint
 COPY scripts/telemt-entrypoint.sh /app/entrypoint.sh
@@ -44,4 +51,5 @@ RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 993/tcp 9090/tcp
 
+USER moav
 ENTRYPOINT ["/app/entrypoint.sh"]

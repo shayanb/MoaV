@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+RUN groupadd -r moav && useradd -r -g moav moav
+
 WORKDIR /app
 
 # Download the conduit binary from official Psiphon-Inc repo
@@ -18,7 +20,7 @@ RUN curl -fL -o conduit "https://github.com/Psiphon-Inc/conduit/releases/downloa
     chmod +x conduit
 
 # Create data directory for conduit state
-RUN mkdir -p /data
+RUN mkdir -p /data && chown -R moav:moav /app /data
 
 # Expose metrics endpoint
 EXPOSE 9090
@@ -27,4 +29,5 @@ EXPOSE 9090
 COPY scripts/conduit-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+USER moav
 ENTRYPOINT ["/entrypoint.sh"]

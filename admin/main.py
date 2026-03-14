@@ -370,7 +370,7 @@ async def dashboard(request: Request, username: str = Depends(verify_auth)):
     import glob
     has_letsencrypt = any(
         Path(f"{d}fullchain.pem").exists()
-        for d in glob.glob("/certs/live/*/")
+        for d in (glob.glob("/tmp/certs/live/*/") or glob.glob("/certs/live/*/"))
     )
 
     return templates.TemplateResponse("dashboard.html", {
@@ -903,8 +903,12 @@ def find_certificates(wait_for_letsencrypt=True, max_wait=60):
     import time
 
     # Check for self-signed first to determine if we're in domainless mode
-    selfsigned_key = "/certs/selfsigned/privkey.pem"
-    selfsigned_cert = "/certs/selfsigned/fullchain.pem"
+    # Check /tmp/certs first (moav-readable copy), fall back to /certs (original)
+    for certs_base in ["/tmp/certs", "/certs"]:
+        selfsigned_key = f"{certs_base}/selfsigned/privkey.pem"
+        selfsigned_cert = f"{certs_base}/selfsigned/fullchain.pem"
+        if Path(selfsigned_key).exists() and Path(selfsigned_cert).exists():
+            break
     has_selfsigned = Path(selfsigned_key).exists() and Path(selfsigned_cert).exists()
 
     # Wait for Let's Encrypt certs if requested
@@ -914,7 +918,7 @@ def find_certificates(wait_for_letsencrypt=True, max_wait=60):
         print(f"Waiting for Let's Encrypt certificate (up to {max_wait}s)...")
 
         while waited < max_wait:
-            cert_dirs = glob.glob("/certs/live/*/")
+            cert_dirs = glob.glob("/tmp/certs/live/*/") or glob.glob("/certs/live/*/")
             for cert_dir in cert_dirs:
                 # Skip README-only directories
                 key_path = f"{cert_dir}privkey.pem"
@@ -935,7 +939,7 @@ def find_certificates(wait_for_letsencrypt=True, max_wait=60):
                 print(f"  Still waiting... ({waited}s)")
 
     # Check one more time without waiting
-    cert_dirs = glob.glob("/certs/live/*/")
+    cert_dirs = glob.glob("/tmp/certs/live/*/") or glob.glob("/certs/live/*/")
     for cert_dir in cert_dirs:
         key_path = f"{cert_dir}privkey.pem"
         cert_path = f"{cert_dir}fullchain.pem"

@@ -8,7 +8,11 @@ ARG SINGBOX_VERSION=1.13.2
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
+    libcap2-bin \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r moav && useradd -r -g moav moav
 
 WORKDIR /app
 
@@ -19,7 +23,11 @@ RUN curl -L -o sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/do
     chmod +x /usr/local/bin/sing-box && \
     rm -rf sing-box.tar.gz sing-box-${SINGBOX_VERSION}-linux-${TARGETARCH}
 
-RUN mkdir -p /etc/sing-box /var/log/sing-box /state
+# Allow binding to privileged ports without root
+RUN setcap cap_net_admin,cap_net_bind_service=+ep /usr/local/bin/sing-box
+
+RUN mkdir -p /etc/sing-box /var/log/sing-box /state && \
+    chown -R moav:moav /app /etc/sing-box /var/log/sing-box /state
 
 COPY scripts/sing-box-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -9,7 +9,10 @@ RUN apk add --no-cache \
     jq \
     curl \
     openssl \
-    libqrencode-tools
+    libqrencode-tools \
+    su-exec
+
+RUN addgroup -S moav && adduser -S moav -G moav
 
 WORKDIR /app
 
@@ -19,7 +22,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 COPY admin/ /app/
 COPY scripts/admin-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh && chown -R moav:moav /app
 
 EXPOSE 8443
 

@@ -1,0 +1,71 @@
+# Git history
+.git
+.github
+
+# Environment files with secrets
+.env
+*.env.local
+
+# Generated outputs (contain user credentials)
+outputs/
+
+# State and certificates
+state/
+certs/
+.moav_prereqs_ok
+
+# Logs
+*.log
+logs/
+
+# Docker volumes (if extracted)
+moav_*/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-*
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+venv/
+.venv/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Backup files
+*.tar.gz
+*.backup
+backup/
+
+# Generated secrets
+*.key
+*.key.hex
+*.priv
+*.private
+*.secret
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# MkDocs build output
+site/docs/
+
+# Misc
+spec.yaml
+.claude/
+*.mp4

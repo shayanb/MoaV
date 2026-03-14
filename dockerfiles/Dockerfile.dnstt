@@ -16,13 +16,16 @@ FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata
 
+RUN addgroup -S moav && adduser -S moav -G moav
+
 COPY --from=builder /dnstt-server /usr/local/bin/dnstt-server
 
-RUN mkdir -p /etc/dnstt /state
+RUN mkdir -p /etc/dnstt /state && chown -R moav:moav /etc/dnstt /state
 
 EXPOSE 5353/udp
 
 COPY scripts/dnstt-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+USER moav
 ENTRYPOINT ["/entrypoint.sh"]

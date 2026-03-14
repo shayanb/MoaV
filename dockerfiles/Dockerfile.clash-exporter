@@ -26,8 +26,11 @@ FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates
 
+RUN addgroup -S moav && adduser -S moav -G moav
+
 COPY --from=builder /build/clash-exporter /usr/bin/clash-exporter
 
 EXPOSE 2112
 
+USER moav
 ENTRYPOINT ["/usr/bin/clash-exporter"]

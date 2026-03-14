@@ -23,13 +23,16 @@ FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata bash
 
+RUN addgroup -S moav && adduser -S moav -G moav
+
 COPY --from=builder /dns-router /usr/local/bin/dns-router
 
-RUN mkdir -p /app
+RUN mkdir -p /app && chown moav:moav /app
 
 COPY scripts/dns-router-entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 5353/udp
 
+USER moav
 ENTRYPOINT ["/app/entrypoint.sh"]
