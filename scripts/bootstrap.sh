@@ -456,8 +456,8 @@ password = \"$USER_PASSWORD\"
 "
     fi
 
-    # Generate user bundle
-    /app/generate-user.sh "$USER_ID"
+    # Generate user bundle (non-fatal: don't let one user's bundle failure block the whole bootstrap)
+    /app/generate-user.sh "$USER_ID" || log_error "Failed to generate bundle for $USER_ID (continuing...)"
 done
 
 # -----------------------------------------------------------------------------
@@ -566,9 +566,10 @@ password = \"$USER_PASSWORD\"
     fi
 
     # Regenerate user bundle (adds WG/AWG peers via guards + generates configs)
+    # Non-fatal: user must still be in server configs even if bundle generation fails
     export USER_ID="$EXTRA_USER_ID"
     export IS_DEMO_USER="false"
-    /app/generate-user.sh "$EXTRA_USER_ID"
+    /app/generate-user.sh "$EXTRA_USER_ID" || log_error "Failed to generate bundle for $EXTRA_USER_ID (continuing...)"
 
     ((EXTRA_USER_COUNT++)) || true
 done
@@ -606,7 +607,9 @@ fi
 # Generate Xray config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
-    log_info "Generating Xray-core (XHTTP) configuration (reusing Reality keys from sing-box)..."
+    # Count users in Xray config for verification
+    XRAY_USER_COUNT=$(echo "$XRAY_USERS_JSON" | grep -o '"id"' | wc -l || echo "0")
+    log_info "Generating Xray-core (XHTTP) configuration with $XRAY_USER_COUNT users (reusing Reality keys from sing-box)..."
 
     export XRAY_USERS_JSON
     export PORT_XHTTP

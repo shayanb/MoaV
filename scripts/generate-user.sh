@@ -17,11 +17,15 @@ source /app/lib/telemt.sh
 STATE_DIR="${STATE_DIR:-/state}"
 
 USER_ID="${1:-}"
+FORCE_REGENERATE="${2:-false}"  # Pass "force" to overwrite existing configs
 
 if [[ -z "$USER_ID" ]]; then
-    log_error "Usage: generate-user.sh <user_id>"
+    log_error "Usage: generate-user.sh <user_id> [force]"
     exit 1
 fi
+
+# Track whether any new config was generated (for README.html regeneration)
+BUNDLE_CHANGED=false
 
 # Load user credentials
 USER_CREDS_FILE="$STATE_DIR/users/$USER_ID/credentials.env"
@@ -58,6 +62,10 @@ log_info "Generating bundle for $USER_ID..."
 # Generate Reality (VLESS) client config (sing-box 1.12+ format)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_REALITY:-true}" == "true" ]]; then
+  if [[ -f "$OUTPUT_DIR/reality.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+    log_info "  - Reality config exists, skipping (use 'force' to regenerate)"
+  else
+    BUNDLE_CHANGED=true
     cat > "$OUTPUT_DIR/reality-singbox.json" <<EOF
 {
   "log": {"level": "info"},
@@ -107,12 +115,17 @@ EOF
     fi
 
     log_info "  - Reality config generated"
+  fi
 fi
 
 # -----------------------------------------------------------------------------
 # Generate Trojan client config (sing-box 1.12+ format)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_TROJAN:-true}" == "true" ]]; then
+  if [[ -f "$OUTPUT_DIR/trojan.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+    log_info "  - Trojan config exists, skipping"
+  else
+    BUNDLE_CHANGED=true
     cat > "$OUTPUT_DIR/trojan-singbox.json" <<EOF
 {
   "log": {"level": "info"},
@@ -160,12 +173,17 @@ EOF
     fi
 
     log_info "  - Trojan config generated"
+  fi
 fi
 
 # -----------------------------------------------------------------------------
 # Generate Hysteria2 client config
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]]; then
+  if [[ -f "$OUTPUT_DIR/hysteria2.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+    log_info "  - Hysteria2 config exists, skipping"
+  else
+    BUNDLE_CHANGED=true
     cat > "$OUTPUT_DIR/hysteria2.yaml" <<EOF
 server: ${SERVER_IP}:443
 auth: ${USER_PASSWORD}
@@ -228,6 +246,7 @@ EOF
     fi
 
     log_info "  - Hysteria2 config generated (with obfuscation)"
+  fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -241,6 +260,10 @@ if [[ -z "${CDN_DOMAIN:-}" ]]; then
 fi
 
 if [[ -n "${CDN_DOMAIN:-}" ]]; then
+  if [[ -f "$OUTPUT_DIR/cdn-vless.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+    log_info "  - CDN VLESS config exists, skipping"
+  else
+    BUNDLE_CHANGED=true
     CDN_WS_PATH="${CDN_WS_PATH:-/ws}"
     CDN_TRANSPORT="${CDN_TRANSPORT:-httpupgrade}"
     CDN_SNI="${CDN_SNI:-${DOMAIN:-${CDN_DOMAIN}}}"
@@ -290,12 +313,17 @@ EOF
     qrencode -o "$OUTPUT_DIR/cdn-vless-qr.png" -s 6 "$CDN_LINK" 2>/dev/null || true
 
     log_info "  - CDN VLESS config generated (transport: $CDN_TRANSPORT, domain: $CDN_DOMAIN)"
+  fi
 fi
 
 # -----------------------------------------------------------------------------
 # Generate TrustTunnel client config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]]; then
+  if [[ -f "$OUTPUT_DIR/trusttunnel.toml" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+    log_info "  - TrustTunnel config exists, skipping"
+  else
+    BUNDLE_CHANGED=true
     # TrustTunnel uses username/password authentication
     # Generate full TOML config for CLI client
 
@@ -369,12 +397,17 @@ EOF
 EOF
 
     log_info "  - TrustTunnel config generated"
+  fi
 fi
 
 # -----------------------------------------------------------------------------
 # Generate XHTTP (Xray-core) client config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+  if [[ -f "$OUTPUT_DIR/xhttp-vless.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+    log_info "  - XHTTP config exists, skipping"
+  else
+    BUNDLE_CHANGED=true
     # XHTTP Reality target host (strip port)
     _xhttp_target="${XHTTP_REALITY_TARGET:-dl.google.com:443}"
     _xhttp_target_host="${_xhttp_target%%:*}"
@@ -421,67 +454,93 @@ Instructions:
 EOF
 
     log_info "  - XHTTP config generated"
+  fi
 fi
 
 # -----------------------------------------------------------------------------
 # Generate WireGuard config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then
-    # Count existing peers to determine next IP (peer 1 = 10.66.66.2, peer 2 = 10.66.66.3, etc.)
+    # Always add peer to server config (wireguard_add_peer has its own guard)
     PEER_COUNT=$(grep -c '^\[Peer\]' "$WG_CONFIG_DIR/wg0.conf" 2>/dev/null) || true
     PEER_COUNT=${PEER_COUNT:-0}
     PEER_NUM=$((PEER_COUNT + 1))
     wireguard_add_peer "$USER_ID" "$PEER_NUM"
-    wireguard_generate_client_config "$USER_ID" "$OUTPUT_DIR"
-    qrencode -o "$OUTPUT_DIR/wireguard-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || true
-    qrencode -o "$OUTPUT_DIR/wireguard-wstunnel-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || true
-    # IPv6 QR code if available
-    if [[ -n "${SERVER_IPV6:-}" ]] && [[ -f "$OUTPUT_DIR/wireguard-ipv6.conf" ]]; then
-        qrencode -o "$OUTPUT_DIR/wireguard-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-ipv6.conf" 2>/dev/null || true
+
+    if [[ -f "$OUTPUT_DIR/wireguard.conf" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+        log_info "  - WireGuard config exists, skipping"
+    else
+        BUNDLE_CHANGED=true
+        wireguard_generate_client_config "$USER_ID" "$OUTPUT_DIR"
+        qrencode -o "$OUTPUT_DIR/wireguard-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard.conf" 2>/dev/null || true
+        qrencode -o "$OUTPUT_DIR/wireguard-wstunnel-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-wstunnel.conf" 2>/dev/null || true
+        if [[ -n "${SERVER_IPV6:-}" ]] && [[ -f "$OUTPUT_DIR/wireguard-ipv6.conf" ]]; then
+            qrencode -o "$OUTPUT_DIR/wireguard-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/wireguard-ipv6.conf" 2>/dev/null || true
+        fi
+        log_info "  - WireGuard config generated (direct + wstunnel${SERVER_IPV6:+ + ipv6})"
     fi
-    log_info "  - WireGuard config generated (direct + wstunnel${SERVER_IPV6:+ + ipv6})"
 fi
 
 # -----------------------------------------------------------------------------
 # Generate AmneziaWG config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_AMNEZIAWG:-true}" == "true" ]]; then
-    # Count existing peers to determine next IP (peer 1 = 10.67.67.2, etc.)
+    # Always add peer to server config (amneziawg_add_peer has its own guard)
     AWG_PEER_COUNT=$(grep -c '^\[Peer\]' "$AWG_CONFIG_DIR/awg0.conf" 2>/dev/null) || true
     AWG_PEER_COUNT=${AWG_PEER_COUNT:-0}
     AWG_PEER_NUM=$((AWG_PEER_COUNT + 1))
     amneziawg_add_peer "$USER_ID" "$AWG_PEER_NUM"
-    amneziawg_generate_client_config "$USER_ID" "$OUTPUT_DIR"
-    qrencode -o "$OUTPUT_DIR/amneziawg-qr.png" -s 6 -r "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || true
-    # IPv6 QR code if available
-    if [[ -n "${SERVER_IPV6:-}" ]] && [[ -f "$OUTPUT_DIR/amneziawg-ipv6.conf" ]]; then
-        qrencode -o "$OUTPUT_DIR/amneziawg-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/amneziawg-ipv6.conf" 2>/dev/null || true
+
+    if [[ -f "$OUTPUT_DIR/amneziawg.conf" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+        log_info "  - AmneziaWG config exists, skipping"
+    else
+        BUNDLE_CHANGED=true
+        amneziawg_generate_client_config "$USER_ID" "$OUTPUT_DIR"
+        qrencode -o "$OUTPUT_DIR/amneziawg-qr.png" -s 6 -r "$OUTPUT_DIR/amneziawg.conf" 2>/dev/null || true
+        if [[ -n "${SERVER_IPV6:-}" ]] && [[ -f "$OUTPUT_DIR/amneziawg-ipv6.conf" ]]; then
+            qrencode -o "$OUTPUT_DIR/amneziawg-ipv6-qr.png" -s 6 -r "$OUTPUT_DIR/amneziawg-ipv6.conf" 2>/dev/null || true
+        fi
+        log_info "  - AmneziaWG config generated (obfuscated WireGuard${SERVER_IPV6:+ + ipv6})"
     fi
-    log_info "  - AmneziaWG config generated (obfuscated WireGuard${SERVER_IPV6:+ + ipv6})"
 fi
 
 # -----------------------------------------------------------------------------
 # Generate dnstt instructions (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_DNSTT:-true}" == "true" ]]; then
-    dnstt_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
-    log_info "  - dnstt instructions generated"
+    if [[ -f "$OUTPUT_DIR/dnstt-instructions.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+        log_info "  - dnstt instructions exist, skipping"
+    else
+        BUNDLE_CHANGED=true
+        dnstt_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
+        log_info "  - dnstt instructions generated"
+    fi
 fi
 
 # -----------------------------------------------------------------------------
 # Generate Slipstream instructions (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_SLIPSTREAM:-false}" == "true" ]]; then
-    slipstream_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
-    log_info "  - Slipstream instructions generated"
+    if [[ -f "$OUTPUT_DIR/slipstream-instructions.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+        log_info "  - Slipstream instructions exist, skipping"
+    else
+        BUNDLE_CHANGED=true
+        slipstream_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
+        log_info "  - Slipstream instructions generated"
+    fi
 fi
 
 # -----------------------------------------------------------------------------
 # Generate telemt (Telegram MTProxy) instructions (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
-    telemt_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
-    log_info "  - telemt (Telegram MTProxy) config generated"
+    if [[ -f "$OUTPUT_DIR/telegram-proxy-link.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+        log_info "  - telemt config exists, skipping"
+    else
+        BUNDLE_CHANGED=true
+        telemt_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
+        log_info "  - telemt (Telegram MTProxy) config generated"
+    fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -490,7 +549,10 @@ fi
 TEMPLATE_FILE="/docs/client-guide-template.html"
 OUTPUT_HTML="$OUTPUT_DIR/README.html"
 
-if [[ -f "$TEMPLATE_FILE" ]]; then
+# Only regenerate README.html if bundle changed or it doesn't exist
+if [[ -f "$OUTPUT_HTML" ]] && [[ "$BUNDLE_CHANGED" == "false" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+    log_info "  - README.html exists and no new configs, skipping"
+elif [[ -f "$TEMPLATE_FILE" ]]; then
     # Read config values
     CONFIG_REALITY=$(cat "$OUTPUT_DIR/reality.txt" 2>/dev/null | tr -d '\n' || echo "")
     CONFIG_HYSTERIA2=$(cat "$OUTPUT_DIR/hysteria2.txt" 2>/dev/null | tr -d '\n' || echo "")
