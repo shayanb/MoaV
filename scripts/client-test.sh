@@ -1377,6 +1377,159 @@ EOF
     rm -f "$test_config"
 }
 
+# Test XHTTP (VLESS+XHTTP+Reality via Xray-core)
+test_xhttp() {
+    log_info "Testing XHTTP (VLESS+XHTTP+Reality)..."
+
+    local config_file=""
+    local detail=""
+
+    # Find XHTTP config
+    for f in "$CONFIG_DIR"/xhttp-vless.txt "$CONFIG_DIR"/xhttp.txt; do
+        if [[ -f "$f" ]] && grep -q "^vless://" "$f" 2>/dev/null; then
+            config_file="$f"
+            break
+        fi
+    done
+
+    if [[ -z "$config_file" ]]; then
+        detail="No XHTTP config found in bundle"
+        log_warn "$detail"
+        RESULTS[xhttp]="skip"
+        DETAILS[xhttp]="$detail"
+        return
+    fi
+
+    # Check if xray binary is available
+    if ! command -v xray &>/dev/null; then
+        detail="Xray-core not installed (rebuild client image to add XHTTP support)"
+        log_warn "$detail"
+        RESULTS[xhttp]="skip"
+        DETAILS[xhttp]="$detail"
+        return
+    fi
+
+    log_debug "Using config: $config_file"
+
+    # Parse VLESS URI
+    local uri=$(cat "$config_file" | head -1 | tr -d '\n\r')
+    local uuid=$(extract_auth "$uri" "vless")
+    local server=$(extract_host "$uri")
+    local port=$(extract_port "$uri")
+    local sni=$(extract_param "$uri" "sni")
+    local pbk=$(extract_param "$uri" "pbk")
+    local sid=$(extract_param "$uri" "sid")
+    local fp=$(extract_param "$uri" "fp")
+
+    [[ -z "$fp" ]] && fp="chrome"
+    [[ -z "$port" ]] && port="2096"
+    port=$(echo "$port" | tr -cd '0-9')
+    [[ -z "$port" ]] && port="2096"
+
+    log_debug "Parsed: server=$server port=$port uuid=$uuid sni=$sni"
+
+    if [[ -z "$server" ]] || [[ -z "$uuid" ]] || [[ -z "$sni" ]] || [[ -z "$pbk" ]]; then
+        detail="Failed to parse XHTTP URI (missing required fields)"
+        log_error "$detail"
+        RESULTS[xhttp]="fail"
+        DETAILS[xhttp]="$detail"
+        return
+    fi
+
+    # Generate Xray-core config (different format from sing-box)
+    local client_config="$TEMP_DIR/xhttp-client.json"
+    cat > "$client_config" << EOF
+{
+  "log": {"loglevel": "error"},
+  "inbounds": [{
+    "listen": "127.0.0.1",
+    "port": 10806,
+    "protocol": "socks",
+    "settings": {"udp": true}
+  }],
+  "outbounds": [{
+    "protocol": "vless",
+    "settings": {
+      "vnext": [{
+        "address": "$server",
+        "port": $port,
+        "users": [{"id": "$uuid", "encryption": "none", "flow": ""}]
+      }]
+    },
+    "streamSettings": {
+      "network": "xhttp",
+      "security": "reality",
+      "realitySettings": {
+        "serverName": "$sni",
+        "fingerprint": "$fp",
+        "publicKey": "$pbk",
+        "shortId": "$sid"
+      }
+    }
+  }]
+}
+EOF
+
+    log_debug "Generated Xray config: $(cat "$client_config")"
+
+    if ! jq empty "$client_config" 2>/dev/null; then
+        detail="Generated invalid JSON config"
+        log_error "$detail"
+        RESULTS[xhttp]="fail"
+        DETAILS[xhttp]="$detail"
+        return
+    fi
+
+    # Start Xray and test
+    local error_log="$TEMP_DIR/xhttp-error.log"
+    xray run -c "$client_config" 2>"$error_log" &
+    local pid=$!
+    sleep 3
+
+    if ! kill -0 $pid 2>/dev/null; then
+        detail="Xray failed to start"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(tail -5 "$error_log" 2>/dev/null | tr '\n' ' ' || true)
+            detail="Xray error: $error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[xhttp]="fail"
+        DETAILS[xhttp]="$detail"
+        return
+    fi
+
+    log_debug "Xray started successfully (PID: $pid)"
+
+    # Test connection via SOCKS5
+    log_debug "Testing connectivity via SOCKS5 on port 10806..."
+    if curl -sf --socks5 127.0.0.1:10806 --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        local exit_ip=""
+        exit_ip=$(curl -sf --socks5 127.0.0.1:10806 --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:10806 --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || true)
+        if [[ -n "$exit_ip" ]]; then
+            log_success "XHTTP connection successful (exit IP: $exit_ip)"
+            RESULTS[xhttp]="pass"
+            DETAILS[xhttp]="Connected via VLESS/XHTTP/Reality (Xray-core), exit IP: $exit_ip"
+        else
+            log_success "XHTTP connection successful"
+            RESULTS[xhttp]="pass"
+            DETAILS[xhttp]="Connected via VLESS/XHTTP/Reality (Xray-core)"
+        fi
+    else
+        detail="Connection test failed"
+        if [[ -s "$error_log" ]]; then
+            local error_msg=$(grep -i "error\|fail\|unreachable\|timeout\|refused" "$error_log" 2>/dev/null | tail -3 | tr '\n' ' ' || true)
+            [[ -n "$error_msg" ]] && detail="$error_msg"
+        fi
+        log_error "$detail"
+        RESULTS[xhttp]="fail"
+        DETAILS[xhttp]="$detail"
+    fi
+
+    kill $pid 2>/dev/null || true
+    wait $pid 2>/dev/null || true
+}
+
 test_telemt() {
     log_info "Testing Telegram MTProxy (telemt)..."
 
@@ -1535,6 +1688,7 @@ main() {
     test_reality
     test_trojan
     test_hysteria2
+    test_xhttp
     test_wireguard
     test_amneziawg
     test_dnstt

@@ -1,0 +1,28 @@
+# Xray-core: VLESS+XHTTP+Reality
+# XHTTP (SplitHTTP) transport - splits traffic into separate HTTP connections
+# No distinctive ALPN fingerprint, harder to detect via DPI
+FROM alpine:3.21
+
+ARG TARGETARCH
+ARG XRAY_VERSION=25.3.6
+
+RUN apk add --no-cache bash ca-certificates tzdata unzip curl \
+    && ARCH=$(case "${TARGETARCH}" in \
+        amd64) echo "64" ;; \
+        arm64) echo "arm64-v8a" ;; \
+        *) echo "64" ;; \
+    esac) \
+    && echo "Downloading Xray-core v${XRAY_VERSION} for ${ARCH}..." \
+    && curl -fsSL "https://github.com/XTLS/Xray-core/releases/download/v${XRAY_VERSION}/Xray-linux-${ARCH}.zip" -o /tmp/xray.zip \
+    && unzip /tmp/xray.zip -d /usr/local/bin/ xray \
+    && chmod +x /usr/local/bin/xray \
+    && rm /tmp/xray.zip
+
+RUN mkdir -p /etc/xray /state
+
+COPY scripts/xray-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 2096/tcp
+
+ENTRYPOINT ["/entrypoint.sh"]

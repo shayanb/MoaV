@@ -367,6 +367,67 @@ EOF
     log_info "Generated TrustTunnel client config (toml + txt + json)"
 fi
 
+# Add user to Xray (XHTTP) if config exists and enabled
+XRAY_CONFIG="configs/xray/config.json"
+if [[ "${ENABLE_XHTTP:-false}" == "true" ]] && [[ -f "$XRAY_CONFIG" ]]; then
+    log_info "Adding $USERNAME to Xray (XHTTP)..."
+
+    # Check if user already exists
+    if jq -e --arg uuid "$USER_UUID" '.inbounds[0].settings.clients[] | select(.id == $uuid)' "$XRAY_CONFIG" >/dev/null 2>&1; then
+        log_info "User '$USERNAME' already exists in Xray config, skipping..."
+    else
+        # Add new client entry (flow MUST be empty for XHTTP)
+        jq --arg id "$USER_UUID" --arg email "${USERNAME}@moav" \
+            '.inbounds[0].settings.clients += [{"id": $id, "email": $email, "flow": ""}]' \
+            "$XRAY_CONFIG" > /tmp/xray.tmp && mv -f /tmp/xray.tmp "$XRAY_CONFIG"
+        log_info "Added $USERNAME to Xray config"
+    fi
+
+    # Generate XHTTP client configs
+    _xhttp_target="${XHTTP_REALITY_TARGET:-dl.google.com:443}"
+    _xhttp_target_host="${_xhttp_target%%:*}"
+    _xhttp_port="${PORT_XHTTP:-2096}"
+
+    XHTTP_LINK="vless://${USER_UUID}@${SERVER_IP}:${_xhttp_port}?type=xhttp&security=reality&sni=${_xhttp_target_host}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&encryption=none#MoaV-XHTTP-${USERNAME}"
+
+    echo "$XHTTP_LINK" > "$OUTPUT_DIR/xhttp-vless.txt"
+
+    if command -v qrencode &>/dev/null; then
+        qrencode -o "$OUTPUT_DIR/xhttp-qr.png" -s 6 -m 2 "$XHTTP_LINK" 2>/dev/null || true
+    fi
+
+    cat > "$OUTPUT_DIR/xhttp.txt" <<EOF
+XHTTP (VLESS+XHTTP+Reality) Configuration for $USERNAME
+=======================================================
+
+Protocol: VLESS + XHTTP + Reality (via Xray-core)
+Server: ${SERVER_IP}
+Port: ${_xhttp_port}
+UUID: ${USER_UUID}
+SNI: ${_xhttp_target_host}
+Reality Public Key: ${REALITY_PUBLIC_KEY}
+Short ID: ${REALITY_SHORT_ID}
+Fingerprint: chrome
+Transport: xhttp
+
+Share Link:
+${XHTTP_LINK}
+
+Client Apps:
+- Android: V2rayNG, Hiddify
+- iOS: Streisand, V2Box
+- Windows: Hiddify, V2rayN
+- macOS: V2rayU, Hiddify
+
+Instructions:
+1. Install a compatible client app
+2. Import using the share link above or scan the QR code
+3. Connect
+EOF
+
+    log_info "Generated XHTTP client config"
+fi
+
 # Add user to telemt (Telegram MTProxy) if config exists
 TELEMT_CONFIG="configs/telemt/config.toml"
 if [[ "${ENABLE_TELEMT:-true}" == "true" ]] && [[ -f "$TELEMT_CONFIG" ]]; then
@@ -419,6 +480,14 @@ if [[ "$NO_RELOAD" != "true" ]]; then
         fi
     fi
 
+    # Try to reload Xray (if running)
+    if [[ -f "$XRAY_CONFIG" ]] && [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+        if docker compose --profile xhttp ps xray --status running 2>/dev/null | tail -n +2 | grep -q .; then
+            log_info "Restarting Xray to apply new user..."
+            docker compose --profile xhttp restart xray
+        fi
+    fi
+
     # Try to reload telemt (if running)
     if [[ -f "$TELEMT_CONFIG" ]]; then
         if docker compose --profile telegram ps telemt --status running 2>/dev/null | tail -n +2 | grep -q .; then
@@ -466,6 +535,12 @@ fi
 if [[ -n "${CDN_DOMAIN:-}" ]]; then
     echo "CDN VLESS+WS Link:"
     echo "$CDN_LINK"
+    echo ""
+fi
+
+if [[ -n "${XHTTP_LINK:-}" ]]; then
+    echo "XHTTP Link:"
+    echo "$XHTTP_LINK"
     echo ""
 fi
 

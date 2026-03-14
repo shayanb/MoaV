@@ -417,6 +417,15 @@ install_qrencode() {
     fi
 }
 
+# Read a value from .env file — handles duplicates (last wins), inline comments, and quotes
+# Usage: val=$(get_env_val "ENABLE_XHTTP" "$env_file" "false")
+get_env_val() {
+    local key="$1" file="$2" default="${3:-}"
+    local val
+    val=$(grep "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d'=' -f2- | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs) || true
+    echo "${val:-$default}"
+}
+
 ensure_admin_password() {
     # Check if admin password is unset, empty, or still the insecure default
     local current_password=""
@@ -506,7 +515,7 @@ check_prerequisites() {
                 # Ask for domain
                 echo -e "${WHITE}Domain name${NC} (required for TLS-based protocols)"
                 echo "  Example: vpn.example.com"
-                echo "  Leave empty to run only domain-less services"
+                echo "  Leave empty to run only domainless services"
                 printf "  Domain: "
                 read -r input_domain
 
@@ -599,10 +608,10 @@ check_prerequisites() {
                     echo "    • Tor Snowflake (bandwidth donation)"
                     echo ""
 
-                    if confirm "Continue with domain-less mode?" "y"; then
+                    if confirm "Continue with domainless mode?" "y"; then
                         domainless_mode=true
-                        # Set default profiles to include all domain-less services (proxy = Reality)
-                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"proxy wireguard amneziawg telegram admin conduit snowflake\"|" .env
+                        # Set default profiles to include all domainless services (proxy = Reality)
+                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"proxy xhttp wireguard amneziawg telegram admin conduit snowflake\"|" .env
                         # Disable cert-based protocols (Reality stays — works without domain)
                         # Use grep to check if line exists, then sed to replace, or append if missing
                         for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
@@ -626,7 +635,7 @@ check_prerequisites() {
                 # Generate or ask for admin password
                 if [[ "$domainless_mode" == "true" ]]; then
                     echo ""
-                    echo "  (Admin will use self-signed certificate in domain-less mode)"
+                    echo "  (Admin will use self-signed certificate in domainless mode)"
                 fi
                 ensure_admin_password
             else
@@ -962,6 +971,12 @@ do_uninstall() {
             _wrm -f "$SCRIPT_DIR/configs/trusttunnel/hosts.toml"
             _wrm -f "$SCRIPT_DIR/configs/trusttunnel/credentials.toml"
             echo "  - configs/trusttunnel/*"
+        fi
+
+        # Remove generated Xray files
+        if [[ -f "$SCRIPT_DIR/configs/xray/config.json" ]]; then
+            _wrm -f "$SCRIPT_DIR/configs/xray/config.json"
+            echo "  - configs/xray/config.json"
         fi
 
         # Remove generated telemt files
@@ -1307,6 +1322,7 @@ check_component_versions() {
         "TRUSTTUNNEL_CLIENT_VERSION"
         "SLIPSTREAM_VERSION"
         "TELEMT_VERSION"
+        "XRAY_VERSION"
     )
 
     local updates_available=()
@@ -1338,6 +1354,7 @@ check_component_versions() {
                     ;;
                 SLIPSTREAM_VERSION) services_to_rebuild+=("slipstream") ;;
                 TELEMT_VERSION) services_to_rebuild+=("telemt") ;;
+                XRAY_VERSION) services_to_rebuild+=("xray") ;;
             esac
         fi
     done
@@ -1714,7 +1731,7 @@ get_running_services() {
 
 show_versions() {
     local singbox_ver wstunnel_ver conduit_ver snowflake_ver slipstream_ver telemt_ver
-    local trusttunnel_ver trusttunnel_client_ver awgtools_ver
+    local trusttunnel_ver trusttunnel_client_ver awgtools_ver xray_ver
     singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
     wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
     conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
@@ -1724,6 +1741,7 @@ show_versions() {
     trusttunnel_ver=$(get_component_version "TRUSTTUNNEL_VERSION" "")
     trusttunnel_client_ver=$(get_component_version "TRUSTTUNNEL_CLIENT_VERSION" "")
     awgtools_ver=$(get_component_version "AWGTOOLS_VERSION" "")
+    xray_ver=$(get_component_version "XRAY_VERSION" "")
 
     echo ""
     echo -e "${CYAN}MoaV${NC} v${VERSION}"
@@ -1744,6 +1762,7 @@ show_versions() {
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${DIM}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "dnstt" "latest" "bamsoftware.com (built from src)"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "slipstream" "$slipstream_ver" "github.com/Mygod/slipstream-rust"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "telemt" "$telemt_ver" "github.com/telemt/telemt"
+    printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "xray-core" "$xray_ver" "github.com/XTLS/Xray-core"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${DIM}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "wireguard" "alpine" "wireguard-tools package"
     echo -e "  ${CYAN}└──────────────────┴────────────────┴──────────────────────────────────────────┘${NC}"
     echo ""
@@ -1765,12 +1784,12 @@ show_status() {
     declare -A disabled_services
 
     if [[ -f "$env_file" ]]; then
-        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_reality=$(get_env_val "ENABLE_REALITY" "$env_file" "true")
+        local enable_trojan=$(get_env_val "ENABLE_TROJAN" "$env_file" "true")
+        local enable_hysteria2=$(get_env_val "ENABLE_HYSTERIA2" "$env_file" "true")
+        local enable_wireguard=$(get_env_val "ENABLE_WIREGUARD" "$env_file" "true")
+        local enable_dnstt=$(get_env_val "ENABLE_DNSTT" "$env_file" "true")
+        local enable_admin=$(get_env_val "ENABLE_ADMIN_UI" "$env_file" "true")
 
         # Mark services as disabled based on ENABLE_* settings
         # sing-box handles Reality, Trojan, Hysteria2
@@ -1779,7 +1798,7 @@ show_status() {
             disabled_services["decoy"]=1
         fi
         [[ "$enable_wireguard" != "true" ]] && disabled_services["wireguard"]=1 && disabled_services["wstunnel"]=1
-        local enable_slipstream=$(grep "^ENABLE_SLIPSTREAM=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
+        local enable_slipstream=$(get_env_val "ENABLE_SLIPSTREAM" "$env_file" "false")
         [[ "$enable_dnstt" != "true" ]] && disabled_services["dnstt"]=1
         [[ "$enable_slipstream" != "true" ]] && disabled_services["slipstream"]=1
         # dns-router is disabled if both dnstt and slipstream are disabled
@@ -1787,7 +1806,7 @@ show_status() {
             disabled_services["dns-router"]=1
         fi
         [[ "$enable_admin" != "true" ]] && disabled_services["admin"]=1
-        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_telemt=$(get_env_val "ENABLE_TELEMT" "$env_file" "true")
         [[ "$enable_telemt" != "true" ]] && disabled_services["telemt"]=1
     fi
 
@@ -1962,20 +1981,22 @@ select_profiles() {
     local dnstunnel_enabled=true
     local amneziawg_enabled=true
     local trusttunnel_enabled=true
+    local xhttp_enabled=false
     local telegram_enabled=true
     local admin_enabled=true
 
     if [[ -f "$env_file" ]]; then
-        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_amneziawg=$(grep "^ENABLE_AMNEZIAWG=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_slipstream=$(grep "^ENABLE_SLIPSTREAM=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
-        local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_reality=$(get_env_val "ENABLE_REALITY" "$env_file" "true")
+        local enable_trojan=$(get_env_val "ENABLE_TROJAN" "$env_file" "true")
+        local enable_hysteria2=$(get_env_val "ENABLE_HYSTERIA2" "$env_file" "true")
+        local enable_wireguard=$(get_env_val "ENABLE_WIREGUARD" "$env_file" "true")
+        local enable_amneziawg=$(get_env_val "ENABLE_AMNEZIAWG" "$env_file" "true")
+        local enable_dnstt=$(get_env_val "ENABLE_DNSTT" "$env_file" "true")
+        local enable_slipstream=$(get_env_val "ENABLE_SLIPSTREAM" "$env_file" "false")
+        local enable_trusttunnel=$(get_env_val "ENABLE_TRUSTTUNNEL" "$env_file" "true")
+        local enable_telemt=$(get_env_val "ENABLE_TELEMT" "$env_file" "true")
+        local enable_admin=$(get_env_val "ENABLE_ADMIN_UI" "$env_file" "true")
+        local enable_xhttp=$(get_env_val "ENABLE_XHTTP" "$env_file" "false")
 
         # proxy is disabled if all three protocols are disabled
         if [[ "$enable_reality" != "true" ]] && [[ "$enable_trojan" != "true" ]] && [[ "$enable_hysteria2" != "true" ]]; then
@@ -1988,12 +2009,13 @@ select_profiles() {
             dnstunnel_enabled=false
         fi
         [[ "$enable_trusttunnel" != "true" ]] && trusttunnel_enabled=false
+        [[ "$enable_xhttp" == "true" ]] && xhttp_enabled=true
         [[ "$enable_telemt" != "true" ]] && telegram_enabled=false
         [[ "$enable_admin" != "true" ]] && admin_enabled=false
     fi
 
     # Build menu lines with disabled indicators
-    local proxy_line wg_line amneziawg_line dnstunnel_line trusttunnel_line telegram_line admin_line
+    local proxy_line wg_line amneziawg_line dnstunnel_line trusttunnel_line xhttp_line telegram_line admin_line
 
     if [[ "$proxy_enabled" == "true" ]]; then
         proxy_line="  ${CYAN}│${NC}  ${GREEN}1${NC}   proxy        Reality, Trojan, Hysteria2 (v2ray apps)       ${CYAN}│${NC}"
@@ -2025,16 +2047,22 @@ select_profiles() {
         trusttunnel_line="  ${CYAN}│${NC}  ${DIM}5   trusttunnel  TrustTunnel VPN (disabled)${NC}                    ${CYAN}│${NC}"
     fi
 
-    if [[ "$telegram_enabled" == "true" ]]; then
-        telegram_line="  ${CYAN}│${NC}  ${GREEN}6${NC}   telegram     Telegram MTProxy (fake-TLS)                   ${CYAN}│${NC}"
+    if [[ "$xhttp_enabled" == "true" ]]; then
+        xhttp_line="  ${CYAN}│${NC}  ${GREEN}6${NC}   xhttp        VLESS+XHTTP+Reality (Xray-core)               ${CYAN}│${NC}"
     else
-        telegram_line="  ${CYAN}│${NC}  ${DIM}6   telegram     Telegram MTProxy (disabled)${NC}                   ${CYAN}│${NC}"
+        xhttp_line="  ${CYAN}│${NC}  ${DIM}6   xhttp        VLESS+XHTTP+Reality (disabled)${NC}                ${CYAN}│${NC}"
+    fi
+
+    if [[ "$telegram_enabled" == "true" ]]; then
+        telegram_line="  ${CYAN}│${NC}  ${GREEN}7${NC}   telegram     Telegram MTProxy (fake-TLS)                   ${CYAN}│${NC}"
+    else
+        telegram_line="  ${CYAN}│${NC}  ${DIM}7   telegram     Telegram MTProxy (disabled)${NC}                   ${CYAN}│${NC}"
     fi
 
     if [[ "$admin_enabled" == "true" ]]; then
-        admin_line="  ${CYAN}│${NC}  ${GREEN}7${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
+        admin_line="  ${CYAN}│${NC}  ${GREEN}8${NC}   admin        Stats dashboard (port 9443)                   ${CYAN}│${NC}"
     else
-        admin_line="  ${CYAN}│${NC}  ${DIM}7   admin        Stats dashboard (disabled)${NC}                   ${CYAN}│${NC}"
+        admin_line="  ${CYAN}│${NC}  ${DIM}8   admin        Stats dashboard (disabled)${NC}                   ${CYAN}│${NC}"
     fi
 
     echo ""
@@ -2046,13 +2074,14 @@ select_profiles() {
     echo -e "$amneziawg_line"
     echo -e "$dnstunnel_line"
     echo -e "$trusttunnel_line"
+    echo -e "$xhttp_line"
     echo -e "$telegram_line"
     echo -e "$admin_line"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}8${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}9${NC}   snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}9${NC}   conduit      Donate bandwidth via Psiphon                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}10${NC}  snowflake    Donate bandwidth via Tor                      ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "  ${CYAN}│${NC}  ${BLUE}10${NC}  monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  ${BLUE}11${NC}  monitoring   Grafana + Prometheus (requires 2GB RAM)       ${CYAN}│${NC}"
     echo -e "  ${CYAN}├─────────────────────────────────────────────────────────────────┤${NC}"
     echo -e "  ${CYAN}│${NC}  ${GREEN}a${NC}   ${GREEN}ALL${NC}          All services ${GREEN}(Recommended)${NC}                    ${CYAN}│${NC}"
     echo -e "  ${CYAN}│${NC}  ${DIM}0${NC}   ${DIM}Back${NC}         Back to main menu                             ${CYAN}│${NC}"
@@ -2075,16 +2104,17 @@ select_profiles() {
         local env_file="$SCRIPT_DIR/.env"
 
         # Check which protocols are enabled
-        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_amneziawg=$(grep "^ENABLE_AMNEZIAWG=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_slipstream=$(grep "^ENABLE_SLIPSTREAM=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
-        local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_reality=$(get_env_val "ENABLE_REALITY" "$env_file" "true")
+        local enable_trojan=$(get_env_val "ENABLE_TROJAN" "$env_file" "true")
+        local enable_hysteria2=$(get_env_val "ENABLE_HYSTERIA2" "$env_file" "true")
+        local enable_wireguard=$(get_env_val "ENABLE_WIREGUARD" "$env_file" "true")
+        local enable_amneziawg=$(get_env_val "ENABLE_AMNEZIAWG" "$env_file" "true")
+        local enable_dnstt=$(get_env_val "ENABLE_DNSTT" "$env_file" "true")
+        local enable_slipstream=$(get_env_val "ENABLE_SLIPSTREAM" "$env_file" "false")
+        local enable_trusttunnel=$(get_env_val "ENABLE_TRUSTTUNNEL" "$env_file" "true")
+        local enable_telemt=$(get_env_val "ENABLE_TELEMT" "$env_file" "true")
+        local enable_admin=$(get_env_val "ENABLE_ADMIN_UI" "$env_file" "true")
+        local enable_xhttp=$(get_env_val "ENABLE_XHTTP" "$env_file" "false")
 
         # Build profiles list based on enabled services
         SELECTED_PROFILES=()
@@ -2114,6 +2144,11 @@ select_profiles() {
             SELECTED_PROFILES+=("trusttunnel")
         fi
 
+        # xhttp profile (Xray-core VLESS+XHTTP+Reality)
+        if [[ "$enable_xhttp" == "true" ]]; then
+            SELECTED_PROFILES+=("xhttp")
+        fi
+
         # telegram profile (Telegram MTProxy)
         if [[ "$enable_telemt" == "true" ]]; then
             SELECTED_PROFILES+=("telegram")
@@ -2129,7 +2164,7 @@ select_profiles() {
         SELECTED_PROFILES+=("snowflake")
 
         # Check if monitoring should be included
-        local enable_monitoring=$(grep "^ENABLE_MONITORING=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
+        local enable_monitoring=$(get_env_val "ENABLE_MONITORING" "$env_file" "")
         if [[ "$enable_monitoring" == "true" ]]; then
             SELECTED_PROFILES+=("monitoring")
         elif [[ "$enable_monitoring" != "false" ]]; then
@@ -2176,11 +2211,12 @@ select_profiles() {
                 3) SELECTED_PROFILES+=("amneziawg") ;;
                 4) SELECTED_PROFILES+=("dnstunnel") ;;
                 5) SELECTED_PROFILES+=("trusttunnel") ;;
-                6) SELECTED_PROFILES+=("telegram") ;;
-                7) SELECTED_PROFILES+=("admin") ;;
-                8) SELECTED_PROFILES+=("conduit") ;;
-                9) SELECTED_PROFILES+=("snowflake") ;;
-                10) SELECTED_PROFILES+=("monitoring") ;;
+                6) SELECTED_PROFILES+=("xhttp") ;;
+                7) SELECTED_PROFILES+=("telegram") ;;
+                8) SELECTED_PROFILES+=("admin") ;;
+                9) SELECTED_PROFILES+=("conduit") ;;
+                10) SELECTED_PROFILES+=("snowflake") ;;
+                11) SELECTED_PROFILES+=("monitoring") ;;
             esac
         done
     fi
@@ -2268,7 +2304,7 @@ ensure_clash_api_secret() {
 
     # Check if ENABLE_MONITORING is explicitly set to false
     local enable_monitoring
-    enable_monitoring=$(grep "^ENABLE_MONITORING=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || true)
+    enable_monitoring=$(get_env_val "ENABLE_MONITORING" "$env_file" "")
     if [[ "$enable_monitoring" == "false" ]]; then
         echo ""
         warn "Monitoring is currently disabled in .env (ENABLE_MONITORING=false)"
@@ -2983,7 +3019,7 @@ show_usage() {
     echo "  update [-b BRANCH]    Update MoaV (git pull), optionally switch branch"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
-    echo "  domainless            Enable domain-less mode (WireGuard, AmneziaWG, Telegram MTProxy, etc.)"
+    echo "  domainless            Enable domainless mode (WireGuard, AmneziaWG, Telegram MTProxy, etc.)"
     echo "  profiles              Change default services for 'moav start'"
     echo "  start [PROFILE...]    Start services (uses DEFAULT_PROFILES from .env)"
     echo "  stop [SERVICE...] [-r] Stop services (default: all, -r removes containers)"
@@ -3010,7 +3046,7 @@ show_usage() {
     echo "  regenerate-users      Regenerate all user bundles with current .env"
     echo "  setup-dns             Free port 53 for DNS tunnels (disables systemd-resolved)"
     echo ""
-    echo "Profiles: proxy, wireguard, amneziawg, dnstunnel, trusttunnel, telegram, admin, conduit, snowflake, client, all"
+    echo "Profiles: proxy, wireguard, amneziawg, dnstunnel, trusttunnel, xhttp, telegram, admin, conduit, snowflake, client, all"
     echo "Services: sing-box, decoy, wstunnel, wireguard, amneziawg, dns-router, dnstt, slipstream, trusttunnel, telemt, admin, psiphon-conduit, snowflake"
     echo "Aliases:  proxy/singbox/reality→sing-box, wg→wireguard, awg→amneziawg, dns/dnstt/slip→dnstunnel, tg/mtproxy→telegram, conduit→psiphon-conduit"
     echo ""
@@ -3251,15 +3287,17 @@ cmd_donate_mahsanet_list() {
         return 0
     fi
 
-    printf "  %-40s %-10s %-8s %-8s\n" "URL" "Status" "Health" "Used"
+    printf "  %-42s %-10s %6s  %4s\n" "URL" "Status" "Health" "Used"
     echo "  $(printf '%.0s─' {1..70})"
 
     echo "$body" | jq -r '.results[] | [
         (.url[:38] + (if (.url | length) > 38 then ".." else "" end)),
         (if .is_active then "active" else "inactive" end),
-        (.health_status_percent // "—"),
+        (if .health_status_percent != null then (.health_status_percent | tostring) + "%" else "—" end),
         (.num_consumed // 0 | tostring)
-    ] | "  " + .[0] + "  " + .[1] + "  " + .[2] + "  " + .[3]' 2>/dev/null || true
+    ] | @tsv' 2>/dev/null | while IFS=$'\t' read -r url status health used; do
+        printf "  %-42s %-10s %6s  %4s\n" "$url" "$status" "$health" "$used"
+    done
 
     echo ""
     info "Total: $count config(s)"
@@ -3675,6 +3713,16 @@ cmd_admin() {
             else
                 info "Admin container is not running. New password will take effect on next start."
             fi
+
+            # Update Grafana password if running (Grafana stores password in its DB, env var is only used on first boot)
+            if docker ps --filter "name=moav-grafana" --filter "status=running" -q 2>/dev/null | grep -q .; then
+                info "Updating Grafana admin password..."
+                if docker compose --profile monitoring exec -T grafana grafana cli admin reset-admin-password "$new_password" &>/dev/null; then
+                    success "Grafana password updated"
+                else
+                    warn "Could not update Grafana password. You may need to reset it manually."
+                fi
+            fi
             ;;
         *)
             echo "Usage: moav admin <command>"
@@ -3690,7 +3738,7 @@ cmd_admin() {
 
 cmd_domainless() {
     print_header
-    print_section "Enable Domain-less Mode"
+    print_section "Enable Domainless Mode"
 
     echo ""
     info "Domain-less mode disables TLS-based protocols that require a domain."
@@ -3710,7 +3758,7 @@ cmd_domainless() {
     echo "    • Tor Snowflake (bandwidth donation)"
     echo ""
 
-    if ! confirm "Enable domain-less mode?" "y"; then
+    if ! confirm "Enable domainless mode?" "y"; then
         info "Cancelled."
         return 0
     fi
@@ -3744,9 +3792,9 @@ cmd_domainless() {
 
     # Set default profiles (add if not present)
     if grep -q "^DEFAULT_PROFILES=" .env; then
-        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"/' .env
+        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="proxy xhttp wireguard amneziawg telegram admin conduit snowflake"/' .env
     else
-        echo 'DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"' >> .env
+        echo 'DEFAULT_PROFILES="proxy xhttp wireguard amneziawg telegram admin conduit snowflake"' >> .env
     fi
 
     # Ensure admin password is set (not the insecure default)
@@ -3870,7 +3918,7 @@ cmd_profiles() {
 
 cmd_start() {
     local profiles=""
-    local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel telegram admin conduit snowflake monitoring client all setup"
+    local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel xhttp telegram admin conduit snowflake monitoring client all setup"
 
     if [[ $# -eq 0 ]]; then
         # No arguments - check for DEFAULT_PROFILES in .env
@@ -4006,6 +4054,8 @@ resolve_profile() {
             echo "dnstunnel" ;;
         tg|mtproxy|telemt)
             echo "telegram" ;;
+        xh|xray)
+            echo "xhttp" ;;
         psiphon)
             echo "conduit" ;;
         grafana|grafana-proxy|grafana-cdn|prometheus|metrics)
@@ -4234,7 +4284,7 @@ cmd_logs() {
                 ;;
             *)
                 # Check if it's an exact profile name first
-                local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel telegram admin conduit snowflake monitoring client all setup"
+                local valid_profiles="proxy wireguard amneziawg dnstunnel trusttunnel xhttp telegram admin conduit snowflake monitoring client all setup"
                 if echo "$valid_profiles" | grep -qw "$1"; then
                     profile_flags="$profile_flags --profile $1"
                 else
@@ -5452,20 +5502,23 @@ cmd_regenerate_users() {
     cdn_address="${cdn_address:-${cdn_domain}}"
 
     # Load ENABLE_* settings from .env
-    local enable_reality=$(grep -E '^ENABLE_REALITY=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local enable_trojan=$(grep -E '^ENABLE_TROJAN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local enable_hysteria2=$(grep -E '^ENABLE_HYSTERIA2=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local enable_wireguard=$(grep -E '^ENABLE_WIREGUARD=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local enable_amneziawg=$(grep -E '^ENABLE_AMNEZIAWG=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local enable_dnstt=$(grep -E '^ENABLE_DNSTT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local enable_slipstream=$(grep -E '^ENABLE_SLIPSTREAM=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local slipstream_subdomain=$(grep -E '^SLIPSTREAM_SUBDOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local enable_trusttunnel=$(grep -E '^ENABLE_TRUSTTUNNEL=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local enable_telemt=$(grep -E '^ENABLE_TELEMT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local telemt_tls_domain=$(grep -E '^TELEMT_TLS_DOMAIN=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local telemt_max_tcp_conns=$(grep -E '^TELEMT_MAX_TCP_CONNS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local telemt_max_unique_ips=$(grep -E '^TELEMT_MAX_UNIQUE_IPS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
-    local port_telemt=$(grep -E '^PORT_TELEMT=' .env 2>/dev/null | cut -d= -f2 | tr -d '"')
+    local enable_reality=$(get_env_val "ENABLE_REALITY" .env "true")
+    local enable_trojan=$(get_env_val "ENABLE_TROJAN" .env "true")
+    local enable_hysteria2=$(get_env_val "ENABLE_HYSTERIA2" .env "true")
+    local enable_wireguard=$(get_env_val "ENABLE_WIREGUARD" .env "true")
+    local enable_amneziawg=$(get_env_val "ENABLE_AMNEZIAWG" .env "true")
+    local enable_dnstt=$(get_env_val "ENABLE_DNSTT" .env "true")
+    local enable_slipstream=$(get_env_val "ENABLE_SLIPSTREAM" .env "false")
+    local slipstream_subdomain=$(get_env_val "SLIPSTREAM_SUBDOMAIN" .env "s")
+    local enable_trusttunnel=$(get_env_val "ENABLE_TRUSTTUNNEL" .env "true")
+    local enable_xhttp=$(get_env_val "ENABLE_XHTTP" .env "false")
+    local port_xhttp=$(get_env_val "PORT_XHTTP" .env "2096")
+    local xhttp_reality_target=$(get_env_val "XHTTP_REALITY_TARGET" .env "dl.google.com:443")
+    local enable_telemt=$(get_env_val "ENABLE_TELEMT" .env "true")
+    local telemt_tls_domain=$(get_env_val "TELEMT_TLS_DOMAIN" .env "dl.google.com")
+    local telemt_max_tcp_conns=$(get_env_val "TELEMT_MAX_TCP_CONNS" .env "100")
+    local telemt_max_unique_ips=$(get_env_val "TELEMT_MAX_UNIQUE_IPS" .env "10")
+    local port_telemt=$(get_env_val "PORT_TELEMT" .env "993")
 
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
@@ -5491,6 +5544,9 @@ cmd_regenerate_users() {
             -e "ENABLE_SLIPSTREAM=${enable_slipstream:-false}" \
             -e "SLIPSTREAM_SUBDOMAIN=${slipstream_subdomain:-s}" \
             -e "ENABLE_TRUSTTUNNEL=${enable_trusttunnel:-true}" \
+            -e "ENABLE_XHTTP=${enable_xhttp:-false}" \
+            -e "PORT_XHTTP=${port_xhttp:-2096}" \
+            -e "XHTTP_REALITY_TARGET=${xhttp_reality_target:-dl.google.com:443}" \
             -e "ENABLE_TELEMT=${enable_telemt:-true}" \
             -e "TELEMT_TLS_DOMAIN=${telemt_tls_domain:-dl.google.com}" \
             -e "TELEMT_MAX_TCP_CONNS=${telemt_max_tcp_conns:-100}" \

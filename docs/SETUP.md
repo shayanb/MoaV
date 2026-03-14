@@ -15,13 +15,15 @@ Complete guide to deploy MoaV on a VPS or home server.
   - [Step 6: Start Services](#step-6-start-services)
   - [Step 7: Download User Bundles](#step-7-download-user-bundles)
   - [Step 8: Distribute to Users](#step-8-distribute-to-users)
-- [Domain-less Mode](#domain-less-mode)
+- [Domainless Mode](#domainless-mode)
 - [CDN-Fronted Mode (Cloudflare)](#cdn-fronted-mode-cloudflare)
+- [Choosing a Reality Target (SNI)](#choosing-a-reality-target-sni)
 - [Managing Users](#managing-users)
 - [Service Management](#service-management)
 - [Server Migration](#server-migration)
 - [IPv6 Support](#ipv6-support)
 - [Bandwidth Donation (Conduit & Snowflake)](#bandwidth-donation-conduit--snowflake)
+- [MahsaNet Config Donation](#mahsanet-config-donation)
 - [Updating MoaV](#updating-moav)
 - [Re-bootstrapping](#re-bootstrapping)
 
@@ -39,7 +41,7 @@ Complete guide to deploy MoaV on a VPS or home server.
 **Domain (Optional but Recommended):**
 - Required for: Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, DNS tunnels (dnstt, Slipstream)
 - Not required for: Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin dashboard, Conduit, Snowflake
-- See [Domain-less Mode](#domain-less-mode) if you don't have a domain
+- See [Domainless Mode](#domainless-mode) if you don't have a domain
 
 **Ports to Open:**
 
@@ -49,13 +51,14 @@ Complete guide to deploy MoaV on a VPS or home server.
 | 443/udp | UDP | Hysteria2 | Yes |
 | 8443/tcp | TCP | Trojan | Yes |
 | 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
-| 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) |
+| 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) or No (CloudFront) |
 | 51820/udp | UDP | WireGuard | No |
 | 51821/udp | UDP | AmneziaWG | No |
 | 8080/tcp | TCP | wstunnel | No |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 9444/tcp | TCP | Grafana (monitoring) | No |
 | 993/tcp | TCP | Telegram MTProxy (telemt) | No |
+| 2096/tcp | TCP | XHTTP (VLESS+XHTTP+Reality) | No |
 | 53/udp | UDP | DNS tunnels (dnstt + Slipstream) | Yes |
 | 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
@@ -253,6 +256,7 @@ moav start all                   # Everything
 - `dnstt` - DNS tunnel
 - `trusttunnel` - TrustTunnel VPN
 - `telegram` - Telegram MTProxy (fake-TLS)
+- `xhttp` - XHTTP (VLESS+XHTTP+Reality via Xray-core)
 - `admin` - Admin dashboard
 - `conduit` - Psiphon bandwidth donation
 - `snowflake` - Tor bandwidth donation
@@ -279,6 +283,9 @@ ufw allow 8080/tcp   # wstunnel
 
 # AmneziaWG
 ufw allow 51821/udp   # Obfuscated WireGuard
+
+# XHTTP
+ufw allow 2096/tcp   # VLESS+XHTTP+Reality
 
 # DNS tunnel
 ufw allow 53/udp
@@ -318,6 +325,7 @@ ls outputs/bundles/
 - `wireguard-wstunnel.conf` - WireGuard over WebSocket
 - `amneziawg.conf` - AmneziaWG config (if enabled)
 - `trusttunnel.txt` - TrustTunnel credentials (if enabled)
+- `xhttp.txt` - XHTTP share link (if enabled)
 - `dnstt-instructions.txt` - DNS tunnel instructions
 
 **Download Options:**
@@ -365,7 +373,7 @@ Users open `README.html` in their browser for instructions and QR codes.
 
 ---
 
-## Domain-less Mode
+## Domainless Mode
 
 Don't have a domain? MoaV can run with limited but useful services.
 
@@ -377,6 +385,7 @@ Don't have a domain? MoaV can run with limited but useful services.
 | AmneziaWG | 51821/udp | Obfuscated WireGuard, defeats DPI |
 | wstunnel | 8080/tcp | WireGuard over WebSocket (when UDP blocked) |
 | Telegram MTProxy | 993/tcp | Fake-TLS, works with IP only |
+| XHTTP | 2096/tcp | VLESS+XHTTP+Reality, no domain needed |
 | Admin | 9443/tcp | Dashboard with self-signed certificate |
 | Conduit | dynamic | Psiphon bandwidth donation |
 | Snowflake | dynamic | Tor bandwidth donation |
@@ -387,7 +396,7 @@ Don't have a domain? MoaV can run with limited but useful services.
 - CDN mode (requires Cloudflare domain)
 - DNS tunnel (requires NS delegation)
 
-**Setup Domain-less Mode:**
+**Setup Domainless Mode:**
 ```bash
 moav domainless
 # Or: run moav and leave domain empty when prompted
@@ -493,6 +502,104 @@ Client --HTTPS:443--> Cloudflare CDN --HTTP:2082--> Your Server
    ```
 
 User bundles will now include `cdn-vless.txt` with Cloudflare-routed connection.
+
+### Alternative: AWS CloudFront (No Domain Required)
+
+If you don't have a domain, you can use AWS CloudFront instead of Cloudflare. CloudFront gives you a `*.cloudfront.net` domain automatically.
+
+```
+Client --HTTPS:443--> CloudFront CDN --HTTP:2082--> Your Server
+```
+
+1. Create a CloudFront distribution with your server as origin (HTTP, port 2082)
+2. Set viewer protocol to HTTPS only, cache policy to CachingDisabled
+3. Configure MoaV:
+
+```bash
+# In .env
+CDN_SUBDOMAIN=
+CDN_DOMAIN=d1234abcd.cloudfront.net
+CDN_ADDRESS=d1234abcd.cloudfront.net
+CDN_SNI=d1234abcd.cloudfront.net
+CDN_TRANSPORT=ws
+```
+
+4. Run `moav bootstrap` to regenerate configs
+
+See [DNS Configuration — AWS CloudFront](DNS.md#aws-cloudfront-alternative-cdn) for detailed setup instructions.
+
+---
+
+## Choosing a Reality Target (SNI)
+
+Reality protocols (VLESS+Reality and XHTTP+Reality) impersonate a legitimate website during the TLS handshake. The **Reality target** (also called SNI) is the domain your proxy pretends to be. DPI sees a normal TLS connection to that domain, not a proxy.
+
+### Requirements
+
+The target domain **must** support:
+- **TLS 1.3** — required for Reality's handshake
+- **HTTP/2 (h2)** — required for ALPN negotiation
+
+### How to Verify a Target
+
+Test any domain **from your server** (not locally — some domains are geo-restricted):
+
+```bash
+curl -vsI --tlsv1.3 --http2 https://TARGET_DOMAIN 2>&1 | grep -iE "SSL|ALPN|TLSv1.3"
+```
+
+**Good output** (both TLS 1.3 and h2 — wording varies by curl version):
+```
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+* ALPN: server accepted h2
+```
+
+If you get no output or the connection closes immediately, the domain either doesn't support TLS 1.3/H2 or is unreachable from your server — don't use it.
+
+### Choosing a Good Target
+
+**For censored regions (Iran, China, Russia, etc.):**
+
+Avoid well-known targets like `google.com` or `microsoft.com` — censors monitor these heavily and can detect Reality by comparing your handshake to the real site.
+
+Instead, choose a domain that:
+1. **Is popular domestically** — blocking it would cause collateral damage (banks, fintech, e-commerce)
+2. **Has heavy TLS traffic** — your connection blends in with millions of real users
+3. **Isn't commonly used as a proxy target** — novel targets are harder to fingerprint
+
+**Examples for Iran:**
+| Domain | Why |
+|--------|-----|
+| `blubank.com` | Major fintech app, high traffic, can't be easily blocked |
+| `divar.ir` | Popular classifieds site |
+| `snapp.ir` | Ride-hailing app (like Uber) |
+
+**Generic (less optimal but widely compatible):**
+| Domain | Notes |
+|--------|-------|
+| `dl.google.com` | Default, works everywhere but well-known |
+| `www.doi.org` | Academic, low profile |
+| `gateway.icloud.com` | Apple services |
+
+> **Tip:** The best target is one that your ISP cannot afford to block. A domestic banking site is harder to block than a foreign tech company.
+
+### Configuration
+
+```bash
+# In .env — for sing-box (Reality VLESS)
+REALITY_TARGET=blubank.com:443
+
+# For Xray-core (XHTTP) — can be different from sing-box
+XHTTP_REALITY_TARGET=blubank.com:443
+```
+
+After changing targets, re-bootstrap and regenerate user bundles:
+```bash
+moav bootstrap
+moav user regenerate
+```
+
+> **Note:** `REALITY_TARGET` and `XHTTP_REALITY_TARGET` are independent — you can use different targets for each protocol to diversify your fingerprint.
 
 ---
 

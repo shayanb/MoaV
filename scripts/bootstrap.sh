@@ -48,7 +48,7 @@ if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     log_error "Option 1: Set a domain in .env"
     log_error "  DOMAIN=your-domain.com"
     log_error ""
-    log_error "Option 2: Run in domain-less mode"
+    log_error "Option 2: Run in domainless mode"
     log_error "  Disable cert-based protocols (Reality still works without domain):"
     log_error "    ENABLE_TROJAN=false"
     log_error "    ENABLE_HYSTERIA2=false"
@@ -59,9 +59,11 @@ if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     exit 1
 fi
 
-# Domain-less mode notice
+# Domainless mode notice
 if [[ -z "${DOMAIN:-}" ]]; then
-    log_info "Running in domain-less mode (Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, Snowflake)"
+    local _domainless_protos="Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, Snowflake"
+    [[ "${ENABLE_XHTTP:-true}" == "true" ]] && _domainless_protos="Reality, XHTTP, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, Snowflake"
+    log_info "Running in domainless mode ($_domainless_protos)"
 
     # Generate self-signed certificate for admin UI (if not exists)
     if [[ "${ENABLE_ADMIN_UI:-true}" == "true" ]]; then
@@ -229,7 +231,7 @@ export REALITY_PUBLIC_KEY
 export REALITY_SHORT_ID
 export REALITY_TARGET="${REALITY_TARGET:-dl.google.com:443}"
 export HYSTERIA2_OBFS_PASSWORD
-# In domain-less mode, DOMAIN stays empty; otherwise use as-is
+# In domainless mode, DOMAIN stays empty; otherwise use as-is
 export DOMAIN="${DOMAIN:-}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
 export ENABLE_REALITY="${ENABLE_REALITY:-true}"
@@ -241,6 +243,9 @@ export ENABLE_DNSTT="${ENABLE_DNSTT:-true}"
 export ENABLE_SLIPSTREAM="${ENABLE_SLIPSTREAM:-false}"
 export SLIPSTREAM_SUBDOMAIN="${SLIPSTREAM_SUBDOMAIN:-s}"
 export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+export ENABLE_XHTTP="${ENABLE_XHTTP:-false}"
+export PORT_XHTTP="${PORT_XHTTP:-2096}"
+export XHTTP_REALITY_TARGET="${XHTTP_REALITY_TARGET:-dl.google.com:443}"
 export ENABLE_TELEMT="${ENABLE_TELEMT:-true}"
 export PORT_TELEMT="${PORT_TELEMT:-993}"
 export TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
@@ -335,7 +340,6 @@ fi
 # -----------------------------------------------------------------------------
 # Generate dnstt server config (before creating users)
 # -----------------------------------------------------------------------------
-log_info "ENABLE_DNSTT=${ENABLE_DNSTT:-true}"
 if [[ "${ENABLE_DNSTT:-true}" == "true" ]]; then
     log_info "Generating dnstt server configuration..."
     if generate_dnstt_config; then
@@ -356,7 +360,6 @@ fi
 # -----------------------------------------------------------------------------
 # Generate Slipstream config (before creating users)
 # -----------------------------------------------------------------------------
-log_info "ENABLE_SLIPSTREAM=${ENABLE_SLIPSTREAM:-false}"
 if [[ "${ENABLE_SLIPSTREAM:-false}" == "true" ]]; then
     log_info "Generating Slipstream configuration..."
     if generate_slipstream_config; then
@@ -383,6 +386,7 @@ TROJAN_USERS_JSON="["
 HYSTERIA2_USERS_JSON="["
 VLESS_WS_USERS_JSON="["
 TRUSTTUNNEL_CREDENTIALS=""
+XRAY_USERS_JSON=""
 TELEMT_USERS_TOML=""
 TELEMT_CONNS_TOML=""
 TELEMT_IPS_TOML=""
@@ -434,6 +438,12 @@ username = \"$USER_ID\"
 password = \"$USER_PASSWORD\"
 
 "
+
+    # Xray user entry (XHTTP - flow MUST be empty for XHTTP transport)
+    if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+        [[ -n "$XRAY_USERS_JSON" ]] && XRAY_USERS_JSON+=","
+        XRAY_USERS_JSON+="{\"id\":\"$USER_UUID\",\"email\":\"${USER_ID}@moav\",\"flow\":\"\"}"
+    fi
 
     # telemt (Telegram MTProxy) per-user secret
     if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
@@ -538,6 +548,12 @@ password = \"$USER_PASSWORD\"
 
 "
 
+    # Xray user entry for extra user
+    if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+        [[ -n "$XRAY_USERS_JSON" ]] && XRAY_USERS_JSON+=","
+        XRAY_USERS_JSON+="{\"id\":\"$USER_UUID\",\"email\":\"${EXTRA_USER_ID}@moav\",\"flow\":\"\"}"
+    fi
+
     # telemt secret for extra user
     if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
         telemt_generate_secret "$EXTRA_USER_ID"
@@ -570,7 +586,7 @@ VLESS_WS_USERS_JSON+="]"
 # Generate TrustTunnel config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]]; then
-    log_info "Generating TrustTunnel configuration..."
+    log_info "Generating TrustTunnel configuration (credentials from user list)..."
 
     export TRUSTTUNNEL_CREDENTIALS
 
@@ -584,6 +600,29 @@ if [[ "${ENABLE_TRUSTTUNNEL:-true}" == "true" ]]; then
     envsubst < /configs/trusttunnel/vpn.toml.template > /configs/trusttunnel/vpn.toml
 
     log_info "TrustTunnel configuration written to /configs/trusttunnel/"
+fi
+
+# -----------------------------------------------------------------------------
+# Generate Xray config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+    log_info "Generating Xray-core (XHTTP) configuration (reusing Reality keys from sing-box)..."
+
+    export XRAY_USERS_JSON
+    export PORT_XHTTP
+    export XHTTP_REALITY_TARGET
+
+    # Extract host from target (e.g., "dl.google.com:443" -> "dl.google.com")
+    XHTTP_REALITY_TARGET_HOST="${XHTTP_REALITY_TARGET%%:*}"
+    export XHTTP_REALITY_TARGET_HOST
+
+    # Reuse Reality keys from sing-box
+    export REALITY_PRIVATE_KEY
+    export REALITY_SHORT_ID
+
+    envsubst < /configs/xray/config.json.template > /configs/xray/config.json
+
+    log_info "Xray configuration written to /configs/xray/config.json"
 fi
 
 # -----------------------------------------------------------------------------
@@ -602,7 +641,7 @@ singbox_needed=false
 [[ "${ENABLE_HYSTERIA2:-true}" == "true" ]] && singbox_needed=true
 
 if [[ "$singbox_needed" == "true" ]]; then
-    log_info "Generating sing-box configuration..."
+    log_info "Generating sing-box configuration (using existing keys)..."
 
     export REALITY_USERS_JSON
     export TROJAN_USERS_JSON

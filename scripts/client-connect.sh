@@ -24,7 +24,7 @@ TEST_TIMEOUT="${TEST_TIMEOUT:-10}"
 
 # Protocol priority for auto mode
 # Note: psiphon excluded - requires embedded server list, not supported in client mode
-PROTOCOL_PRIORITY=(reality hysteria2 trojan trusttunnel wireguard amneziawg tor dnstt slipstream)
+PROTOCOL_PRIORITY=(reality hysteria2 trojan xhttp trusttunnel wireguard amneziawg tor dnstt slipstream)
 
 # State
 CURRENT_PID=""
@@ -478,6 +478,114 @@ connect_wireguard() {
     fi
 }
 
+# Connect using XHTTP (VLESS+XHTTP+Reality via Xray-core)
+connect_xhttp() {
+    local config_file=""
+
+    # Find XHTTP config
+    for f in "$CONFIG_DIR"/xhttp-vless.txt "$CONFIG_DIR"/xhttp.txt; do
+        if [[ -f "$f" ]] && grep -q "^vless://" "$f" 2>/dev/null; then
+            config_file="$f"
+            break
+        fi
+    done
+
+    if [[ -z "$config_file" ]]; then
+        log_error "No XHTTP config found"
+        return 1
+    fi
+
+    if ! command -v xray &>/dev/null; then
+        log_error "Xray-core not installed (rebuild client image to add XHTTP support)"
+        return 1
+    fi
+
+    # Parse VLESS URI
+    local uri=$(cat "$config_file" | head -1 | tr -d '\n\r')
+    local uuid=$(extract_auth "$uri" "vless")
+    local server=$(extract_host "$uri")
+    local port=$(extract_port "$uri")
+    local sni=$(extract_param "$uri" "sni")
+    local pbk=$(extract_param "$uri" "pbk")
+    local sid=$(extract_param "$uri" "sid")
+    local fp=$(extract_param "$uri" "fp")
+
+    [[ -z "$fp" ]] && fp="chrome"
+    [[ -z "$port" ]] && port="2096"
+    port=$(echo "$port" | tr -cd '0-9')
+    [[ -z "$port" ]] && port="2096"
+
+    if [[ -z "$server" ]] || [[ -z "$uuid" ]] || [[ -z "$sni" ]] || [[ -z "$pbk" ]]; then
+        log_error "Failed to parse XHTTP URI"
+        return 1
+    fi
+
+    # Generate Xray config
+    local xray_config="/tmp/moav-client-xhttp.json"
+    cat > "$xray_config" << EOF
+{
+  "log": {"loglevel": "warning"},
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": $SOCKS_PORT,
+      "protocol": "socks",
+      "settings": {"udp": true}
+    },
+    {
+      "listen": "0.0.0.0",
+      "port": $HTTP_PORT,
+      "protocol": "http"
+    }
+  ],
+  "outbounds": [{
+    "protocol": "vless",
+    "settings": {
+      "vnext": [{
+        "address": "$server",
+        "port": $port,
+        "users": [{"id": "$uuid", "encryption": "none", "flow": ""}]
+      }]
+    },
+    "streamSettings": {
+      "network": "xhttp",
+      "security": "reality",
+      "realitySettings": {
+        "serverName": "$sni",
+        "fingerprint": "$fp",
+        "publicKey": "$pbk",
+        "shortId": "$sid"
+      }
+    }
+  }]
+}
+EOF
+
+    log_info "Starting Xray with XHTTP..."
+    xray run -c "$xray_config" &
+    CURRENT_PID=$!
+    CURRENT_PROTOCOL="xhttp"
+
+    sleep 3
+
+    if ! kill -0 $CURRENT_PID 2>/dev/null; then
+        log_error "Xray failed to start"
+        return 1
+    fi
+
+    # Test connection
+    if curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" "$TEST_URL" >/dev/null 2>&1; then
+        EXIT_IP=$(curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://api.ipify.org 2>/dev/null || \
+                  curl -sf --socks5 127.0.0.1:$SOCKS_PORT --max-time "$TEST_TIMEOUT" https://ifconfig.me 2>/dev/null || echo "")
+        return 0
+    else
+        log_warn "Connection test failed for xhttp"
+        kill $CURRENT_PID 2>/dev/null || true
+        CURRENT_PID=""
+        return 1
+    fi
+}
+
 # Connect using AmneziaWG (full VPN via awg-quick)
 # Note: AmneziaWG is a full VPN (TUN-based), not a proxy
 # It routes all container traffic through the VPN tunnel
@@ -887,6 +995,12 @@ connect_auto() {
                     return 0
                 fi
                 ;;
+            xhttp)
+                if connect_xhttp; then
+                    log_success "Connected via XHTTP"
+                    return 0
+                fi
+                ;;
             trusttunnel)
                 if connect_trusttunnel; then
                     log_success "Connected via TrustTunnel"
@@ -958,6 +1072,9 @@ main() {
             ;;
         amneziawg)
             connect_amneziawg && connected=true
+            ;;
+        xhttp)
+            connect_xhttp && connected=true
             ;;
         trusttunnel)
             connect_trusttunnel && connected=true

@@ -5,7 +5,7 @@ Get MoaV running on a VPS in 5 steps. MoaV deploys [12 anti-censorship protocols
 ## Requirements
 
 - A VPS with Debian 12 or Ubuntu 22.04/24.04 (1 vCPU, 1GB RAM minimum)
-- A domain name (optional — see [Domain-less Mode](SETUP.md#domain-less-mode))
+- A domain name (optional — see [Domainless Mode](SETUP.md#domainless-mode))
 
 !!! tip "Need a VPS?"
     See [VPS Deployment](DEPLOY.md) for one-click deploy options starting at ~$5/month.
@@ -24,7 +24,7 @@ This installs Docker, clones MoaV, and launches the interactive setup.
 
 The installer prompts you for:
 
-- **Domain** — Your domain pointed at this server (or leave empty for domain-less mode)
+- **Domain** — Your domain pointed at this server (or leave empty for domainless mode)
 - **Email** — For Let's Encrypt TLS certificates (required if using a domain)
 - **Admin password** — For the web dashboard
 

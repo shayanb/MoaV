@@ -42,8 +42,9 @@ MODES:
 OPTIONS:
     -c, --config DIR    Path to user bundle directory (default: /config)
     -p, --protocol P    Protocol to use (default: auto)
-                        Options: auto, reality, trojan, hysteria2, wireguard,
-                                 psiphon, tor, dnstt
+                        Options: auto, reality, trojan, hysteria2, xhttp,
+                                 wireguard, trusttunnel, amneziawg,
+                                 psiphon, tor, dnstt, slipstream
     -s, --server HOST   Override server address (default: from config)
     --socks-port PORT   SOCKS5 proxy port (default: 1080)
     --http-port PORT    HTTP proxy port (default: 8080)
@@ -52,13 +53,16 @@ OPTIONS:
     -h, --help          Show this help
 
 PROTOCOL PRIORITY (auto mode):
-    1. Reality (VLESS)  - Primary, most stealth
-    2. Hysteria2        - Fast UDP-based
-    3. Trojan           - Reliable TCP backup
-    4. WireGuard        - Via wstunnel (WebSocket)
-    5. Psiphon          - Standalone network fallback
-    6. Tor/Snowflake    - Ultimate fallback
-    7. dnstt            - Last resort (slow but hard to block)
+    1. Reality (VLESS)   - Primary, most stealth
+    2. Hysteria2         - Fast UDP-based
+    3. Trojan            - Reliable TCP backup
+    4. XHTTP             - VLESS+XHTTP+Reality (Xray-core)
+    5. TrustTunnel       - HTTP/2 + QUIC
+    6. WireGuard         - Via wstunnel (WebSocket)
+    7. AmneziaWG         - Obfuscated WireGuard
+    8. Tor/Snowflake     - Ultimate fallback
+    9. dnstt             - DNS tunnel (slow but hard to block)
+   10. Slipstream        - QUIC-over-DNS
 
 EXAMPLES:
     # Test all services for user 'joe'

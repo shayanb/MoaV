@@ -33,6 +33,13 @@ scrape_configs:
       - targets: ['singbox-exporter:9102']
     scrape_timeout: 10s
 
+  # Xray User Exporter (XHTTP user connection metrics from logs)
+  # NOTE: Only available when running with --profile xhttp
+  - job_name: 'xray-users'
+    static_configs:
+      - targets: ['xray-exporter:9103']
+    scrape_timeout: 10s
+
   # WireGuard Exporter - custom exporter using docker exec
   # NOTE: Only available when running with --profile wireguard
   - job_name: 'wireguard'

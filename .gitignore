@@ -73,6 +73,9 @@ configs/trusttunnel/vpn.toml
 configs/trusttunnel/hosts.toml
 configs/trusttunnel/credentials.toml
 
+# Xray generated files (keep .template files)
+configs/xray/config.json
+
 # Slipstream generated files
 configs/slipstream/cert.pem
 configs/slipstream/key.pem

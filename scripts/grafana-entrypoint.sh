@@ -187,7 +187,7 @@ star_dashboards() {
     AUTH_HEADER="Authorization: Basic ${AUTH_B64}"
 
     # Star all MoaV dashboards
-    for uid in moav-system moav-containers moav-singbox moav-wireguard moav-amneziawg moav-snowflake moav-conduit moav-telemt; do
+    for uid in moav-system moav-containers moav-singbox moav-xray moav-wireguard moav-amneziawg moav-snowflake moav-conduit moav-telemt; do
         wget -q -O /dev/null $WGET_OPTS \
             --header="$AUTH_HEADER" \
             --header="Content-Type: application/json" \

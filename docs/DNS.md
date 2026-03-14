@@ -5,12 +5,13 @@ This guide explains how to configure DNS records for MoaV.
 ## Table of Contents
 
 - [Do I Need a Domain?](#do-i-need-a-domain)
-- [Domain-less Mode](#domain-less-mode)
+- [Domainless Mode](#domainless-mode)
 - [Domain Setup](#domain-setup)
   - [Minimum Setup (Without DNS Tunnels)](#minimum-setup-without-dns-tunnels)
   - [Full Setup (With DNS Tunnels)](#full-setup-with-dns-tunnels)
 - [Provider-Specific Instructions](#provider-specific-instructions)
   - [Cloudflare](#cloudflare)
+  - [AWS CloudFront (Alternative CDN)](#aws-cloudfront-alternative-cdn)
   - [Namecheap](#namecheap)
   - [Google Domains / Squarespace](#google-domains--squarespace)
   - [Hetzner DNS](#hetzner-dns)
@@ -28,11 +29,12 @@ This guide explains how to configure DNS records for MoaV.
 
 ## Do I Need a Domain?
 
-**No.** MoaV can run without a domain in **domain-less mode**. A domain unlocks more protocols, but several work with just an IP address.
+**No.** MoaV can run without a domain in **domainless mode**. A domain unlocks more protocols, but several work with just an IP address.
 
 | Protocol | Requires Domain | Port |
 |----------|:-:|------|
 | Reality (VLESS) | No | 443/tcp |
+| XHTTP (VLESS+XHTTP+Reality) | No | 2096/tcp |
 | WireGuard | No | 51820/udp |
 | WireGuard (wstunnel) | No | 8080/tcp |
 | AmneziaWG | No | 51821/udp |
@@ -43,7 +45,7 @@ This guide explains how to configure DNS records for MoaV.
 | Trojan | **Yes** | 8443/tcp |
 | Hysteria2 | **Yes** | 443/udp |
 | TrustTunnel | **Yes** | 4443/tcp+udp |
-| CDN (VLESS+WebSocket) | **Yes** (Cloudflare) | 2082/tcp |
+| CDN (VLESS+WebSocket) | **Yes** (Cloudflare) or **No** (CloudFront) | 2082/tcp |
 | dnstt (DNS tunnel) | **Yes** (NS records) | 53/udp |
 | Slipstream (QUIC-over-DNS) | **Yes** (NS records) | 53/udp |
 
@@ -51,11 +53,12 @@ This guide explains how to configure DNS records for MoaV.
 
 ---
 
-## Domain-less Mode
+## Domainless Mode
 
 Leave `DOMAIN=` empty in your `.env` file. MoaV automatically detects this and runs only protocols that work without a domain:
 
 - **Reality** — VLESS with TLS camouflage (uses `REALITY_TARGET` like `dl.google.com` instead of your own domain)
+- **XHTTP** — VLESS+XHTTP+Reality via Xray-core (same TLS camouflage, different transport)
 - **WireGuard** — Full VPN, direct UDP or tunneled over WebSocket (TCP) when UDP is blocked
 - **AmneziaWG** — DPI-resistant WireGuard with packet-level obfuscation
 - **Telegram MTProxy** — Direct Telegram access via fake-TLS, no VPN needed
@@ -69,20 +72,21 @@ This is ideal for:
 
 You can upgrade to a full domain setup later — just set `DOMAIN=` in `.env` and run `moav bootstrap`.
 
-### Port Forwarding (Domain-less)
+### Port Forwarding (Domainless)
 
 If running on a home network, forward these ports on your router:
 
 | Port | Protocol | Service |
 |------|----------|---------|
 | 443/tcp | TCP | Reality (VLESS) |
+| 2096/tcp | TCP | XHTTP (VLESS+XHTTP+Reality) |
 | 51820/udp | UDP | WireGuard |
 | 8080/tcp | TCP | wstunnel (WireGuard over WebSocket) |
 | 51821/udp | UDP | AmneziaWG |
 | 993/tcp | TCP | Telegram MTProxy |
 | 9443/tcp | TCP | Admin Dashboard |
 
-> No port 80 needed — domain-less mode doesn't use Let's Encrypt.
+> No port 80 needed — domainless mode doesn't use Let's Encrypt.
 
 ---
 
@@ -101,7 +105,7 @@ Value: YOUR_SERVER_IP
 TTL: 300 (or Auto)
 ```
 
-This enables: Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, and all domain-less protocols.
+This enables: Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, and all domainless protocols.
 
 ### Full Setup (With DNS Tunnels)
 
@@ -239,6 +243,214 @@ A `400` or `404` response means sing-box is receiving the request.
 
 See [CDN Setup Guide](SETUP.md#cdn-fronted-vlesswebsocket-cloudflare) for complete CDN configuration.
 
+### AWS CloudFront (Alternative CDN)
+
+CloudFront can be used as an alternative to Cloudflare for CDN-fronted VLESS. The main advantage: **no domain required** — CloudFront gives you a `*.cloudfront.net` domain automatically. This is useful when you can't register a domain or want an additional CDN fallback.
+
+**How it works:** Client connects to CloudFront (AWS CDN IPs) → CloudFront forwards to your server on port 2082 → sing-box handles the VLESS+WS connection. DPI only sees connections to AWS infrastructure.
+
+#### Important: CloudFront Requires a Domain Name as Origin
+
+CloudFront **does not accept bare IP addresses** as origins — you'll get `InvalidArgument: The parameter origin name cannot be an IP address`. If you already have a domain, use it. If not, use the free wildcard DNS service **sslip.io**:
+
+```
+YOUR_SERVER_IP.sslip.io    →    resolves to YOUR_SERVER_IP
+```
+
+For example, `139.59.22.221.sslip.io` resolves to `139.59.22.221`. This works with any IP and requires no registration. `sslip.io` is purely a DNS service — no traffic passes through it. Users never interact with it; only CloudFront uses it internally to reach your server.
+
+#### Step 1: Create CloudFront Distribution
+
+##### Option A: AWS Console (Web UI)
+
+1. Log into [AWS Console](https://console.aws.amazon.com/cloudfront/)
+2. Click **Create Distribution**
+3. Configure origin:
+
+| Setting | Value |
+|---------|-------|
+| Origin domain | `YOUR_SERVER_IP.sslip.io` (or your domain) |
+| Protocol | **HTTP only** |
+| HTTP port | `2082` |
+| HTTPS port | `443` |
+
+> **Note:** Type your origin domain (e.g., `139.59.22.221.sslip.io`) directly into the "Origin domain" field. Ignore the dropdown suggestions (S3 buckets, etc.) — CloudFront accepts any valid domain name.
+
+4. Configure behavior:
+
+| Setting | Value |
+|---------|-------|
+| Viewer protocol policy | **HTTPS only** |
+| Allowed HTTP methods | **GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE** |
+| Cache policy | **CachingDisabled** |
+| Origin request policy | **AllViewer** |
+
+5. Configure WebSocket support:
+
+| Setting | Value |
+|---------|-------|
+| Response headers policy | None |
+
+> CloudFront supports WebSocket natively — no extra configuration needed.
+
+6. Click **Create Distribution** and wait for deployment (5-15 minutes)
+7. Note your distribution domain: `d1234abcd.cloudfront.net`
+
+##### Option B: AWS CLI
+
+Install the CLI first: [AWS CLI Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+
+Then authenticate:
+
+```bash
+# Option 1: SSO login (recommended if your org uses AWS IAM Identity Center)
+aws sso login
+
+# Option 2: Configure with access keys (from IAM → Users → Security credentials)
+aws configure
+```
+
+Create the distribution (replace `YOUR_SERVER_IP`):
+
+```bash
+aws cloudfront create-distribution --distribution-config '{
+  "CallerReference": "moav-cdn-'$(date +%s)'",
+  "Comment": "MoaV CDN",
+  "Enabled": true,
+  "Origins": {
+    "Quantity": 1,
+    "Items": [
+      {
+        "Id": "moav-origin",
+        "DomainName": "YOUR_SERVER_IP.sslip.io",
+        "CustomOriginConfig": {
+          "HTTPPort": 2082,
+          "HTTPSPort": 443,
+          "OriginProtocolPolicy": "http-only"
+        }
+      }
+    ]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "moav-origin",
+    "ViewerProtocolPolicy": "https-only",
+    "AllowedMethods": {
+      "Quantity": 7,
+      "Items": ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"],
+      "CachedMethods": {"Quantity": 2, "Items": ["GET","HEAD"]}
+    },
+    "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+    "OriginRequestPolicyId": "216adef6-5c7f-47e4-b989-5492eafa07d3",
+    "Compress": false
+  },
+  "PriceClass": "PriceClass_200"
+}'
+```
+
+> **Example:** For server IP `139.59.22.221`, use `"DomainName": "139.59.22.221.sslip.io"`
+
+The `PriceClass` controls which edge locations (regions) are used:
+
+| PriceClass | Regions | Cost |
+|-----------|---------|------|
+| `PriceClass_100` | US, Canada, Europe | Cheapest |
+| `PriceClass_200` | + Asia, Middle East, Africa | Mid-tier |
+| `PriceClass_All` | All edge locations worldwide | Most expensive |
+
+> For users in Iran/Middle East, use `PriceClass_200` or `PriceClass_All` for better latency — these include Middle East and Asia edge nodes.
+
+> **Note:** You can't pick a specific datacenter/city. CloudFront is an anycast CDN — it automatically routes users to the nearest edge location within your selected price class.
+
+Get your distribution domain:
+
+```bash
+aws cloudfront list-distributions \
+  --query 'DistributionList.Items[0].DomainName' --output text
+```
+
+Wait for deployment to complete (status changes from `InProgress` to `Deployed`):
+
+```bash
+aws cloudfront list-distributions \
+  --query 'DistributionList.Items[*].[Id,DomainName,Status]' --output table
+```
+
+#### Step 2: Configure MoaV
+
+In your `.env` file:
+
+```bash
+# Use CloudFront instead of Cloudflare for CDN
+CDN_SUBDOMAIN=           # Leave empty (not using Cloudflare subdomain)
+CDN_DOMAIN=d1234abcd.cloudfront.net
+CDN_ADDRESS=d1234abcd.cloudfront.net
+CDN_SNI=d1234abcd.cloudfront.net
+CDN_TRANSPORT=ws         # Use 'ws' for widest CDN compatibility
+```
+
+Then re-bootstrap to regenerate configs:
+```bash
+moav bootstrap
+```
+
+#### Step 3: Verify
+
+```bash
+# Should return 400 (sing-box responding)
+curl -s -o /dev/null -w "%{http_code}" https://d1234abcd.cloudfront.net/test
+```
+
+#### CloudFront vs Cloudflare
+
+| Feature | Cloudflare | CloudFront |
+|---------|-----------|------------|
+| Cost | Free tier | ~$0.085/GB (1TB free/month for 12 months) |
+| Domain required | Yes | **No** (get `*.cloudfront.net`) |
+| Setup complexity | DNS + Origin Rule | AWS Console distribution |
+| WebSocket support | Yes | Yes |
+| Origin port config | Needs Origin Rule to rewrite to 2082 | Direct port configuration |
+| SNI flexibility | Can use root domain for stealth | Must use `*.cloudfront.net` or your CNAME |
+| Domain fronting | Partially supported | **Blocked since 2018** |
+| Global edge network | Yes (larger) | Yes |
+
+> **SNI note:** CloudFront validates that the TLS SNI matches your distribution domain or a configured CNAME. You cannot use an arbitrary domain (like `google.com`) as SNI — AWS blocked domain fronting in 2018. For Reality-based protocols (XHTTP, VLESS+Reality), SNI camouflage works differently and does not rely on the CDN.
+
+#### Using Both Cloudflare and CloudFront
+
+You can run both CDN providers simultaneously for redundancy. Users get two CDN share links — if one CDN's IPs get blocked, the other likely still works:
+
+1. Set up Cloudflare CDN as described above (requires domain)
+2. Set up CloudFront as a second distribution pointing to the same server
+3. Share both links with users
+
+To generate links for both, you'd need to run bootstrap with Cloudflare settings first, then manually create CloudFront share links using the same UUID and WS path.
+
+#### CloudFront CLI Management
+
+```bash
+# List all distributions
+aws cloudfront list-distributions \
+  --query 'DistributionList.Items[*].[Id,DomainName,Status]' --output table
+
+# Check which edge location a user is hitting
+curl -sI https://d1234abcd.cloudfront.net/ | grep x-amz-cf-pop
+# Example output: x-amz-cf-pop: FRA56-P4 (Frankfurt)
+
+# Disable a distribution (must disable before deleting)
+# First get the ETag:
+ETAG=$(aws cloudfront get-distribution-config --id DIST_ID \
+  --query 'ETag' --output text)
+# Then disable:
+aws cloudfront get-distribution-config --id DIST_ID \
+  --query 'DistributionConfig' --output json \
+  | jq '.Enabled = false' \
+  | aws cloudfront update-distribution --id DIST_ID \
+    --if-match "$ETAG" --distribution-config file:///dev/stdin
+
+# Delete (only after status is "Deployed" and distribution is disabled)
+aws cloudfront delete-distribution --id DIST_ID --if-match "$ETAG"
+```
+
 ### Namecheap
 
 1. Log into Namecheap
@@ -289,7 +501,7 @@ MoaV runs on Raspberry Pi 4+ (2GB+ RAM) and any ARM64/x64 Linux machine. Home se
 
 Configure your router to forward the ports you need to your MoaV server's local IP.
 
-**Domain-less mode** (minimum):
+**Domainless mode** (minimum):
 
 | Port | Protocol | Service |
 |------|----------|---------|
@@ -329,7 +541,7 @@ Configure your router to forward the ports you need to your MoaV server's local 
 
 If you're using a domain with a home server, your ISP likely assigns a dynamic public IP that changes periodically. Dynamic DNS services automatically update your domain to point to your current IP.
 
-> **Domain-less mode does not need DDNS.** Users connect via your public IP directly. You can find your current public IP with `curl ifconfig.me` and share it manually. If your IP changes, update the configs you shared.
+> **Domainless mode does not need DDNS.** Users connect via your public IP directly. You can find your current public IP with `curl ifconfig.me` and share it manually. If your IP changes, update the configs you shared.
 
 ### DuckDNS (Free)
 
@@ -526,7 +738,7 @@ dig @1.1.1.1 yourdomain.com
 - Verify A record is correct: `dig yourdomain.com`
 - Ensure port 80 is open (temporarily, for ACME HTTP-01)
 - Check that no other service is using port 80
-- Not applicable in domain-less mode (no certificates needed)
+- Not applicable in domainless mode (no certificates needed)
 
 ### "Can't connect from outside my home network"
 

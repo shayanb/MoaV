@@ -19,6 +19,7 @@ Common issues and their solutions.
   - [TrustTunnel not connecting](#trusttunnel-not-connecting)
   - [AmneziaWG not connecting](#amneziawg-not-connecting)
   - [CDN VLESS+WS not working](#cdn-vlessws-not-working)
+  - [XHTTP not connecting](#xhttp-not-connecting)
   - [DNS tunnel not working](#dns-tunnel-not-working)
 - [Registry/Build Issues](#registrybuild-issues)
   - [Container registry blocked (gcr.io, ghcr.io)](#container-registry-blocked-gcrio-ghcrio)
@@ -392,9 +393,9 @@ ufw allow 9443/tcp
 iptables -A INPUT -p tcp --dport 9443 -j ACCEPT
 ```
 
-**Browser shows security warning (domain-less mode):**
+**Browser shows security warning (domainless mode):**
 
-In domain-less mode, admin uses a self-signed certificate. This is expected:
+In domainless mode, admin uses a self-signed certificate. This is expected:
 1. Click "Advanced" or "Show Details"
 2. Click "Proceed to site" or "Accept the Risk"
 
@@ -593,6 +594,34 @@ This means Cloudflare is trying HTTPS to your origin, but MoaV's CDN inbound on 
 1. Set SSL/TLS mode to **Flexible** in Cloudflare dashboard (see 525 section above)
 2. Verify sing-box container is running
 3. Check sing-box config has `vless-ws-in` inbound on port 2082
+
+### XHTTP not connecting
+
+**Check container is running:**
+```bash
+docker compose --profile xhttp ps
+docker compose logs xhttp
+```
+
+**Common issues:**
+
+1. **Port not open:**
+   ```bash
+   ufw allow 2096/tcp
+   ```
+
+2. **Service not enabled:**
+   - XHTTP is experimental and opt-in. Ensure `ENABLE_XHTTP=true` in `.env`
+   - Restart after enabling: `moav restart`
+
+3. **Verify port is listening:**
+   ```bash
+   ss -tlnp | grep 2096
+   ```
+
+4. **Client compatibility:**
+   - XHTTP requires Xray-compatible clients: V2rayNG, Hiddify, Streisand, V2Box, V2rayN, V2rayU, NekoBox
+   - Ensure your client app is updated to a version that supports XHTTP transport
 
 ### WireGuard connected but no traffic
 
@@ -1125,11 +1154,7 @@ Home ISPs often have stricter filtering:
 When ISP blocks everything:
 
 1. **DNS Tunnel** - Often still works as it's hard to block all DNS
-2. **Different Reality targets** - Try:
-   - `www.apple.com`
-   - `dl.google.com`
-   - `www.samsung.com`
-   - `update.microsoft.com`
+2. **Different Reality targets** — Choose a domain that your ISP can't easily block (e.g., domestic banking or fintech sites). See [Choosing a Reality Target](SETUP.md#choosing-a-reality-target-sni) for how to pick and verify targets.
 
 3. **Get a new server** - Your IP may be specifically blocked
 

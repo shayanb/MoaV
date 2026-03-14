@@ -208,7 +208,7 @@ services:
     command: >
       -c '
         if [ -z "${DOMAIN}" ]; then
-          echo "No domain configured, skipping certificate generation (domain-less mode)"
+          echo "No domain configured, skipping certificate generation (domainless mode)"
           exit 0
         fi
         if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then
@@ -427,6 +427,31 @@ services:
       - all
 
   # ===========================================================================
+  # XRAY: VLESS+XHTTP+Reality (Xray-core)
+  # XHTTP splits traffic into separate HTTP connections — no distinctive ALPN
+  # ===========================================================================
+  xray:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.xray
+      args:
+        XRAY_VERSION: ${XRAY_VERSION:-25.3.6}
+    container_name: moav-xray
+    restart: unless-stopped
+    networks:
+      - moav_net
+    ports:
+      - "${PORT_XHTTP:-2096}:${PORT_XHTTP:-2096}/tcp"
+    volumes:
+      - ./configs/xray:/etc/xray:ro
+      - moav_state:/state:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    profiles:
+      - xhttp
+      - all
+
+  # ===========================================================================
   # ADMIN: Stats dashboard + User management API
   # ===========================================================================
   admin:
@@ -628,6 +653,25 @@ services:
       - monitoring
       - all
 
+  # Xray User Exporter - parses Xray logs for XHTTP user connection metrics
+  xray-exporter:
+    build:
+      context: ./exporters/xray
+      dockerfile: Dockerfile
+    container_name: moav-xray-exporter
+    restart: unless-stopped
+    networks:
+      - moav_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    expose:
+      - "9103"
+    profiles:
+      - monitoring
+      - all
+
   # WireGuard Exporter - custom exporter using docker exec
   wireguard-exporter:
     build:
@@ -702,6 +746,9 @@ services:
       - TELEMT_MAX_UNIQUE_IPS=${TELEMT_MAX_UNIQUE_IPS:-10}
       - ENABLE_AMNEZIAWG=${ENABLE_AMNEZIAWG:-true}
       - PORT_AMNEZIAWG=${PORT_AMNEZIAWG:-51821}
+      - ENABLE_XHTTP=${ENABLE_XHTTP:-false}
+      - PORT_XHTTP=${PORT_XHTTP:-2096}
+      - XHTTP_REALITY_TARGET=${XHTTP_REALITY_TARGET:-dl.google.com:443}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
       - CDN_SUBDOMAIN=${CDN_SUBDOMAIN:-}
       - CDN_DOMAIN=${CDN_DOMAIN:-}

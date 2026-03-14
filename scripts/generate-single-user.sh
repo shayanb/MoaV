@@ -153,6 +153,21 @@ EOF
     fi
 fi
 
+# Add to Xray config (XHTTP)
+XRAY_CONFIG="/configs/xray/config.json"
+if [[ "${ENABLE_XHTTP:-false}" == "true" ]] && [[ -f "$XRAY_CONFIG" ]]; then
+    # Check if user already exists
+    if jq -e --arg uuid "$USER_UUID" '.inbounds[0].settings.clients[] | select(.id == $uuid)' "$XRAY_CONFIG" >/dev/null 2>&1; then
+        log_info "User $USER_ID already exists in Xray config"
+    else
+        # Add new client entry (flow MUST be empty for XHTTP)
+        jq --arg id "$USER_UUID" --arg email "${USER_ID}@moav" \
+            '.inbounds[0].settings.clients += [{"id": $id, "email": $email, "flow": ""}]' \
+            "$XRAY_CONFIG" > /tmp/xray.tmp && mv -f /tmp/xray.tmp "$XRAY_CONFIG"
+        log_info "Added $USER_ID to Xray config"
+    fi
+fi
+
 # Add to telemt config
 TELEMT_CONFIG="/configs/telemt/config.toml"
 if [[ "${ENABLE_TELEMT:-true}" == "true" ]] && [[ -f "$TELEMT_CONFIG" ]] && donate_needs telemt telegram; then
@@ -196,6 +211,11 @@ if [[ -n "$DONATE_ONLY" ]]; then
     else
         export ENABLE_TELEMT=false
     fi
+    if echo " $DONATE_ONLY " | grep -q " xhttp "; then
+        export ENABLE_XHTTP=true
+    else
+        export ENABLE_XHTTP=false
+    fi
     # CDN is controlled by CDN_DOMAIN — clear it if cdn not in donate list
     if ! echo " $DONATE_ONLY " | grep -q " cdn "; then
         export CDN_DOMAIN=""
@@ -207,8 +227,11 @@ else
     export ENABLE_SLIPSTREAM="${ENABLE_SLIPSTREAM:-false}"
     export ENABLE_HYSTERIA2="${ENABLE_HYSTERIA2:-true}"
     export ENABLE_TRUSTTUNNEL="${ENABLE_TRUSTTUNNEL:-true}"
+    export ENABLE_XHTTP="${ENABLE_XHTTP:-false}"
     export ENABLE_TELEMT="${ENABLE_TELEMT:-true}"
 fi
+export PORT_XHTTP="${PORT_XHTTP:-2096}"
+export XHTTP_REALITY_TARGET="${XHTTP_REALITY_TARGET:-dl.google.com:443}"
 export PORT_TELEMT="${PORT_TELEMT:-993}"
 export TELEMT_TLS_DOMAIN="${TELEMT_TLS_DOMAIN:-dl.google.com}"
 export TELEMT_MAX_TCP_CONNS="${TELEMT_MAX_TCP_CONNS:-100}"

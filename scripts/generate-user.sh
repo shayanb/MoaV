@@ -372,6 +372,58 @@ EOF
 fi
 
 # -----------------------------------------------------------------------------
+# Generate XHTTP (Xray-core) client config (if enabled)
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
+    # XHTTP Reality target host (strip port)
+    _xhttp_target="${XHTTP_REALITY_TARGET:-dl.google.com:443}"
+    _xhttp_target_host="${_xhttp_target%%:*}"
+    _xhttp_port="${PORT_XHTTP:-2096}"
+
+    # Generate VLESS XHTTP share link
+    XHTTP_LINK="vless://${USER_UUID}@${SERVER_IP}:${_xhttp_port}?type=xhttp&security=reality&sni=${_xhttp_target_host}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&encryption=none#MoaV-XHTTP-${USER_ID}"
+
+    echo "$XHTTP_LINK" > "$OUTPUT_DIR/xhttp-vless.txt"
+
+    # Generate QR code
+    if command -v qrencode &>/dev/null; then
+        qrencode -o "$OUTPUT_DIR/xhttp-qr.png" -s 6 -m 2 "$XHTTP_LINK"
+    fi
+
+    # Generate human-readable text file
+    cat > "$OUTPUT_DIR/xhttp.txt" <<EOF
+XHTTP (VLESS+XHTTP+Reality) Configuration for $USER_ID
+=======================================================
+
+Protocol: VLESS + XHTTP + Reality (via Xray-core)
+Server: ${SERVER_IP}
+Port: ${_xhttp_port}
+UUID: ${USER_UUID}
+SNI: ${_xhttp_target_host}
+Reality Public Key: ${REALITY_PUBLIC_KEY}
+Short ID: ${REALITY_SHORT_ID}
+Fingerprint: chrome
+Transport: xhttp
+
+Share Link:
+${XHTTP_LINK}
+
+Client Apps:
+- Android: V2rayNG, Hiddify
+- iOS: Streisand, V2Box
+- Windows: Hiddify, V2rayN
+- macOS: V2rayU, Hiddify
+
+Instructions:
+1. Install a compatible client app
+2. Import using the share link above or scan the QR code
+3. Connect
+EOF
+
+    log_info "  - XHTTP config generated"
+fi
+
+# -----------------------------------------------------------------------------
 # Generate WireGuard config (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_WIREGUARD:-true}" == "true" ]]; then

@@ -140,14 +140,18 @@ This command:
 6. Generates user bundles
 
 #### `moav domainless`
-Enable domain-less mode for servers without a domain.
+Enable domainless mode for servers without a domain.
 
 ```bash
 moav domainless
 ```
 
-Available services in domain-less mode:
+Available services in domainless mode:
+- Reality (VLESS+Reality)
+- XHTTP (VLESS+XHTTP+Reality)
 - WireGuard (direct + wstunnel)
+- AmneziaWG (obfuscated WireGuard)
+- Telegram MTProxy (fake-TLS)
 - Admin dashboard (self-signed certificate)
 - Conduit (Psiphon bandwidth donation)
 - Snowflake (Tor bandwidth donation)

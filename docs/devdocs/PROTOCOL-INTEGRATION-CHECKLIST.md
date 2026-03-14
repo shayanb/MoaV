@@ -349,7 +349,7 @@
 - [ ] Add to profiles listing (~line 248)
 - [ ] Add firewall commands (~line 265)
 - [ ] Add to user bundle files listing (~line 312)
-- [ ] If domain-less capable: add to domain-less mode available list (~line 369)
+- [ ] If domainless capable: add to domainless mode available list (~line 369)
 
 ### 6d. `docs/CLIENTS.md`
 
