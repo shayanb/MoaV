@@ -3287,15 +3287,17 @@ cmd_donate_mahsanet_list() {
         return 0
     fi
 
-    printf "  %-40s %-10s %-8s %-8s\n" "URL" "Status" "Health" "Used"
+    printf "  %-42s %-10s %-8s %s\n" "URL" "Status" "Health" "Used"
     echo "  $(printf '%.0s─' {1..70})"
 
     echo "$body" | jq -r '.results[] | [
-        (.url[:38] + (if (.url | length) > 38 then ".." else "" end)),
+        (.url[:40] + (if (.url | length) > 40 then ".." else "" end)),
         (if .is_active then "active" else "inactive" end),
-        (.health_status_percent // "—"),
+        (if .health_status_percent != null then (.health_status_percent | tostring) + "%" else "—" end),
         (.num_consumed // 0 | tostring)
-    ] | "  " + .[0] + "  " + .[1] + "  " + .[2] + "  " + .[3]' 2>/dev/null || true
+    ] | @tsv' 2>/dev/null | while IFS=$'\t' read -r url status health used; do
+        printf "  %-42s %-10s %-8s %s\n" "$url" "$status" "$health" "$used"
+    done
 
     echo ""
     info "Total: $count config(s)"
