@@ -902,7 +902,7 @@ def find_certificates(wait_for_letsencrypt=True, max_wait=60):
     import glob
     import time
 
-    # Check for self-signed first to determine if we're in domain-less mode
+    # Check for self-signed first to determine if we're in domainless mode
     selfsigned_key = "/certs/selfsigned/privkey.pem"
     selfsigned_cert = "/certs/selfsigned/fullchain.pem"
     has_selfsigned = Path(selfsigned_key).exists() and Path(selfsigned_cert).exists()
@@ -923,10 +923,10 @@ def find_certificates(wait_for_letsencrypt=True, max_wait=60):
                     print(f"Found Let's Encrypt certificate from {cert_dir}")
                     return key_path, cert_path
 
-            # If we have self-signed, we might be in domain-less mode
+            # If we have self-signed, we might be in domainless mode
             # Don't wait too long in that case
             if has_selfsigned and waited >= 15:
-                print("Self-signed cert exists, assuming domain-less mode")
+                print("Self-signed cert exists, assuming domainless mode")
                 break
 
             time.sleep(check_interval)
@@ -943,9 +943,9 @@ def find_certificates(wait_for_letsencrypt=True, max_wait=60):
             print(f"Using Let's Encrypt certificate from {cert_dir}")
             return key_path, cert_path
 
-    # Fallback to self-signed certificate (domain-less mode)
+    # Fallback to self-signed certificate (domainless mode)
     if has_selfsigned:
-        print("Using self-signed certificate (domain-less mode)")
+        print("Using self-signed certificate (domainless mode)")
         return selfsigned_key, selfsigned_cert
 
     return None, None

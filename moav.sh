@@ -515,7 +515,7 @@ check_prerequisites() {
                 # Ask for domain
                 echo -e "${WHITE}Domain name${NC} (required for TLS-based protocols)"
                 echo "  Example: vpn.example.com"
-                echo "  Leave empty to run only domain-less services"
+                echo "  Leave empty to run only domainless services"
                 printf "  Domain: "
                 read -r input_domain
 
@@ -608,10 +608,10 @@ check_prerequisites() {
                     echo "    • Tor Snowflake (bandwidth donation)"
                     echo ""
 
-                    if confirm "Continue with domain-less mode?" "y"; then
+                    if confirm "Continue with domainless mode?" "y"; then
                         domainless_mode=true
-                        # Set default profiles to include all domain-less services (proxy = Reality)
-                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"proxy wireguard amneziawg telegram admin conduit snowflake\"|" .env
+                        # Set default profiles to include all domainless services (proxy = Reality)
+                        sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"proxy xhttp wireguard amneziawg telegram admin conduit snowflake\"|" .env
                         # Disable cert-based protocols (Reality stays — works without domain)
                         # Use grep to check if line exists, then sed to replace, or append if missing
                         for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
@@ -635,7 +635,7 @@ check_prerequisites() {
                 # Generate or ask for admin password
                 if [[ "$domainless_mode" == "true" ]]; then
                     echo ""
-                    echo "  (Admin will use self-signed certificate in domain-less mode)"
+                    echo "  (Admin will use self-signed certificate in domainless mode)"
                 fi
                 ensure_admin_password
             else
@@ -3019,7 +3019,7 @@ show_usage() {
     echo "  update [-b BRANCH]    Update MoaV (git pull), optionally switch branch"
     echo "  check                 Run prerequisites check"
     echo "  bootstrap             Run first-time setup (includes service selection)"
-    echo "  domainless            Enable domain-less mode (WireGuard, AmneziaWG, Telegram MTProxy, etc.)"
+    echo "  domainless            Enable domainless mode (WireGuard, AmneziaWG, Telegram MTProxy, etc.)"
     echo "  profiles              Change default services for 'moav start'"
     echo "  start [PROFILE...]    Start services (uses DEFAULT_PROFILES from .env)"
     echo "  stop [SERVICE...] [-r] Stop services (default: all, -r removes containers)"
@@ -3287,16 +3287,16 @@ cmd_donate_mahsanet_list() {
         return 0
     fi
 
-    printf "  %-42s %-10s %-8s %s\n" "URL" "Status" "Health" "Used"
+    printf "  %-42s %-10s %6s  %4s\n" "URL" "Status" "Health" "Used"
     echo "  $(printf '%.0s─' {1..70})"
 
     echo "$body" | jq -r '.results[] | [
-        (.url[:40] + (if (.url | length) > 40 then ".." else "" end)),
+        (.url[:38] + (if (.url | length) > 38 then ".." else "" end)),
         (if .is_active then "active" else "inactive" end),
         (if .health_status_percent != null then (.health_status_percent | tostring) + "%" else "—" end),
         (.num_consumed // 0 | tostring)
     ] | @tsv' 2>/dev/null | while IFS=$'\t' read -r url status health used; do
-        printf "  %-42s %-10s %-8s %s\n" "$url" "$status" "$health" "$used"
+        printf "  %-42s %-10s %6s  %4s\n" "$url" "$status" "$health" "$used"
     done
 
     echo ""
@@ -3738,7 +3738,7 @@ cmd_admin() {
 
 cmd_domainless() {
     print_header
-    print_section "Enable Domain-less Mode"
+    print_section "Enable Domainless Mode"
 
     echo ""
     info "Domain-less mode disables TLS-based protocols that require a domain."
@@ -3758,7 +3758,7 @@ cmd_domainless() {
     echo "    • Tor Snowflake (bandwidth donation)"
     echo ""
 
-    if ! confirm "Enable domain-less mode?" "y"; then
+    if ! confirm "Enable domainless mode?" "y"; then
         info "Cancelled."
         return 0
     fi
@@ -3792,9 +3792,9 @@ cmd_domainless() {
 
     # Set default profiles (add if not present)
     if grep -q "^DEFAULT_PROFILES=" .env; then
-        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"/' .env
+        sed -i 's/^DEFAULT_PROFILES=.*/DEFAULT_PROFILES="proxy xhttp wireguard amneziawg telegram admin conduit snowflake"/' .env
     else
-        echo 'DEFAULT_PROFILES="proxy wireguard amneziawg telegram admin conduit snowflake"' >> .env
+        echo 'DEFAULT_PROFILES="proxy xhttp wireguard amneziawg telegram admin conduit snowflake"' >> .env
     fi
 
     # Ensure admin password is set (not the insecure default)

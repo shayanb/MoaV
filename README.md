@@ -304,13 +304,14 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 53/udp | UDP | DNS tunnel | Yes |
 | 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
-### Domain-less Mode
+### Domainless Mode
 
-Don't have a domain? MoaV can run in **domain-less mode** with:
+Don't have a domain? MoaV can run in **domainless mode** with:
+- **Reality** (VLESS+Reality, primary protocol)
+- **XHTTP** (VLESS+XHTTP+Reality via Xray-core)
 - **WireGuard** (direct UDP + WebSocket tunnel)
 - **AmneziaWG** (obfuscated WireGuard, defeats DPI)
 - **Telegram MTProxy** (fake-TLS, direct Telegram access)
-- **XHTTP** (VLESS+XHTTP+Reality, no domain needed)
 - **Admin dashboard** (uses self-signed certificate)
 - **Conduit** (Psiphon bandwidth donation)
 - **Snowflake** (Tor bandwidth donation)

@@ -746,7 +746,7 @@ XHTTP requires Xray-based clients that support the XHTTP transport:
 2. Import into your client app (V2rayNG, Hiddify, Streisand, etc.)
 3. Connect
 
-**Note:** XHTTP is experimental and opt-in (`ENABLE_XHTTP=false` by default). Enable it in `.env` before generating user bundles.
+**Note:** XHTTP is enabled by default. Disable with `ENABLE_XHTTP=false` in `.env` if not needed.
 
 ---
 

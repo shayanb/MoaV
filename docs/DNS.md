@@ -5,7 +5,7 @@ This guide explains how to configure DNS records for MoaV.
 ## Table of Contents
 
 - [Do I Need a Domain?](#do-i-need-a-domain)
-- [Domain-less Mode](#domain-less-mode)
+- [Domainless Mode](#domainless-mode)
 - [Domain Setup](#domain-setup)
   - [Minimum Setup (Without DNS Tunnels)](#minimum-setup-without-dns-tunnels)
   - [Full Setup (With DNS Tunnels)](#full-setup-with-dns-tunnels)
@@ -29,11 +29,12 @@ This guide explains how to configure DNS records for MoaV.
 
 ## Do I Need a Domain?
 
-**No.** MoaV can run without a domain in **domain-less mode**. A domain unlocks more protocols, but several work with just an IP address.
+**No.** MoaV can run without a domain in **domainless mode**. A domain unlocks more protocols, but several work with just an IP address.
 
 | Protocol | Requires Domain | Port |
 |----------|:-:|------|
 | Reality (VLESS) | No | 443/tcp |
+| XHTTP (VLESS+XHTTP+Reality) | No | 2096/tcp |
 | WireGuard | No | 51820/udp |
 | WireGuard (wstunnel) | No | 8080/tcp |
 | AmneziaWG | No | 51821/udp |
@@ -52,11 +53,12 @@ This guide explains how to configure DNS records for MoaV.
 
 ---
 
-## Domain-less Mode
+## Domainless Mode
 
 Leave `DOMAIN=` empty in your `.env` file. MoaV automatically detects this and runs only protocols that work without a domain:
 
 - **Reality** — VLESS with TLS camouflage (uses `REALITY_TARGET` like `dl.google.com` instead of your own domain)
+- **XHTTP** — VLESS+XHTTP+Reality via Xray-core (same TLS camouflage, different transport)
 - **WireGuard** — Full VPN, direct UDP or tunneled over WebSocket (TCP) when UDP is blocked
 - **AmneziaWG** — DPI-resistant WireGuard with packet-level obfuscation
 - **Telegram MTProxy** — Direct Telegram access via fake-TLS, no VPN needed
@@ -70,20 +72,21 @@ This is ideal for:
 
 You can upgrade to a full domain setup later — just set `DOMAIN=` in `.env` and run `moav bootstrap`.
 
-### Port Forwarding (Domain-less)
+### Port Forwarding (Domainless)
 
 If running on a home network, forward these ports on your router:
 
 | Port | Protocol | Service |
 |------|----------|---------|
 | 443/tcp | TCP | Reality (VLESS) |
+| 2096/tcp | TCP | XHTTP (VLESS+XHTTP+Reality) |
 | 51820/udp | UDP | WireGuard |
 | 8080/tcp | TCP | wstunnel (WireGuard over WebSocket) |
 | 51821/udp | UDP | AmneziaWG |
 | 993/tcp | TCP | Telegram MTProxy |
 | 9443/tcp | TCP | Admin Dashboard |
 
-> No port 80 needed — domain-less mode doesn't use Let's Encrypt.
+> No port 80 needed — domainless mode doesn't use Let's Encrypt.
 
 ---
 
@@ -102,7 +105,7 @@ Value: YOUR_SERVER_IP
 TTL: 300 (or Auto)
 ```
 
-This enables: Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, and all domain-less protocols.
+This enables: Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, and all domainless protocols.
 
 ### Full Setup (With DNS Tunnels)
 
@@ -498,7 +501,7 @@ MoaV runs on Raspberry Pi 4+ (2GB+ RAM) and any ARM64/x64 Linux machine. Home se
 
 Configure your router to forward the ports you need to your MoaV server's local IP.
 
-**Domain-less mode** (minimum):
+**Domainless mode** (minimum):
 
 | Port | Protocol | Service |
 |------|----------|---------|
@@ -538,7 +541,7 @@ Configure your router to forward the ports you need to your MoaV server's local 
 
 If you're using a domain with a home server, your ISP likely assigns a dynamic public IP that changes periodically. Dynamic DNS services automatically update your domain to point to your current IP.
 
-> **Domain-less mode does not need DDNS.** Users connect via your public IP directly. You can find your current public IP with `curl ifconfig.me` and share it manually. If your IP changes, update the configs you shared.
+> **Domainless mode does not need DDNS.** Users connect via your public IP directly. You can find your current public IP with `curl ifconfig.me` and share it manually. If your IP changes, update the configs you shared.
 
 ### DuckDNS (Free)
 
@@ -735,7 +738,7 @@ dig @1.1.1.1 yourdomain.com
 - Verify A record is correct: `dig yourdomain.com`
 - Ensure port 80 is open (temporarily, for ACME HTTP-01)
 - Check that no other service is using port 80
-- Not applicable in domain-less mode (no certificates needed)
+- Not applicable in domainless mode (no certificates needed)
 
 ### "Can't connect from outside my home network"
 

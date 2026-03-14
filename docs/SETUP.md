@@ -15,7 +15,7 @@ Complete guide to deploy MoaV on a VPS or home server.
   - [Step 6: Start Services](#step-6-start-services)
   - [Step 7: Download User Bundles](#step-7-download-user-bundles)
   - [Step 8: Distribute to Users](#step-8-distribute-to-users)
-- [Domain-less Mode](#domain-less-mode)
+- [Domainless Mode](#domainless-mode)
 - [CDN-Fronted Mode (Cloudflare)](#cdn-fronted-mode-cloudflare)
 - [Choosing a Reality Target (SNI)](#choosing-a-reality-target-sni)
 - [Managing Users](#managing-users)
@@ -41,7 +41,7 @@ Complete guide to deploy MoaV on a VPS or home server.
 **Domain (Optional but Recommended):**
 - Required for: Reality, Trojan, Hysteria2, TrustTunnel, CDN mode, DNS tunnels (dnstt, Slipstream)
 - Not required for: Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin dashboard, Conduit, Snowflake
-- See [Domain-less Mode](#domain-less-mode) if you don't have a domain
+- See [Domainless Mode](#domainless-mode) if you don't have a domain
 
 **Ports to Open:**
 
@@ -373,7 +373,7 @@ Users open `README.html` in their browser for instructions and QR codes.
 
 ---
 
-## Domain-less Mode
+## Domainless Mode
 
 Don't have a domain? MoaV can run with limited but useful services.
 
@@ -396,7 +396,7 @@ Don't have a domain? MoaV can run with limited but useful services.
 - CDN mode (requires Cloudflare domain)
 - DNS tunnel (requires NS delegation)
 
-**Setup Domain-less Mode:**
+**Setup Domainless Mode:**
 ```bash
 moav domainless
 # Or: run moav and leave domain empty when prompted
@@ -542,19 +542,19 @@ The target domain **must** support:
 
 ### How to Verify a Target
 
-Test any domain from your server:
+Test any domain **from your server** (not locally — some domains are geo-restricted):
 
 ```bash
-curl -vsI --tlsv1.3 --http2 https://TARGET_DOMAIN 2>&1 | grep -E "SSL connection|ALPN"
+curl -vsI --tlsv1.3 --http2 https://TARGET_DOMAIN 2>&1 | grep -iE "SSL|ALPN|TLSv1.3"
 ```
 
-**Good output** (both TLS 1.3 and h2):
+**Good output** (both TLS 1.3 and h2 — wording varies by curl version):
 ```
 * SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
-* ALPN, server accepted to use h2
+* ALPN: server accepted h2
 ```
 
-**Bad output** (missing TLS 1.3 or h2) — don't use this domain.
+If you get no output or the connection closes immediately, the domain either doesn't support TLS 1.3/H2 or is unreachable from your server — don't use it.
 
 ### Choosing a Good Target
 

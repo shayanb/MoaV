@@ -393,9 +393,9 @@ ufw allow 9443/tcp
 iptables -A INPUT -p tcp --dport 9443 -j ACCEPT
 ```
 
-**Browser shows security warning (domain-less mode):**
+**Browser shows security warning (domainless mode):**
 
-In domain-less mode, admin uses a self-signed certificate. This is expected:
+In domainless mode, admin uses a self-signed certificate. This is expected:
 1. Click "Advanced" or "Show Details"
 2. Click "Proceed to site" or "Accept the Risk"
 

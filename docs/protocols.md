@@ -122,7 +122,7 @@ QUIC-over-DNS tunnel. Similar to dnstt but uses QUIC for better throughput — t
 - **Port:** 2096/tcp
 - **Engine:** [Xray-core](https://github.com/XTLS/Xray-core)
 - **Clients:** V2rayNG, Hiddify, Streisand, V2Box, V2rayN, V2rayU, NekoBox
-- **Note:** Experimental protocol, opt-in via `ENABLE_XHTTP=false` in `.env`.
+- **Note:** Uses Xray-core (separate from sing-box). Disable with `ENABLE_XHTTP=false` in `.env`.
 
 ### Psiphon Conduit
 

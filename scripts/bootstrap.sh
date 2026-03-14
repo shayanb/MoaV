@@ -48,7 +48,7 @@ if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     log_error "Option 1: Set a domain in .env"
     log_error "  DOMAIN=your-domain.com"
     log_error ""
-    log_error "Option 2: Run in domain-less mode"
+    log_error "Option 2: Run in domainless mode"
     log_error "  Disable cert-based protocols (Reality still works without domain):"
     log_error "    ENABLE_TROJAN=false"
     log_error "    ENABLE_HYSTERIA2=false"
@@ -59,9 +59,11 @@ if [[ "$domain_required" == "true" ]] && [[ -z "${DOMAIN:-}" ]]; then
     exit 1
 fi
 
-# Domain-less mode notice
+# Domainless mode notice
 if [[ -z "${DOMAIN:-}" ]]; then
-    log_info "Running in domain-less mode (Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, Snowflake)"
+    local _domainless_protos="Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, Snowflake"
+    [[ "${ENABLE_XHTTP:-true}" == "true" ]] && _domainless_protos="Reality, XHTTP, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, Snowflake"
+    log_info "Running in domainless mode ($_domainless_protos)"
 
     # Generate self-signed certificate for admin UI (if not exists)
     if [[ "${ENABLE_ADMIN_UI:-true}" == "true" ]]; then
@@ -229,7 +231,7 @@ export REALITY_PUBLIC_KEY
 export REALITY_SHORT_ID
 export REALITY_TARGET="${REALITY_TARGET:-dl.google.com:443}"
 export HYSTERIA2_OBFS_PASSWORD
-# In domain-less mode, DOMAIN stays empty; otherwise use as-is
+# In domainless mode, DOMAIN stays empty; otherwise use as-is
 export DOMAIN="${DOMAIN:-}"
 export DNSTT_SUBDOMAIN="${DNSTT_SUBDOMAIN:-t}"
 export ENABLE_REALITY="${ENABLE_REALITY:-true}"

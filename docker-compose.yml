@@ -208,7 +208,7 @@ services:
     command: >
       -c '
         if [ -z "${DOMAIN}" ]; then
-          echo "No domain configured, skipping certificate generation (domain-less mode)"
+          echo "No domain configured, skipping certificate generation (domainless mode)"
           exit 0
         fi
         if [ ! -f /etc/letsencrypt/live/${DOMAIN}/fullchain.pem ]; then
