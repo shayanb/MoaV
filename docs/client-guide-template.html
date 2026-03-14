@@ -587,10 +587,10 @@
                 <li><a href="#en" onclick="scrollToSection('hysteria2-en')">2. Hysteria2 <span class="toc-badge badge-secondary">Fast</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('trojan-en')">3. Trojan <span class="toc-badge badge-secondary">Backup</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('cdn-en')">4. CDN VLESS+WS <span class="toc-badge badge-secondary">IP Blocked?</span></a></li>
+                <li><a href="#en" onclick="scrollToSection('xhttp-en')">4b. XHTTP <span class="toc-badge badge-secondary">Xray-core</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('amneziawg-en')">5. AmneziaWG <span class="toc-badge badge-secondary">Anti-DPI</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('wireguard-en')">6. WireGuard <span class="toc-badge badge-secondary">Full VPN</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('trusttunnel-en')">7. TrustTunnel <span class="toc-badge badge-secondary">Stealth VPN</span></a></li>
-                <li><a href="#en" onclick="scrollToSection('xhttp-en')">7b. XHTTP <span class="toc-badge badge-secondary">Xray-core</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('dns-tunnel-en')">8. DNS Tunnel <span class="toc-badge badge-fallback">Last Resort</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('slipstream-en')">8b. Slipstream <span class="toc-badge badge-fallback">Faster DNS Tunnel</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('telemt-en')">9. Telegram MTProxy <span class="toc-badge badge-secondary">Telegram</span></a></li>
@@ -770,6 +770,60 @@
                     <p>Enable <strong>MUX</strong> to multiplex connections over a single WebSocket (fewer connections, harder to fingerprint). TLS Fragment does not help here since TLS terminates at Cloudflare.</p>
                     <p style="margin-top: 6px;"><strong>Hiddify:</strong> Settings → Config Options → MUX → Protocol: <code>h2mux</code>, Max Connections: <code>2</code>, Padding: On</p>
                     <p><strong>v2rayNG:</strong> Settings → MUX → Concurrency: <code>2-4</code></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- XHTTP (Xray-core) -->
+        <div class="protocol-section" id="xhttp-en">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>4b. XHTTP</h2>
+                    <span class="protocol-badge badge-secondary">Xray-core</span>
+                </div>
+                <span class="protocol-port">Port 2096/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">VLESS over XHTTP with Reality. Splits traffic into separate HTTP connections with no distinctive fingerprint, making it very hard to detect via DPI. Powered by Xray-core.</p>
+
+                <div class="extra-section">
+                    <h4>When to use XHTTP</h4>
+                    <ul>
+                        <li>Standard VLESS+Reality is being blocked</li>
+                        <li>Your network uses advanced DPI that detects ALPN fingerprints</li>
+                        <li>You need an alternative to sing-box protocols</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>Compatible Client Apps</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/streisand/id6450534064" target="_blank">Streisand</a>, <a href="https://apps.apple.com/app/v2box/id6446814690" target="_blank">V2Box</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=com.v2ray.ang" target="_blank">V2rayNG</a>, <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank">Hiddify</a></li>
+                        <li><strong>Windows:</strong> <a href="https://github.com/2dust/v2rayN/releases" target="_blank">V2rayN</a>, <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></li>
+                        <li><strong>macOS:</strong> <a href="https://github.com/yanue/V2rayU/releases" target="_blank">V2rayU</a>, <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>How to connect</h4>
+                    <ol>
+                        <li>Install a compatible Xray client from the list above</li>
+                        <li>Scan the QR code below or copy the share link</li>
+                        <li>The config will be imported automatically</li>
+                        <li>Connect</li>
+                    </ol>
+                </div>
+
+                <div class="config-box">
+                    <h4>QR Code</h4>
+                    <div style="text-align: center; padding: 10px;">
+                        <img src="data:image/png;base64,{{QR_XHTTP}}" alt="XHTTP QR Code" style="max-width: 250px;">
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>Share Link</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_XHTTP}}</div>
                 </div>
             </div>
         </div>
@@ -957,60 +1011,6 @@
                 <div class="config-box">
                     <h4>DNS Servers</h4>
                     <div class="config-value" onclick="copyConfig(this)">tls://1.1.1.1</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- XHTTP (Xray-core) -->
-        <div class="protocol-section" id="xhttp-en">
-            <div class="protocol-header">
-                <div class="protocol-title">
-                    <h2>7b. XHTTP</h2>
-                    <span class="protocol-badge badge-secondary">Xray-core</span>
-                </div>
-                <span class="protocol-port">Port 2096/tcp</span>
-            </div>
-            <div class="protocol-content">
-                <p class="protocol-desc">VLESS over XHTTP with Reality. Splits traffic into separate HTTP connections with no distinctive fingerprint, making it very hard to detect via DPI. Powered by Xray-core.</p>
-
-                <div class="extra-section">
-                    <h4>When to use XHTTP</h4>
-                    <ul>
-                        <li>Standard VLESS+Reality is being blocked</li>
-                        <li>Your network uses advanced DPI that detects ALPN fingerprints</li>
-                        <li>You need an alternative to sing-box protocols</li>
-                    </ul>
-                </div>
-
-                <div class="extra-section">
-                    <h4>Compatible Client Apps</h4>
-                    <ul>
-                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/streisand/id6450534064" target="_blank">Streisand</a>, <a href="https://apps.apple.com/app/v2box/id6446814690" target="_blank">V2Box</a></li>
-                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=com.v2ray.ang" target="_blank">V2rayNG</a>, <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank">Hiddify</a></li>
-                        <li><strong>Windows:</strong> <a href="https://github.com/2dust/v2rayN/releases" target="_blank">V2rayN</a>, <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></li>
-                        <li><strong>macOS:</strong> <a href="https://github.com/yanue/V2rayU/releases" target="_blank">V2rayU</a>, <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></li>
-                    </ul>
-                </div>
-
-                <div class="extra-section">
-                    <h4>How to connect</h4>
-                    <ol>
-                        <li>Install a compatible Xray client from the list above</li>
-                        <li>Scan the QR code below or copy the share link</li>
-                        <li>The config will be imported automatically</li>
-                        <li>Connect</li>
-                    </ol>
-                </div>
-
-                <div class="config-box">
-                    <h4>QR Code</h4>
-                    <div style="text-align: center; padding: 10px;">
-                        <img src="data:image/png;base64,{{QR_XHTTP}}" alt="XHTTP QR Code" style="max-width: 250px;">
-                    </div>
-                </div>
-                <div class="config-box">
-                    <h4>Share Link</h4>
-                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_XHTTP}}</div>
                 </div>
             </div>
         </div>
@@ -1399,10 +1399,10 @@
                 <li><a href="#fa" onclick="scrollToSection('hysteria2-fa')">۲. Hysteria2 <span class="toc-badge badge-secondary">سریع</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('trojan-fa')">۳. Trojan <span class="toc-badge badge-secondary">پشتیبان</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('cdn-fa')">۴. CDN VLESS+WS <span class="toc-badge badge-secondary">IP مسدود؟</span></a></li>
+                <li><a href="#fa" onclick="scrollToSection('xhttp-fa')">۴ب. XHTTP <span class="toc-badge badge-secondary">Xray-core</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('amneziawg-fa')">۵. AmneziaWG <span class="toc-badge badge-secondary">ضد فیلتر</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('wireguard-fa')">۶. WireGuard <span class="toc-badge badge-secondary">VPN کامل</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('trusttunnel-fa')">۷. TrustTunnel <span class="toc-badge badge-secondary">VPN مخفی</span></a></li>
-                <li><a href="#fa" onclick="scrollToSection('xhttp-fa')">۷ب. XHTTP <span class="toc-badge badge-secondary">Xray-core</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('dns-tunnel-fa')">۸. تونل DNS <span class="toc-badge badge-fallback">آخرین راه‌حل</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('slipstream-fa')">۸ب. Slipstream <span class="toc-badge badge-fallback">تونل DNS سریع‌تر</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('telemt-fa')">۹. Telegram MTProxy <span class="toc-badge badge-secondary">فقط تلگرام</span></a></li>
@@ -1582,6 +1582,60 @@
                     <p><strong>MUX</strong> را فعال کنید تا اتصالات روی یک WebSocket ادغام شوند (اتصال کمتر، شناسایی سخت‌تر). TLS Fragment اینجا کمکی نمی‌کند چون TLS در Cloudflare تمام می‌شود.</p>
                     <p style="margin-top: 6px;"><strong>Hiddify:</strong> Settings → Config Options → MUX → Protocol: <code>h2mux</code>، Max Connections: <code>2</code>، Padding: روشن</p>
                     <p><strong>v2rayNG:</strong> Settings → MUX → Concurrency: <code>2-4</code></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- XHTTP (Xray-core) -->
+        <div class="protocol-section" id="xhttp-fa">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2>۴ب. XHTTP</h2>
+                    <span class="protocol-badge badge-secondary">Xray-core</span>
+                </div>
+                <span class="protocol-port">پورت 2096/tcp</span>
+            </div>
+            <div class="protocol-content">
+                <p class="protocol-desc">VLESS روی XHTTP با Reality. ترافیک را به اتصالات HTTP جداگانه تقسیم می‌کند بدون اثر انگشت قابل تشخیص، که شناسایی توسط DPI را بسیار دشوار می‌کند. با Xray-core کار می‌کند.</p>
+
+                <div class="extra-section">
+                    <h4>چه زمانی از XHTTP استفاده کنید</h4>
+                    <ul>
+                        <li>VLESS+Reality استاندارد مسدود شده است</li>
+                        <li>شبکه شما از DPI پیشرفته استفاده می‌کند که اثر انگشت ALPN را شناسایی می‌کند</li>
+                        <li>به جایگزینی برای پروتکل‌های sing-box نیاز دارید</li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>برنامه‌های سازگار</h4>
+                    <ul>
+                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/streisand/id6450534064" target="_blank">Streisand</a>، <a href="https://apps.apple.com/app/v2box/id6446814690" target="_blank">V2Box</a></li>
+                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=com.v2ray.ang" target="_blank">V2rayNG</a>، <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank">Hiddify</a></li>
+                        <li><strong>Windows:</strong> <a href="https://github.com/2dust/v2rayN/releases" target="_blank">V2rayN</a>، <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></li>
+                        <li><strong>macOS:</strong> <a href="https://github.com/yanue/V2rayU/releases" target="_blank">V2rayU</a>، <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></li>
+                    </ul>
+                </div>
+
+                <div class="extra-section">
+                    <h4>نحوه اتصال</h4>
+                    <ol>
+                        <li>یک کلاینت سازگار Xray از لیست بالا نصب کنید</li>
+                        <li>کد QR زیر را اسکن کنید یا لینک اشتراک‌گذاری را کپی کنید</li>
+                        <li>تنظیمات به صورت خودکار وارد می‌شوند</li>
+                        <li>متصل شوید</li>
+                    </ol>
+                </div>
+
+                <div class="config-box">
+                    <h4>کد QR</h4>
+                    <div style="text-align: center; padding: 10px;">
+                        <img src="data:image/png;base64,{{QR_XHTTP}}" alt="XHTTP QR Code" style="max-width: 250px;">
+                    </div>
+                </div>
+                <div class="config-box">
+                    <h4>لینک اشتراک‌گذاری</h4>
+                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_XHTTP}}</div>
                 </div>
             </div>
         </div>
@@ -1769,60 +1823,6 @@
                 <div class="config-box">
                     <h4>سرورهای DNS</h4>
                     <div class="config-value" onclick="copyConfig(this)">tls://1.1.1.1</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- XHTTP (Xray-core) -->
-        <div class="protocol-section" id="xhttp-fa">
-            <div class="protocol-header">
-                <div class="protocol-title">
-                    <h2>۷ب. XHTTP</h2>
-                    <span class="protocol-badge badge-secondary">Xray-core</span>
-                </div>
-                <span class="protocol-port">پورت 2096/tcp</span>
-            </div>
-            <div class="protocol-content">
-                <p class="protocol-desc">VLESS روی XHTTP با Reality. ترافیک را به اتصالات HTTP جداگانه تقسیم می‌کند بدون اثر انگشت قابل تشخیص، که شناسایی توسط DPI را بسیار دشوار می‌کند. با Xray-core کار می‌کند.</p>
-
-                <div class="extra-section">
-                    <h4>چه زمانی از XHTTP استفاده کنید</h4>
-                    <ul>
-                        <li>VLESS+Reality استاندارد مسدود شده است</li>
-                        <li>شبکه شما از DPI پیشرفته استفاده می‌کند که اثر انگشت ALPN را شناسایی می‌کند</li>
-                        <li>به جایگزینی برای پروتکل‌های sing-box نیاز دارید</li>
-                    </ul>
-                </div>
-
-                <div class="extra-section">
-                    <h4>برنامه‌های سازگار</h4>
-                    <ul>
-                        <li><strong>iOS:</strong> <a href="https://apps.apple.com/app/streisand/id6450534064" target="_blank">Streisand</a>، <a href="https://apps.apple.com/app/v2box/id6446814690" target="_blank">V2Box</a></li>
-                        <li><strong>Android:</strong> <a href="https://play.google.com/store/apps/details?id=com.v2ray.ang" target="_blank">V2rayNG</a>، <a href="https://play.google.com/store/apps/details?id=app.hiddify.com" target="_blank">Hiddify</a></li>
-                        <li><strong>Windows:</strong> <a href="https://github.com/2dust/v2rayN/releases" target="_blank">V2rayN</a>، <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></li>
-                        <li><strong>macOS:</strong> <a href="https://github.com/yanue/V2rayU/releases" target="_blank">V2rayU</a>، <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank">Hiddify</a></li>
-                    </ul>
-                </div>
-
-                <div class="extra-section">
-                    <h4>نحوه اتصال</h4>
-                    <ol>
-                        <li>یک کلاینت سازگار Xray از لیست بالا نصب کنید</li>
-                        <li>کد QR زیر را اسکن کنید یا لینک اشتراک‌گذاری را کپی کنید</li>
-                        <li>تنظیمات به صورت خودکار وارد می‌شوند</li>
-                        <li>متصل شوید</li>
-                    </ol>
-                </div>
-
-                <div class="config-box">
-                    <h4>کد QR</h4>
-                    <div style="text-align: center; padding: 10px;">
-                        <img src="data:image/png;base64,{{QR_XHTTP}}" alt="XHTTP QR Code" style="max-width: 250px;">
-                    </div>
-                </div>
-                <div class="config-box">
-                    <h4>لینک اشتراک‌گذاری</h4>
-                    <div class="config-value" onclick="copyConfig(this)">{{CONFIG_XHTTP}}</div>
                 </div>
             </div>
         </div>

@@ -417,6 +417,15 @@ install_qrencode() {
     fi
 }
 
+# Read a value from .env file — handles duplicates (last wins), inline comments, and quotes
+# Usage: val=$(get_env_val "ENABLE_XHTTP" "$env_file" "false")
+get_env_val() {
+    local key="$1" file="$2" default="${3:-}"
+    local val
+    val=$(grep "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d'=' -f2- | sed 's/#.*//' | tr -d '"' | tr -d "'" | xargs) || true
+    echo "${val:-$default}"
+}
+
 ensure_admin_password() {
     # Check if admin password is unset, empty, or still the insecure default
     local current_password=""
@@ -1775,12 +1784,12 @@ show_status() {
     declare -A disabled_services
 
     if [[ -f "$env_file" ]]; then
-        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_reality=$(get_env_val "ENABLE_REALITY" "$env_file" "true")
+        local enable_trojan=$(get_env_val "ENABLE_TROJAN" "$env_file" "true")
+        local enable_hysteria2=$(get_env_val "ENABLE_HYSTERIA2" "$env_file" "true")
+        local enable_wireguard=$(get_env_val "ENABLE_WIREGUARD" "$env_file" "true")
+        local enable_dnstt=$(get_env_val "ENABLE_DNSTT" "$env_file" "true")
+        local enable_admin=$(get_env_val "ENABLE_ADMIN_UI" "$env_file" "true")
 
         # Mark services as disabled based on ENABLE_* settings
         # sing-box handles Reality, Trojan, Hysteria2
@@ -1789,7 +1798,7 @@ show_status() {
             disabled_services["decoy"]=1
         fi
         [[ "$enable_wireguard" != "true" ]] && disabled_services["wireguard"]=1 && disabled_services["wstunnel"]=1
-        local enable_slipstream=$(grep "^ENABLE_SLIPSTREAM=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
+        local enable_slipstream=$(get_env_val "ENABLE_SLIPSTREAM" "$env_file" "false")
         [[ "$enable_dnstt" != "true" ]] && disabled_services["dnstt"]=1
         [[ "$enable_slipstream" != "true" ]] && disabled_services["slipstream"]=1
         # dns-router is disabled if both dnstt and slipstream are disabled
@@ -1797,7 +1806,7 @@ show_status() {
             disabled_services["dns-router"]=1
         fi
         [[ "$enable_admin" != "true" ]] && disabled_services["admin"]=1
-        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
+        local enable_telemt=$(get_env_val "ENABLE_TELEMT" "$env_file" "true")
         [[ "$enable_telemt" != "true" ]] && disabled_services["telemt"]=1
     fi
 
@@ -1977,17 +1986,17 @@ select_profiles() {
     local admin_enabled=true
 
     if [[ -f "$env_file" ]]; then
-        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_amneziawg=$(grep "^ENABLE_AMNEZIAWG=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_slipstream=$(grep "^ENABLE_SLIPSTREAM=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
-        local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_xhttp=$(grep "^ENABLE_XHTTP=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
+        local enable_reality=$(get_env_val "ENABLE_REALITY" "$env_file" "true")
+        local enable_trojan=$(get_env_val "ENABLE_TROJAN" "$env_file" "true")
+        local enable_hysteria2=$(get_env_val "ENABLE_HYSTERIA2" "$env_file" "true")
+        local enable_wireguard=$(get_env_val "ENABLE_WIREGUARD" "$env_file" "true")
+        local enable_amneziawg=$(get_env_val "ENABLE_AMNEZIAWG" "$env_file" "true")
+        local enable_dnstt=$(get_env_val "ENABLE_DNSTT" "$env_file" "true")
+        local enable_slipstream=$(get_env_val "ENABLE_SLIPSTREAM" "$env_file" "false")
+        local enable_trusttunnel=$(get_env_val "ENABLE_TRUSTTUNNEL" "$env_file" "true")
+        local enable_telemt=$(get_env_val "ENABLE_TELEMT" "$env_file" "true")
+        local enable_admin=$(get_env_val "ENABLE_ADMIN_UI" "$env_file" "true")
+        local enable_xhttp=$(get_env_val "ENABLE_XHTTP" "$env_file" "false")
 
         # proxy is disabled if all three protocols are disabled
         if [[ "$enable_reality" != "true" ]] && [[ "$enable_trojan" != "true" ]] && [[ "$enable_hysteria2" != "true" ]]; then
@@ -2095,17 +2104,17 @@ select_profiles() {
         local env_file="$SCRIPT_DIR/.env"
 
         # Check which protocols are enabled
-        local enable_reality=$(grep "^ENABLE_REALITY=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_trojan=$(grep "^ENABLE_TROJAN=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_hysteria2=$(grep "^ENABLE_HYSTERIA2=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_wireguard=$(grep "^ENABLE_WIREGUARD=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_amneziawg=$(grep "^ENABLE_AMNEZIAWG=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_dnstt=$(grep "^ENABLE_DNSTT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_slipstream=$(grep "^ENABLE_SLIPSTREAM=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
-        local enable_trusttunnel=$(grep "^ENABLE_TRUSTTUNNEL=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_telemt=$(grep "^ENABLE_TELEMT=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_admin=$(grep "^ENABLE_ADMIN_UI=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "true")
-        local enable_xhttp=$(grep "^ENABLE_XHTTP=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "false")
+        local enable_reality=$(get_env_val "ENABLE_REALITY" "$env_file" "true")
+        local enable_trojan=$(get_env_val "ENABLE_TROJAN" "$env_file" "true")
+        local enable_hysteria2=$(get_env_val "ENABLE_HYSTERIA2" "$env_file" "true")
+        local enable_wireguard=$(get_env_val "ENABLE_WIREGUARD" "$env_file" "true")
+        local enable_amneziawg=$(get_env_val "ENABLE_AMNEZIAWG" "$env_file" "true")
+        local enable_dnstt=$(get_env_val "ENABLE_DNSTT" "$env_file" "true")
+        local enable_slipstream=$(get_env_val "ENABLE_SLIPSTREAM" "$env_file" "false")
+        local enable_trusttunnel=$(get_env_val "ENABLE_TRUSTTUNNEL" "$env_file" "true")
+        local enable_telemt=$(get_env_val "ENABLE_TELEMT" "$env_file" "true")
+        local enable_admin=$(get_env_val "ENABLE_ADMIN_UI" "$env_file" "true")
+        local enable_xhttp=$(get_env_val "ENABLE_XHTTP" "$env_file" "false")
 
         # Build profiles list based on enabled services
         SELECTED_PROFILES=()
@@ -2155,7 +2164,7 @@ select_profiles() {
         SELECTED_PROFILES+=("snowflake")
 
         # Check if monitoring should be included
-        local enable_monitoring=$(grep "^ENABLE_MONITORING=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
+        local enable_monitoring=$(get_env_val "ENABLE_MONITORING" "$env_file" "")
         if [[ "$enable_monitoring" == "true" ]]; then
             SELECTED_PROFILES+=("monitoring")
         elif [[ "$enable_monitoring" != "false" ]]; then
@@ -2295,7 +2304,7 @@ ensure_clash_api_secret() {
 
     # Check if ENABLE_MONITORING is explicitly set to false
     local enable_monitoring
-    enable_monitoring=$(grep "^ENABLE_MONITORING=" "$env_file" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" || true)
+    enable_monitoring=$(get_env_val "ENABLE_MONITORING" "$env_file" "")
     if [[ "$enable_monitoring" == "false" ]]; then
         echo ""
         warn "Monitoring is currently disabled in .env (ENABLE_MONITORING=false)"
@@ -3706,7 +3715,7 @@ cmd_admin() {
             # Update Grafana password if running (Grafana stores password in its DB, env var is only used on first boot)
             if docker ps --filter "name=moav-grafana" --filter "status=running" -q 2>/dev/null | grep -q .; then
                 info "Updating Grafana admin password..."
-                if docker compose --profile monitoring exec -T grafana grafana cli admin reset-admin-password "$new_password" 2>/dev/null; then
+                if docker compose --profile monitoring exec -T grafana grafana cli admin reset-admin-password "$new_password" &>/dev/null; then
                     success "Grafana password updated"
                 else
                     warn "Could not update Grafana password. You may need to reset it manually."
