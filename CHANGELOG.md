@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-03-14
+
+### Added
+- **XHTTP protocol (VLESS+XHTTP+Reality)** — New protocol powered by Xray-core, enabled by default
+  - Full bootstrap integration: Xray config generation, user management, bundle generation
+  - `moav user add` generates XHTTP share links, human-readable config, and QR codes
+  - Donate path support: XHTTP configs can be donated via MahsaNet (CLI and admin dashboard)
+  - Client support: `moav client --test` and `moav client --connect` support XHTTP via Xray-core binary
+  - Works in domainless mode (uses Reality TLS camouflage, no domain needed)
+  - Independent `XHTTP_REALITY_TARGET` config for separate SNI from Reality
+- **AWS CloudFront CDN documentation** — Alternative CDN option for regions where Cloudflare is blocked
+  - sslip.io workaround for CloudFront's domain-only origin requirement
+  - Both Web UI and CLI setup instructions
+- **Reality target (SNI) selection guide** — New "Choosing a Reality Target" section in SETUP.md
+  - TLS 1.3 + H2 verification command
+  - Strategy guide for censored regions (prefer domestic, high-traffic domains)
+  - Example targets for Iran (blubank.com, divar.ir, snapp.ir)
+- **XHTTP in client Docker image** — Xray-core binary added to `Dockerfile.client` for XHTTP test/connect
+
+### Fixed
+- **XHTTP menu showing "disabled" despite `.env` being correct** — Logic bug in `moav.sh`: `xhttp_enabled` was initialized to `false` and the condition could never set it to `true`
+- **XHTTP user bundles not generated on `moav user add`** — `singbox-user-add.sh` was completely missing XHTTP support; added Xray config addition, file generation, and container restart
+- **XHTTP donate mode broken** — Both `user-add.sh` and `generate-single-user.sh` were missing XHTTP toggle in donate mode
+- **`.env` variable reading with inline comments** — `get_env_val` returned values with trailing comments (e.g., `true # comment`), causing false negatives
+- **Admin password reset not updating Grafana** — `moav admin password` now resets the password in Grafana as well
+- **Bootstrap logging wrong message when Reality keys exist** — Incorrectly reported generating new keys when reusing existing ones
+- **Regenerate block using raw `grep | cut`** — Replaced with `get_env_val` calls for consistent `.env` parsing
+- **MahsaNet donate list column alignment** — Fixed URL truncation overflow and misaligned `Used` column
+
+### Changed
+- **XHTTP enabled by default** — `ENABLE_XHTTP=true` in `.env.example` (was opt-in `false`)
+- **"domain-less" → "domainless"** — Consistent terminology across all docs, scripts, and UI
+- **Xray-core** updated to 26.2.6
+- **CloudFront docs** — Corrected origin setup (requires domain name, not IP), fixed CLI install link, added `aws sso login` option
+
 ## [1.4.7] - 2026-03-14
 
 ### Added
@@ -707,7 +742,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.7...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/shayanb/MoaV/compare/v1.4.7...v1.5.1
 [1.4.7]: https://github.com/shayanb/MoaV/compare/v1.4.5...v1.4.7
 [1.4.5]: https://github.com/shayanb/MoaV/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/shayanb/MoaV/compare/v1.4.1...v1.4.4

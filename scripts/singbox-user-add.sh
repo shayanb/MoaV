@@ -388,7 +388,7 @@ if [[ "${ENABLE_XHTTP:-false}" == "true" ]] && [[ -f "$XRAY_CONFIG" ]]; then
     _xhttp_target_host="${_xhttp_target%%:*}"
     _xhttp_port="${PORT_XHTTP:-2096}"
 
-    XHTTP_LINK="vless://${USER_UUID}@${SERVER_IP}:${_xhttp_port}?type=xhttp&security=reality&sni=${_xhttp_target_host}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&encryption=none#${USERNAME}-xhttp"
+    XHTTP_LINK="vless://${USER_UUID}@${SERVER_IP}:${_xhttp_port}?type=xhttp&security=reality&sni=${_xhttp_target_host}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&encryption=none#MoaV-XHTTP-${USERNAME}"
 
     echo "$XHTTP_LINK" > "$OUTPUT_DIR/xhttp-vless.txt"
 

@@ -381,7 +381,7 @@ if [[ "${ENABLE_XHTTP:-false}" == "true" ]]; then
     _xhttp_port="${PORT_XHTTP:-2096}"
 
     # Generate VLESS XHTTP share link
-    XHTTP_LINK="vless://${USER_UUID}@${SERVER_IP}:${_xhttp_port}?type=xhttp&security=reality&sni=${_xhttp_target_host}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&encryption=none#${USER_ID}-xhttp"
+    XHTTP_LINK="vless://${USER_UUID}@${SERVER_IP}:${_xhttp_port}?type=xhttp&security=reality&sni=${_xhttp_target_host}&fp=chrome&pbk=${REALITY_PUBLIC_KEY}&sid=${REALITY_SHORT_ID}&encryption=none#MoaV-XHTTP-${USER_ID}"
 
     echo "$XHTTP_LINK" > "$OUTPUT_DIR/xhttp-vless.txt"
 
