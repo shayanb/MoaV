@@ -28,6 +28,9 @@ echo "[sing-box] Configuration valid"
 INBOUNDS=$(grep -o '"tag"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | head -10 | sed 's/"tag"[[:space:]]*:[[:space:]]*//g' | tr -d '"' | tr '\n' ', ' | sed 's/,$//')
 echo "[sing-box] Inbounds: $INBOUNDS"
 
-# Run sing-box
+# Fix volume ownership (volumes may be root-owned from previous runs)
+chown -R moav:moav /state /var/log/sing-box 2>/dev/null || true
+
+# Run sing-box as non-root
 echo "[sing-box] Starting proxy server..."
-exec sing-box run -c "$CONFIG_FILE"
+exec gosu moav sing-box run -c "$CONFIG_FILE"

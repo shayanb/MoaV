@@ -50,9 +50,12 @@ echo "  - Hosts: $CONFIG_DIR/hosts.toml"
 echo "  - Credentials: $CONFIG_DIR/credentials.toml"
 echo "  - Log level: $LOG_LEVEL"
 
-# Start TrustTunnel endpoint
+# Fix volume ownership (volumes may be root-owned from previous runs)
+chown -R moav:moav /state /var/log/trusttunnel 2>/dev/null || true
+
+# Start TrustTunnel endpoint as non-root
 cd /opt/trusttunnel
-exec ./trusttunnel_endpoint \
+exec gosu moav ./trusttunnel_endpoint \
     --loglvl "$LOG_LEVEL" \
     "$CONFIG_DIR/vpn.toml" \
     "$CONFIG_DIR/hosts.toml"

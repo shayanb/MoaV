@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     libcap2-bin \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r moav && useradd -r -g moav moav
@@ -33,5 +34,4 @@ RUN chmod +x /entrypoint.sh
 
 EXPOSE 443/tcp 443/udp 8443/tcp 2082/tcp
 
-USER moav
 ENTRYPOINT ["/entrypoint.sh"]
