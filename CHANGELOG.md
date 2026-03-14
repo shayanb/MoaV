@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.7] - 2026-03-14
+
+### Added
+- **MahsaNet config donation** — Donate VPN configs to MahsaServer.com (Mahsa VPN app, 2M+ users in Iran) directly from the admin dashboard ([#69](https://github.com/shayanb/MoaV/issues/69))
+  - Protocol selection via checkboxes (Reality, Hysteria2, Trojan, CDN, XHTTP, Telegram)
+  - `MAHSANET_API_KEY`, `MAHSANET_PROTOCOLS`, `MAHSANET_POOL` config options in `.env`
+  - "Donated" tag displayed on admin dashboard for donated configs
+  - `DONATE_ONLY_PROTOCOLS` generated only when donation is active
+  - Telegram proxy included in default donated protocols
+- **`moav reset-password` command** — Reset admin dashboard password from the CLI ([#70](https://github.com/shayanb/MoaV/issues/70))
+- **MkDocs documentation site** — Project documentation now served via MkDocs with philosophy, protocols, quick-start, and OPSEC pages
+- **MahsaNet documentation** — Setup guide for MahsaNet donation flow in SETUP.md and CLI.md
+
+### Fixed
+- **Admin dashboard double submission** — Prevented duplicate form submissions from the dashboard
+- **Admin password in domainless mode** — Fixed password setup failing without a domain ([#70](https://github.com/shayanb/MoaV/issues/70))
+- **Admin container not reflecting password reset** — Container now properly rebuilds to pick up new credentials
+- **MahsaNet donation URL** — Fixed incorrect API endpoint for config donation
+- **MahsaNet Telegram donation** — Fixed Telegram proxy submission and disabled it by default for MahsaNet
+- **`moav build` with multiple services** — Fixed bug when building multiple services in one command
+- **Admin dashboard auto-refresh removed** — No more 60-second auto-reload; replaced with manual "Refresh" button in MahsaNet section
+
+### Changed
+- **telemt** updated to 3.3.16
+- **TrustTunnel** updated to 1.0.17
+- **TrustTunnel Client** updated to 1.0.23
+- **Admin dashboard** — Default ad URL changed to vahidonline; prefix handling uses `continue` instead of `rewrite`
+
 ## [1.4.5] - 2026-03-09
 
 ### Fixed
@@ -679,7 +707,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.5...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.4.7...HEAD
+[1.4.7]: https://github.com/shayanb/MoaV/compare/v1.4.5...v1.4.7
 [1.4.5]: https://github.com/shayanb/MoaV/compare/v1.4.4...v1.4.5
 [1.4.4]: https://github.com/shayanb/MoaV/compare/v1.4.1...v1.4.4
 [1.4.2]: https://github.com/shayanb/MoaV/compare/v1.4.1...v1.4.2
