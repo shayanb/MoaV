@@ -1313,6 +1313,7 @@ cmd_update() {
 
         # Post-update checks (reached on "already up to date" or via _post-update re-exec)
         check_component_versions
+        migrate_dns_tunnel_state
         check_env_additions
     else
         error "Failed to update. Check your network connection or git status."
@@ -1434,6 +1435,81 @@ check_component_versions() {
 }
 
 # Check for new variables in .env.example that are missing from .env
+# Preserve DNS tunnel state before check_env_additions.
+#
+# v1.7.5 flipped DNS tunnel defaults (ENABLE_DNSTT/SLIPSTREAM: false→true, ENABLE_XDNS: true→false).
+# If a pre-1.7.5 user's .env is missing any of these vars (sparse config), check_env_additions
+# would append the new defaults, putting their .env in a state that conflicts with their currently
+# running tunnel. This migration writes explicit values first — derived from what's actually
+# running — so check_env_additions sees all three vars present and skips them.
+migrate_dns_tunnel_state() {
+    local env_file="$SCRIPT_DIR/.env"
+    [[ ! -f "$env_file" ]] && return 0
+
+    local has_xdns has_dnstt has_slip
+    grep -q '^ENABLE_XDNS='       "$env_file" && has_xdns=true  || has_xdns=false
+    grep -q '^ENABLE_DNSTT='      "$env_file" && has_dnstt=true || has_dnstt=false
+    grep -q '^ENABLE_SLIPSTREAM=' "$env_file" && has_slip=true  || has_slip=false
+
+    # All three present = user already has explicit config. Leave alone.
+    if $has_xdns && $has_dnstt && $has_slip; then
+        return 0
+    fi
+
+    info "Preserving DNS tunnel state (.env missing some DNS tunnel vars; v1.7.5 default flip detected)..."
+
+    # Detect current tunnel state from running containers (authoritative over .env)
+    local running
+    running=$(docker compose ps --services --filter "status=running" 2>/dev/null || echo "")
+    local xdns_active=false dnstt_active=false slip_active=false
+
+    # xray serves both XHTTP and XDNS. XDNS is only "active" if enable flag is true
+    # (or flag is missing, which in pre-1.7.5 defaulted to true).
+    if echo "$running" | grep -qw xray; then
+        if $has_xdns; then
+            local cur
+            cur=$(get_env_val "ENABLE_XDNS" "$env_file" "false")
+            [[ "$cur" == "true" ]] && xdns_active=true
+        else
+            # Missing from .env — pre-1.7.5 default was true
+            xdns_active=true
+        fi
+    fi
+    echo "$running" | grep -qw dnstt      && dnstt_active=true
+    echo "$running" | grep -qw slipstream && slip_active=true
+
+    # Nothing detected running → fall back to pre-1.7.5 defaults (XDNS on, others off)
+    if ! $xdns_active && ! $dnstt_active && ! $slip_active; then
+        xdns_active=true
+    fi
+
+    local v
+    if ! $has_xdns; then
+        $xdns_active && v=true || v=false
+        update_env_var "$env_file" "ENABLE_XDNS" "$v"
+    fi
+    if ! $has_dnstt; then
+        $dnstt_active && v=true || v=false
+        update_env_var "$env_file" "ENABLE_DNSTT" "$v"
+    fi
+    if ! $has_slip; then
+        $slip_active && v=true || v=false
+        update_env_var "$env_file" "ENABLE_SLIPSTREAM" "$v"
+    fi
+
+    # Also pin port assignments if missing, so both defaults don't collide on port 53
+    if ! grep -q '^PORT_XDNS=' "$env_file"; then
+        $xdns_active && v=53 || v=5353
+        update_env_var "$env_file" "PORT_XDNS" "$v"
+    fi
+    if ! grep -q '^PORT_DNS=' "$env_file"; then
+        { $dnstt_active || $slip_active; } && v=53 || v=5353
+        update_env_var "$env_file" "PORT_DNS" "$v"
+    fi
+
+    echo "  Preserved: ENABLE_XDNS=$xdns_active, ENABLE_DNSTT=$dnstt_active, ENABLE_SLIPSTREAM=$slip_active"
+}
+
 check_env_additions() {
     local env_file="$SCRIPT_DIR/.env"
     local example_file="$SCRIPT_DIR/.env.example"
@@ -7615,6 +7691,7 @@ main() {
         _post-update)
             # Internal: re-exec target after self-update pulls new code
             check_component_versions
+            migrate_dns_tunnel_state
             check_env_additions
             ;;
         check)
