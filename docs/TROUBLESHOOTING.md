@@ -808,18 +808,23 @@ moav restart wireguard
 
 > **Quick check:** Run `moav doctor dns` to verify NS delegation for DNS tunnel subdomains, and `moav doctor ports` to check port 53 conflicts.
 
-**Port 53 conflict:** XDNS and dnstt/Slipstream both use port 53. Only one can be active at a time. Check your `.env`:
+**Port 53 conflict:** XDNS and dnstt/Slipstream both use port 53. Only one group can be active at a time. Use `moav switch-dns <name>` to swap safely, or edit `.env` directly:
 ```bash
-# Use EITHER XDNS:
-ENABLE_XDNS=true
-ENABLE_DNSTT=false
-ENABLE_SLIPSTREAM=false
-
-# OR dnstt/Slipstream:
+# Default — dnstt + Slipstream (broader client ecosystem via standalone binaries):
 ENABLE_XDNS=false
 ENABLE_DNSTT=true
 ENABLE_SLIPSTREAM=true
+PORT_DNS=53
+PORT_XDNS=5353
+
+# OR XDNS (modern, per-user auth, requires FinalMask-aware client like Happ):
+ENABLE_XDNS=true
+ENABLE_DNSTT=false
+ENABLE_SLIPSTREAM=false
+PORT_XDNS=53
+PORT_DNS=5353
 ```
+Easier: `moav switch-dns xdns` or `moav switch-dns dnstt+slipstream`.
 
 **Check logs for domain issues:**
 ```bash
