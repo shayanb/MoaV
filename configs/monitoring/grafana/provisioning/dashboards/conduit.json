@@ -1066,6 +1066,38 @@
                 "ZW": {
                   "text": "ZW: Zimbabwe",
                   "index": 54
+                },
+                "AZ": {
+                  "text": "AZ: Azerbaijan",
+                  "index": 55
+                },
+                "GT": {
+                  "text": "GT: Guatemala",
+                  "index": 56
+                },
+                "KE": {
+                  "text": "KE: Kenya",
+                  "index": 57
+                },
+                "LT": {
+                  "text": "LT: Lithuania",
+                  "index": 58
+                },
+                "PE": {
+                  "text": "PE: Peru",
+                  "index": 59
+                },
+                "SG": {
+                  "text": "SG: Singapore",
+                  "index": 60
+                },
+                "TN": {
+                  "text": "TN: Tunisia",
+                  "index": 61
+                },
+                "UZ": {
+                  "text": "UZ: Uzbekistan",
+                  "index": 62
                 }
               }
             }
@@ -1740,6 +1772,102 @@
                 "value": "ZW: Zimbabwe"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AZ"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "AZ: Azerbaijan"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GT"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "GT: Guatemala"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "KE"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "KE: Kenya"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LT"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "LT: Lithuania"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PE"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "PE: Peru"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SG"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "SG: Singapore"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TN"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "TN: Tunisia"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "UZ"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "UZ: Uzbekistan"
+              }
+            ]
           }
         ]
       },
@@ -2016,6 +2144,38 @@
                 "ZW": {
                   "text": "ZW: Zimbabwe",
                   "index": 54
+                },
+                "AZ": {
+                  "text": "AZ: Azerbaijan",
+                  "index": 55
+                },
+                "GT": {
+                  "text": "GT: Guatemala",
+                  "index": 56
+                },
+                "KE": {
+                  "text": "KE: Kenya",
+                  "index": 57
+                },
+                "LT": {
+                  "text": "LT: Lithuania",
+                  "index": 58
+                },
+                "PE": {
+                  "text": "PE: Peru",
+                  "index": 59
+                },
+                "SG": {
+                  "text": "SG: Singapore",
+                  "index": 60
+                },
+                "TN": {
+                  "text": "TN: Tunisia",
+                  "index": 61
+                },
+                "UZ": {
+                  "text": "UZ: Uzbekistan",
+                  "index": 62
                 }
               }
             }
@@ -2433,6 +2593,38 @@
                 "ZW": {
                   "text": "ZW: Zimbabwe",
                   "index": 54
+                },
+                "AZ": {
+                  "text": "AZ: Azerbaijan",
+                  "index": 55
+                },
+                "GT": {
+                  "text": "GT: Guatemala",
+                  "index": 56
+                },
+                "KE": {
+                  "text": "KE: Kenya",
+                  "index": 57
+                },
+                "LT": {
+                  "text": "LT: Lithuania",
+                  "index": 58
+                },
+                "PE": {
+                  "text": "PE: Peru",
+                  "index": 59
+                },
+                "SG": {
+                  "text": "SG: Singapore",
+                  "index": 60
+                },
+                "TN": {
+                  "text": "TN: Tunisia",
+                  "index": 61
+                },
+                "UZ": {
+                  "text": "UZ: Uzbekistan",
+                  "index": 62
                 }
               }
             }
