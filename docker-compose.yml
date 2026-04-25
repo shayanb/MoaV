@@ -342,7 +342,7 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.telemt
       args:
-        TELEMT_VERSION: ${TELEMT_VERSION:-3.3.39}
+        TELEMT_VERSION: ${TELEMT_VERSION:-3.4.8}
     container_name: moav-telemt
     restart: unless-stopped
     networks:
@@ -357,6 +357,12 @@ services:
     environment:
       - RUST_LOG=info
       - TZ=${TZ:-UTC}
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/telemt", "healthcheck", "/etc/telemt/config.toml", "--mode", "liveness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     cap_drop:
       - ALL
     cap_add:
