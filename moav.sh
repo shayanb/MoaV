@@ -2275,6 +2275,7 @@ DOCTOR_CHECKS=(
     "docker:Check Docker and prerequisites"
     "memory:Check available RAM"
     "disk:Check available disk space"
+    "logs:Check container log file sizes (offers to truncate oversized)"
     "dns:Check DNS records for enabled protocols"
     "services:Check running services vs enabled config"
     "config:Check config files and keys from bootstrap"
@@ -2436,6 +2437,93 @@ doctor_check_disk() {
         echo -e "    ${GREEN}✓${NC} Disk space OK"
         return 0
     fi
+}
+
+# Inspect container json-file logs and offer to truncate ones above a threshold.
+# Pre-1.7.6 containers (and any container created before the x-logging anchor was
+# applied) keep growing under Docker's unbounded default. Truncating in place
+# zeros the file without disrupting the running service — Docker keeps writing
+# to the same FD and the kernel reclaims the disk pages immediately.
+doctor_check_logs() {
+    local docker_dir="/var/lib/docker/containers"
+    local sudo_prefix=""
+    [[ $EUID -ne 0 ]] && sudo_prefix="sudo"
+
+    if [[ ! -d "$docker_dir" ]]; then
+        echo -e "    ${YELLOW}○${NC} ${docker_dir} not found (skipping log-size check)"
+        return 2
+    fi
+    if ! $sudo_prefix test -r "$docker_dir" 2>/dev/null; then
+        echo -e "    ${YELLOW}○${NC} Cannot read ${docker_dir} (need root)"
+        return 2
+    fi
+
+    local threshold_mb=100
+    # find -size +100M matches files strictly larger than 100 MB
+    local oversized
+    oversized=$($sudo_prefix find "$docker_dir" -maxdepth 2 -name '*-json.log' -size "+${threshold_mb}M" -printf '%s\t%p\n' 2>/dev/null | sort -rn)
+
+    if [[ -z "$oversized" ]]; then
+        echo -e "    ${GREEN}✓${NC} Container logs under ${threshold_mb} MB threshold"
+        return 0
+    fi
+
+    # Build container ID → name map for nicer output
+    declare -A name_map
+    local map_line cid cname
+    while IFS= read -r map_line; do
+        cid=$(echo "$map_line" | awk '{print $1}')
+        cname=$(echo "$map_line" | awk '{print $2}')
+        [[ -n "$cid" ]] && name_map["$cid"]="$cname"
+    done < <(docker ps -a --no-trunc --format '{{.ID}} {{.Names}}' 2>/dev/null || true)
+
+    echo -e "    ${YELLOW}○${NC} Container logs over ${threshold_mb} MB (likely pre-rotation containers):"
+    local count=0 total_bytes=0 size path id name size_mb
+    while IFS=$'\t' read -r size path; do
+        [[ -z "$size" ]] && continue
+        ((count++)) || true
+        total_bytes=$((total_bytes + size))
+        id=$(basename "$(dirname "$path")")
+        name="${name_map[$id]:-${id:0:12}}"
+        size_mb=$((size / 1024 / 1024))
+        echo -e "      ${DIM}${size_mb} MB  ${name}${NC}"
+    done <<< "$oversized"
+
+    local total_mb=$((total_bytes / 1024 / 1024))
+    echo -e "    ${YELLOW}Total:${NC} ${total_mb} MB across ${count} log file(s)"
+
+    # Only prompt when interactive (skip in cron / CI / piped doctor runs)
+    if [[ ! -t 0 ]]; then
+        echo -e "      ${DIM}Run interactively to truncate, or:${NC}"
+        echo -e "      ${DIM}sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log${NC}"
+        return 1
+    fi
+
+    local confirm
+    read -r -p "    Truncate these log files now? [y/N] " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo -e "      ${DIM}Skipped. Manual: sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log${NC}"
+        return 1
+    fi
+
+    local truncated=0 failed=0
+    while IFS=$'\t' read -r size path; do
+        [[ -z "$path" ]] && continue
+        if $sudo_prefix truncate -s 0 "$path" 2>/dev/null; then
+            ((truncated++)) || true
+        else
+            ((failed++)) || true
+        fi
+    done <<< "$oversized"
+
+    if [[ "$failed" -gt 0 ]]; then
+        echo -e "    ${YELLOW}○${NC} Truncated ${truncated}/${count} log file(s); ${failed} failed (permission denied?)"
+        return 1
+    fi
+    echo -e "    ${GREEN}✓${NC} Truncated ${truncated} log file(s) (~${total_mb} MB freed)"
+    echo -e "      ${DIM}Tip: existing containers keep their old logging policy until recreated.${NC}"
+    echo -e "      ${DIM}Run 'docker compose up -d --force-recreate' to apply the 10m × 3 rotation.${NC}"
+    return 0
 }
 
 doctor_lookup_a_records() {
