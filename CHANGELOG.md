@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Container log rotation** — All long-running services in `docker-compose.yml` now use a shared `x-logging` anchor that caps each container's `json-file` log at `max-size: 10m` × `max-file: 3` (~30 MB per container). Previously containers used the Docker default with no size cap, and chatty services (xray, sing-box, telemt, prometheus) could fill `/var/lib/docker/containers` over time on long-running VPS deployments
+- **`DNSTT_VERSION` env knob** — dnstt builds (server + client) are now pinned to a configurable git tag (`v1.20260501.0` default) and tracked alongside the other component versions in `moav update` and `moav versions`. Was previously cloned at HEAD with no version visibility
+
+### Fixed
+- **dnstt-server silent stalls under load** — Updated dnstt to upstream `v1.20260501.0`, which fixes a bug where the server could keep accepting DNS queries but stop sending responses if `sendLoop` died on a transient `sendto: operation not permitted` (commonly triggered when the host's Netfilter conntrack table overflows under many concurrent users). Process now exits if either `recvLoop` or `sendLoop` returns, and `sendLoop` only logs (no longer dies on) most send errors. See [net4people/bbs#609](https://github.com/net4people/bbs/issues/609)
 
 ## [1.7.6] - 2026-05-01
 

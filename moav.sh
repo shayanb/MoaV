@@ -1346,6 +1346,7 @@ check_component_versions() {
         "SLIPSTREAM_VERSION"
         "TELEMT_VERSION"
         "XRAY_VERSION"
+        "DNSTT_VERSION"
     )
 
     local updates_available=()
@@ -1378,6 +1379,7 @@ check_component_versions() {
                 SLIPSTREAM_VERSION) services_to_rebuild+=("slipstream") ;;
                 TELEMT_VERSION) services_to_rebuild+=("telemt") ;;
                 XRAY_VERSION) services_to_rebuild+=("xray") ;;
+                DNSTT_VERSION) services_to_rebuild+=("dnstt") ;;
             esac
         fi
     done
@@ -3220,7 +3222,7 @@ get_running_services() {
 
 show_versions() {
     local singbox_ver wstunnel_ver conduit_ver snowflake_ver slipstream_ver telemt_ver
-    local trusttunnel_ver trusttunnel_client_ver awgtools_ver xray_ver
+    local trusttunnel_ver trusttunnel_client_ver awgtools_ver xray_ver dnstt_ver
     singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
     wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
     conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
@@ -3231,6 +3233,7 @@ show_versions() {
     trusttunnel_client_ver=$(get_component_version "TRUSTTUNNEL_CLIENT_VERSION" "")
     awgtools_ver=$(get_component_version "AWGTOOLS_VERSION" "")
     xray_ver=$(get_component_version "XRAY_VERSION" "")
+    dnstt_ver=$(get_component_version "DNSTT_VERSION" "latest")
 
     echo ""
     echo -e "${CYAN}MoaV${NC} v${VERSION}"
@@ -3248,7 +3251,7 @@ show_versions() {
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "amneziawg" "$awgtools_ver" "github.com/amnezia-vpn/amneziawg-tools"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "conduit" "$conduit_ver" "github.com/Psiphon-Inc/conduit"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "snowflake" "$snowflake_ver" "torproject.org (built from src)"
-    printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${DIM}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "dnstt" "latest" "bamsoftware.com (built from src)"
+    printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "dnstt" "$dnstt_ver" "bamsoftware.com (built from src)"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "slipstream" "$slipstream_ver" "github.com/Mygod/slipstream-rust"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "telemt" "$telemt_ver" "github.com/telemt/telemt"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "xray-core" "$xray_ver" "github.com/XTLS/Xray-core"
