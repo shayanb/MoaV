@@ -89,6 +89,18 @@ USER_PASSWORD=$USER_PASSWORD
 CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 EOF
 
+# Shadowsocks-2022 per-user PSK (only if SS is enabled)
+if [[ "${ENABLE_SS:-false}" == "true" ]]; then
+    case "${SS_METHOD:-2022-blake3-aes-128-gcm}" in
+        2022-blake3-aes-128-gcm) SS_PSK_BYTES=16 ;;
+        *)                       SS_PSK_BYTES=32 ;;
+    esac
+    SS_USER_PSK=$(openssl rand -base64 "$SS_PSK_BYTES")
+    cat > "$STATE_DIR/users/$USERNAME/shadowsocks.env" <<EOF
+SS_USER_PSK=$SS_USER_PSK
+EOF
+fi
+
 log_info "Generated credentials for $USERNAME"
 
 # Add user to sing-box config using jq
@@ -117,6 +129,15 @@ jq --arg name "$USERNAME" --arg uuid "$USER_UUID" \
     '.inbounds |= map(if .tag == "vless-ws-in" then .users += [{"name": $name, "uuid": $uuid}] else . end)' \
     "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
 mv -f "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+
+# Add to Shadowsocks-2022 users (only if the inbound exists in the current config)
+if [[ "${ENABLE_SS:-false}" == "true" ]] && [[ -n "${SS_USER_PSK:-}" ]] \
+        && jq -e '.inbounds[] | select(.tag == "shadowsocks-in")' "$TEMP_CONFIG" >/dev/null 2>&1; then
+    jq --arg name "$USERNAME" --arg pass "$SS_USER_PSK" \
+        '.inbounds |= map(if .tag == "shadowsocks-in" then .users += [{"name": $name, "password": $pass}] else . end)' \
+        "$TEMP_CONFIG" > "${TEMP_CONFIG}.2"
+    mv -f "${TEMP_CONFIG}.2" "$TEMP_CONFIG"
+fi
 
 # Validate the new config
 if ! jq empty "$TEMP_CONFIG" 2>/dev/null; then
@@ -269,6 +290,63 @@ if [[ -n "$CDN_DOMAIN" ]]; then
     fi
 
     log_info "Generated CDN VLESS link (transport: $CDN_TRANSPORT, domain: $CDN_DOMAIN)"
+fi
+
+# Generate Shadowsocks-2022 bundle (only if SS is enabled and we have the PSKs)
+if [[ "${ENABLE_SS:-false}" == "true" ]] && [[ -n "${SS_USER_PSK:-}" ]]; then
+    # Load server PSK from host state (via docker volume since the canonical copy is in the container)
+    SS_SERVER_PSK=""
+    if [[ -f "$STATE_DIR/keys/shadowsocks-server.psk" ]]; then
+        SS_SERVER_PSK=$(cat "$STATE_DIR/keys/shadowsocks-server.psk" 2>/dev/null | tr -d '\n')
+    fi
+    if [[ -z "$SS_SERVER_PSK" ]]; then
+        SS_SERVER_PSK=$(docker run --rm -v moav_moav_state:/state alpine cat /state/keys/shadowsocks-server.psk 2>/dev/null | tr -d '\n' || echo "")
+    fi
+
+    if [[ -z "$SS_SERVER_PSK" ]]; then
+        log_warn "Shadowsocks server PSK not found — skipping SS bundle for $USERNAME"
+    else
+        SS_PORT_LOCAL="${PORT_SS:-$(grep -E '^PORT_SS=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo 8388)}"
+        SS_METHOD_LOCAL="${SS_METHOD:-$(grep -E '^SS_METHOD=' .env 2>/dev/null | cut -d= -f2 | tr -d '"' || echo 2022-blake3-aes-128-gcm)}"
+
+        # SIP002 ss:// URI with SS-2022 multi-user encoding: BASE64URL_NOPAD(method:server_psk:user_psk)@host:port#tag
+        SS_USERINFO=$(printf '%s' "${SS_METHOD_LOCAL}:${SS_SERVER_PSK}:${SS_USER_PSK}" | base64 | tr -d '\n=' | tr '/+' '_-')
+        SS_LINK="ss://${SS_USERINFO}@${SERVER_IP}:${SS_PORT_LOCAL}#MoaV-Shadowsocks-${USERNAME}"
+        echo "$SS_LINK" > "$OUTPUT_DIR/shadowsocks.txt"
+
+        cat > "$OUTPUT_DIR/shadowsocks-singbox.json" <<EOF
+{
+  "log": {"level": "info"},
+  "inbounds": [
+    {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": true, "strict_route": true}
+  ],
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "proxy",
+      "server": "${SERVER_IP}",
+      "server_port": ${SS_PORT_LOCAL},
+      "method": "${SS_METHOD_LOCAL}",
+      "password": "${SS_SERVER_PSK}:${SS_USER_PSK}",
+      "multiplex": {"enabled": true, "protocol": "h2mux", "padding": true}
+    }
+  ],
+  "route": {"auto_detect_interface": true, "final": "proxy"}
+}
+EOF
+
+        if command -v qrencode &>/dev/null; then
+            qrencode -o "$OUTPUT_DIR/shadowsocks-qr.png" -s 6 "$SS_LINK" 2>/dev/null || true
+        fi
+
+        if [[ -n "$SERVER_IPV6" ]]; then
+            SS_LINK_V6="ss://${SS_USERINFO}@[${SERVER_IPV6}]:${SS_PORT_LOCAL}#MoaV-Shadowsocks-${USERNAME}-IPv6"
+            echo "$SS_LINK_V6" > "$OUTPUT_DIR/shadowsocks-ipv6.txt"
+            command -v qrencode &>/dev/null && qrencode -o "$OUTPUT_DIR/shadowsocks-ipv6-qr.png" -s 6 "$SS_LINK_V6" 2>/dev/null || true
+        fi
+
+        log_info "Generated Shadowsocks-2022 bundle (port $SS_PORT_LOCAL, $SS_METHOD_LOCAL)"
+    fi
 fi
 
 # Add user to TrustTunnel (if config exists)

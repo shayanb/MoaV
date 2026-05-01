@@ -1,11 +1,14 @@
 # dnstt DNS tunnel server
 FROM golang:1.24-alpine AS builder
 
+ARG DNSTT_VERSION=v1.20260501.0
+
 RUN apk add --no-cache git
 
 WORKDIR /src
 
-RUN git clone https://www.bamsoftware.com/git/dnstt.git .
+RUN git clone https://www.bamsoftware.com/git/dnstt.git . && \
+    git checkout ${DNSTT_VERSION}
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \

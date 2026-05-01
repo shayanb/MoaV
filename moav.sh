@@ -1346,6 +1346,7 @@ check_component_versions() {
         "SLIPSTREAM_VERSION"
         "TELEMT_VERSION"
         "XRAY_VERSION"
+        "DNSTT_VERSION"
     )
 
     local updates_available=()
@@ -1378,6 +1379,7 @@ check_component_versions() {
                 SLIPSTREAM_VERSION) services_to_rebuild+=("slipstream") ;;
                 TELEMT_VERSION) services_to_rebuild+=("telemt") ;;
                 XRAY_VERSION) services_to_rebuild+=("xray") ;;
+                DNSTT_VERSION) services_to_rebuild+=("dnstt") ;;
             esac
         fi
     done
@@ -2540,6 +2542,9 @@ doctor_domainless_protocols() {
     if doctor_is_enabled "$(get_env_val "ENABLE_TELEMT" "$env_file" "true")"; then
         protocols+=("Telegram MTProxy")
     fi
+    if doctor_is_enabled "$(get_env_val "ENABLE_SS" "$env_file" "false")"; then
+        protocols+=("Shadowsocks-2022")
+    fi
     if doctor_is_enabled "$(get_env_val "ENABLE_ADMIN_UI" "$env_file" "true")"; then
         protocols+=("Admin Dashboard")
     fi
@@ -2785,6 +2790,7 @@ doctor_check_services() {
     # Map of ENABLE_* vars to service names
     local -A service_map=(
         ["ENABLE_REALITY"]="sing-box"
+        ["ENABLE_SS"]="sing-box"
         ["ENABLE_XHTTP"]="xray"
         ["ENABLE_WIREGUARD"]="wireguard"
         ["ENABLE_AMNEZIAWG"]="amneziawg"
@@ -3220,7 +3226,7 @@ get_running_services() {
 
 show_versions() {
     local singbox_ver wstunnel_ver conduit_ver snowflake_ver slipstream_ver telemt_ver
-    local trusttunnel_ver trusttunnel_client_ver awgtools_ver xray_ver
+    local trusttunnel_ver trusttunnel_client_ver awgtools_ver xray_ver dnstt_ver
     singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
     wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
     conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
@@ -3231,6 +3237,7 @@ show_versions() {
     trusttunnel_client_ver=$(get_component_version "TRUSTTUNNEL_CLIENT_VERSION" "")
     awgtools_ver=$(get_component_version "AWGTOOLS_VERSION" "")
     xray_ver=$(get_component_version "XRAY_VERSION" "")
+    dnstt_ver=$(get_component_version "DNSTT_VERSION" "latest")
 
     echo ""
     echo -e "${CYAN}MoaV${NC} v${VERSION}"
@@ -3248,7 +3255,7 @@ show_versions() {
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "amneziawg" "$awgtools_ver" "github.com/amnezia-vpn/amneziawg-tools"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "conduit" "$conduit_ver" "github.com/Psiphon-Inc/conduit"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "snowflake" "$snowflake_ver" "torproject.org (built from src)"
-    printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${DIM}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "dnstt" "latest" "bamsoftware.com (built from src)"
+    printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "dnstt" "$dnstt_ver" "bamsoftware.com (built from src)"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "slipstream" "$slipstream_ver" "github.com/Mygod/slipstream-rust"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "telemt" "$telemt_ver" "github.com/telemt/telemt"
     printf "  ${CYAN}│${NC} %-16s ${CYAN}│${NC} ${GREEN}%-14s${NC} ${CYAN}│${NC} %-40s ${CYAN}│${NC}\n" "xray-core" "$xray_ver" "github.com/XTLS/Xray-core"
@@ -6045,6 +6052,7 @@ resolve_service() {
     case "$svc" in
         conduit|psiphon)              echo "psiphon-conduit" ;;
         singbox|sing|proxy|reality)   echo "sing-box" ;;
+        ss|shadowsocks|outline)       echo "sing-box" ;;
         wg)                           echo "wireguard" ;;
         ws|tunnel)                    echo "wstunnel" ;;
         dns)                          echo "dnstt" ;;
@@ -7559,6 +7567,9 @@ cmd_regenerate_users() {
     local telemt_max_tcp_conns=$(get_env_val "TELEMT_MAX_TCP_CONNS" .env "100")
     local telemt_max_unique_ips=$(get_env_val "TELEMT_MAX_UNIQUE_IPS" .env "10")
     local port_telemt=$(get_env_val "PORT_TELEMT" .env "993")
+    local enable_ss=$(get_env_val "ENABLE_SS" .env "false")
+    local port_ss=$(get_env_val "PORT_SS" .env "8388")
+    local ss_method=$(get_env_val "SS_METHOD" .env "2022-blake3-aes-128-gcm")
 
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
@@ -7592,6 +7603,9 @@ cmd_regenerate_users() {
             -e "TELEMT_MAX_TCP_CONNS=${telemt_max_tcp_conns:-100}" \
             -e "TELEMT_MAX_UNIQUE_IPS=${telemt_max_unique_ips:-10}" \
             -e "PORT_TELEMT=${port_telemt:-993}" \
+            -e "ENABLE_SS=${enable_ss:-false}" \
+            -e "PORT_SS=${port_ss:-8388}" \
+            -e "SS_METHOD=${ss_method:-2022-blake3-aes-128-gcm}" \
             bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true

@@ -141,9 +141,15 @@ SERVER_PUBLIC_KEY=""
 if docker compose ps wireguard --status running 2>/dev/null | tail -n +2 | grep -q .; then
     SERVER_PUBLIC_KEY=$(docker compose exec -T wireguard wg show wg0 public-key 2>/dev/null | tr -d '\r\n')
     if [[ -n "$SERVER_PUBLIC_KEY" ]]; then
-        # Sync to server.pub file to ensure consistency
-        echo "$SERVER_PUBLIC_KEY" > "$WG_CONFIG_DIR/server.pub"
-        log_info "Synced server public key from running WireGuard"
+        # Best-effort sync to server.pub. If the caller (e.g. the admin container
+        # running as uid 1000) only has read perms on configs/ — set by bootstrap
+        # via `chown -R 0:1000` + `chmod -R g+r` — the write fails and we proceed
+        # with the in-memory key, which is already authoritative.
+        if echo "$SERVER_PUBLIC_KEY" > "$WG_CONFIG_DIR/server.pub" 2>/dev/null; then
+            log_info "Synced server public key from running WireGuard"
+        else
+            log_info "Could not write $WG_CONFIG_DIR/server.pub (read-only); using in-memory key"
+        fi
     fi
 fi
 

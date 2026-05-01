@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.7] - 2026-05-01
+
+### Added
+- **Shadowsocks-2022 protocol** — New `ENABLE_SS=true` toggle adds a Shadowsocks-2022 inbound to the existing sing-box service (no new container, no new daemon). Defaults to `2022-blake3-aes-128-gcm` for multi-user support (sing-box's SS-2022 multi-user mode only supports the AES variants; `chacha20-poly1305` is single-user only). Per-user PSKs are generated at bootstrap and persisted under `state/users/<id>/shadowsocks.env`; the server PSK lives at `state/keys/shadowsocks-server.psk`. Bootstrap auto-regenerates the SS state if `SS_METHOD` changes and the saved PSK no longer matches the cipher key length. User bundles emit a standard `ss://` URI + QR + sing-box JSON, compatible with NekoBox / Hiddify / Streisand / sing-box clients and the Outline mobile app. Off by default; enable via `ENABLE_SS=true` in `.env` and re-bootstrap. Refs [#93](https://github.com/shayanb/MoaV/issues/93)
+- **Container log rotation** — All long-running services in `docker-compose.yml` now use a shared `x-logging` anchor that caps each container's `json-file` log at `max-size: 10m` × `max-file: 3` (~30 MB per container). Previously containers used the Docker default with no size cap, and chatty services (xray, sing-box, telemt, prometheus) could fill `/var/lib/docker/containers` over time on long-running VPS deployments
+- **`DNSTT_VERSION` env knob** — dnstt builds (server + client) are now pinned to a configurable git tag (`v1.20260501.0` default) and tracked alongside the other component versions in `moav update` and `moav versions`. Was previously cloned at HEAD with no version visibility
+
+### Fixed
+- **dnstt-server silent stalls under load** — Updated dnstt to upstream `v1.20260501.0`, which fixes a bug where the server could keep accepting DNS queries but stop sending responses if `sendLoop` died on a transient `sendto: operation not permitted` (commonly triggered when the host's Netfilter conntrack table overflows under many concurrent users). Process now exits if either `recvLoop` or `sendLoop` returns, and `sendLoop` only logs (no longer dies on) most send errors. See [net4people/bbs#609](https://github.com/net4people/bbs/issues/609)
+- **`moav user add` failing on `wireguard/server.pub` permission denied** — `wg-user-add.sh` defensively re-synced the server public key file on every run, but bootstrap chowns `configs/` to `0:1000` with `chmod -R g+r` (read-only for the admin container's uid 1000). The write failed and `set -euo pipefail` aborted the whole user-add flow. The sync is now best-effort: failed writes log a warning and the script proceeds with the in-memory key from `wg show` (which is authoritative)
+- **dnstt build fails over bamsoftware.com dumb HTTP** — `Dockerfile.dnstt` and the dnstt-client builder stage in `Dockerfile.client` used `git clone --depth 1 --branch ${DNSTT_VERSION}`, which requires smart-HTTP upload-pack. bamsoftware.com serves git as a static Apache directory and rejected the request with exit 128. Switched to a full clone + `git checkout ${DNSTT_VERSION}` (tag pinning preserved)
+
 ## [1.7.6] - 2026-05-01
 
 ### Added
@@ -972,7 +984,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - uTLS fingerprint spoofing (Chrome)
 - Automatic short ID generation for Reality
 
-[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.7.6...HEAD
+[Unreleased]: https://github.com/shayanb/MoaV/compare/v1.7.7...HEAD
+[1.7.7]: https://github.com/shayanb/MoaV/compare/v1.7.6...v1.7.7
 [1.7.6]: https://github.com/shayanb/MoaV/compare/v1.7.5...v1.7.6
 [1.7.5]: https://github.com/shayanb/MoaV/compare/v1.7.4...v1.7.5
 [1.7.4]: https://github.com/shayanb/MoaV/compare/v1.7.3...v1.7.4
