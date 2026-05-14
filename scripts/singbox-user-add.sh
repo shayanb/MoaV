@@ -680,7 +680,12 @@ Setup:
 Tips:
 - Try the DNS resolver config first (stealthier)
 - Switch to direct if connections keep dropping
-- Other DNS resolvers to try: 1.1.1.1, your ISP's DNS
+- The DNS-resolver config round-robins across: ${_xdns_resolvers_csv:-(single resolver mode)}
+- If those keep dropping, edit the "resolvers" array in xdns-config.json
+  with DNS servers that actually answer on your network.
+- Scanners that find reachable resolvers:
+    findns   https://github.com/SamNet-dev/findns
+    dns-mns  https://gitlab.com/E-Gurl/dns-mns
 
 Telegram quick setup (after XDNS client is connected):
   Tap this link to add proxy to Telegram:
