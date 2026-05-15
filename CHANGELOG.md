@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.8] - 2026-05-15
+
 ### Added
 - **`moav doctor logs` check** — New diagnostic that scans `/var/lib/docker/containers/*/*-json.log` for files over 100 MB, prints them grouped by container name with total MB, and prompts interactively to truncate them in place. Helpful for clearing accumulated logs from pre-1.7.6 containers that were created before the `x-logging` rotation anchor was added (rotation only applies to containers created *after* the upgrade — pre-existing containers keep growing under Docker's unbounded default until they're recreated). Skips the prompt non-interactively (cron / piped runs) and prints the manual `truncate -s 0` command instead. Auto-prefixes `sudo` when not running as root
 - **`XDNS_RESOLVERS` env var (multi-resolver fan-out for XDNS)** — New optional CSV env var (default `1.1.1.1,8.8.8.8`) wired into the client-side `xdns-config.json` finalmask settings. Enables Xray's per-PR-#5872 round-robin distribution of DNS queries across multiple public resolvers within a single mKCP session — higher throughput plus a real fallback when one resolver is rate-limited (e.g. during Iran shutdowns when `8.8.8.8` gets throttled or null-routed). Only applied to the DNS-tunnel-mode bundle (`xdns-config.json`); direct mode (`xdns-direct-config.json`) omits the field since it bypasses public DNS entirely. Set `XDNS_RESOLVERS=` (empty) to fall back to single-resolver legacy behavior
