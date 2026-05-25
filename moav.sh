@@ -1437,11 +1437,12 @@ check_component_versions() {
 }
 
 # After a self-update pull, detect changes to server config *templates*
-# (configs/**/*.template). When a template changes, the generated configs on
-# disk are stale and must be regenerated via bootstrap, or services can
-# crash-loop — e.g. Xray v26.5.9 rejects the pre-rename `clients` inbound key
-# until configs/xray/config.json is rewritten from the updated template.
-# Records the changed templates for print_post_update_apply_steps.
+# (configs/**/*.template). The configs already generated on disk won't reflect
+# a template change until they're regenerated via bootstrap, so flag it. Most
+# such changes are picked up cleanly on the next bootstrap (which is idempotent
+# and preserves keys/users); some are backward-compatible and need no action at
+# all (e.g. the v1.7.8 Xray clients→users rename, where Xray still accepts the
+# old key). Records the changed templates for print_post_update_apply_steps.
 check_config_template_changes() {
     local old_commit="${1:-}"
     [[ -z "$old_commit" ]] && return 0
@@ -1476,9 +1477,9 @@ print_post_update_apply_steps() {
             [[ -n "$f" ]] && echo -e "    ${CYAN}$f${NC}"
         done <<< "$templates"
         echo ""
-        echo "The generated configs on disk are now stale — affected services can"
-        echo "fail to start until they are regenerated. Bootstrap is idempotent and"
-        echo "preserves your keys and user UUIDs."
+        echo "The generated configs on disk may not reflect this change until they"
+        echo "are regenerated. Re-bootstrap to pick it up — bootstrap is idempotent"
+        echo "and preserves your keys and user UUIDs."
         echo ""
     fi
 
