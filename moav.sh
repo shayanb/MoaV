@@ -7723,6 +7723,15 @@ cmd_regenerate_users() {
     local enable_ss=$(get_env_val "ENABLE_SS" .env "false")
     local port_ss=$(get_env_val "PORT_SS" .env "8388")
     local ss_method=$(get_env_val "SS_METHOD" .env "2022-blake3-aes-128-gcm")
+    # DNS-tunnel subdomain/port fields — without these, regenerated bundles fall
+    # back to defaults (t/x/53) and drift from the active .env (issue #98)
+    local dnstt_subdomain=$(get_env_val "DNSTT_SUBDOMAIN" .env "t")
+    local enable_xdns=$(get_env_val "ENABLE_XDNS" .env "false")
+    local xdns_subdomain=$(get_env_val "XDNS_SUBDOMAIN" .env "x")
+    local xdns_mtu=$(get_env_val "XDNS_MTU" .env "35")
+    local xdns_resolvers=$(get_env_val "XDNS_RESOLVERS" .env "1.1.1.1,8.8.8.8")
+    local port_dns=$(get_env_val "PORT_DNS" .env "53")
+    local port_xdns=$(get_env_val "PORT_XDNS" .env "53")
 
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
@@ -7759,7 +7768,15 @@ cmd_regenerate_users() {
             -e "ENABLE_SS=${enable_ss:-false}" \
             -e "PORT_SS=${port_ss:-8388}" \
             -e "SS_METHOD=${ss_method:-2022-blake3-aes-128-gcm}" \
-            bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
+            -e "DNSTT_SUBDOMAIN=${dnstt_subdomain:-t}" \
+            -e "ENABLE_XDNS=${enable_xdns:-false}" \
+            -e "XDNS_SUBDOMAIN=${xdns_subdomain:-x}" \
+            -e "XDNS_MTU=${xdns_mtu:-35}" \
+            -e "XDNS_RESOLVERS=${xdns_resolvers:-1.1.1.1,8.8.8.8}" \
+            -e "PORT_DNS=${port_dns:-53}" \
+            -e "PORT_XDNS=${port_xdns:-53}" \
+            --entrypoint /bin/sh \
+            bootstrap -c 'mkdir -p /state/users; cp -a /host-state/users/. /state/users/ 2>/dev/null || true; exec /app/generate-user.sh "$1" force' sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true
         else
