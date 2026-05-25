@@ -15,10 +15,12 @@ This runs all checks automatically and tells you exactly what's wrong:
 - **docker** — Docker daemon running, Compose installed, disk usage
 - **memory** — Available RAM, warns if too low for your config
 - **disk** — Free disk space, warns before you run out
+- **logs** — Container `json-file` log sizes; prompts to truncate any over 100 MB (useful for clearing pre-1.7.6 unbounded logs)
 - **dns** — DNS records for your domain and enabled protocols
 - **services** — Running containers vs enabled config, crash-looping detection
 - **config** — Bootstrap status, config files exist for enabled protocols
 - **ports** — Required ports listening, systemd-resolved conflicts
+- **conflicts** — DNS-tunnel port-group collisions on port 53
 - **env** — Missing `.env` variables compared to `.env.example`
 - **updates** — New MoaV version available
 
@@ -325,6 +327,9 @@ ncdu /var/lib/docker
 # Docker: remove unused images, containers, volumes
 docker system prune -a --volumes
 
+# Build cache (separate from image cache; can be many GB after failed builds)
+docker builder prune -af
+
 # Prometheus data (if monitoring enabled, ~50MB/day)
 # Reduce retention in docker-compose.yml: --storage.tsdb.retention.time=7d
 
@@ -334,6 +339,35 @@ journalctl --vacuum-size=100M
 # Docker container logs (can grow large)
 docker system df -v
 ```
+
+**Truncate oversized container logs (immediate reclaim, no restart needed):**
+
+MoaV ≥ 1.7.6 caps each container's `json-file` log at 10 MB × 3 files via the
+`x-logging` anchor in `docker-compose.yml`. The cap applies at *container
+creation time* — containers that pre-date the upgrade keep growing under the
+old (unbounded) policy until they're recreated.
+
+To inspect and truncate in place:
+
+```bash
+# Top 10 largest container log files
+sudo du -sh /var/lib/docker/containers/*/*-json.log 2>/dev/null | sort -h | tail
+
+# Zero them in place — Docker keeps writing to the same FD, no service restart
+# required. Kernel reclaims the disk pages immediately.
+sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log
+
+# Verify rotation is enforced going forward
+docker inspect moav-sing-box --format '{{json .HostConfig.LogConfig}}'
+# expect: {"Type":"json-file","Config":{"max-file":"3","max-size":"10m"}}
+
+# If the inspect shows empty/default config, force-recreate so the new
+# rotation policy gets applied:
+docker compose up -d --force-recreate
+```
+
+`moav doctor logs` (also part of `moav doctor`) detects oversized files
+automatically and prompts to truncate them interactively.
 
 ### Services won't start
 

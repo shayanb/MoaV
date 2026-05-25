@@ -165,6 +165,8 @@ XDNS is a DNS tunnel protocol that uses Xray-core's FinalMask technology to enco
 
 > **Note**: XDNS, dnstt, and Slipstream all use port 53. Only one group can own port 53 at a time. dnstt+Slipstream share dns-router by default (`PORT_DNS=53`). To switch to XDNS instead, run `moav switch-dns xdns`. To combine dnstt+Slipstream, run `moav switch-dns dnstt+slipstream` (default). See `moav switch-dns list` for current state.
 
+> **Client-side resolver choice**: All three DNS tunnels rely on a public DNS resolver the *client* can reach — `1.1.1.1` and `8.8.8.8` are commonly throttled or null-routed during shutdowns. XDNS round-robins across multiple resolvers via `XDNS_RESOLVERS` in `.env`; dnstt and Slipstream take a `--dns-server` / `-doh` flag at the client. See [protocols.md → Reachable DNS resolvers](protocols.md#reachable-dns-resolvers) for resolver-scanning guidance ([findns](https://github.com/SamNet-dev/findns), [dns-mns](https://gitlab.com/E-Gurl/dns-mns)).
+
 #### Optional: IPv6 Support
 
 If your server has IPv6, you can also add an AAAA record for the nameserver:

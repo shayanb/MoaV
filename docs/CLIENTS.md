@@ -652,7 +652,7 @@ XDNS encodes VPN traffic inside DNS-like packets using Xray-core's mKCP transpor
 - MTU 35 (default) is safest. Try 67 or 130 for faster speeds if your network allows
 - MTU must match on both server and client
 - XDNS and dnstt/Slipstream cannot run at the same time (both use port 53)
-  - Add `--authoritative SERVER_IP:53` instead of `--dns-server`
+- **Resolver choice matters.** The default `xdns-config.json` round-robins across multiple public DNS resolvers (set by `XDNS_RESOLVERS` in the server's `.env`); if it keeps dropping, swap in resolvers that actually answer from your network. See [protocols.md → Reachable DNS resolvers](protocols.md#reachable-dns-resolvers) for scanner tools ([findns](https://github.com/SamNet-dev/findns), [dns-mns](https://gitlab.com/E-Gurl/dns-mns)).
 
 ---
 

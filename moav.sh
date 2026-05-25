@@ -1306,15 +1306,19 @@ cmd_update() {
         else
             success "Updated: $current_commit → $new_commit (branch: $new_branch)"
 
-            # Re-exec with new code for post-update checks
-            # The running script is the old version; the new code is on disk
-            exec "$SCRIPT_DIR/moav.sh" _post-update
+            # Re-exec with new code for post-update checks. The running script is
+            # the old version; the new code is on disk. Pass the pre-pull commit so
+            # the new code can diff it for config-template changes (re-bootstrap).
+            exec "$SCRIPT_DIR/moav.sh" _post-update "$current_commit"
         fi
 
-        # Post-update checks (reached on "already up to date" or via _post-update re-exec)
+        # Post-update checks (reached on "already up to date"; the updated path
+        # re-execs into _post-update above and never returns here). No pull
+        # happened, so there are no config-template changes to diff.
         check_component_versions
         migrate_dns_tunnel_state
         check_env_additions
+        print_post_update_apply_steps
     else
         error "Failed to update. Check your network connection or git status."
         echo ""
@@ -1418,22 +1422,83 @@ check_component_versions() {
         done
 
         success "Component versions updated in .env"
-        echo ""
 
-        # Show rebuild command
+        # Record which services need rebuilding. The ordered apply sequence is
+        # composed and printed once by print_post_update_apply_steps (so a
+        # rebuild + a config-template re-bootstrap are shown as one flow).
         if [[ ${#services_to_rebuild[@]} -gt 0 ]]; then
-            local services_str="${services_to_rebuild[*]}"
-            echo -e "To apply updates, rebuild the affected containers:"
-            echo ""
-            echo -e "  ${WHITE}moav build ${services_str} --no-cache${NC}"
-            echo ""
-            echo -e "Or rebuild all: ${WHITE}moav build --no-cache${NC}"
+            POST_UPDATE_REBUILD_SERVICES="${services_to_rebuild[*]}"
         fi
     else
         echo ""
         echo "Versions not updated. To update later, compare:"
         echo "  .env.example (new versions) vs .env (your versions)"
     fi
+}
+
+# After a self-update pull, detect changes to server config *templates*
+# (configs/**/*.template). The configs already generated on disk won't reflect
+# a template change until they're regenerated via bootstrap, so flag it. Most
+# such changes are picked up cleanly on the next bootstrap (which is idempotent
+# and preserves keys/users); some are backward-compatible and need no action at
+# all (e.g. the v1.7.8 Xray clients→users rename, where Xray still accepts the
+# old key). Records the changed templates for print_post_update_apply_steps.
+check_config_template_changes() {
+    local old_commit="${1:-}"
+    [[ -z "$old_commit" ]] && return 0
+    [[ -d "$SCRIPT_DIR/.git" ]] || return 0
+
+    local changed
+    changed=$(git -C "$SCRIPT_DIR" diff --name-only "$old_commit" HEAD 2>/dev/null \
+        | grep -E '\.template$' || true)
+    [[ -z "$changed" ]] && return 0
+
+    POST_UPDATE_BOOTSTRAP_TEMPLATES="$changed"
+}
+
+# Compose a single ordered "how to apply this update" summary from what the
+# post-update checks found: component rebuilds (POST_UPDATE_REBUILD_SERVICES)
+# and/or stale server configs (POST_UPDATE_BOOTSTRAP_TEMPLATES). Print-only by
+# design — never auto-rebuilds or restarts a running server (a build-all would
+# OOM low-RAM VPSes, and restarting a live circumvention node is the operator's
+# call). Fixes two non-obvious gotchas: (1) `moav build` doesn't recreate
+# containers and `moav restart` reuses the old image — you need `moav start`
+# (up -d); (2) a config-template change needs a re-bootstrap, not just a build.
+print_post_update_apply_steps() {
+    local rebuild="${POST_UPDATE_REBUILD_SERVICES:-}"
+    local templates="${POST_UPDATE_BOOTSTRAP_TEMPLATES:-}"
+
+    [[ -z "$rebuild" && -z "$templates" ]] && return 0
+
+    echo ""
+    if [[ -n "$templates" ]]; then
+        warn "This update changed server config templates:"
+        while IFS= read -r f; do
+            [[ -n "$f" ]] && echo -e "    ${CYAN}$f${NC}"
+        done <<< "$templates"
+        echo ""
+        echo "The generated configs on disk may not reflect this change until they"
+        echo "are regenerated. Re-bootstrap to pick it up — bootstrap is idempotent"
+        echo "and preserves your keys and user UUIDs."
+        echo ""
+    fi
+
+    local n=1
+    echo -e "${WHITE}Apply this update in order:${NC}"
+    echo ""
+    if [[ -n "$rebuild" ]]; then
+        echo -e "  ${WHITE}${n}.${NC} moav build ${rebuild} --no-cache   ${DIM}# build new images${NC}"
+        n=$((n+1))
+    fi
+    if [[ -n "$templates" ]]; then
+        echo -e "  ${WHITE}${n}.${NC} moav bootstrap                  ${DIM}# regenerate server configs (keeps keys + users)${NC}"
+        n=$((n+1))
+        echo -e "  ${WHITE}${n}.${NC} moav regenerate-users           ${DIM}# refresh user bundles${NC}"
+        n=$((n+1))
+    fi
+    echo -e "  ${WHITE}${n}.${NC} moav start                      ${DIM}# recreate containers on the new images${NC}"
+    echo ""
+    echo -e "${DIM}Note: 'moav restart' reuses the old image — use 'moav start' (docker compose up -d) to pick up rebuilt images.${NC}"
 }
 
 # Check for new variables in .env.example that are missing from .env
@@ -2275,6 +2340,7 @@ DOCTOR_CHECKS=(
     "docker:Check Docker and prerequisites"
     "memory:Check available RAM"
     "disk:Check available disk space"
+    "logs:Check container log file sizes (offers to truncate oversized)"
     "dns:Check DNS records for enabled protocols"
     "services:Check running services vs enabled config"
     "config:Check config files and keys from bootstrap"
@@ -2436,6 +2502,93 @@ doctor_check_disk() {
         echo -e "    ${GREEN}✓${NC} Disk space OK"
         return 0
     fi
+}
+
+# Inspect container json-file logs and offer to truncate ones above a threshold.
+# Pre-1.7.6 containers (and any container created before the x-logging anchor was
+# applied) keep growing under Docker's unbounded default. Truncating in place
+# zeros the file without disrupting the running service — Docker keeps writing
+# to the same FD and the kernel reclaims the disk pages immediately.
+doctor_check_logs() {
+    local docker_dir="/var/lib/docker/containers"
+    local sudo_prefix=""
+    [[ $EUID -ne 0 ]] && sudo_prefix="sudo"
+
+    if [[ ! -d "$docker_dir" ]]; then
+        echo -e "    ${YELLOW}○${NC} ${docker_dir} not found (skipping log-size check)"
+        return 2
+    fi
+    if ! $sudo_prefix test -r "$docker_dir" 2>/dev/null; then
+        echo -e "    ${YELLOW}○${NC} Cannot read ${docker_dir} (need root)"
+        return 2
+    fi
+
+    local threshold_mb=100
+    # find -size +100M matches files strictly larger than 100 MB
+    local oversized
+    oversized=$($sudo_prefix find "$docker_dir" -maxdepth 2 -name '*-json.log' -size "+${threshold_mb}M" -printf '%s\t%p\n' 2>/dev/null | sort -rn)
+
+    if [[ -z "$oversized" ]]; then
+        echo -e "    ${GREEN}✓${NC} Container logs under ${threshold_mb} MB threshold"
+        return 0
+    fi
+
+    # Build container ID → name map for nicer output
+    declare -A name_map
+    local map_line cid cname
+    while IFS= read -r map_line; do
+        cid=$(echo "$map_line" | awk '{print $1}')
+        cname=$(echo "$map_line" | awk '{print $2}')
+        [[ -n "$cid" ]] && name_map["$cid"]="$cname"
+    done < <(docker ps -a --no-trunc --format '{{.ID}} {{.Names}}' 2>/dev/null || true)
+
+    echo -e "    ${YELLOW}○${NC} Container logs over ${threshold_mb} MB (likely pre-rotation containers):"
+    local count=0 total_bytes=0 size path id name size_mb
+    while IFS=$'\t' read -r size path; do
+        [[ -z "$size" ]] && continue
+        ((count++)) || true
+        total_bytes=$((total_bytes + size))
+        id=$(basename "$(dirname "$path")")
+        name="${name_map[$id]:-${id:0:12}}"
+        size_mb=$((size / 1024 / 1024))
+        echo -e "      ${DIM}${size_mb} MB  ${name}${NC}"
+    done <<< "$oversized"
+
+    local total_mb=$((total_bytes / 1024 / 1024))
+    echo -e "    ${YELLOW}Total:${NC} ${total_mb} MB across ${count} log file(s)"
+
+    # Only prompt when interactive (skip in cron / CI / piped doctor runs)
+    if [[ ! -t 0 ]]; then
+        echo -e "      ${DIM}Run interactively to truncate, or:${NC}"
+        echo -e "      ${DIM}sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log${NC}"
+        return 1
+    fi
+
+    local confirm
+    read -r -p "    Truncate these log files now? [y/N] " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo -e "      ${DIM}Skipped. Manual: sudo truncate -s 0 /var/lib/docker/containers/*/*-json.log${NC}"
+        return 1
+    fi
+
+    local truncated=0 failed=0
+    while IFS=$'\t' read -r size path; do
+        [[ -z "$path" ]] && continue
+        if $sudo_prefix truncate -s 0 "$path" 2>/dev/null; then
+            ((truncated++)) || true
+        else
+            ((failed++)) || true
+        fi
+    done <<< "$oversized"
+
+    if [[ "$failed" -gt 0 ]]; then
+        echo -e "    ${YELLOW}○${NC} Truncated ${truncated}/${count} log file(s); ${failed} failed (permission denied?)"
+        return 1
+    fi
+    echo -e "    ${GREEN}✓${NC} Truncated ${truncated} log file(s) (~${total_mb} MB freed)"
+    echo -e "      ${DIM}Tip: existing containers keep their old logging policy until recreated.${NC}"
+    echo -e "      ${DIM}Run 'docker compose up -d --force-recreate' to apply the 10m × 3 rotation.${NC}"
+    return 0
 }
 
 doctor_lookup_a_records() {
@@ -3228,15 +3381,15 @@ show_versions() {
     local singbox_ver wstunnel_ver conduit_ver snowflake_ver slipstream_ver telemt_ver
     local trusttunnel_ver trusttunnel_client_ver awgtools_ver xray_ver dnstt_ver
     singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
-    wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
+    wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.5")
     conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
     snowflake_ver=$(get_component_version "SNOWFLAKE_VERSION" "latest")
     slipstream_ver=$(get_component_version "SLIPSTREAM_VERSION" "2026.02.22.1")
-    telemt_ver=$(get_component_version "TELEMT_VERSION" "3.1.3")
+    telemt_ver=$(get_component_version "TELEMT_VERSION" "3.4.11")
     trusttunnel_ver=$(get_component_version "TRUSTTUNNEL_VERSION" "")
     trusttunnel_client_ver=$(get_component_version "TRUSTTUNNEL_CLIENT_VERSION" "")
     awgtools_ver=$(get_component_version "AWGTOOLS_VERSION" "")
-    xray_ver=$(get_component_version "XRAY_VERSION" "")
+    xray_ver=$(get_component_version "XRAY_VERSION" "v26.5.9")
     dnstt_ver=$(get_component_version "DNSTT_VERSION" "latest")
 
     echo ""
@@ -6195,7 +6348,7 @@ cmd_status() {
     # Simple header without clearing terminal
     local singbox_ver wstunnel_ver conduit_ver branch
     singbox_ver=$(get_component_version "SINGBOX_VERSION" "1.12.17")
-    wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.1")
+    wstunnel_ver=$(get_component_version "WSTUNNEL_VERSION" "10.5.5")
     conduit_ver=$(get_component_version "CONDUIT_VERSION" "1.2.0")
     branch=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
@@ -7703,10 +7856,13 @@ main() {
             cmd_update "$@"
             ;;
         _post-update)
-            # Internal: re-exec target after self-update pulls new code
+            # Internal: re-exec target after self-update pulls new code.
+            # $2 = short commit before the pull (for config-template diffing).
             check_component_versions
             migrate_dns_tunnel_state
             check_env_additions
+            check_config_template_changes "${2:-}"
+            print_post_update_apply_steps
             ;;
         check)
             cmd_check

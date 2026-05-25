@@ -187,12 +187,28 @@ QUIC-over-DNS tunnel. Similar to dnstt but uses QUIC for better throughput — t
 |---------|---------|---------|
 | `XDNS_MTU` | `35` | mKCP packet size. Smaller = works with more DNS resolvers. 35=safest, 67=most, 130=unrestricted |
 | `XDNS_SUBDOMAIN` | `x` | Subdomain for XDNS queries (x.yourdomain.com) |
+| `XDNS_RESOLVERS` | `1.1.1.1,8.8.8.8` | CSV of public DNS resolvers the client round-robins across in a single mKCP session (Xray v26.4.13+, [PR #5872](https://github.com/XTLS/Xray-core/pull/5872)). See [Reachable DNS resolvers](#reachable-dns-resolvers) — replace the defaults with resolvers that actually answer on your network. Set empty to fall back to single-resolver mode. |
 
 MTU depends on domain name length — shorter domain allows higher MTU. The values above are for ~19-character domains.
 
-For aggressive censorship: use `MTU=35` and connect via your ISP's DNS resolver.
+For aggressive censorship: use `MTU=35` and connect via a DNS resolver you can actually reach from inside the censored network (see below).
 
 </details>
+
+#### Reachable DNS resolvers
+
+DNS tunnels (dnstt, Slipstream, XDNS) only work as well as the public DNS resolvers the client can reach. Censors increasingly throttle, null-route, or transparently rewrite well-known resolvers (`1.1.1.1`, `8.8.8.8`, `9.9.9.9`) during shutdowns, while less-publicized resolvers often keep answering. The right resolver for your network changes week to week.
+
+Find resolvers that respond on your specific network with a DNS scanner:
+
+- [findns](https://github.com/SamNet-dev/findns) — scans the public DNS-resolver space and reports which ones answer from your vantage point.
+- [dns-mns](https://gitlab.com/E-Gurl/dns-mns) — similar, with a curated list maintained for Iranian ISP conditions.
+
+Once you have a list of reachable resolvers:
+
+- **XDNS**: set `XDNS_RESOLVERS=<ip1>,<ip2>,<ip3>` in `.env` and re-run `moav regenerate-users`. Xray will round-robin queries across them within a single mKCP session — higher throughput plus automatic fallback when one resolver is rate-limited.
+- **dnstt**: pass `-doh https://<reachable-resolver>/dns-query` (DoH) or `-utls hellorandomized -doh ...` to `dnstt-client`.
+- **Slipstream**: pass `--dns-server <reachable-resolver>:53` to `slipstream-client`. Or use `--authoritative SERVER_IP:53` to skip public resolvers entirely.
 
 ### Psiphon Conduit
 

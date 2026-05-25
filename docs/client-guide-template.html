@@ -1125,7 +1125,7 @@
                     <h4>DNS Resolvers</h4>
                     <p><strong>DNS Resolver mode</strong> (default, stealthier): routes through public DNS — may reconnect periodically if resolver rate-limits</p>
                     <p><strong>Direct mode</strong> (more stable): connects to server IP directly — no DNS resolver needed</p>
-                    <p style="margin-top: 8px;">If DNS resolver keeps dropping, switch to direct config or try other resolvers. Find working DNS resolvers: <a href="https://github.com/SamNet-dev/findns" target="_blank">findns</a> / <a href="https://gitlab.com/E-Gurl/dns-mns" target="_blank">dns-mns</a></p>
+                    <p style="margin-top: 8px;">Config round-robins across multiple resolvers by default. If they keep dropping, swap in resolvers that respond on your network: <a href="https://github.com/SamNet-dev/findns" target="_blank">findns</a> / <a href="https://gitlab.com/E-Gurl/dns-mns" target="_blank">dns-mns</a></p>
                     <p style="color: var(--text-muted); font-size: 12px;"><strong>Telegram only</strong> — this protocol is too slow for web browsing.</p>
                 </div>
             </div>
@@ -1953,7 +1953,7 @@
                     <h4>DNS Resolver ها</h4>
                     <p><strong>حالت DNS Resolver</strong> (پیش‌فرض، مخفی‌تر): از طریق DNS عمومی — ممکنه هر چند دقیقه قطع و وصل بشه</p>
                     <p><strong>حالت مستقیم</strong> (پایدارتر): مستقیم به IP سرور — بدون DNS resolver</p>
-                    <p style="margin-top: 8px;">اگه DNS resolver قطع و وصل میشه، برید رو کانفیگ مستقیم یا resolver دیگه امتحان کنید. پیدا کردن DNS resolver: <a href="https://github.com/SamNet-dev/findns" target="_blank">findns</a> / <a href="https://gitlab.com/E-Gurl/dns-mns" target="_blank">dns-mns</a></p>
+                    <p style="margin-top: 8px;">کانفیگ به‌صورت پیش‌فرض روی چند resolver می‌چرخه. اگه قطع شدن، resolverهایی رو جایگزین کنید که از شبکه شما جواب می‌دن: <a href="https://github.com/SamNet-dev/findns" target="_blank">findns</a> / <a href="https://gitlab.com/E-Gurl/dns-mns" target="_blank">dns-mns</a></p>
                     <p style="color: var(--text-muted); font-size: 12px;"><strong>فقط تلگرام</strong> — این پروتکل برای وب‌گردی کنده.</p>
                 </div>
             </div>
