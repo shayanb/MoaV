@@ -3911,6 +3911,20 @@ get_default_profiles() {
 # Ensure CLASH_API_SECRET is set in .env for monitoring
 # This is needed for clash-exporter to authenticate with sing-box Clash API
 # Returns: 0 = continue, 1 = skip monitoring (user declined when using 'all' profile)
+# Materialize the Conduit lifetime recording-rules file before Prometheus
+# bind-mounts it. The live file is gitignored and runtime-rewritten by
+# update-conduit-offsets.sh (it bakes in the per-install OFFSET values), so the
+# repo ships a committed `.template` (offsets at 0) and we copy it into place on
+# first monitoring start. Never clobber an existing file — it holds the
+# operator's banked offsets.
+ensure_conduit_lifetime_rules() {
+    local rules="$SCRIPT_DIR/configs/monitoring/conduit_lifetime.rules.yml"
+    local template="${rules}.template"
+    if [[ ! -f "$rules" && -f "$template" ]]; then
+        cp "$template" "$rules"
+    fi
+}
+
 ensure_clash_api_secret() {
     local profiles="$1"
     local env_file="$SCRIPT_DIR/.env"
@@ -3919,6 +3933,10 @@ ensure_clash_api_secret() {
     if ! echo "$profiles" | grep -qE "monitoring|all"; then
         return 0
     fi
+
+    # Make sure Prometheus has its Conduit rules file to mount (gitignored +
+    # runtime-generated, so it may be absent on a fresh checkout).
+    ensure_conduit_lifetime_rules
 
     # Check if ENABLE_MONITORING is explicitly set to false
     local enable_monitoring

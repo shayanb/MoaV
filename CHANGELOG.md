@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`dns-router` test suite expanded** — all four tunnels covered: `TestDomainRouting` and `TestDomainIsolation` now verify the full 4-tunnel parallel configuration; `TestBuildRoutes` validates the XDNS-off default (3 routes) and the all-on case (4 routes). Run with `cd dns-router && go test ./... -v`
 - **`dns-router/README.md`** — architecture note explaining subdomain-based fan-out and why all four DNS tunnels can coexist on port 53
 
+### Fixed
+- **`moav update` blocked by a runtime-modified `conduit_lifetime.rules.yml`** — the Conduit lifetime rules file (added in 1.7.9) was tracked in git but is rewritten at runtime by `update-conduit-offsets.sh` (it bakes the per-install OFFSET values into the file), so `moav update` kept reporting "Local changes detected" and refused to pull. The live file is now **gitignored**; the repo ships `configs/monitoring/conduit_lifetime.rules.yml.template` (offsets at 0) and `moav start` materializes the live file from it on first monitoring start (never clobbering existing offsets). This matches how `xray/config.json`, `telemt/config.toml`, etc. are handled. Existing installs hitting the prompt: pick **Discard** (the watcher re-banks offsets from Prometheus history on the next Conduit restart, or run `scripts/update-conduit-offsets.sh`) — after this update lands, the prompt won't recur
+
 ## [1.7.9] - 2026-05-26
 
 ### Fixed
