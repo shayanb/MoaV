@@ -183,9 +183,12 @@ services:
       - DNSTT_DOMAIN=${DNSTT_SUBDOMAIN:-t}.${DOMAIN}
       - SLIPSTREAM_DOMAIN=${SLIPSTREAM_SUBDOMAIN:-s}.${DOMAIN}
       - MASTERDNS_DOMAIN=${MASTERDNS_SUBDOMAIN:-m}.${DOMAIN}
+      - XDNS_DOMAIN=${XDNS_SUBDOMAIN:-x}.${DOMAIN}
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
       - ENABLE_SLIPSTREAM=${ENABLE_SLIPSTREAM:-true}
       - ENABLE_MASTERDNS=${ENABLE_MASTERDNS:-true}
+      - ENABLE_XDNS=${ENABLE_XDNS:-false}
+      - XDNS_BACKEND=xray:5355
       - TZ=${TZ:-UTC}
     cap_drop:
       - ALL
@@ -711,7 +714,7 @@ services:
       - moav_net
     ports:
       - "${PORT_XHTTP:-2096}:${PORT_XHTTP:-2096}/tcp"
-      - "${PORT_XDNS:-53}:5355/udp"
+      - "${PORT_XDNS:-5356}:5355/udp"
     volumes:
       - ./configs/xray:/etc/xray:ro
       - moav_state:/state:ro

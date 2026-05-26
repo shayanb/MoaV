@@ -164,7 +164,7 @@ TTL: 300
 
 XDNS is a DNS tunnel protocol that uses Xray-core's FinalMask technology to encode VLESS traffic in DNS-like packets via mKCP transport, with per-user authentication. It requires a FinalMask-aware client (Happ, Xray CLI). For broader client-ecosystem support, dnstt and Slipstream are enabled by default (standalone client binaries on 25+ platforms).
 
-> **Note**: dnstt, Slipstream, and MasterDNS all share port 53 simultaneously via `dns-router`, which fans queries out by subdomain suffix (`t.` → dnstt, `s.` → Slipstream, `m.` → MasterDNS) — no conflicts, all three run by default. XDNS is the exception: it uses Xray mKCP and requires sole ownership of port 53, so it is **disabled by default** (`ENABLE_XDNS=false`). To use XDNS instead, disable the other three and run `moav switch-dns xdns`.
+> **Note**: All four DNS tunnels — dnstt, Slipstream, MasterDNS, and XDNS — share port 53 simultaneously via `dns-router`, which fans queries out by subdomain suffix (`t.` → dnstt, `s.` → Slipstream, `m.` → MasterDNS, `x.` → XDNS). No `moav switch-dns` is needed to combine them. XDNS is **disabled by default** (`ENABLE_XDNS=false`) because it requires a FinalMask-aware client (Happ, Xray CLI); set `ENABLE_XDNS=true` to add it to the mix.
 
 > **Client-side resolver choice**: All three DNS tunnels rely on a public DNS resolver the *client* can reach — `1.1.1.1` and `8.8.8.8` are commonly throttled or null-routed during shutdowns. XDNS round-robins across multiple resolvers via `XDNS_RESOLVERS` in `.env`; dnstt and Slipstream take a `--dns-server` / `-doh` flag at the client. See [protocols.md → Reachable DNS resolvers](protocols.md#reachable-dns-resolvers) for resolver-scanning guidance ([findns](https://github.com/SamNet-dev/findns), [dns-mns](https://gitlab.com/E-Gurl/dns-mns)).
 
@@ -188,12 +188,12 @@ bundled in MahsaNG v16). Enabled by default (`ENABLE_MASTERDNS=true`; set to
 All four are last-resort transports for when almost everything except DNS is
 blocked. They differ in speed, client support, and resilience:
 
-| Tunnel | Subdomain | Speed (vs dnstt) | Packet-loss resilience | Best for |
-|--------|-----------|------------------|------------------------|----------|
-| **dnstt** | `t` | 1× (baseline) | low | Maximum client support (standalone client on 25+ platforms); the safe default |
-| **Slipstream** | `s` | 1.5–5× | medium | Faster general use where a Slipstream client is available |
-| **MasterDNS** | `m` | up to 9× | high (ARQ + packet duplication + multi-resolver) | Harsh networks / heavy shutdowns, and **native MahsaNG v16** import |
-| **XDNS** | `x` | ~1× | low | FinalMask-aware clients (Happ, Xray CLI); per-user auth |
+| Tunnel | Subdomain | Speed (vs dnstt) | Packet-loss resilience | Default | Best for |
+|--------|-----------|------------------|------------------------|---------|----------|
+| **dnstt** | `t` | 1× (baseline) | low | ✅ on | Maximum client support (standalone client on 25+ platforms) |
+| **Slipstream** | `s` | 1.5–5× | medium | ✅ on | Faster general use where a Slipstream client is available |
+| **MasterDNS** | `m` | up to 9× | high (ARQ + packet duplication + multi-resolver) | ✅ on | Harsh networks / heavy shutdowns; **native MahsaNG v16** import |
+| **XDNS** | `x` | ~1× | low | ⬜ off | FinalMask-aware clients (Happ, Xray CLI); per-user auth |
 
 dnstt, Slipstream, and MasterDNS are all enabled by default and run in
 parallel, sharing port 53 via `dns-router` (no `switch-dns` needed — queries

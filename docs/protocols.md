@@ -172,7 +172,7 @@ Advanced DNS tunnel optimised beyond dnstt/Slipstream: low-overhead ARQ, resolve
 - **Clients:** MahsaNG v16+, or the standalone MasterDnsVPN client (Linux/Windows/macOS/Termux)
 - **Encryption:** AES-256-GCM (`DATA_ENCRYPTION_METHOD=5`); the shared key is in each user's `masterdns-instructions.txt`
 - **Requires:** Domain with NS delegation (`MASTERDNS_SUBDOMAIN`, default `m`)
-- **Note:** Enabled by default (set `ENABLE_MASTERDNS=false` in `.env` to opt out). Egress is routed through sing-box like dnstt/Slipstream. Unlike XDNS, MasterDNS shares port 53 *with* dnstt/Slipstream (dns-router fans out by subdomain), so no `switch-dns` needed.
+- **Note:** Enabled by default (set `ENABLE_MASTERDNS=false` in `.env` to opt out). Egress is routed through sing-box like dnstt/Slipstream. Shares port 53 with dnstt, Slipstream, and XDNS via `dns-router` — all four can run simultaneously, no `switch-dns` needed.
 
 ### GooseRelay
 
@@ -198,11 +198,11 @@ SOCKS5 tunnelled through a **Google Apps Script** web app that the user deploys 
 
 **Experimental.** DNS tunnel using Xray-core's mKCP transport with FinalMask XDNS. Encodes VPN traffic inside DNS queries — works when almost everything except DNS is blocked. Slower than other protocols but extremely resilient during heavy internet shutdowns.
 
-- **Port:** 53/udp (direct to xray, not through dns-router)
+- **Port:** 53/udp (via `dns-router` on subdomain `x.<domain>`, same as dnstt/Slipstream/MasterDNS)
 - **Engine:** [Xray-core](https://github.com/XTLS/Xray-core) (built from main branch for FinalMask support)
 - **Clients:** Apps with FinalMask support (Happ beta, Xray CLI). Standard v2rayNG does not support FinalMask yet.
-- **Requires:** Domain (for FinalMask packet formatting, NS delegation optional)
-- **Note:** XDNS and dnstt/Slipstream both use port 53 — enable one OR the other in `.env`. Client connects directly to server IP on port 53. Best for Telegram and lightweight chat apps — not fast enough for web browsing.
+- **Requires:** Domain + NS record for the `x` subdomain (see DNS Setup Step 5)
+- **Note:** XDNS now runs behind `dns-router` alongside dnstt, Slipstream, and MasterDNS — all four can be active simultaneously on port 53, routed by subdomain suffix. Disabled by default (`ENABLE_XDNS=false`); set to `true` to enable. Best for Telegram and lightweight chat apps — not fast enough for web browsing.
 
 <details>
 <summary><strong>XDNS Tuning</strong></summary>

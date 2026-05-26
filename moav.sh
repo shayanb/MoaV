@@ -1564,13 +1564,13 @@ migrate_dns_tunnel_state() {
         update_env_var "$env_file" "ENABLE_SLIPSTREAM" "$v"
     fi
 
-    # Also pin port assignments if missing, so both defaults don't collide on port 53
+    # Pin port assignments if missing. All tunnels now go through dns-router on PORT_DNS=53.
+    # PORT_XDNS is xray's secondary host port (not port 53 — dns-router owns that).
     if ! grep -q '^PORT_XDNS=' "$env_file"; then
-        $xdns_active && v=53 || v=5353
-        update_env_var "$env_file" "PORT_XDNS" "$v"
+        update_env_var "$env_file" "PORT_XDNS" "5356"
     fi
     if ! grep -q '^PORT_DNS=' "$env_file"; then
-        { $dnstt_active || $slip_active; } && v=53 || v=5353
+        { $dnstt_active || $slip_active || $xdns_active; } && v=53 || v=5353
         update_env_var "$env_file" "PORT_DNS" "$v"
     fi
 
@@ -1843,23 +1843,12 @@ check_dns_for_dnstunnel() {
     local dnstt_enabled=$(get_env_val "ENABLE_DNSTT" "$env_file" "true")
     local slip_enabled=$(get_env_val "ENABLE_SLIPSTREAM" "$env_file" "true")
     local xdns_enabled=$(get_env_val "ENABLE_XDNS" "$env_file" "false")
+    local masterdns_enabled=$(get_env_val "ENABLE_MASTERDNS" "$env_file" "true")
 
-    # Check for port 53 conflict between XDNS and dnstt/Slipstream
-    if [[ "$xdns_enabled" == "true" ]] && [[ "$dnstt_enabled" == "true" || "$slip_enabled" == "true" ]]; then
-        echo ""
-        warn "XDNS and dnstt/Slipstream both need port 53 — only one can be active."
-        echo "  XDNS is enabled by default (recommended). Disabling dnstt/Slipstream."
-        sed -i.bak "s/^ENABLE_DNSTT=.*/ENABLE_DNSTT=false/" "$env_file" && rm -f "$env_file.bak"
-        sed -i.bak "s/^ENABLE_SLIPSTREAM=.*/ENABLE_SLIPSTREAM=false/" "$env_file" && rm -f "$env_file.bak"
-        dnstt_enabled="false"
-        slip_enabled="false"
-    fi
+    # All DNS tunnels now coexist via dns-router on port 53 — no mutual exclusion needed.
 
-    # Determine if port 53 is needed
-    if $has_dnstunnel && [[ "$dnstt_enabled" == "true" || "$slip_enabled" == "true" ]]; then
-        needs_port53=true
-    fi
-    if $has_xhttp && [[ "$xdns_enabled" == "true" ]]; then
+    # Determine if port 53 is needed (any tunnel enabled with the dnstunnel profile)
+    if $has_dnstunnel && [[ "$dnstt_enabled" == "true" || "$slip_enabled" == "true" || "$masterdns_enabled" == "true" || "$xdns_enabled" == "true" ]]; then
         needs_port53=true
     fi
 
@@ -1871,7 +1860,7 @@ check_dns_for_dnstunnel() {
     if ss -ulnp 2>/dev/null | grep -q ':53 ' || netstat -ulnp 2>/dev/null | grep -q ':53 '; then
         echo ""
         warn "Port 53 is in use (likely by systemd-resolved)"
-        echo "  DNS tunnels (dnstt/Slipstream/XDNS) require port 53 to be free."
+        echo "  DNS tunnels (dnstt/Slipstream/MasterDNS/XDNS) require port 53 to be free."
         echo ""
 
         if confirm "Disable systemd-resolved and configure direct DNS?" "y"; then
@@ -1892,23 +1881,24 @@ check_dns_for_dnstunnel() {
 #   - doctor_check_conflicts  (detect runtime collisions)
 # To add a new DNS tunnel: append its name here + add a case branch in dns_tunnel_field.
 
-DNS_TUNNELS=("xdns" "dnstt" "slipstream")
+DNS_TUNNELS=("xdns" "dnstt" "slipstream" "masterdns")
 
 # Field lookup: dns_tunnel_field <name> <field>
 # Fields: enable_var, port_var, default_port, services, profile, port_group, desc
 # port_group: tunnels in the SAME group can coexist on port 53 (e.g. via dns-router
-# multiplexing). Tunnels in DIFFERENT groups conflict.
+# multiplexing). All four tunnels are now in the "dns-router" group, meaning they
+# can all run simultaneously — dns-router fans queries by subdomain suffix.
 dns_tunnel_field() {
     local name="$1" field="$2"
     case "$name:$field" in
         xdns:enable_var)    echo "ENABLE_XDNS" ;;
         xdns:port_var)      echo "PORT_XDNS" ;;
-        xdns:default_port)  echo "53" ;;
-        xdns:services)      echo "xray" ;;
-        xdns:profile)       echo "xhttp" ;;
-        xdns:port_group)    echo "xray" ;;
+        xdns:default_port)  echo "5356" ;;
+        xdns:services)      echo "xray dns-router" ;;
+        xdns:profile)       echo "dnstunnel" ;;
+        xdns:port_group)    echo "dns-router" ;;
         xdns:shared_service) echo "true" ;;  # xray also serves XHTTP
-        xdns:desc)          echo "VLESS+mKCP+FinalMask via Xray (per-user auth, default)" ;;
+        xdns:desc)          echo "VLESS+mKCP+FinalMask via Xray (per-user auth; via dns-router on port 53)" ;;
         dnstt:enable_var)   echo "ENABLE_DNSTT" ;;
         dnstt:port_var)     echo "PORT_DNS" ;;
         dnstt:default_port) echo "53" ;;
@@ -1925,6 +1915,14 @@ dns_tunnel_field() {
         slipstream:port_group)   echo "dns-router" ;;
         slipstream:shared_service) echo "false" ;;
         slipstream:desc)         echo "QUIC-over-DNS (faster than dnstt)" ;;
+        masterdns:enable_var)    echo "ENABLE_MASTERDNS" ;;
+        masterdns:port_var)      echo "PORT_DNS" ;;
+        masterdns:default_port)  echo "53" ;;
+        masterdns:services)      echo "masterdns dns-router" ;;
+        masterdns:profile)       echo "dnstunnel" ;;
+        masterdns:port_group)    echo "dns-router" ;;
+        masterdns:shared_service) echo "false" ;;
+        masterdns:desc)          echo "ARQ DNS tunnel (up to 9× dnstt, MahsaNG v16 native)" ;;
         *) return 1 ;;
     esac
 }
@@ -2010,21 +2008,22 @@ cmd_switch_dns() {
                 printf "  %-12s %-10s %-8s %-8s %s\n" "$t" "$(dns_tunnel_field "$t" port_group)" "$en" "$ru" "$(dns_tunnel_field "$t" desc)"
             done
             echo ""
-            echo "Tunnels in the same GROUP can run together (via dns-router)."
-            echo "Tunnels in different groups conflict on port 53."
+            echo "All DNS tunnels share the same group (dns-router) and can run together."
+            echo "dns-router fans queries by subdomain suffix — no port 53 conflicts."
             echo ""
             echo "Usage: moav switch-dns <name>[+<name>...] | off"
-            echo "  moav switch-dns xdns                # activate XDNS only"
-            echo "  moav switch-dns dnstt               # activate dnstt only"
-            echo "  moav switch-dns dnstt+slipstream    # both via dns-router"
+            echo "  moav switch-dns dnstt+slipstream+masterdns+xdns  # all four tunnels"
+            echo "  moav switch-dns dnstt+slipstream    # classic pair"
+            echo "  moav switch-dns xdns                # XDNS only (via dns-router)"
             echo "  moav switch-dns off                 # disable all DNS tunnels"
             return 0
             ;;
         help|--help|-h)
             echo "Usage: moav switch-dns [<name>[+<name>...]|off|list]"
             echo ""
-            echo "Switch which DNS tunnel(s) own port 53. Tunnels in the same port group"
-            echo "can coexist; tunnels in different groups conflict."
+            echo "Enable one or more DNS tunnels on port 53. All four tunnels share the"
+            echo "dns-router group and can run simultaneously — dns-router fans queries"
+            echo "by subdomain suffix (t→dnstt, s→slipstream, m→masterdns, x→xdns)."
             echo ""
             echo "Available tunnels:"
             for t in "${DNS_TUNNELS[@]}"; do
@@ -2034,8 +2033,9 @@ cmd_switch_dns() {
             echo "  list         Show current state (default with no args)"
             echo ""
             echo "Examples:"
-            echo "  moav switch-dns xdns"
-            echo "  moav switch-dns dnstt+slipstream   # both legacy tunnels together"
+            echo "  moav switch-dns dnstt+slipstream+masterdns+xdns  # all four"
+            echo "  moav switch-dns dnstt+slipstream   # classic pair"
+            echo "  moav switch-dns xdns               # XDNS only via dns-router"
             return 0
             ;;
     esac
@@ -2097,22 +2097,12 @@ cmd_switch_dns() {
         echo "  $var=true"
     done
 
-    # Port assignment based on active group
+    # Port assignment: dns-router owns public port 53; xray XDNS is secondary.
+    # All tunnels are now in the dns-router group, so this is always dns-router mode.
     if [[ ${#to_enable[@]} -gt 0 ]]; then
-        local active_group
-        active_group=$(dns_tunnel_field "${to_enable[0]}" port_group)
-        case "$active_group" in
-            xray)
-                update_env_var "$env_file" "PORT_XDNS" "53"
-                update_env_var "$env_file" "PORT_DNS" "5353"
-                echo "  PORT_XDNS=53, PORT_DNS=5353"
-                ;;
-            dns-router)
-                update_env_var "$env_file" "PORT_DNS" "53"
-                update_env_var "$env_file" "PORT_XDNS" "5353"
-                echo "  PORT_DNS=53, PORT_XDNS=5353"
-                ;;
-        esac
+        update_env_var "$env_file" "PORT_DNS" "53"
+        update_env_var "$env_file" "PORT_XDNS" "5356"
+        echo "  PORT_DNS=53 (dns-router), PORT_XDNS=5356 (xray secondary)"
     fi
     echo ""
 
@@ -3200,12 +3190,13 @@ doctor_check_conflicts() {
         fi
     done
 
-    # 4) dns-router crash loop — classic symptom of port 53 collision with xray/XDNS
+    # 4) dns-router crash loop — port 53 taken by another process, or misconfigured backend
     local restarting
     restarting=$(docker compose ps --services --filter "status=restarting" 2>/dev/null || echo "")
     if echo "$restarting" | grep -qw "dns-router"; then
-        echo -e "    ${RED}✗${NC} dns-router is crash-looping (likely port 53 taken by xray/XDNS)"
-        echo -e "      ${DIM}Fix: moav switch-dns <xdns|dnstt|slipstream|dnstt+slipstream>${NC}"
+        echo -e "    ${RED}✗${NC} dns-router is crash-looping"
+        echo -e "      ${DIM}Check: port 53 may be taken by another process, or a *_DOMAIN env var is unset${NC}"
+        echo -e "      ${DIM}Fix: moav doctor env — then docker compose logs dns-router${NC}"
         pass=false
     fi
 

@@ -8,11 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **All 3 DNS tunnels run in parallel by default** — `ENABLE_MASTERDNS` now defaults to `true` (matching `ENABLE_DNSTT` and `ENABLE_SLIPSTREAM`) in `.env.example`, `docker-compose.yml`, and the `dns-router` binary's built-in fallback. dnstt, Slipstream, and MasterDNS all share port 53 with no conflict: `dns-router` fans queries out by subdomain suffix (`t.` → dnstt:5353, `s.` → slipstream:5354, `m.` → masterdns:5355), and each tunnel uses its own NS-delegated subdomain so a query can never be misrouted. Set `ENABLE_MASTERDNS=false` to opt out. Each tunnel still needs its own NS record (`DNSTT_SUBDOMAIN` / `SLIPSTREAM_SUBDOMAIN` / `MASTERDNS_SUBDOMAIN`)
+- **All 4 DNS tunnels can now run in parallel on a single port 53** — `dns-router` routes queries to dnstt, Slipstream, MasterDNS, and XDNS by subdomain suffix (`t.` → dnstt, `s.` → Slipstream, `m.` → MasterDNS, `x.` → XDNS). No `moav switch-dns` is needed to combine them; the v1.7.5 port-group mutual exclusion model is retired. dnstt, Slipstream, and MasterDNS are on by default; XDNS remains opt-in (`ENABLE_XDNS=false` by default) because it requires a FinalMask-aware client. Set `ENABLE_XDNS=true` to add it to the mix.
+- **XDNS no longer binds host port 53 directly** — xray's XDNS inbound is now an internal dns-router backend (`xray:5355`). The host port for xray shifts to `PORT_XDNS` (default `5356`, was `53`). `PORT_DNS=53` is the single public-facing DNS port, owned by dns-router.
+- **`moav switch-dns` updated** — all four tunnels are in the `dns-router` group; any combination is valid. `moav switch-dns dnstt+slipstream+masterdns+xdns` activates all four simultaneously.
+- **`moav doctor conflicts`** updated — the crash-loop diagnostic no longer blames xray/XDNS (irrelevant now that XDNS is behind dns-router).
 
 ### Added
-- **`dns-router` test suite** — `dns-router/main_test.go` proves no-conflict parallel operation: subdomain-suffix routing isolation across all 3 backends, DNS packet-name parsing (valid/unrelated/malformed), case-insensitive suffix matching, and `buildRoutes()` wiring with all 3 tunnels enabled. Pure stdlib, no external deps. Run with `cd dns-router && go test ./... -v`
-- **`dns-router/README.md`** — architecture note explaining subdomain-based fan-out and why parallel DNS tunnels never conflict on port 53
+- **`dns-router` XDNS routing** — `ENABLE_XDNS=true` adds an `x.<domain>` → `xray:5355` route to dns-router, enabling XDNS to coexist with the other three tunnels on port 53. Closes [#99](https://github.com/shayanb/MoaV/issues/99).
+- **`dns-router` test suite expanded** — all four tunnels covered: `TestDomainRouting` and `TestDomainIsolation` now verify the full 4-tunnel parallel configuration; `TestBuildRoutes` validates the XDNS-off default (3 routes) and the all-on case (4 routes). Run with `cd dns-router && go test ./... -v`
+- **`dns-router/README.md`** — architecture note explaining subdomain-based fan-out and why all four DNS tunnels can coexist on port 53
 
 ## [1.7.9] - 2026-05-26
 
