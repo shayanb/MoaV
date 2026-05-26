@@ -58,8 +58,7 @@ func main() {
 	}
 
 	if len(routes) == 0 {
-		log.Println("[dns-router] No routes configured (dnstt/Slipstream disabled). Exiting gracefully.")
-		log.Println("[dns-router] If using XDNS, it connects directly to xray — dns-router is not needed.")
+		log.Println("[dns-router] No routes configured (all tunnels disabled). Exiting gracefully.")
 		os.Exit(0)
 	}
 
@@ -103,6 +102,28 @@ func buildRoutes() ([]Route, error) {
 		backend := envOr("SLIPSTREAM_BACKEND", "slipstream:5354")
 		routes = append(routes, Route{Domain: strings.ToLower(domain), Backend: backend})
 		log.Printf("[dns-router] Route: *.%s -> %s (slipstream)", domain, backend)
+	}
+
+	enableMasterdns := strings.ToLower(envOr("ENABLE_MASTERDNS", "true"))
+	if enableMasterdns == "true" {
+		domain := os.Getenv("MASTERDNS_DOMAIN")
+		if domain == "" {
+			return nil, fmt.Errorf("MASTERDNS_DOMAIN required when ENABLE_MASTERDNS=true")
+		}
+		backend := envOr("MASTERDNS_BACKEND", "masterdns:5355")
+		routes = append(routes, Route{Domain: strings.ToLower(domain), Backend: backend})
+		log.Printf("[dns-router] Route: *.%s -> %s (masterdns)", domain, backend)
+	}
+
+	enableXdns := strings.ToLower(envOr("ENABLE_XDNS", "true"))
+	if enableXdns == "true" {
+		domain := os.Getenv("XDNS_DOMAIN")
+		if domain == "" {
+			return nil, fmt.Errorf("XDNS_DOMAIN required when ENABLE_XDNS=true")
+		}
+		backend := envOr("XDNS_BACKEND", "xray:5355")
+		routes = append(routes, Route{Domain: strings.ToLower(domain), Backend: backend})
+		log.Printf("[dns-router] Route: *.%s -> %s (xdns)", domain, backend)
 	}
 
 	return routes, nil

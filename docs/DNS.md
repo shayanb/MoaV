@@ -48,6 +48,7 @@ This guide explains how to configure DNS records for MoaV.
 | CDN (VLESS+WebSocket) | **Yes** (Cloudflare) or **No** (CloudFront) | 2082/tcp |
 | dnstt (DNS tunnel) | **Yes** (NS records) | 53/udp |
 | Slipstream (QUIC-over-DNS) | **Yes** (NS records) | 53/udp |
+| MasterDNS (ARQ DNS tunnel, MahsaNG v16) | **Yes** (NS records) | 53/udp |
 | XDNS (mKCP DNS tunnel) | **Yes** (NS records) | 53/udp |
 
 **Domain-dependent protocols** need a valid TLS certificate (via Let's Encrypt) or NS delegation, which both require a domain.
@@ -93,11 +94,11 @@ If running on a home network, forward these ports on your router:
 
 ## Domain Setup
 
-If you have a domain, you unlock all 13+ protocols. How many DNS records you need depends on which features you enable.
+If you have a domain, you unlock all 16+ protocols. How many DNS records you need depends on which features you enable.
 
 ### Minimum Setup (Without DNS Tunnels)
 
-If you don't need DNS tunnels (dnstt / Slipstream), you only need one record:
+If you don't need DNS tunnels (dnstt / Slipstream / MasterDNS / XDNS), you only need one record:
 
 ```
 Type: A
@@ -141,7 +142,7 @@ TTL: 300
 
 This tells DNS resolvers that queries for `*.t.yourdomain.com` should be sent to `dns.yourdomain.com` (your server). Used by dnstt.
 
-#### Step 4: NS Delegation for Slipstream (Optional)
+#### Step 4: NS Delegation for Slipstream
 
 ```
 Type: NS
@@ -150,7 +151,7 @@ Value: dns.yourdomain.com
 TTL: 300
 ```
 
-Same concept as dnstt, but for the Slipstream QUIC-over-DNS tunnel. Slipstream is 1.5-5x faster than dnstt. Only needed if `ENABLE_SLIPSTREAM=true`.
+Same concept as dnstt, but for the Slipstream QUIC-over-DNS tunnel. Slipstream is 1.5-5x faster than dnstt. Enabled by default (`ENABLE_SLIPSTREAM=true`); set `false` to opt out.
 
 #### Step 5: NS Delegation for XDNS (Recommended)
 
@@ -161,11 +162,44 @@ Value: dns.yourdomain.com
 TTL: 300
 ```
 
-XDNS is a DNS tunnel protocol that uses Xray-core's FinalMask technology to encode VLESS traffic in DNS-like packets via mKCP transport, with per-user authentication. It requires a FinalMask-aware client (Happ, Xray CLI). For broader client-ecosystem support, dnstt and Slipstream are enabled by default (standalone client binaries on 25+ platforms).
+XDNS is a DNS tunnel protocol that uses Xray-core's FinalMask technology to encode VLESS traffic in DNS-like packets via mKCP transport, with per-user authentication. It requires a FinalMask-aware client (Happ, Xray CLI). Enabled by default (`ENABLE_XDNS=true`); set `false` to opt out.
 
-> **Note**: XDNS, dnstt, and Slipstream all use port 53. Only one group can own port 53 at a time. dnstt+Slipstream share dns-router by default (`PORT_DNS=53`). To switch to XDNS instead, run `moav switch-dns xdns`. To combine dnstt+Slipstream, run `moav switch-dns dnstt+slipstream` (default). See `moav switch-dns list` for current state.
+> **Note**: All four DNS tunnels — dnstt, Slipstream, MasterDNS, and XDNS — share port 53 simultaneously via `dns-router`, which fans queries out by subdomain suffix (`t.` → dnstt, `s.` → Slipstream, `m.` → MasterDNS, `x.` → XDNS). No `moav switch-dns` is needed; all four are **enabled by default**. XDNS requires a FinalMask-aware client (Happ, Xray CLI) — the container runs regardless, but only those clients can use it. Set `ENABLE_XDNS=false` to opt out.
 
-> **Client-side resolver choice**: All three DNS tunnels rely on a public DNS resolver the *client* can reach — `1.1.1.1` and `8.8.8.8` are commonly throttled or null-routed during shutdowns. XDNS round-robins across multiple resolvers via `XDNS_RESOLVERS` in `.env`; dnstt and Slipstream take a `--dns-server` / `-doh` flag at the client. See [protocols.md → Reachable DNS resolvers](protocols.md#reachable-dns-resolvers) for resolver-scanning guidance ([findns](https://github.com/SamNet-dev/findns), [dns-mns](https://gitlab.com/E-Gurl/dns-mns)).
+> **Client-side resolver choice**: All four DNS tunnels rely on a public DNS resolver the *client* can reach — `1.1.1.1` and `8.8.8.8` are commonly throttled or null-routed during shutdowns. XDNS round-robins across multiple resolvers via `XDNS_RESOLVERS` in `.env`; dnstt and Slipstream take a `--dns-server` / `-doh` flag at the client. See [protocols.md → Reachable DNS resolvers](protocols.md#reachable-dns-resolvers) for resolver-scanning guidance ([findns](https://github.com/SamNet-dev/findns), [dns-mns](https://gitlab.com/E-Gurl/dns-mns)).
+
+#### Step 6: NS Delegation for MasterDNS
+
+```
+Type: NS
+Name: m
+Value: dns.yourdomain.com
+TTL: 300
+```
+
+Same concept as dnstt, for the MasterDNS advanced DNS tunnel (the DNS tunnel
+bundled in MahsaNG v16). Enabled by default (`ENABLE_MASTERDNS=true`; set to
+`false` to opt out). MasterDNS shares port 53 *with* dnstt/Slipstream —
+`dns-router` fans queries out by subdomain (`m` → MasterDNS, `t` → dnstt,
+`s` → Slipstream), so no `switch-dns` is required to run all three together.
+
+#### Which DNS tunnel should I use?
+
+All four are last-resort transports for when almost everything except DNS is
+blocked. They differ in speed, client support, and resilience:
+
+| Tunnel | Subdomain | Speed (vs dnstt) | Packet-loss resilience | Default | Best for |
+|--------|-----------|------------------|------------------------|---------|----------|
+| **dnstt** | `t` | 1× (baseline) | low | ✅ on | Maximum client support (standalone client on 25+ platforms) |
+| **Slipstream** | `s` | 1.5–5× | medium | ✅ on | Faster general use where a Slipstream client is available |
+| **MasterDNS** | `m` | up to 9× | high (ARQ + packet duplication + multi-resolver) | ✅ on | Harsh networks / heavy shutdowns; **native MahsaNG v16** import |
+| **XDNS** | `x` | ~1× | low | ✅ on | FinalMask-aware clients (Happ, Xray CLI); per-user auth |
+
+All four tunnels run in parallel, sharing port 53 via `dns-router` — queries are
+fanned out by subdomain suffix. All four are enabled by default. Toggle any tunnel
+independently with `ENABLE_XXX=true/false` or via `moav switch-dns`. For Iran during severe
+throttling/blackouts, MasterDNS is the strongest choice and works directly from
+the MahsaNG app (see [docs/mahsanet.md](mahsanet.md)).
 
 #### Optional: IPv6 Support
 
@@ -185,9 +219,10 @@ TTL: 300
 | Record | Name | Value | Proxy | Purpose | Required? |
 |--------|------|-------|-------|---------|-----------|
 | A | `@` | Server IP | DNS only | Main domain (Trojan, Hysteria2, Reality) | Yes |
-| A | `dns` | Server IP | DNS only | Nameserver for DNS tunnels | Only for dnstt/Slipstream/XDNS/XDNS |
+| A | `dns` | Server IP | DNS only | Nameserver for DNS tunnels | Only for dnstt/Slipstream/MasterDNS/XDNS |
 | NS | `t` | `dns.domain.com` | — | dnstt tunnel subdomain | Only for dnstt |
 | NS | `s` | `dns.domain.com` | — | Slipstream tunnel subdomain | Only for Slipstream |
+| NS | `m` | `dns.domain.com` | — | MasterDNS tunnel subdomain | Only for MasterDNS (MahsaNG v16) |
 | NS | `x` | `dns.domain.com` | — | XDNS tunnel subdomain | Only for XDNS |
 | A | `cdn` | Server IP | **Proxied** | CDN-fronted VLESS | Only for CDN mode |
 | A | `www` | Server IP | **Proxied** | CDN stealth connect address | Optional (CDN stealth) |
