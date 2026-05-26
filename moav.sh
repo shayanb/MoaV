@@ -4703,6 +4703,7 @@ show_usage() {
     echo "  import FILE           Import config backup"
     echo "  migrate-ip NEW_IP     Update SERVER_IP and regenerate all configs"
     echo "  regenerate-users      Regenerate all user bundles with current .env"
+    echo "  conduit-offsets CMD   Manage Conduit lifetime-offset auto-updater (install/uninstall/status)"
     echo "  setup-dns             Free port 53 for DNS tunnels (disables systemd-resolved)"
     echo "  switch-dns [NAME|off] Switch active DNS tunnel (xdns/dnstt/slipstream)"
     echo ""
@@ -6034,6 +6035,7 @@ cmd_start() {
             info "Starting individual services: $individual_services"
             docker compose --profile all up -d $individual_services
             success "Services started!"
+            auto_setup_conduit_offsets
             return 0
         elif [[ -n "$individual_services" ]]; then
             warn "Ignoring individual services ($individual_services) when mixed with profiles"
@@ -6073,20 +6075,20 @@ cmd_start() {
         # Replace 'all' with individual profiles excluding monitoring
         # Respect ENABLE_* flags to avoid starting disabled services
         profiles="--profile proxy --profile wireguard --profile trusttunnel --profile xhttp --profile telegram --profile admin --profile conduit --profile snowflake"
-        local _dnstt_s=$(get_env_val "ENABLE_DNSTT" "true")
-        local _slip_s=$(get_env_val "ENABLE_SLIPSTREAM" "true")
+        local _dnstt_s=$(get_env_val "ENABLE_DNSTT" "$SCRIPT_DIR/.env" "true")
+        local _slip_s=$(get_env_val "ENABLE_SLIPSTREAM" "$SCRIPT_DIR/.env" "true")
         [[ "$_dnstt_s" == "true" || "$_slip_s" == "true" ]] && profiles="$profiles --profile dnstunnel"
-        local _amneziawg_s=$(get_env_val "ENABLE_AMNEZIAWG" "true")
+        local _amneziawg_s=$(get_env_val "ENABLE_AMNEZIAWG" "$SCRIPT_DIR/.env" "true")
         [[ "$_amneziawg_s" == "true" ]] && profiles="$profiles --profile amneziawg"
     fi
 
     # Check port 53 conflicts for DNS tunnels
     local dnstt_enabled
-    dnstt_enabled=$(get_env_val "ENABLE_DNSTT" "true")
+    dnstt_enabled=$(get_env_val "ENABLE_DNSTT" "$SCRIPT_DIR/.env" "true")
     local slipstream_enabled
-    slipstream_enabled=$(get_env_val "ENABLE_SLIPSTREAM" "true")
+    slipstream_enabled=$(get_env_val "ENABLE_SLIPSTREAM" "$SCRIPT_DIR/.env" "true")
     local xdns_start_enabled
-    xdns_start_enabled=$(get_env_val "ENABLE_XDNS" "false")
+    xdns_start_enabled=$(get_env_val "ENABLE_XDNS" "$SCRIPT_DIR/.env" "false")
 
     # Hard-block DNS tunnel port-group conflicts. Tunnels in the same group
     # (e.g. dnstt+slipstream share dns-router) can coexist; different groups
@@ -6172,6 +6174,7 @@ cmd_start() {
     if echo "$profiles" | grep -qE "admin|monitoring|proxy|all"; then
         echo ""
     fi
+    auto_setup_conduit_offsets
 }
 
 # Resolve profile name aliases to actual docker-compose profile names
@@ -7723,6 +7726,15 @@ cmd_regenerate_users() {
     local enable_ss=$(get_env_val "ENABLE_SS" .env "false")
     local port_ss=$(get_env_val "PORT_SS" .env "8388")
     local ss_method=$(get_env_val "SS_METHOD" .env "2022-blake3-aes-128-gcm")
+    # DNS-tunnel subdomain/port fields — without these, regenerated bundles fall
+    # back to defaults (t/x/53) and drift from the active .env (issue #98)
+    local dnstt_subdomain=$(get_env_val "DNSTT_SUBDOMAIN" .env "t")
+    local enable_xdns=$(get_env_val "ENABLE_XDNS" .env "false")
+    local xdns_subdomain=$(get_env_val "XDNS_SUBDOMAIN" .env "x")
+    local xdns_mtu=$(get_env_val "XDNS_MTU" .env "35")
+    local xdns_resolvers=$(get_env_val "XDNS_RESOLVERS" .env "1.1.1.1,8.8.8.8")
+    local port_dns=$(get_env_val "PORT_DNS" .env "53")
+    local port_xdns=$(get_env_val "PORT_XDNS" .env "53")
 
     # Run the regeneration using bootstrap container
     # This mounts all necessary volumes and has the generate scripts
@@ -7759,7 +7771,15 @@ cmd_regenerate_users() {
             -e "ENABLE_SS=${enable_ss:-false}" \
             -e "PORT_SS=${port_ss:-8388}" \
             -e "SS_METHOD=${ss_method:-2022-blake3-aes-128-gcm}" \
-            bootstrap /app/generate-user.sh "$username" >/dev/null 2>&1; then
+            -e "DNSTT_SUBDOMAIN=${dnstt_subdomain:-t}" \
+            -e "ENABLE_XDNS=${enable_xdns:-false}" \
+            -e "XDNS_SUBDOMAIN=${xdns_subdomain:-x}" \
+            -e "XDNS_MTU=${xdns_mtu:-35}" \
+            -e "XDNS_RESOLVERS=${xdns_resolvers:-1.1.1.1,8.8.8.8}" \
+            -e "PORT_DNS=${port_dns:-53}" \
+            -e "PORT_XDNS=${port_xdns:-53}" \
+            --entrypoint /bin/sh \
+            bootstrap -c 'mkdir -p /state/users; cp -a /host-state/users/. /state/users/ 2>/dev/null || true; exec /app/generate-user.sh "$1" force' sh "$username" >/dev/null 2>&1; then
             echo -e "${GREEN}✓${NC}"
             ((user_count++)) || true
         else
@@ -7784,6 +7804,137 @@ cmd_regenerate_users() {
     else
         warn "No bundles were regenerated."
     fi
+}
+
+# =============================================================================
+# Conduit lifetime-offset auto-updater (systemd watcher)
+# =============================================================================
+# conduit_bytes_* gauges reset on every Conduit restart; update-conduit-offsets.sh
+# banks the ended session into a persistent offset so the *_lifetime totals
+# survive restarts — but only if run promptly after each restart. This installs a
+# systemd service (scripts/conduit-offsets-watch.sh) that reacts to Conduit
+# `start` events and runs the updater automatically.
+
+CONDUIT_OFFSETS_UNIT="moav-conduit-offsets.service"
+CONDUIT_OFFSETS_UNIT_PATH="/etc/systemd/system/${CONDUIT_OFFSETS_UNIT}"
+
+# Is systemd actually the init system here? (false in many containers / WSL)
+_has_systemd() {
+    [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null 2>&1
+}
+
+# Prefix for privileged writes (empty when already root).
+_root_prefix() {
+    if [[ $EUID -eq 0 ]]; then
+        echo ""
+    elif command -v sudo >/dev/null 2>&1; then
+        echo "sudo"
+    else
+        echo ""  # caller will fail loudly on the privileged op
+    fi
+}
+
+conduit_offsets_install() {
+    local quiet="${1:-}"
+    if ! _has_systemd; then
+        [[ "$quiet" == "--quiet" ]] && return 0
+        error "systemd not detected — cannot install the auto-updater service."
+        echo "  Run scripts/update-conduit-offsets.sh manually after each Conduit restart,"
+        echo "  or add it to cron. (This host isn't running systemd as init.)"
+        return 1
+    fi
+
+    local sudo_prefix; sudo_prefix=$(_root_prefix)
+    if [[ $EUID -ne 0 && -z "$sudo_prefix" ]]; then
+        error "Need root (or sudo) to install ${CONDUIT_OFFSETS_UNIT}."
+        return 1
+    fi
+
+    # Write the unit, pinned to this install's absolute path.
+    $sudo_prefix tee "$CONDUIT_OFFSETS_UNIT_PATH" >/dev/null <<UNIT
+[Unit]
+Description=MoaV Conduit lifetime bandwidth offset auto-updater
+Documentation=https://github.com/shayanb/MoaV
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=${SCRIPT_DIR}
+ExecStart=/bin/bash ${SCRIPT_DIR}/scripts/conduit-offsets-watch.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+    $sudo_prefix systemctl daemon-reload
+    if $sudo_prefix systemctl enable --now "$CONDUIT_OFFSETS_UNIT" >/dev/null 2>&1; then
+        [[ "$quiet" == "--quiet" ]] || success "Installed and started ${CONDUIT_OFFSETS_UNIT}"
+        [[ "$quiet" == "--quiet" ]] && info "Conduit lifetime offsets will now auto-update on each restart (${CONDUIT_OFFSETS_UNIT})"
+        return 0
+    else
+        error "Failed to enable ${CONDUIT_OFFSETS_UNIT}. Check: systemctl status ${CONDUIT_OFFSETS_UNIT}"
+        return 1
+    fi
+}
+
+conduit_offsets_uninstall() {
+    if ! _has_systemd; then
+        warn "systemd not detected — nothing to uninstall."
+        return 0
+    fi
+    local sudo_prefix; sudo_prefix=$(_root_prefix)
+    $sudo_prefix systemctl disable --now "$CONDUIT_OFFSETS_UNIT" >/dev/null 2>&1 || true
+    $sudo_prefix rm -f "$CONDUIT_OFFSETS_UNIT_PATH"
+    $sudo_prefix systemctl daemon-reload
+    success "Removed ${CONDUIT_OFFSETS_UNIT} (offsets are no longer auto-updated; run scripts/update-conduit-offsets.sh manually if needed)"
+}
+
+conduit_offsets_status() {
+    if ! _has_systemd; then
+        info "systemd not detected on this host."
+        return 0
+    fi
+    if [[ -f "$CONDUIT_OFFSETS_UNIT_PATH" ]]; then
+        systemctl status "$CONDUIT_OFFSETS_UNIT" --no-pager 2>/dev/null || true
+    else
+        info "${CONDUIT_OFFSETS_UNIT} is not installed. Install with: moav conduit-offsets install"
+    fi
+}
+
+cmd_conduit_offsets() {
+    case "${1:-status}" in
+        install)   conduit_offsets_install ;;
+        uninstall|remove) conduit_offsets_uninstall ;;
+        status)    conduit_offsets_status ;;
+        *)
+            echo "Usage: moav conduit-offsets {install|uninstall|status}"
+            echo ""
+            echo "  install    Install a systemd watcher that re-banks Conduit lifetime"
+            echo "             offsets automatically on every Conduit restart."
+            echo "  uninstall  Remove the watcher (back to manual updates)."
+            echo "  status     Show the watcher service status."
+            return 1
+            ;;
+    esac
+}
+
+# Called at the end of `moav start`: auto-install the watcher the first time
+# Conduit + monitoring are both running, so lifetime offsets stay accurate
+# without the operator remembering to run the script. No-op if already
+# installed, opted out (CONDUIT_OFFSETS_AUTOUPDATE=false), or no systemd.
+auto_setup_conduit_offsets() {
+    [[ "$(get_env_val "CONDUIT_OFFSETS_AUTOUPDATE" "$SCRIPT_DIR/.env" "true")" == "true" ]] || return 0
+    _has_systemd || return 0
+    [[ -f "$CONDUIT_OFFSETS_UNIT_PATH" ]] && return 0
+    docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^moav-conduit$'    || return 0
+    docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^moav-prometheus$' || return 0
+    echo ""
+    info "Conduit + monitoring detected — installing the lifetime-offset auto-updater..."
+    conduit_offsets_install --quiet || \
+        warn "Auto-install failed; run 'moav conduit-offsets install' manually (or set CONDUIT_OFFSETS_AUTOUPDATE=false to silence)."
 }
 
 # =============================================================================
@@ -7936,6 +8087,10 @@ main() {
             ;;
         regenerate-users|regenerate_users|regen-users)
             cmd_regenerate_users
+            ;;
+        conduit-offsets|conduit_offsets|conduit-lifetime)
+            shift
+            cmd_conduit_offsets "$@"
             ;;
         setup-dns|setup_dns|dns-setup)
             cmd_setup_dns

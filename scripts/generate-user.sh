@@ -642,11 +642,14 @@ import os, json
 print(json.dumps({"domain": os.environ["XDNS_DOMAIN"]}))
 ')
 
-        # Load user UUID
-        _xdns_uuid=""
+        # Load user UUID. credentials.env (sourced above) already provides
+        # USER_UUID on current installs; older installs kept it in a separate
+        # uuid.env. Prefer whatever's already loaded, then let uuid.env override
+        # if it exists — don't blank it out when uuid.env is absent.
+        _xdns_uuid="${USER_UUID:-}"
         if [[ -f "$STATE_DIR/users/$USER_ID/uuid.env" ]]; then
             source "$STATE_DIR/users/$USER_ID/uuid.env"
-            _xdns_uuid="${USER_UUID:-}"
+            _xdns_uuid="${USER_UUID:-$_xdns_uuid}"
         fi
 
         if [[ -n "$_xdns_uuid" ]]; then
@@ -677,6 +680,54 @@ XDNSEOF
   "routing": {"rules": [{"type": "field", "ip": ["::/0"], "outboundTag": "direct"}]}
 }
 XDNSEOF2
+
+            # Human-readable instructions (kept in sync with the JSON above so it
+            # doesn't go stale after a domain/resolver change — see issue #98).
+            cat > "$OUTPUT_DIR/xdns.txt" <<XDNSTXTEOF
+XDNS (DNS Tunnel via Xray mKCP) Configuration for $USER_ID
+============================================================
+
+Protocol: VLESS + mKCP + XDNS FinalMask (via Xray-core)
+Domain: ${_xdns_domain}
+UUID: ${_xdns_uuid}
+MTU: ${_xdns_mtu}
+
+This protocol tunnels VPN traffic through DNS queries.
+It works when almost everything except DNS is blocked.
+Speed is slow but connectivity is reliable.
+
+IMPORTANT: XDNS requires Xray-core v26+ with FinalMask support.
+
+Recommended clients:
+- Happ (iOS/Android/Desktop) — supports FinalMask
+- Xray CLI v26.3+ (any platform) — run: xray run -c xdns-config.json
+
+Two configs included:
+
+  xdns-config.json        Via DNS resolver — stealthier, may reconnect periodically
+  xdns-direct-config.json Via direct server connection — more stable, less stealthy
+
+Setup:
+1. Import one of the configs into an Xray-compatible app with FinalMask support
+2. Use as SOCKS5 proxy: 127.0.0.1:7891
+3. For Telegram: tap https://t.me/socks?server=127.0.0.1&port=7891
+
+Tips:
+- Try the DNS resolver config first (stealthier)
+- Switch to direct if connections keep dropping
+- The DNS-resolver config round-robins across: ${_xdns_resolvers_csv:-(single resolver mode)}
+- If those keep dropping, edit the "resolvers" array in xdns-config.json
+  with DNS servers that actually answer on your network.
+- Scanners that find reachable resolvers:
+    findns   https://github.com/SamNet-dev/findns
+    dns-mns  https://gitlab.com/E-Gurl/dns-mns
+
+MTU tuning (client side only — server uses MTU 900 for return path):
+- MTU ${_xdns_mtu} = safest (works with all resolvers)
+- MTU 67 = works with most resolvers (faster)
+- MTU 130 = unrestricted resolvers only (fastest)
+- MTU depends on domain name length: shorter domain = higher MTU possible
+XDNSTXTEOF
 
             log_info "  - XDNS configs generated"
         fi
