@@ -8,7 +8,11 @@ Multi-protocol Internet censorship circumvention stack optimized for hostile net
 
 ## Features
 
-- **Multiple protocols** - Reality (VLESS), Trojan, Shadowsocks-2022, Hysteria2, XHTTP (VLESS+XHTTP+Reality), XDNS (mKCP DNS tunnel), TrustTunnel, AmneziaWG, WireGuard (direct & wstunnel), DNS tunnels (dnstt + Slipstream + MasterDNS), GooseRelay (SOCKS5 over Google Apps Script), Telegram MTProxy, CDN (VLESS+WS)
+- **Multiple protocols** — 16+ protocols covering every censorship scenario:
+  - **High-stealth proxy** — Reality (VLESS), Trojan, Hysteria2, XHTTP (VLESS+XHTTP+Reality), CDN (VLESS+WS via Cloudflare)
+  - **Full VPN** — WireGuard (direct & wstunnel), AmneziaWG
+  - **Specialty** — TrustTunnel (HTTP/2+QUIC), Telegram MTProxy (fake-TLS), Shadowsocks-2022, GooseRelay (SOCKS5 via Google Apps Script)
+  - **DNS tunnels** — dnstt, Slipstream, MasterDNS, and XDNS — all four run simultaneously on port 53 via `dns-router`
 - **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, DNS, or IMAPS
 - **Per-user credentials** - Create, revoke, and manage users independently
 - **Easy deployment** - Docker Compose based, single command setup
@@ -121,27 +125,27 @@ See the [Setup Guide](docs/SETUP.md) for complete instructions, the [CLI Referen
 
 ## Protocols
 
-| Protocol | Port | Stealth | Speed | Use Case |
-|----------|------|---------|-------|----------|
-| Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | Primary, most reliable |
-| Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | Fast, works when TCP throttled |
-| Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
-| Shadowsocks-2022 | 8388/tcp+udp | ★★★★☆ | ★★★★☆ | AEAD-2022 anti-probing; Outline-app compatible (off by default) |
-| CDN (VLESS+WS) | 443 via Cloudflare | ★★★★★ | ★★★☆☆ | When server IP is blocked |
-| TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 & QUIC, looks like HTTPS |
-| WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | Full VPN, simple setup |
-| AmneziaWG | 51821/udp | ★★★★★ | ★★★★☆ | Obfuscated WireGuard, defeats DPI |
-| WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN when UDP is blocked |
-| DNS Tunnel (dnstt) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort, hard to block |
-| Slipstream | 53/udp | ★★★☆☆ | ★★☆☆☆ | QUIC-over-DNS, 1.5-5x faster than dnstt |
-| MasterDNS | 53/udp | ★★★☆☆ | ★★★☆☆ | Advanced DNS tunnel (ARQ + resolver LB), MahsaNG v16 (on by default) |
-| GooseRelay | 8444/tcp | ★★★★★ | ★★☆☆☆ | SOCKS5 via Google Apps Script, fronted as google.com, MahsaNG v16 (off by default) |
-| Telegram MTProxy | 993/tcp | ★★★★☆ | ★★★☆☆ | Fake-TLS V2, direct Telegram access |
-| XHTTP (VLESS+XHTTP+Reality) | 2096/tcp | ★★★★★ | ★★★★☆ | Xray-core, no domain needed |
-| XDNS (VLESS+mKCP+DNS) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | DNS tunnel via Xray FinalMask, works during heavy shutdowns |
-| Psiphon Conduit | - | - | - | Donate bandwidth to Psiphon (2M+ users) |
-| Tor Snowflake | - | - | - | Donate bandwidth to Tor network |
-| MahsaNet | - | - | - | Donate VPN configs to Mahsa VPN (2M+ users) |
+| Protocol | Port | Stealth | Speed | Default | Use Case |
+|----------|------|---------|-------|---------|----------|
+| Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | ✅ | Primary, most reliable |
+| Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | ✅ | Fast, works when TCP throttled |
+| Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | ✅ | Backup, uses your domain |
+| Shadowsocks-2022 | 8388/tcp+udp | ★★★★☆ | ★★★★☆ | ⬜ | AEAD-2022 anti-probing; Outline-app compatible |
+| CDN (VLESS+WS) | 443 via Cloudflare | ★★★★★ | ★★★☆☆ | ✅ | When server IP is blocked |
+| TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | ✅ | HTTP/2 & QUIC, looks like HTTPS |
+| WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | ✅ | Full VPN, simple setup |
+| AmneziaWG | 51821/udp | ★★★★★ | ★★★★☆ | ✅ | Obfuscated WireGuard, defeats DPI |
+| WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | ✅ | VPN when UDP is blocked |
+| DNS Tunnel (dnstt) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | ✅ | Last resort, hard to block |
+| Slipstream | 53/udp | ★★★☆☆ | ★★☆☆☆ | ✅ | QUIC-over-DNS, 1.5-5x faster than dnstt |
+| MasterDNS | 53/udp | ★★★☆☆ | ★★★☆☆ | ✅ | Advanced DNS tunnel (ARQ + resolver LB), MahsaNG v16 |
+| XDNS (VLESS+mKCP+DNS) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | ✅ | DNS tunnel via Xray FinalMask; all 4 DNS tunnels share port 53 |
+| GooseRelay | 8444/tcp | ★★★★★ | ★★☆☆☆ | ⬜ | SOCKS5 via Google Apps Script, fronted as google.com, MahsaNG v16 |
+| Telegram MTProxy | 993/tcp | ★★★★☆ | ★★★☆☆ | ✅ | Fake-TLS V2, direct Telegram access |
+| XHTTP (VLESS+XHTTP+Reality) | 2096/tcp | ★★★★★ | ★★★★☆ | ✅ | Xray-core, no domain needed |
+| Psiphon Conduit | — | — | — | ⬜ | Donate bandwidth to Psiphon (2M+ users) |
+| Tor Snowflake | — | — | — | ⬜ | Donate bandwidth to Tor network |
+| MahsaNet | — | — | — | ⬜ | Donate VPN configs to Mahsa VPN (2M+ users) |
 
 ## User Management
 
@@ -260,7 +264,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 8444/tcp | TCP | GooseRelay exit (when `ENABLE_GOOSERELAY=true`) | No |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 9444/tcp | TCP | Grafana (monitoring) | No |
-| 53/udp | UDP | DNS tunnel (dnstt / Slipstream / MasterDNS) | Yes |
+| 53/udp | UDP | DNS tunnels (dnstt / Slipstream / MasterDNS / XDNS — all share this port) | Yes |
 | 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
 ### Domainless Mode

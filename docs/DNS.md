@@ -94,11 +94,11 @@ If running on a home network, forward these ports on your router:
 
 ## Domain Setup
 
-If you have a domain, you unlock all 13+ protocols. How many DNS records you need depends on which features you enable.
+If you have a domain, you unlock all 16+ protocols. How many DNS records you need depends on which features you enable.
 
 ### Minimum Setup (Without DNS Tunnels)
 
-If you don't need DNS tunnels (dnstt / Slipstream), you only need one record:
+If you don't need DNS tunnels (dnstt / Slipstream / MasterDNS / XDNS), you only need one record:
 
 ```
 Type: A
@@ -142,7 +142,7 @@ TTL: 300
 
 This tells DNS resolvers that queries for `*.t.yourdomain.com` should be sent to `dns.yourdomain.com` (your server). Used by dnstt.
 
-#### Step 4: NS Delegation for Slipstream (Optional)
+#### Step 4: NS Delegation for Slipstream
 
 ```
 Type: NS
@@ -151,7 +151,7 @@ Value: dns.yourdomain.com
 TTL: 300
 ```
 
-Same concept as dnstt, but for the Slipstream QUIC-over-DNS tunnel. Slipstream is 1.5-5x faster than dnstt. Only needed if `ENABLE_SLIPSTREAM=true`.
+Same concept as dnstt, but for the Slipstream QUIC-over-DNS tunnel. Slipstream is 1.5-5x faster than dnstt. Enabled by default (`ENABLE_SLIPSTREAM=true`); set `false` to opt out.
 
 #### Step 5: NS Delegation for XDNS (Recommended)
 
@@ -162,11 +162,11 @@ Value: dns.yourdomain.com
 TTL: 300
 ```
 
-XDNS is a DNS tunnel protocol that uses Xray-core's FinalMask technology to encode VLESS traffic in DNS-like packets via mKCP transport, with per-user authentication. It requires a FinalMask-aware client (Happ, Xray CLI). For broader client-ecosystem support, dnstt and Slipstream are enabled by default (standalone client binaries on 25+ platforms).
+XDNS is a DNS tunnel protocol that uses Xray-core's FinalMask technology to encode VLESS traffic in DNS-like packets via mKCP transport, with per-user authentication. It requires a FinalMask-aware client (Happ, Xray CLI). Enabled by default (`ENABLE_XDNS=true`); set `false` to opt out.
 
 > **Note**: All four DNS tunnels — dnstt, Slipstream, MasterDNS, and XDNS — share port 53 simultaneously via `dns-router`, which fans queries out by subdomain suffix (`t.` → dnstt, `s.` → Slipstream, `m.` → MasterDNS, `x.` → XDNS). No `moav switch-dns` is needed; all four are **enabled by default**. XDNS requires a FinalMask-aware client (Happ, Xray CLI) — the container runs regardless, but only those clients can use it. Set `ENABLE_XDNS=false` to opt out.
 
-> **Client-side resolver choice**: All three DNS tunnels rely on a public DNS resolver the *client* can reach — `1.1.1.1` and `8.8.8.8` are commonly throttled or null-routed during shutdowns. XDNS round-robins across multiple resolvers via `XDNS_RESOLVERS` in `.env`; dnstt and Slipstream take a `--dns-server` / `-doh` flag at the client. See [protocols.md → Reachable DNS resolvers](protocols.md#reachable-dns-resolvers) for resolver-scanning guidance ([findns](https://github.com/SamNet-dev/findns), [dns-mns](https://gitlab.com/E-Gurl/dns-mns)).
+> **Client-side resolver choice**: All four DNS tunnels rely on a public DNS resolver the *client* can reach — `1.1.1.1` and `8.8.8.8` are commonly throttled or null-routed during shutdowns. XDNS round-robins across multiple resolvers via `XDNS_RESOLVERS` in `.env`; dnstt and Slipstream take a `--dns-server` / `-doh` flag at the client. See [protocols.md → Reachable DNS resolvers](protocols.md#reachable-dns-resolvers) for resolver-scanning guidance ([findns](https://github.com/SamNet-dev/findns), [dns-mns](https://gitlab.com/E-Gurl/dns-mns)).
 
 #### Step 6: NS Delegation for MasterDNS
 
