@@ -76,7 +76,7 @@ _moav() {
         user)
             local subcmd="${COMP_WORDS[2]:-}"
             if [[ $cword -eq 2 ]]; then
-                COMPREPLY=($(compgen -W "list ls add revoke rm remove delete package pkg mahsanet mahsa sub subscription" -- "$cur"))
+                COMPREPLY=($(compgen -W "list ls add revoke rm remove delete package pkg" -- "$cur"))
             else
                 case "$subcmd" in
                     add)
@@ -84,9 +84,6 @@ _moav() {
                         ;;
                     revoke|rm|remove|delete|package|pkg)
                         COMPREPLY=($(compgen -W "$(_moav_users)" -- "$cur"))
-                        ;;
-                    mahsanet|mahsa|sub|subscription)
-                        COMPREPLY=($(compgen -W "$(_moav_users) --no-qr" -- "$cur"))
                         ;;
                 esac
             fi
