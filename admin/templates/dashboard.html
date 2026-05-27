@@ -283,19 +283,20 @@
             color: var(--blue);
         }
         .dl-link {
+            display: inline-block;
             font-family: var(--mono);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--blue);
             text-decoration: none;
-        }
-        .dl-link:hover { text-decoration: underline; }
-        .dl-mahsang {
-            margin-left: 0.5rem;
-            color: var(--green);
-            border: 1px solid var(--green);
+            border: 1px solid var(--blue);
             border-radius: 3px;
             padding: 0.05rem 0.35rem;
-            font-size: 0.65rem;
+        }
+        .dl-link:hover { background: var(--blue); color: #000; }
+        .dl-mahsang {
+            margin-left: 0.4rem;
+            color: var(--green);
+            border-color: var(--green);
         }
         .dl-mahsang:hover { background: var(--green); color: #000; }
         .empty-msg {
