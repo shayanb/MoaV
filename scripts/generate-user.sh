@@ -846,9 +846,9 @@ elif [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{DNSTT_PUBKEY}}|$DNSTT_PUBKEY|g" "$OUTPUT_HTML"
     sed -i "s|{{SLIPSTREAM_DOMAIN}}|$SLIPSTREAM_DOMAIN|g" "$OUTPUT_HTML"
 
-    # MahsaNG batch-import subscription: base64 of the newline-joined compatible
-    # share-links (mirrors scripts/user-mahsanet.sh) so a MahsaNG v16 user can
-    # paste once to import all proxy protocols. DNS tunnels + GooseRelay are
+    # V2Ray subscription: base64 of the newline-joined compatible share-links,
+    # so the user can paste it once into any V2Ray app (MahsaNG, v2rayNG,
+    # Hiddify, ...) to import all proxy protocols. DNS tunnels + GooseRelay are
     # configured separately and intentionally excluded. base64 has no '|', so it
     # is safe in the sed replacement below.
     _mahsanet_uris=""

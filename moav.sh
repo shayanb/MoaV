@@ -4748,7 +4748,6 @@ show_usage() {
     echo "  user add --batch N [--prefix P]    Batch create (user01, user02...)"
     echo "  user revoke NAME      Revoke a user"
     echo "  user package NAME     Create zip bundle for existing user"
-    echo "  user mahsanet NAME    MahsaNG import: subscription URL, URIs & QR codes"
     echo "  admin password        Reset admin dashboard password"
     echo ""
     echo "Donate & Test:"
@@ -6650,18 +6649,6 @@ cmd_user() {
                 ./scripts/user-package.sh "$username"
             else
                 error "User package script not found"
-                exit 1
-            fi
-            ;;
-        mahsanet|mahsang|mahsa|sub|subscription)
-            if [[ -z "$username" ]]; then
-                error "Usage: moav user mahsanet USERNAME [--no-qr]"
-                exit 1
-            fi
-            if [[ -x "./scripts/user-mahsanet.sh" ]]; then
-                ./scripts/user-mahsanet.sh "$@"
-            else
-                error "User mahsanet script not found"
                 exit 1
             fi
             ;;

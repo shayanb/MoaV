@@ -369,28 +369,18 @@ Create distributable zip for an existing user.
 moav user package john        # Creates outputs/bundles/john.zip
 ```
 
-#### `moav user mahsanet`
-Build a [MahsaNG](https://github.com/GFW-knocker/MahsaNG)-ready import package
-for an existing user (aliases: `mahsa`, `sub`, `subscription`).
+#### V2Ray subscription (in every bundle)
+Every user bundle includes a standard base64 **V2Ray subscription** — both as
+`outputs/bundles/<user>/subscription.txt` and as a click-to-copy block at the
+top of the bundle's `README.html`. Paste it once into
+[MahsaNG](https://github.com/GFW-knocker/MahsaNG), v2rayNG, Hiddify, Streisand,
+or any V2Ray app to import all proxy protocols at once — Reality, CDN, XHTTP,
+Trojan, Shadowsocks-2022, Hysteria2 (standard `vless://`/`trojan://`/`ss://`/
+`hysteria2://` URIs, IPv4 + IPv6).
 
-```bash
-moav user mahsanet john          # URIs + base64 subscription + QR codes
-moav user mahsanet john --no-qr  # Skip terminal QR rendering
-```
-
-Selects the MahsaNG-compatible configs (Reality, CDN, XHTTP, Trojan,
-Shadowsocks-2022, Hysteria2 — standard `vless://`/`trojan://`/`ss://`/
-`hysteria2://` URIs), ordered by reliability for Iran, then:
-
-- prints each individual URI (paste into MahsaNG)
-- prints a base64 **subscription body** (the standard V2Ray subscription
-  format) for one-shot import
-- renders a scannable QR per config in the terminal
-- writes `outputs/bundles/john/mahsanet-uris.txt` and `mahsanet-sub.txt`
-
-WireGuard/AmneziaWG/TrustTunnel/DNS-tunnel/GooseRelay/Telegram configs are intentionally
-excluded (not importable as MahsaNG subscription entries). Full walkthrough:
-[docs/mahsanet.md](mahsanet.md).
+WireGuard/AmneziaWG/TrustTunnel/DNS-tunnel/GooseRelay/Telegram are intentionally
+excluded (not subscription-importable; the DNS tunnels and GooseRelay are set up
+in their own app tabs). Full walkthrough: [docs/mahsanet.md](mahsanet.md).
 
 #### `moav user gooserelay`
 Print GooseRelay setup instructions for a user (extracted from their bundle).

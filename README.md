@@ -156,12 +156,11 @@ moav user add alice bob   # Add multiple users
 moav user add --batch 10 --prefix team  # Batch create team01..team10
 moav user revoke joe      # Revoke user
 moav user package joe     # Create zip bundle
-moav user mahsanet joe    # MahsaNG import: subscription URL + URIs + QR codes
 ```
 
 Each user gets a bundle in `outputs/bundles/<username>/` with config files, QR codes, and a README.html guide.
 
-**MahsaNG users (2M+ in Iran):** `moav user mahsanet <user>` emits a single base64 subscription plus the individual `vless://`/`trojan://`/`ss://`/`hysteria2://` URIs and QR codes ready to import into the [MahsaNG](https://github.com/GFW-knocker/MahsaNG) app. See [docs/mahsanet.md](docs/mahsanet.md).
+**MahsaNG / V2Ray users (MahsaNG has 2M+ in Iran):** every bundle includes a standard base64 **V2Ray subscription** — in `subscription.txt` and as a click-to-copy block at the top of the bundle's README — so users paste it once into [MahsaNG](https://github.com/GFW-knocker/MahsaNG), v2rayNG, Hiddify, or any V2Ray app to import all proxy protocols at once. See [docs/mahsanet.md](docs/mahsanet.md).
 
 **Download bundles** from the admin dashboard at `https://your-server:9443` or via SCP.
 

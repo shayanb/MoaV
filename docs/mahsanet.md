@@ -7,9 +7,10 @@ client-side circumvention (Fragment, fake-SNI, rotating configs). MoaV already
 generates everything MahsaNG needs — this guide shows the fastest way to get a
 user connected.
 
-> **TL;DR:** `moav user mahsanet <username>` prints a base64 **subscription**,
-> the individual **URIs**, and a **QR code** per config, and saves
-> `mahsanet-sub.txt` / `mahsanet-uris.txt` into the user's bundle.
+> **TL;DR:** every user bundle already contains a base64 **V2Ray subscription**
+> — in `subscription.txt` and as a click-to-copy block at the top of the
+> bundle's `README.html`. Paste it once into MahsaNG to import all proxy
+> protocols. (No separate command — it's generated with the bundle.)
 
 ---
 
@@ -30,9 +31,9 @@ Distribute the APK and configs over a channel the user can already reach
 
 ## 2. Which MoaV protocols work in MahsaNG?
 
-MahsaNG imports **standard V2Ray URIs**. MoaV's `moav user mahsanet` command
-automatically selects only the compatible ones and orders them by how well
-they survive Iran's censorship:
+MahsaNG imports **standard V2Ray URIs**. MoaV's bundle generator automatically
+includes only the compatible ones in the subscription, ordered by how well they
+survive Iran's censorship:
 
 | MoaV protocol | URI scheme | MahsaNG | Notes for Iran |
 |---|---|---|---|
@@ -49,33 +50,32 @@ they survive Iran's censorship:
 | Telegram MTProxy | `tg://proxy` | ❌ | Import directly into the Telegram app, not MahsaNG. |
 
 **Recommended ordering for Iran:** Reality → CDN → XHTTP → Trojan →
-Shadowsocks → Hysteria2. `moav user mahsanet` already lists them in this order
-and labels each one.
+Shadowsocks → Hysteria2. The bundle's subscription already includes them in
+this order.
 
 ---
 
-## 3. Generate the import package
+## 3. Where the subscription lives
 
-On the server:
+MoaV builds the subscription into **every user bundle automatically** (on
+`moav user add` / `moav regenerate-users`) — there's no separate command to run.
+Each bundle in `outputs/bundles/<user>/` contains:
 
-```bash
-moav user mahsanet alice          # full output + QR codes
-moav user mahsanet alice --no-qr  # skip terminal QR (just URIs + subscription)
-```
+- **`subscription.txt`** — the base64 **V2Ray subscription body** (all
+  compatible configs in one string).
+- **`README.html`** — opens with an **"Import everything at once"** card showing
+  the same subscription as a click-to-copy block (EN + FA).
+- the individual config files (`reality.txt`, `trojan.txt`, `shadowsocks.txt`,
+  …) and a PNG QR per config (`reality-qr.png`, …).
 
-This:
+The compatible configs (Reality, CDN, XHTTP, Trojan, Shadowsocks-2022,
+Hysteria2 — IPv4 + IPv6) are selected automatically and ordered by reliability
+for Iran. Download a user's bundle from the MoaV **admin dashboard**
+(`https://your-server:9443`) or via SCP.
 
-1. Collects the MahsaNG-compatible URIs from `outputs/bundles/alice/`.
-2. Prints each URI with a label.
-3. Builds the base64 subscription body and prints it.
-4. Renders a scannable QR per config in the terminal.
-5. Writes two files into the bundle:
-   - `outputs/bundles/alice/mahsanet-uris.txt` — plain URI list (one per line)
-   - `outputs/bundles/alice/mahsanet-sub.txt` — base64 subscription body
-
-> If it reports "No MahsaNG-compatible configs found", the user has only
-> non-V2Ray protocols enabled. Enable at least one of Reality/CDN/XHTTP/
-> Trojan/Shadowsocks/Hysteria2 and regenerate the bundle
+> If `subscription.txt` is missing (or the README's import card is hidden), the
+> user has only non-V2Ray protocols enabled. Enable at least one of
+> Reality/CDN/XHTTP/Trojan/Shadowsocks/Hysteria2 and regenerate the bundle
 > (`moav user add <name>` or `moav regenerate-users`).
 
 ---
@@ -84,35 +84,32 @@ This:
 
 ### Method A — Subscription (one import, auto-updates)
 
-A V2Ray subscription is just **base64 of a newline-separated URI list**, served
-at a URL. `mahsanet-sub.txt` *is* that body. To turn it into a subscription
-URL the phone can use:
+A V2Ray subscription is just **base64 of a newline-separated URI list**.
+`subscription.txt` *is* that body, and the README's import card holds the same
+string. Two ways to use it:
 
-- **Host the file:** put `mahsanet-sub.txt` behind any HTTPS URL the user can
-  reach (a static host, a gist, an object-storage bucket), **or** have the user
-  download the bundle from the MoaV **admin dashboard**
-  (`https://your-server:9443` → that user → download), which includes
-  `mahsanet-sub.txt`.
-- In MahsaNG: **≡ → Subscription / Group → +**, paste the URL, then
-  **Update subscription**. All configs appear at once and refresh on update.
-- Some MahsaNG builds also accept the **base64 text pasted directly** when
-  adding a subscription/group — try that if you don't want to host a file.
+- **Paste the text directly:** copy the subscription (from the README card or
+  `subscription.txt`) and in MahsaNG tap **≡ → Subscription / Group → +** and
+  paste it — MahsaNG, v2rayNG and Hiddify accept the base64 body directly. All
+  configs appear at once.
+- **Host it as a URL:** put `subscription.txt` behind any HTTPS URL the user can
+  reach (a static host, a gist, an object-storage bucket), then add that URL as
+  a subscription in MahsaNG — configs refresh whenever you regenerate them
+  server-side.
 
-Keep the subscription URL unguessable and private — anyone with it gets all
-of that user's configs.
+Keep the subscription private — anyone with it gets all of that user's configs.
 
 ### Method B — Single URI (manual, no hosting)
 
-Copy any line from the printed output (or from `mahsanet-uris.txt`). In
-MahsaNG: tap **+ → Import config from clipboard** (or paste in the manual add
-screen). Start with the **Reality** URI; add **CDN** as a backup.
+Copy any individual config from the bundle (`reality.txt`, `trojan.txt`, …) or
+from the README's per-protocol sections. In MahsaNG: tap **+ → Import config
+from clipboard**. Start with the **Reality** URI; add **CDN** as a backup.
 
 ### Method C — QR code
 
-`moav user mahsanet` prints a QR per config in the terminal; PNG versions are
-also in `outputs/bundles/<user>/*-qr.png` (e.g. `reality-qr.png`). In MahsaNG:
-**+ → Scan QR code**. Best for handing a config to someone in person without
-sending text.
+Each config has a PNG QR in the bundle (`outputs/bundles/<user>/*-qr.png`, e.g.
+`reality-qr.png`), also shown in the README. In MahsaNG: **+ → Scan QR code**.
+Best for handing a config to someone in person without sending text.
 
 ---
 
