@@ -6653,7 +6653,7 @@ cmd_user() {
             fi
             ;;
         *)
-            error "Usage: moav user [list|add|revoke|package|mahsanet] [USERNAME]"
+            error "Usage: moav user [list|add|revoke|package] [USERNAME]"
             exit 1
             ;;
     esac
