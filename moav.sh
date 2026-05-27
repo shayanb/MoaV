@@ -1472,6 +1472,60 @@ check_config_template_changes() {
     POST_UPDATE_BOOTSTRAP_TEMPLATES="$changed"
 }
 
+# After a self-update pulls new code, queue source-built services whose *baked*
+# build inputs changed in the pull. check_component_versions only catches
+# version-pin bumps in .env; services built from source (the Go binaries, the
+# COPY'd entrypoints, dns-router/) have no version pin, so a code change there
+# would ship in git but never reach a running container until a manual rebuild
+# — exactly how a dns-router source change left old routers running pre-1.8.0.
+#
+# Only inputs COPY'd into the image count. Scripts bind-mounted at runtime
+# (bootstrap.sh, generate-user.sh, lib/, grafana-entrypoint.sh) take effect on
+# the next run, so they must NOT trigger a (pointless, on a 1GB VPS slow) build.
+check_source_rebuilds() {
+    local old_commit="${1:-}"
+    [[ -z "$old_commit" ]] && return 0
+    [[ -d "$SCRIPT_DIR/.git" ]] || return 0
+
+    local changed
+    changed=$(git -C "$SCRIPT_DIR" diff --name-only "$old_commit" HEAD 2>/dev/null) || return 0
+    [[ -z "$changed" ]] && return 0
+
+    # Operator-facing services built from source. Monitoring/infra images
+    # (exporters, grafana, prometheus, the bootstrap image) are intentionally
+    # excluded — low impact, and their entrypoints are bind-mounted anyway.
+    local valid=" dns-router dnstt slipstream gooserelay masterdns sing-box xray telemt trusttunnel wireguard amneziawg wstunnel snowflake psiphon-conduit client admin "
+
+    local queued="" f svc
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        svc=""
+        case "$f" in
+            dns-router/*)                   svc="dns-router" ;;
+            admin/*)                        svc="admin" ;;
+            scripts/conduit-entrypoint.sh)  svc="psiphon-conduit" ;;   # name mismatch
+            dockerfiles/Dockerfile.psiphon) svc="psiphon-conduit" ;;   # name mismatch
+            scripts/client-*.sh)            svc="client" ;;
+            scripts/*-entrypoint.sh)        svc="${f#scripts/}"; svc="${svc%-entrypoint.sh}" ;;
+            dockerfiles/Dockerfile.*)       svc="${f#dockerfiles/Dockerfile.}" ;;
+        esac
+        [[ -z "$svc" ]] && continue
+        # Drop anything not in the allowlist: bind-mounted entrypoints (grafana),
+        # monitoring exporters, infra images, unknown name mappings.
+        [[ "$valid" == *" $svc "* ]] || continue
+        [[ " $queued " == *" $svc "* ]] || queued="${queued:+$queued }$svc"
+    done <<< "$changed"
+
+    [[ -z "$queued" ]] && return 0
+
+    # Merge with version-pin rebuilds (check_component_versions), de-duped.
+    local merged="${POST_UPDATE_REBUILD_SERVICES:-}"
+    for svc in $queued; do
+        [[ " $merged " == *" $svc "* ]] || merged="${merged:+$merged }$svc"
+    done
+    POST_UPDATE_REBUILD_SERVICES="$merged"
+}
+
 # Compose a single ordered "how to apply this update" summary from what the
 # post-update checks found: component rebuilds (POST_UPDATE_REBUILD_SERVICES)
 # and/or stale server configs (POST_UPDATE_BOOTSTRAP_TEMPLATES). Print-only by
@@ -8080,6 +8134,7 @@ main() {
             # Internal: re-exec target after self-update pulls new code.
             # $2 = short commit before the pull (for config-template diffing).
             check_component_versions
+            check_source_rebuilds "${2:-}"
             migrate_dns_tunnel_state
             check_env_additions
             check_config_template_changes "${2:-}"
