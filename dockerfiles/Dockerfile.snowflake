@@ -15,6 +15,11 @@
 #   docker build: --build-arg SNOWFLAKE_BINARY=source
 
 ARG SNOWFLAKE_VERSION=2.11.0
+# Selects which stage provides the binary: prebuilt (default) or source. Must be
+# a *global* ARG (declared before the first FROM) so it can be used in the FROM
+# selector below — a mid-file ARG is out of scope for FROM and resolves blank.
+# Override with --build-arg SNOWFLAKE_BINARY=source.
+ARG SNOWFLAKE_BINARY=prebuilt
 
 # --- Fast path: extract the prebuilt binary from the official Tor image -------
 # Copy the whole rootfs into alpine and `find` the proxy binary (robust to the
@@ -45,8 +50,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 # --- Select which binary stage to use (default: prebuilt) ---------------------
 # Only the selected stage is built; BuildKit prunes the other, so the default
-# build never runs the Go compile.
-ARG SNOWFLAKE_BINARY=prebuilt
+# build never runs the Go compile. SNOWFLAKE_BINARY is declared globally above.
 FROM ${SNOWFLAKE_BINARY} AS binary
 
 # --- Runtime ------------------------------------------------------------------
