@@ -859,10 +859,14 @@ elif [[ -f "$TEMPLATE_FILE" ]]; then
         [[ -n "$_u" ]] && _mahsanet_uris+="$_u"$'\n'
     done
     if [[ -n "$_mahsanet_uris" ]]; then
-        sed -i "s|{{MAHSANET_SUB}}|$(printf '%s' "$_mahsanet_uris" | base64 | tr -d '\n')|g" "$OUTPUT_HTML"
+        _mahsanet_sub=$(printf '%s' "$_mahsanet_uris" | base64 | tr -d '\n')
+        # Also drop the subscription as a standalone file so the bundle isn't
+        # HTML-only (handy for hosting as a sub URL or importing from a file).
+        printf '%s\n' "$_mahsanet_sub" > "$OUTPUT_DIR/subscription.txt"
+        sed -i "s|{{MAHSANET_SUB}}|$_mahsanet_sub|g" "$OUTPUT_HTML"
         sed -i "s|{{MAHSANET_DISPLAY}}||g" "$OUTPUT_HTML"
     else
-        sed -i "s|{{MAHSANET_SUB}}|No MahsaNG-compatible configs in this bundle|g" "$OUTPUT_HTML"
+        sed -i "s|{{MAHSANET_SUB}}|No V2Ray-compatible configs in this bundle|g" "$OUTPUT_HTML"
         sed -i "s|{{MAHSANET_DISPLAY}}|display:none|g" "$OUTPUT_HTML"
     fi
 

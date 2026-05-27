@@ -293,12 +293,6 @@
             padding: 0.05rem 0.35rem;
         }
         .dl-link:hover { background: var(--blue); color: #000; }
-        .dl-mahsang {
-            margin-left: 0.4rem;
-            color: var(--green);
-            border-color: var(--green);
-        }
-        .dl-mahsang:hover { background: var(--green); color: #000; }
         .empty-msg {
             color: var(--text-dim);
             font-size: 0.85rem;
@@ -867,7 +861,6 @@
                         </td>
                         <td style="text-align:right;">
                             <a href="/download/{{ user.username }}" class="dl-link">.zip</a>
-                            {% if user.has_mahsang %}<a href="/download/mahsang/{{ user.username }}" class="dl-link dl-mahsang" title="Download MahsaNG import package (subscription + MasterDNS + GooseRelay)">MahsaNG</a>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}

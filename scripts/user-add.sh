@@ -947,10 +947,14 @@ with open(html_path, 'w') as f: f.write(html)
         [[ -n "$_u" ]] && _mahsanet_uris+="$_u"$'\n'
     done
     if [[ -n "$_mahsanet_uris" ]]; then
-        replace_placeholder "{{MAHSANET_SUB}}" "$(printf '%s' "$_mahsanet_uris" | base64 | tr -d '\n')"
+        _mahsanet_sub=$(printf '%s' "$_mahsanet_uris" | base64 | tr -d '\n')
+        # Also drop the subscription as a standalone file so the bundle isn't
+        # HTML-only (handy for hosting as a sub URL or importing from a file).
+        printf '%s\n' "$_mahsanet_sub" > "$OUTPUT_DIR/subscription.txt"
+        replace_placeholder "{{MAHSANET_SUB}}" "$_mahsanet_sub"
         replace_placeholder "{{MAHSANET_DISPLAY}}" ""
     else
-        replace_placeholder "{{MAHSANET_SUB}}" "No MahsaNG-compatible configs in this bundle"
+        replace_placeholder "{{MAHSANET_SUB}}" "No V2Ray-compatible configs in this bundle"
         replace_placeholder "{{MAHSANET_DISPLAY}}" "display:none"
     fi
 
