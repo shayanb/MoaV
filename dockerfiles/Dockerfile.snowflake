@@ -22,11 +22,16 @@ ARG SNOWFLAKE_VERSION=2.11.0
 ARG SNOWFLAKE_BINARY=prebuilt
 
 # --- Fast path: extract the prebuilt binary from the official Tor image -------
+# `COPY --from=<image>` does NOT allow variable expansion in the image ref, but
+# `FROM <image>` does (with a global ARG) — so pull the official image as a
+# named stage first, then COPY from that stage. Pruned entirely when
+# SNOWFLAKE_BINARY=source (the prebuilt stage is then unreferenced).
+FROM thetorproject/snowflake-proxy:v${SNOWFLAKE_VERSION} AS snowflake-upstream
+
 # Copy the whole rootfs into alpine and `find` the proxy binary (robust to the
 # upstream image's layout/base). The binary is static Go, so it runs on alpine.
 FROM alpine:3.21 AS prebuilt
-ARG SNOWFLAKE_VERSION
-COPY --from=thetorproject/snowflake-proxy:v${SNOWFLAKE_VERSION} / /img/
+COPY --from=snowflake-upstream / /img/
 RUN set -eux; \
     BIN="$(find /img \( -type f -o -type l \) \( -name proxy -o -name snowflake-proxy \) 2>/dev/null | head -n1)"; \
     [ -n "$BIN" ] || { echo "snowflake proxy binary not found in prebuilt image" >&2; exit 1; }; \
