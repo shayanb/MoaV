@@ -1557,7 +1557,7 @@ print_post_update_apply_steps() {
     echo -e "${WHITE}Apply this update in order:${NC}"
     echo ""
     if [[ -n "$rebuild" ]]; then
-        echo -e "  ${WHITE}${n}.${NC} moav build ${rebuild} --no-cache   ${DIM}# build new images${NC}"
+        echo -e "  ${WHITE}${n}.${NC} moav build ${rebuild}   ${DIM}# build new images (add --no-cache only to force a clean rebuild)${NC}"
         n=$((n+1))
     fi
     if [[ -n "$templates" ]]; then
@@ -1811,7 +1811,7 @@ run_bootstrap() {
     # Only build if the bootstrap image doesn't exist yet
     if ! docker image inspect moav-bootstrap >/dev/null 2>&1; then
         info "Building bootstrap container (first time, may take a minute)..."
-        docker compose --profile setup build bootstrap
+        compose_build --profile setup build bootstrap
     else
         info "Using cached bootstrap container"
     fi
@@ -1855,7 +1855,7 @@ run_bootstrap() {
 
         echo ""
         info "Building selected services..."
-        docker compose $SELECTED_PROFILE_STRING build
+        compose_build $SELECTED_PROFILE_STRING build
 
         echo ""
         if confirm "Start services now?" "y"; then
@@ -2468,6 +2468,17 @@ doctor_check_memory() {
     used_pct=$(awk "BEGIN {printf \"%.0f\", ($total_mb-$available_mb)/$total_mb*100}")
 
     echo -e "    RAM: ${WHITE}${total_gb} GB${NC} total, ${available_mb} MB available (${used_pct}% used)"
+
+    # Surface swap status on low-RAM hosts — missing swap is the usual reason
+    # image builds get OOM-killed on a small VPS.
+    local swap_mb
+    swap_mb=$(awk '/SwapTotal/ {printf "%.0f", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)
+    if [[ "$total_mb" -le 2560 ]] && [[ "${swap_mb:-0}" -eq 0 ]]; then
+        echo -e "    ${YELLOW}○${NC} No swap configured — image builds may be OOM-killed on low RAM"
+        echo -e "      ${DIM}Add 2 GB swap: fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile${NC}"
+        echo -e "      ${DIM}…and persist: echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab${NC}"
+        echo -e "      ${DIM}Or build with limited parallelism: MOAV_BUILD_PARALLEL=1 moav build${NC}"
+    fi
 
     # Check monitoring enabled
     local monitoring_enabled
@@ -4603,13 +4614,13 @@ build_services() {
         a|A)
             echo ""
             info "Building all services..."
-            docker compose --profile all build
+            compose_build --profile all build
             success "Build complete!"
             ;;
         n|N)
             echo ""
             info "Building all services (no cache)..."
-            docker compose --profile all build --no-cache
+            compose_build --profile all build --no-cache
             success "Build complete!"
             ;;
         0|"")
@@ -4621,7 +4632,7 @@ build_services() {
                 local service="${services_array[$idx]}"
                 echo ""
                 info "Building $service..."
-                docker compose build "$service"
+                compose_build build "$service"
                 success "$service built!"
             else
                 warn "Invalid choice"
@@ -6109,7 +6120,7 @@ cmd_profiles() {
             echo ""
             if confirm "Build selected services now?" "n"; then
                 info "Building..."
-                docker compose $SELECTED_PROFILE_STRING build
+                compose_build $SELECTED_PROFILE_STRING build
                 success "Build complete!"
             fi
         fi
@@ -6656,6 +6667,39 @@ cmd_user() {
     esac
 }
 
+# Build via docker compose with RAM-aware concurrency. Docker's bake builder
+# fans every image out in parallel, which OOMs / trips BuildKit's solve deadline
+# ("context deadline exceeded") on low-RAM hosts (e.g. a 2GB VPS building ~19
+# images at once). Tier the concurrency to MemTotal so small boxes build
+# serially and reliably while big boxes stay fast. Pass everything that would
+# follow `docker compose` (e.g. `--profile all build foo`).
+#
+# Override the auto-tier with MOAV_BUILD_PARALLEL=N (1 = serial, 0 = leave
+# Docker's default/unbounded behavior).
+compose_build() {
+    local total_mb limit
+    total_mb=$(awk '/MemTotal/ {printf "%.0f", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)
+
+    if [[ -n "${MOAV_BUILD_PARALLEL:-}" ]]; then
+        limit="$MOAV_BUILD_PARALLEL"
+    elif [[ "$total_mb" -gt 0 && "$total_mb" -le 3072 ]]; then
+        limit=1          # <=3GB: serial — one heavy Go compile at a time
+    elif [[ "$total_mb" -gt 0 && "$total_mb" -le 6144 ]]; then
+        limit=2          # 3-6GB: two at a time
+    else
+        limit=0          # >6GB or unknown: leave Docker defaults (bake/parallel)
+    fi
+
+    if [[ "$limit" =~ ^[0-9]+$ ]] && [[ "$limit" -ge 1 ]]; then
+        # COMPOSE_BAKE=false selects the classic builder that honors
+        # COMPOSE_PARALLEL_LIMIT; the bake builder ignores it and parallelizes.
+        info "Build concurrency limited to ${limit} (RAM ${total_mb}MB; set MOAV_BUILD_PARALLEL=N to override)" >&2
+        COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="$limit" docker compose "$@"
+    else
+        docker compose "$@"
+    fi
+}
+
 cmd_build() {
     local no_cache=""
     local build_local=""
@@ -6712,14 +6756,14 @@ cmd_build() {
         for svc in $go_services; do
             if echo "$buildable_services" | grep -q "^${svc}$"; then
                 info "  Building ${svc}..."
-                docker compose --profile all build $no_cache "$svc"
+                compose_build --profile all build $no_cache "$svc"
             fi
         done
 
         # Phase 2: Build remaining buildable services in parallel
         remaining_services=$(echo "$buildable_services" | grep -vE "^($(echo $go_services | tr ' ' '|'))$" | tr '\n' ' ')
         info "Phase 2/2: Building remaining services ($(echo $remaining_services | wc -w | tr -d ' ') services)..."
-        docker compose --profile all build $no_cache $remaining_services
+        compose_build --profile all build $no_cache $remaining_services
         success "All services built!"
     else
         # Resolve all arguments: each can be a profile name or a service name
@@ -6746,7 +6790,7 @@ cmd_build() {
         # Build matched profiles
         for profile in "${matched_profiles[@]}"; do
             info "Building $profile profile${no_cache:+ (no cache)}..."
-            docker compose --profile "$profile" build $no_cache
+            compose_build --profile "$profile" build $no_cache
             success "Profile $profile built!"
         done
 
@@ -6770,7 +6814,7 @@ cmd_build() {
                 # Build compose services normally
                 if [[ ${#compose_services[@]} -gt 0 ]]; then
                     info "Building: ${compose_services[*]}${no_cache:+ (no cache)}"
-                    docker compose --profile all build $no_cache ${compose_services[@]}
+                    compose_build --profile all build $no_cache ${compose_services[@]}
                     success "Build complete!"
                 fi
                 # Auto-redirect image-only services to local build
@@ -6833,7 +6877,7 @@ build_local_images() {
         # First, build all services that use docker-compose build
         echo "Step 1: Building all docker-compose services..."
         echo ""
-        if docker compose --profile all build $no_cache; then
+        if compose_build --profile all build $no_cache; then
             success "Docker-compose services built!"
         else
             error "Failed to build some docker-compose services"
@@ -6968,7 +7012,7 @@ cmd_test() {
     # Build client image if needed
     if ! docker images --format "{{.Repository}}" 2>/dev/null | grep -q "^moav-client$"; then
         info "Building client image..."
-        docker compose --profile client build client
+        compose_build --profile client build client
     fi
 
     # Run test (mount bundle + dnstt/slipstream outputs)
@@ -7044,7 +7088,7 @@ cmd_client() {
             # Build client image if needed
             if ! docker images --format "{{.Repository}}" 2>/dev/null | grep -q "^moav-client$"; then
                 info "Building client image..."
-                docker compose --profile client build client
+                compose_build --profile client build client
             fi
 
             # Run client in foreground (mount bundle + dnstt/slipstream outputs)
@@ -7059,7 +7103,7 @@ cmd_client() {
             ;;
         build)
             info "Building client image..."
-            docker compose --profile client build client
+            compose_build --profile client build client
             success "Client image built!"
             ;;
         *)

@@ -499,6 +499,10 @@ services:
       dockerfile: dockerfiles/Dockerfile.snowflake
       args:
         SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
+        # prebuilt (default) = pull the official thetorproject/snowflake-proxy
+        # binary; source = compile from source (set SNOWFLAKE_BINARY=source if
+        # Docker Hub is unreachable for the prebuilt image).
+        SNOWFLAKE_BINARY: ${SNOWFLAKE_BINARY:-prebuilt}
         GOPROXY: "${GOPROXY:-https://proxy.golang.org|https://goproxy.cn|direct}"
         GOSUMDB: "${GOSUMDB:-off}"
     container_name: moav-snowflake
