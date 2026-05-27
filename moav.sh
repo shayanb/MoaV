@@ -3308,10 +3308,15 @@ doctor_check_updates() {
     if [[ "$current_version" == "$latest" ]]; then
         echo -e "    ${GREEN}✓${NC} Up to date (v${latest})"
         return 0
-    else
+    elif version_gt "$latest" "$current_version"; then
         echo -e "    ${YELLOW}○${NC} Update available: v${latest} (current: v${current_version})"
         echo -e "      ${DIM}Run: moav update${NC}"
         return 1
+    else
+        # Running ahead of the latest published release — e.g. a dev/pre-release
+        # build, or the latest GitHub release tag lags the shipped VERSION.
+        echo -e "    ${GREEN}✓${NC} Running v${current_version} (ahead of latest release v${latest})"
+        return 0
     fi
 }
 
