@@ -36,7 +36,7 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.sing-box
       args:
-        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.23}
+        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.13.12}
     container_name: moav-sing-box
     restart: unless-stopped
     logging: *default-logging
@@ -182,8 +182,13 @@ services:
     environment:
       - DNSTT_DOMAIN=${DNSTT_SUBDOMAIN:-t}.${DOMAIN}
       - SLIPSTREAM_DOMAIN=${SLIPSTREAM_SUBDOMAIN:-s}.${DOMAIN}
+      - MASTERDNS_DOMAIN=${MASTERDNS_SUBDOMAIN:-m}.${DOMAIN}
+      - XDNS_DOMAIN=${XDNS_SUBDOMAIN:-x}.${DOMAIN}
       - ENABLE_DNSTT=${ENABLE_DNSTT:-true}
       - ENABLE_SLIPSTREAM=${ENABLE_SLIPSTREAM:-true}
+      - ENABLE_MASTERDNS=${ENABLE_MASTERDNS:-true}
+      - ENABLE_XDNS=${ENABLE_XDNS:-true}
+      - XDNS_BACKEND=xray:5355
       - TZ=${TZ:-UTC}
     cap_drop:
       - ALL
@@ -263,6 +268,43 @@ services:
     tmpfs:
       - /tmp:rw,noexec,size=10m
     mem_limit: 128m
+    cpus: 0.5
+    profiles:
+      - dnstunnel
+      - all
+
+  # MasterDNS: advanced DNS tunnel (ARQ + resolver LB) — MahsaNG v16 component.
+  # Enabled by default (ENABLE_MASTERDNS=true). Coexists with dnstt/Slipstream
+  # on its own subdomain; dns-router fans queries out by domain suffix.
+  masterdns:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.masterdns
+      args:
+        MASTERDNS_VERSION: ${MASTERDNS_VERSION:-v2026.05.10.180256-27c7e11}
+    container_name: moav-masterdns
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - moav_net
+    expose:
+      - "5355"
+    volumes:
+      - ./configs/masterdns:/etc/masterdns:ro
+      - moav_state:/state
+      - ./outputs:/outputs
+    environment:
+      - ENABLE_MASTERDNS=${ENABLE_MASTERDNS:-true}
+      - MASTERDNS_SUBDOMAIN=${MASTERDNS_SUBDOMAIN:-m}
+      - TZ=${TZ:-UTC}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,size=10m
+    mem_limit: 192m
     cpus: 0.5
     profiles:
       - dnstunnel
@@ -457,6 +499,10 @@ services:
       dockerfile: dockerfiles/Dockerfile.snowflake
       args:
         SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
+        # prebuilt (default) = pull the official thetorproject/snowflake-proxy
+        # binary; source = compile from source (set SNOWFLAKE_BINARY=source if
+        # Docker Hub is unreachable for the prebuilt image).
+        SNOWFLAKE_BINARY: ${SNOWFLAKE_BINARY:-prebuilt}
         GOPROXY: "${GOPROXY:-https://proxy.golang.org|https://goproxy.cn|direct}"
         GOSUMDB: "${GOSUMDB:-off}"
     container_name: moav-snowflake
@@ -482,6 +528,46 @@ services:
     cpus: 0.5
     profiles:
       - snowflake
+      - all
+
+  # ===========================================================================
+  # GOOSERELAY: SOCKS5-over-Google-Apps-Script tunnel exit server
+  # MahsaNG v16 component. Opt-in (ENABLE_GOOSERELAY=true).
+  # The Apps Script forwarder + client are user-side; this is the VPS exit.
+  # ===========================================================================
+  gooserelay:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.gooserelay
+      args:
+        GOOSERELAY_VERSION: ${GOOSERELAY_VERSION:-v1.7.1}
+    container_name: moav-gooserelay
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - moav_net
+    ports:
+      # Host PORT_GOOSE -> container 8443 (8443 on the host is Trojan's).
+      # The Apps Script RELAY_URL must use http://SERVER_IP:PORT_GOOSE/tunnel.
+      - "${PORT_GOOSE:-8444}:8443/tcp"
+    volumes:
+      - ./configs/gooserelay:/etc/gooserelay:ro
+      - moav_state:/state
+      - ./outputs:/outputs
+    environment:
+      - ENABLE_GOOSERELAY=${ENABLE_GOOSERELAY:-false}
+      - TZ=${TZ:-UTC}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,size=10m
+    mem_limit: 192m
+    cpus: 0.5
+    profiles:
+      - gooserelay
       - all
 
   # Snowflake Prometheus Exporter - parses snowflake logs for metrics
@@ -632,7 +718,7 @@ services:
       - moav_net
     ports:
       - "${PORT_XHTTP:-2096}:${PORT_XHTTP:-2096}/tcp"
-      - "${PORT_XDNS:-53}:5355/udp"
+      - "${PORT_XDNS:-5356}:5355/udp"
     volumes:
       - ./configs/xray:/etc/xray:ro
       - moav_state:/state:ro
@@ -708,11 +794,11 @@ services:
       - ADMIN_IP_WHITELIST=${ADMIN_IP_WHITELIST:-}
       - SERVER_IP=${SERVER_IP:-}
       - DOMAIN=${DOMAIN:-}
-      - ENABLE_XDNS=${ENABLE_XDNS:-false}
+      - ENABLE_XDNS=${ENABLE_XDNS:-true}
       - XDNS_SUBDOMAIN=${XDNS_SUBDOMAIN:-x}
       - XDNS_MTU=${XDNS_MTU:-35}
       - XDNS_RESOLVERS=${XDNS_RESOLVERS:-1.1.1.1,8.8.8.8}
-      - PORT_XDNS=${PORT_XDNS:-53}
+      - PORT_XDNS=${PORT_XDNS:-5356}
       - ENABLE_XHTTP=${ENABLE_XHTTP:-true}
       - MAHSANET_API_KEY=${MAHSANET_API_KEY:-}
       - MAHSANET_PROTOCOLS=${MAHSANET_PROTOCOLS:-reality hysteria2}
@@ -1135,7 +1221,7 @@ services:
       context: .
       dockerfile: dockerfiles/Dockerfile.bootstrap
       args:
-        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.13.2}
+        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.13.12}
     container_name: moav-bootstrap
     volumes:
       - ./configs:/configs
@@ -1175,11 +1261,15 @@ services:
       - ENABLE_XHTTP=${ENABLE_XHTTP:-true}
       - PORT_XHTTP=${PORT_XHTTP:-2096}
       - XHTTP_REALITY_TARGET=${XHTTP_REALITY_TARGET:-dl.google.com:443}
-      - ENABLE_XDNS=${ENABLE_XDNS:-false}
+      - ENABLE_XDNS=${ENABLE_XDNS:-true}
       - XDNS_SUBDOMAIN=${XDNS_SUBDOMAIN:-x}
       - XDNS_MTU=${XDNS_MTU:-35}
       - XDNS_RESOLVERS=${XDNS_RESOLVERS:-1.1.1.1,8.8.8.8}
-      - PORT_XDNS=${PORT_XDNS:-53}
+      - PORT_XDNS=${PORT_XDNS:-5356}
+      - ENABLE_MASTERDNS=${ENABLE_MASTERDNS:-true}
+      - MASTERDNS_SUBDOMAIN=${MASTERDNS_SUBDOMAIN:-m}
+      - ENABLE_GOOSERELAY=${ENABLE_GOOSERELAY:-false}
+      - PORT_GOOSE=${PORT_GOOSE:-8444}
       - ENABLE_ADMIN_UI=${ENABLE_ADMIN_UI:-true}
       - CDN_SUBDOMAIN=${CDN_SUBDOMAIN:-}
       - CDN_DOMAIN=${CDN_DOMAIN:-}
@@ -1204,7 +1294,7 @@ services:
       args:
         GOPROXY: "${GOPROXY:-https://proxy.golang.org|https://goproxy.cn|direct}"
         GOSUMDB: "${GOSUMDB:-off}"
-        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.12.23}
+        SINGBOX_VERSION: ${SINGBOX_VERSION:-1.13.12}
         WSTUNNEL_VERSION: ${WSTUNNEL_VERSION:-10.5.5}
         SNOWFLAKE_VERSION: ${SNOWFLAKE_VERSION:-2.11.0}
         TRUSTTUNNEL_CLIENT_VERSION: ${TRUSTTUNNEL_CLIENT_VERSION:-1.0.49}

@@ -11,6 +11,8 @@ source /app/lib/wireguard.sh
 source /app/lib/amneziawg.sh
 source /app/lib/dnstt.sh
 source /app/lib/slipstream.sh
+source /app/lib/masterdns.sh
+source /app/lib/gooserelay.sh
 source /app/lib/telemt.sh
 
 # Default state directory if not set
@@ -602,6 +604,32 @@ if [[ "${ENABLE_SLIPSTREAM:-true}" == "true" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# Generate MasterDNS instructions (if enabled) — MahsaNG v16 component
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_MASTERDNS:-true}" == "true" ]]; then
+    if [[ -f "$OUTPUT_DIR/masterdns-instructions.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+        log_info "  - MasterDNS instructions exist, skipping"
+    else
+        BUNDLE_CHANGED=true
+        masterdns_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
+        log_info "  - MasterDNS instructions generated"
+    fi
+fi
+
+# -----------------------------------------------------------------------------
+# Generate GooseRelay instructions (if enabled) — MahsaNG v16 component
+# -----------------------------------------------------------------------------
+if [[ "${ENABLE_GOOSERELAY:-false}" == "true" ]]; then
+    if [[ -f "$OUTPUT_DIR/gooserelay-instructions.txt" ]] && [[ "$FORCE_REGENERATE" != "force" ]]; then
+        log_info "  - GooseRelay instructions exist, skipping"
+    else
+        BUNDLE_CHANGED=true
+        gooserelay_generate_client_instructions "$USER_ID" "$OUTPUT_DIR"
+        log_info "  - GooseRelay instructions generated"
+    fi
+fi
+
+# -----------------------------------------------------------------------------
 # Generate telemt (Telegram MTProxy) instructions (if enabled)
 # -----------------------------------------------------------------------------
 if [[ "${ENABLE_TELEMT:-true}" == "true" ]]; then
@@ -631,15 +659,22 @@ if [[ "${ENABLE_XDNS:-false}" == "true" ]] && [[ -n "${DOMAIN:-}" ]]; then
 import os, json
 domain = os.environ["XDNS_DOMAIN"]
 csv = os.environ.get("XDNS_RESOLVERS_CSV", "").strip()
-resolvers = [x.strip() for x in csv.split(",") if x.strip()] if csv else []
-settings = {"domain": domain}
-if resolvers:
-    settings["resolvers"] = resolvers
-print(json.dumps(settings))
+ips = [x.strip() for x in csv.split(",") if x.strip()] if csv else []
+if not ips:
+    ips = ["1.1.1.1"]
+# Xray v26.x finalmask: the client side uses "resolvers", each formatted as
+# "domain[:method]+udp://server:port" (method defaults to txt). The old singular
+# "domain" field was removed; "domains" is server-side only.
+resolvers = [domain + "+udp://" + (ip if ":" in ip else ip + ":53") for ip in ips]
+print(json.dumps({"resolvers": resolvers}))
 ')
-        _xdns_finalmask_settings_direct=$(XDNS_DOMAIN="$_xdns_domain" python3 -c '
+        _xdns_finalmask_settings_direct=$(XDNS_DOMAIN="$_xdns_domain" XDNS_DIRECT_TARGET="${SERVER_IP}:${PORT_XDNS:-5356}" python3 -c '
 import os, json
-print(json.dumps({"domain": os.environ["XDNS_DOMAIN"]}))
+domain = os.environ["XDNS_DOMAIN"]
+target = os.environ["XDNS_DIRECT_TARGET"]
+# Direct mode: send xdns-encoded queries straight to the server XDNS port
+# (host PORT_XDNS -> xray:5355), with no public recursive resolver in between.
+print(json.dumps({"resolvers": [domain + "+udp://" + target]}))
 ')
 
         # Load user UUID. credentials.env (sourced above) already provides
@@ -674,7 +709,7 @@ XDNSEOF
   "log": {"loglevel": "warning"},
   "inbounds": [{"listen": "127.0.0.1", "port": 7891, "protocol": "socks", "settings": {"auth": "noauth", "udp": true}}],
   "outbounds": [
-    {"tag": "proxy", "protocol": "vless", "settings": {"vnext": [{"address": "${SERVER_IP}", "port": ${PORT_XDNS:-53}, "users": [{"id": "$_xdns_uuid", "encryption": "none"}]}]}, "streamSettings": {"network": "kcp", "kcpSettings": {"mtu": $_xdns_mtu, "tti": 100, "uplinkCapacity": 0, "downlinkCapacity": 0, "congestion": true}, "finalmask": {"udp": [{"type": "xdns", "settings": ${_xdns_finalmask_settings_direct}}]}}},
+    {"tag": "proxy", "protocol": "vless", "settings": {"vnext": [{"address": "${SERVER_IP}", "port": ${PORT_XDNS:-5356}, "users": [{"id": "$_xdns_uuid", "encryption": "none"}]}]}, "streamSettings": {"network": "kcp", "kcpSettings": {"mtu": $_xdns_mtu, "tti": 100, "uplinkCapacity": 0, "downlinkCapacity": 0, "congestion": true}, "finalmask": {"udp": [{"type": "xdns", "settings": ${_xdns_finalmask_settings_direct}}]}}},
     {"tag": "direct", "protocol": "freedom"}
   ],
   "routing": {"rules": [{"type": "field", "ip": ["::/0"], "outboundTag": "direct"}]}
@@ -767,6 +802,14 @@ elif [[ -f "$TEMPLATE_FILE" ]]; then
     XDNS_DISPLAY=""
     [[ -z "$CONFIG_XDNS" ]] && XDNS_DISPLAY="display:none"
 
+    # Get MasterDNS / GooseRelay info (MahsaNG v16 extras; instructions text + display toggle)
+    CONFIG_MASTERDNS=$(cat "$OUTPUT_DIR/masterdns-instructions.txt" 2>/dev/null || echo "")
+    MASTERDNS_DISPLAY=""
+    [[ -z "$CONFIG_MASTERDNS" ]] && MASTERDNS_DISPLAY="display:none"
+    CONFIG_GOOSERELAY=$(cat "$OUTPUT_DIR/gooserelay-instructions.txt" 2>/dev/null || echo "")
+    GOOSERELAY_DISPLAY=""
+    [[ -z "$CONFIG_GOOSERELAY" ]] && GOOSERELAY_DISPLAY="display:none"
+
     # Get telemt info
     CONFIG_TELEMT=$(cat "$OUTPUT_DIR/telegram-proxy-link.txt" 2>/dev/null | tr -d '\n' || echo "")
 
@@ -802,6 +845,30 @@ elif [[ -f "$TEMPLATE_FILE" ]]; then
     sed -i "s|{{DNSTT_DOMAIN}}|$DNSTT_DOMAIN|g" "$OUTPUT_HTML"
     sed -i "s|{{DNSTT_PUBKEY}}|$DNSTT_PUBKEY|g" "$OUTPUT_HTML"
     sed -i "s|{{SLIPSTREAM_DOMAIN}}|$SLIPSTREAM_DOMAIN|g" "$OUTPUT_HTML"
+
+    # V2Ray subscription: base64 of the newline-joined compatible share-links,
+    # so the user can paste it once into any V2Ray app (MahsaNG, v2rayNG,
+    # Hiddify, ...) to import all proxy protocols. DNS tunnels + GooseRelay are
+    # configured separately and intentionally excluded. base64 has no '|', so it
+    # is safe in the sed replacement below.
+    _mahsanet_uris=""
+    for _f in reality cdn-vless xhttp-vless trojan shadowsocks hysteria2 \
+              reality-ipv6 trojan-ipv6 shadowsocks-ipv6 hysteria2-ipv6; do
+        [[ -f "$OUTPUT_DIR/$_f.txt" ]] || continue
+        _u=$(tr -d '\r' < "$OUTPUT_DIR/$_f.txt" | grep -aE '^(vless|trojan|ss|hysteria2|vmess)://' | head -1 || true)
+        [[ -n "$_u" ]] && _mahsanet_uris+="$_u"$'\n'
+    done
+    if [[ -n "$_mahsanet_uris" ]]; then
+        _mahsanet_sub=$(printf '%s' "$_mahsanet_uris" | base64 | tr -d '\n')
+        # Also drop the subscription as a standalone file so the bundle isn't
+        # HTML-only (handy for hosting as a sub URL or importing from a file).
+        printf '%s\n' "$_mahsanet_sub" > "$OUTPUT_DIR/subscription.txt"
+        sed -i "s|{{MAHSANET_SUB}}|$_mahsanet_sub|g" "$OUTPUT_HTML"
+        sed -i "s|{{MAHSANET_DISPLAY}}||g" "$OUTPUT_HTML"
+    else
+        sed -i "s|{{MAHSANET_SUB}}|No V2Ray-compatible configs in this bundle|g" "$OUTPUT_HTML"
+        sed -i "s|{{MAHSANET_DISPLAY}}|display:none|g" "$OUTPUT_HTML"
+    fi
 
     # TrustTunnel password (same as user password) - escape special chars
     if [[ -n "${USER_PASSWORD:-}" ]]; then
@@ -945,6 +1012,30 @@ with open(html_path, 'w') as f: f.write(html)
         replace_placeholder "{{CONFIG_XDNS_DIRECT}}" "XDNS not enabled"
         replace_placeholder "{{XDNS_DISPLAY}}" "display:none"
     fi
+
+    # MasterDNS / GooseRelay (MahsaNG v16) — multiline instructions; file-based
+    # replacement avoids shell-escaping issues, and toggles the section + TOC
+    # entry off (display:none) when the protocol isn't enabled for this user.
+    python3 -c "
+import sys
+html_path = sys.argv[1]
+with open(html_path) as f: html = f.read()
+def fill(name, path, label):
+    global html
+    try:
+        with open(path) as f: cfg = f.read().strip()
+    except Exception:
+        cfg = ''
+    if cfg:
+        html = html.replace('{{CONFIG_%s}}' % name, cfg)
+        html = html.replace('{{%s_DISPLAY}}' % name, '')
+    else:
+        html = html.replace('{{CONFIG_%s}}' % name, label + ' not enabled')
+        html = html.replace('{{%s_DISPLAY}}' % name, 'display:none')
+fill('MASTERDNS', sys.argv[2], 'MasterDNS')
+fill('GOOSERELAY', sys.argv[3], 'GooseRelay')
+with open(html_path, 'w') as f: f.write(html)
+" "$OUTPUT_HTML" "$OUTPUT_DIR/masterdns-instructions.txt" "$OUTPUT_DIR/gooserelay-instructions.txt"
 
     # telemt (Telegram MTProxy) link
     if [[ -n "${CONFIG_TELEMT:-}" ]]; then

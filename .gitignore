@@ -83,6 +83,21 @@ configs/slipstream/key.pem
 # Telegram MTProxy (telemt) generated files
 configs/telemt/config.toml
 
+# MasterDNS generated files (server_config.toml, server.domain, keys, …).
+# Ignore everything bootstrap/entrypoint writes here; keep only .gitkeep.
+configs/masterdns/*
+!configs/masterdns/.gitkeep
+
+# GooseRelay generated files (server_config.json, …). Keep .gitkeep and the
+# vendored Apps Script template; ignore everything else generated at runtime.
+configs/gooserelay/*
+!configs/gooserelay/.gitkeep
+!configs/gooserelay/Code.gs.template
+
+# Conduit lifetime rules — runtime-rewritten by update-conduit-offsets.sh.
+# Materialized from the committed .template on first monitoring start.
+configs/monitoring/conduit_lifetime.rules.yml
+
 # DNS router
 configs/dns-router/
 

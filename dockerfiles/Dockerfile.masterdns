@@ -1,0 +1,78 @@
+# =============================================================================
+# MoaV MasterDNS - DNS tunnel server (MahsaNG v16 component)
+# =============================================================================
+# MasterDnsVPN is an advanced DNS tunnel optimized beyond dnstt/Slipstream:
+# low-overhead ARQ, resolver load-balancing, packet-loss stability.
+# Bundled in MahsaNG v16 (MasterDNS v2026.05.10).
+#
+# Uses pre-built Go binaries from masterking32/MasterDnsVPN releases
+# (same approach as Dockerfile.slipstream).
+# =============================================================================
+
+FROM debian:bookworm-slim
+
+ARG TARGETARCH
+
+# Version - read from .env via docker-compose build args, with fallback default.
+# Matches the MasterDNS build bundled in MahsaNG v16.
+ARG MASTERDNS_VERSION=v2026.05.10.180256-27c7e11
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    curl \
+    ca-certificates \
+    tar \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r moav && useradd -r -g moav moav
+
+# Architecture mapping and binary download.
+# masterking32/MasterDnsVPN release assets:
+#   MasterDnsVPN_Server_Linux_AMD64.tar.gz  -> binary MasterDnsVPN_Server_Linux_AMD64_v*
+#   MasterDnsVPN_Server_Linux_ARM64.tar.gz  -> binary MasterDnsVPN_Server_Linux_ARM64_v*
+RUN set -eux; \
+    case "${TARGETARCH:-amd64}" in \
+      amd64) SUFFIX="AMD64" ;; \
+      arm64) SUFFIX="ARM64" ;; \
+      *) echo "Unsupported TARGETARCH=${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    ASSET="MasterDnsVPN_Server_Linux_${SUFFIX}.tar.gz"; \
+    BASE="https://github.com/masterking32/MasterDnsVPN/releases/download/${MASTERDNS_VERSION}"; \
+    echo "Downloading MasterDnsVPN server ${MASTERDNS_VERSION} (${SUFFIX})..."; \
+    curl -fsSL --retry 3 --retry-delay 2 -o /tmp/masterdns.tar.gz "${BASE}/${ASSET}"; \
+    # Verify against the SHA256SUMS.txt published in the same release. Pinning by
+    # version tag alone trusts GitHub's CDN to serve untampered bytes; this
+    # confirms the download matches the checksum the upstream release published.
+    echo "Verifying SHA256 (${ASSET})..."; \
+    curl -fsSL --retry 3 --retry-delay 2 -o /tmp/SHA256SUMS.txt "${BASE}/SHA256SUMS.txt"; \
+    EXPECTED="$(grep -F "${ASSET}" /tmp/SHA256SUMS.txt | head -n1 | cut -d' ' -f1)"; \
+    if [ -z "${EXPECTED}" ]; then echo "No checksum for ${ASSET} in SHA256SUMS.txt" >&2; exit 1; fi; \
+    ACTUAL="$(sha256sum /tmp/masterdns.tar.gz | cut -d' ' -f1)"; \
+    if [ "${EXPECTED}" != "${ACTUAL}" ]; then \
+      echo "SHA256 mismatch for ${ASSET}: expected ${EXPECTED}, got ${ACTUAL}" >&2; exit 1; \
+    fi; \
+    echo "SHA256 OK (${ACTUAL})"; \
+    rm -f /tmp/SHA256SUMS.txt; \
+    mkdir -p /tmp/masterdns; \
+    tar -xzf /tmp/masterdns.tar.gz -C /tmp/masterdns; \
+    BIN="$(find /tmp/masterdns -type f -name "MasterDnsVPN_Server_Linux_${SUFFIX}_v*" | sort -V | tail -n1)"; \
+    if [ -z "${BIN}" ]; then \
+      BIN="$(find /tmp/masterdns -type f -name 'MasterDnsVPN_Server_*' ! -name '*.txt' | sort -V | tail -n1)"; \
+    fi; \
+    if [ -z "${BIN}" ]; then echo "MasterDnsVPN server binary not found in archive" >&2; ls -laR /tmp/masterdns >&2; exit 1; fi; \
+    install -m 0755 "${BIN}" /usr/local/bin/masterdnsvpn; \
+    rm -rf /tmp/masterdns /tmp/masterdns.tar.gz; \
+    echo "masterdnsvpn ${MASTERDNS_VERSION} installed (${SUFFIX})"
+
+# Create directories
+RUN mkdir -p /app /etc/masterdns /state/keys && \
+    chown -R moav:moav /app /etc/masterdns /state
+
+COPY scripts/masterdns-entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 5355/udp
+
+USER moav
+ENTRYPOINT ["/app/entrypoint.sh"]

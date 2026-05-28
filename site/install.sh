@@ -443,6 +443,76 @@ fi
 echo ""
 
 # =============================================================================
+# Offer swap on low-RAM hosts (image builds, esp. the Go compiles, can briefly
+# exceed RAM and get OOM-killed without swap). Opt-in; needs root + free disk.
+# =============================================================================
+maybe_offer_swap() {
+    [[ "$(uname -s)" == "Linux" ]] || return 0
+    [[ -r /proc/meminfo ]] || return 0
+    # Never make host changes on a fully non-interactive install (cloud-init/CI).
+    [[ -t 0 || -e /dev/tty ]] || return 0
+
+    local total_mb swap_kb
+    total_mb=$(awk '/MemTotal/ {printf "%.0f", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)
+    swap_kb=$(awk '/SwapTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
+
+    # Only when RAM is tight (<= ~2.5 GB) and no swap is configured.
+    [[ "$total_mb" -gt 0 && "$total_mb" -le 2560 ]] || return 0
+    [[ "${swap_kb:-0}" -eq 0 ]] || return 0
+
+    echo ""
+    warn "Low RAM detected (${total_mb} MB) and no swap is configured."
+    echo "  Building the images (the Go compiles) can briefly exceed RAM and get"
+    echo "  OOM-killed. A small swapfile makes builds reliable on low-RAM VPSes."
+    echo ""
+    if ! confirm "Create a 2 GB swapfile at /swapfile and enable it?" "y"; then
+        info "Skipping swap. If a build fails, retry serially: MOAV_BUILD_PARALLEL=1 moav build"
+        return 0
+    fi
+
+    local SUDO=""
+    if [[ "$(id -u)" -ne 0 ]]; then
+        if command -v sudo &>/dev/null; then SUDO="sudo"; else
+            warn "Need root to create swap; skipping (create /swapfile manually if you like)."
+            return 0
+        fi
+    fi
+
+    if [[ -e /swapfile ]] || swapon --show 2>/dev/null | grep -q '/swapfile'; then
+        warn "/swapfile already exists; leaving it as-is."
+        return 0
+    fi
+
+    # Need ~2.2 GB free on / for the swapfile.
+    local avail_mb
+    avail_mb=$(df -Pm / 2>/dev/null | awk 'NR==2 {print $4}')
+    if [[ -n "$avail_mb" && "$avail_mb" -lt 2200 ]]; then
+        warn "Not enough free disk on / (${avail_mb} MB) for a 2 GB swapfile; skipping."
+        return 0
+    fi
+
+    info "Creating 2 GB swapfile..."
+    if $SUDO fallocate -l 2G /swapfile 2>/dev/null || \
+       $SUDO dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none 2>/dev/null; then
+        if $SUDO chmod 600 /swapfile && $SUDO mkswap /swapfile >/dev/null 2>&1 && $SUDO swapon /swapfile 2>/dev/null; then
+            if ! grep -q '^/swapfile ' /etc/fstab 2>/dev/null; then
+                echo '/swapfile none swap sw 0 0' | $SUDO tee -a /etc/fstab >/dev/null 2>&1 || true
+            fi
+            success "2 GB swap enabled (persisted in /etc/fstab)."
+        else
+            warn "Could not enable swap; cleaning up /swapfile."
+            $SUDO swapoff /swapfile 2>/dev/null || true
+            $SUDO rm -f /swapfile 2>/dev/null || true
+        fi
+    else
+        warn "Could not allocate /swapfile; skipping swap."
+        $SUDO rm -f /swapfile 2>/dev/null || true
+    fi
+}
+# Best-effort; never let a swap hiccup abort the installer (set -e is on).
+maybe_offer_swap || true
+
+# =============================================================================
 # Clone or Update MoaV
 # =============================================================================
 

@@ -1,6 +1,6 @@
 # MoaV
 
-[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Docs](https://img.shields.io/badge/docs-moav.sh%2Fdocs-cyan.svg)](https://moav.sh/docs/)  [![Version](https://img.shields.io/badge/version-1.7.9-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Docs](https://img.shields.io/badge/docs-moav.sh%2Fdocs-cyan.svg)](https://moav.sh/docs/)  [![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 English | **[فارسی](README-fa.md)** 
 
@@ -8,7 +8,11 @@ Multi-protocol Internet censorship circumvention stack optimized for hostile net
 
 ## Features
 
-- **Multiple protocols** - Reality (VLESS), Trojan, Shadowsocks-2022, Hysteria2, XHTTP (VLESS+XHTTP+Reality), XDNS (mKCP DNS tunnel), TrustTunnel, AmneziaWG, WireGuard (direct & wstunnel), DNS tunnels (dnstt + Slipstream), Telegram MTProxy, CDN (VLESS+WS)
+- **Multiple protocols** — 16+ protocols covering every censorship scenario:
+  - **High-stealth proxy** — Reality (VLESS), Trojan, Hysteria2, XHTTP (VLESS+XHTTP+Reality), CDN (VLESS+WS via Cloudflare)
+  - **Full VPN** — WireGuard (direct & wstunnel), AmneziaWG
+  - **Specialty** — TrustTunnel (HTTP/2+QUIC), Telegram MTProxy (fake-TLS), Shadowsocks-2022, GooseRelay (SOCKS5 via Google Apps Script)
+  - **DNS tunnels** — dnstt, Slipstream, MasterDNS, and XDNS — all four run simultaneously on port 53 via `dns-router`
 - **Stealth-first** - All traffic looks like normal HTTPS, WebSocket, DNS, or IMAPS
 - **Per-user credentials** - Create, revoke, and manage users independently
 - **Easy deployment** - Docker Compose based, single command setup
@@ -121,25 +125,27 @@ See the [Setup Guide](docs/SETUP.md) for complete instructions, the [CLI Referen
 
 ## Protocols
 
-| Protocol | Port | Stealth | Speed | Use Case |
-|----------|------|---------|-------|----------|
-| Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | Primary, most reliable |
-| Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | Fast, works when TCP throttled |
-| Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | Backup, uses your domain |
-| Shadowsocks-2022 | 8388/tcp+udp | ★★★★☆ | ★★★★☆ | AEAD-2022 anti-probing; Outline-app compatible (off by default) |
-| CDN (VLESS+WS) | 443 via Cloudflare | ★★★★★ | ★★★☆☆ | When server IP is blocked |
-| TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 & QUIC, looks like HTTPS |
-| WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | Full VPN, simple setup |
-| AmneziaWG | 51821/udp | ★★★★★ | ★★★★☆ | Obfuscated WireGuard, defeats DPI |
-| WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN when UDP is blocked |
-| DNS Tunnel (dnstt) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | Last resort, hard to block |
-| Slipstream | 53/udp | ★★★☆☆ | ★★☆☆☆ | QUIC-over-DNS, 1.5-5x faster than dnstt |
-| Telegram MTProxy | 993/tcp | ★★★★☆ | ★★★☆☆ | Fake-TLS V2, direct Telegram access |
-| XHTTP (VLESS+XHTTP+Reality) | 2096/tcp | ★★★★★ | ★★★★☆ | Xray-core, no domain needed |
-| XDNS (VLESS+mKCP+DNS) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | DNS tunnel via Xray FinalMask, works during heavy shutdowns |
-| Psiphon Conduit | - | - | - | Donate bandwidth to Psiphon (2M+ users) |
-| Tor Snowflake | - | - | - | Donate bandwidth to Tor network |
-| MahsaNet | - | - | - | Donate VPN configs to Mahsa VPN (2M+ users) |
+| Protocol | Port | Stealth | Speed | Default | Use Case |
+|----------|------|---------|-------|---------|----------|
+| Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | ✅ | Primary, most reliable |
+| Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | ✅ | Fast, works when TCP throttled |
+| Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | ✅ | Backup, uses your domain |
+| Shadowsocks-2022 | 8388/tcp+udp | ★★★★☆ | ★★★★☆ | ⬜ | AEAD-2022 anti-probing; Outline-app compatible |
+| CDN (VLESS+WS) | 443 via Cloudflare | ★★★★★ | ★★★☆☆ | ✅ | When server IP is blocked |
+| TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | ✅ | HTTP/2 & QUIC, looks like HTTPS |
+| WireGuard (Direct) | 51820/udp | ★★★☆☆ | ★★★★★ | ✅ | Full VPN, simple setup |
+| AmneziaWG | 51821/udp | ★★★★★ | ★★★★☆ | ✅ | Obfuscated WireGuard, defeats DPI |
+| WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | ✅ | VPN when UDP is blocked |
+| DNS Tunnel (dnstt) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | ✅ | Last resort, hard to block |
+| Slipstream | 53/udp | ★★★☆☆ | ★★☆☆☆ | ✅ | QUIC-over-DNS, 1.5-5x faster than dnstt |
+| MasterDNS | 53/udp | ★★★☆☆ | ★★★☆☆ | ✅ | Advanced DNS tunnel (ARQ + resolver LB), MahsaNG v16 |
+| XDNS (VLESS+mKCP+DNS) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | ✅ | DNS tunnel via Xray FinalMask; all 4 DNS tunnels share port 53 |
+| GooseRelay | 8444/tcp | ★★★★★ | ★★☆☆☆ | ⬜ | SOCKS5 via Google Apps Script, fronted as google.com, MahsaNG v16 |
+| Telegram MTProxy | 993/tcp | ★★★★☆ | ★★★☆☆ | ✅ | Fake-TLS V2, direct Telegram access |
+| XHTTP (VLESS+XHTTP+Reality) | 2096/tcp | ★★★★★ | ★★★★☆ | ✅ | Xray-core, no domain needed |
+| Psiphon Conduit | — | — | — | ⬜ | Donate bandwidth to Psiphon (2M+ users) |
+| Tor Snowflake | — | — | — | ⬜ | Donate bandwidth to Tor network |
+| MahsaNet | — | — | — | ⬜ | Donate VPN configs to Mahsa VPN (2M+ users) |
 
 ## User Management
 
@@ -153,6 +159,8 @@ moav user package joe     # Create zip bundle
 ```
 
 Each user gets a bundle in `outputs/bundles/<username>/` with config files, QR codes, and a README.html guide.
+
+**MahsaNG / V2Ray users (MahsaNG has 2M+ in Iran):** every bundle includes a standard base64 **V2Ray subscription** — in `subscription.txt` and as a click-to-copy block at the top of the bundle's README — so users paste it once into [MahsaNG](https://github.com/GFW-knocker/MahsaNG), v2rayNG, Hiddify, or any V2Ray app to import all proxy protocols at once. See [docs/mahsanet.md](docs/mahsanet.md).
 
 **Download bundles** from the admin dashboard at `https://your-server:9443` or via SCP.
 
@@ -175,7 +183,10 @@ moav logs sing-box        # View service logs
 moav doctor               # Run diagnostics
 moav doctor dns           # Check DNS configuration
 moav donate               # Donate configs to MahsaNet/Psiphon/Snowflake
+moav conduit link         # Psiphon Conduit claim link, QR & sharing guide
 ```
+
+**Psiphon Conduit:** once `conduit` is running it already serves Psiphon users (including in Iran) through the public pool — no link to share. To give specific people a private path, `moav conduit link` prints the Ryve claim link/QR and the Personal Pairing steps. The claim link embeds the private key — keep it secret; share with users only via Personal Pairing inside Ryve. See [Psiphon Conduit in docs/protocols.md](docs/protocols.md#psiphon-conduit).
 
 **Profiles:** `proxy`, `wireguard`, `amneziawg`, `dnstunnel`, `trusttunnel`, `telegram`, `xhttp`, `admin`, `conduit`, `snowflake`, `monitoring`, `all`
 
@@ -221,6 +232,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 - [CLI Reference](docs/CLI.md) - All moav commands and options
 - [DNS Configuration](docs/DNS.md) - DNS records setup
 - [Client Setup](docs/CLIENTS.md) - How to connect from devices
+- [MahsaNG Import](docs/mahsanet.md) - Import MoaV configs into the MahsaNG app (Iran)
 - [VPS Deployment](docs/DEPLOY.md) - One-click cloud deployment
 - [Monitoring](docs/MONITORING.md) - Grafana + Prometheus observability
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
@@ -248,9 +260,10 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 8080/tcp | TCP | wstunnel | No |
 | 993/tcp | TCP | Telegram MTProxy | No |
 | 2096/tcp | TCP | XHTTP (VLESS+XHTTP+Reality) | No |
+| 8444/tcp | TCP | GooseRelay exit (when `ENABLE_GOOSERELAY=true`) | No |
 | 9443/tcp | TCP | Admin dashboard | No |
 | 9444/tcp | TCP | Grafana (monitoring) | No |
-| 53/udp | UDP | DNS tunnel | Yes |
+| 53/udp | UDP | DNS tunnels (dnstt / Slipstream / MasterDNS / XDNS — all share this port) | Yes |
 | 80/tcp | TCP | Let's Encrypt | Yes (during setup) |
 
 ### Domainless Mode
@@ -261,6 +274,7 @@ Don't have a domain? MoaV can run in **domainless mode** with:
 - **WireGuard** (direct UDP + WebSocket tunnel)
 - **AmneziaWG** (obfuscated WireGuard, defeats DPI)
 - **Telegram MTProxy** (fake-TLS, direct Telegram access)
+- **GooseRelay** (SOCKS5 over Google Apps Script — no domain needed)
 - **Admin dashboard** (uses self-signed certificate)
 - **Conduit** (Psiphon bandwidth donation)
 - **Snowflake** (Tor bandwidth donation)
@@ -286,6 +300,8 @@ MoaV/
 │   ├── amneziawg/
 │   ├── trusttunnel/
 │   ├── dnstt/
+│   ├── masterdns/
+│   ├── gooserelay/
 │   ├── telemt/
 │   └── monitoring/
 ├── scripts/                # Management scripts

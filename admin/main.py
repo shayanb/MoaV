@@ -659,6 +659,8 @@ def list_users():
         has_xdns = (user_dir / "xdns-config.json").exists()
         has_dnstt = (user_dir / "dnstt-instructions.txt").exists()
         has_slipstream = (user_dir / "slipstream-instructions.txt").exists() or (user_dir / "slipstream-cert.pem").exists()
+        has_masterdns = (user_dir / "masterdns-instructions.txt").exists()
+        has_gooserelay = (user_dir / "gooserelay-instructions.txt").exists()
 
         # Check if zip already exists
         zip_exists = (bundle_path / f"{username}.zip").exists()
@@ -680,6 +682,8 @@ def list_users():
             "has_telemt": has_telemt,
             "has_dnstt": has_dnstt,
             "has_slipstream": has_slipstream,
+            "has_masterdns": has_masterdns,
+            "has_gooserelay": has_gooserelay,
             "is_donated": username in donated_users,
             "zip_exists": zip_exists,
             "created_at": created_at,
@@ -732,6 +736,8 @@ async def download_bundle(username: str, _: str = Depends(verify_auth)):
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename={username}.zip"}
     )
+
+
 
 
 # =============================================================================

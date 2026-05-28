@@ -855,29 +855,23 @@ moav restart wireguard
 
 > **Quick check:** Run `moav doctor dns` to verify NS delegation for DNS tunnel subdomains, and `moav doctor ports` to check port 53 conflicts.
 
-**Port 53 conflict:** XDNS and dnstt/Slipstream both use port 53. Only one group can be active at a time. Use `moav switch-dns <name>` to swap safely, or edit `.env` directly:
+**Enabling/disabling individual tunnels:** All four DNS tunnels share port 53 via `dns-router` (queries fanned out by subdomain suffix). Enable or disable each independently in `.env`:
 ```bash
-# Default — dnstt + Slipstream (broader client ecosystem via standalone binaries):
-ENABLE_XDNS=false
+# All four DNS tunnels are on by default:
 ENABLE_DNSTT=true
 ENABLE_SLIPSTREAM=true
-PORT_DNS=53
-PORT_XDNS=5353
-
-# OR XDNS (modern, per-user auth, requires FinalMask-aware client like Happ):
-ENABLE_XDNS=true
-ENABLE_DNSTT=false
-ENABLE_SLIPSTREAM=false
-PORT_XDNS=53
-PORT_DNS=5353
+ENABLE_MASTERDNS=true
+ENABLE_XDNS=true       # needs FinalMask-aware client; set false to opt out
+PORT_DNS=53            # dns-router public port (owns port 53)
+PORT_XDNS=5356         # xray XDNS secondary host port
 ```
-Easier: `moav switch-dns xdns` or `moav switch-dns dnstt+slipstream`.
+Or use `moav switch-dns` to manage tunnel daemons: `moav switch-dns dnstt+slipstream+masterdns+xdns` (all four) or `moav switch-dns off`.
 
 **Check logs for domain issues:**
 ```bash
 docker compose logs dnstt        # dnstt
 docker compose logs xray         # XDNS (runs inside xray container)
-docker compose logs dns-router   # DNS routing (dnstt/Slipstream only)
+docker compose logs dns-router   # DNS routing (all tunnels)
 ```
 
 If you see `NXDOMAIN: not authoritative for example.com`, the domain wasn't set correctly during bootstrap:
@@ -914,6 +908,48 @@ ufw allow 53/udp
 # or
 iptables -A INPUT -p udp --dport 53 -j ACCEPT
 ```
+
+#### dnstt connects but no traffic flows (`begin session` but no `begin stream`)
+
+**Symptom:** the client (especially **MahsaNG v16**) reports `TLS handshake timeout` / "failed to detect internet" and never actually passes traffic. `docker compose logs dnstt` shows `begin session <id>` repeating with a **new id each time** and **no** `begin stream`.
+
+**Cause:** this is almost always a **client-side MTU that's too high**, not a server problem. The tiny session-handshake packets get through (so the session opens), but the larger stream-open packets exceed what the DNS path/resolver will carry and get dropped — so a stream never opens and the client keeps retrying with fresh sessions.
+
+**First, confirm the server is fine** — run a stock `dnstt-client` against your own server, bypassing your app entirely. If it fetches your server's IP, the whole server chain (NS → resolver → dns-router → dnstt → sing-box egress) is correct and the problem is purely the client:
+
+```bash
+# Replace PUBKEY (from outputs/dnstt/server.pub) and t.yourdomain.com
+docker run --rm --network host \
+  -e GOPROXY='https://proxy.golang.org|https://goproxy.cn|direct' -e GOSUMDB=off \
+  golang:1.24-alpine sh -c '
+  apk add --no-cache git curl >/dev/null
+  git clone https://www.bamsoftware.com/git/dnstt.git /src >/dev/null 2>&1 || git clone https://repo.or.cz/dnstt.git /src >/dev/null 2>&1
+  cd /src/dnstt-client && go build -o /usr/local/bin/dnstt-client .
+  dnstt-client -udp 8.8.8.8:53 -pubkey PUBKEY t.yourdomain.com 127.0.0.1:7000 &
+  sleep 8
+  curl -s --socks5-hostname 127.0.0.1:7000 -m 40 https://api.ipify.org; echo
+'
+```
+Watch `moav logs -f dnstt` alongside it: if you see `begin stream` (not just `begin session`) and curl returns your server IP, the server is **verified good** — the standalone client works because it negotiates a small `effective MTU` (~132).
+
+**Fix (client side):** lower the client's dnstt MTU.
+- The **standalone dnstt-client** picks a safe MTU automatically — it works out of the box.
+- **MahsaNG v16 does not expose a dnstt MTU control**, so dnstt often opens a session but never a stream there. On MahsaNG, prefer **MasterDNS** (the native DNS tunnel in v16 — it manages its own small MTU, e.g. upload 109 / download 500, and works without tuning) or **Slipstream**; use the standalone dnstt-client when you specifically need dnstt with a tunable MTU.
+
+> The same "session opens, nothing flows" logic applies to any DNS tunnel: the server side is almost never the culprit if the isolation test above passes — check the client's MTU/transport (UDP vs DoH) settings.
+
+#### dnstt stream opens but resets immediately (`connection reset by peer` on `:1080`)
+
+**Symptom:** the dnstt log shows `begin stream` followed immediately by `copy stream←upstream: … ->…:1080: read: connection reset by peer` and `end stream`, repeating. The client app reports something like `SSH Tunnel established` then `Handshake timeout`.
+
+**Cause — client-type mismatch, by design (not a bug):** the client is an **SSH-over-DNS app** (HTTP Injector / Dark Tunnel / "SSH + DNSTT" style) that expects an **SSH server** at the far end of the tunnel. MoaV's DNS tunnels forward to **sing-box's SOCKS5 inbound** (`sing-box:1080`), *not* an SSH host — so sing-box receives SSH handshake bytes it can't parse and resets the connection.
+
+**MoaV's DNS tunnels (dnstt, Slipstream, MasterDNS) are a SOCKS5 transport, not an SSH host.** Use a client that speaks SOCKS5 to the tunnel endpoint:
+- the standalone **dnstt-client**, with your app pointing SOCKS5 at its local listener;
+- **MahsaNG v16** (use its native **MasterDNS** tunnel);
+- **v2ray / sing-box / Xray** clients using the local dnstt port as a SOCKS proxy.
+
+SSH-tunnel apps that require an SSH account behind dnstt are **not supported** — there is no SSH server behind MoaV's DNS tunnels.
 
 ---
 

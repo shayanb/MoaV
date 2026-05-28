@@ -138,7 +138,7 @@ moav doctor dns          # DNS records
 moav doctor services     # Enabled vs running services
 moav doctor config       # Config files and keys
 moav doctor ports        # Port availability
-moav doctor conflicts    # DNS-tunnel port-group collisions
+moav doctor conflicts    # DNS-tunnel health (all 4 share port 53 via dns-router)
 moav doctor env          # Compare .env with .env.example
 moav doctor updates      # Check for MoaV updates
 ```
@@ -152,7 +152,7 @@ moav doctor updates      # Check for MoaV updates
 - `services` — Compare enabled services in `.env` with running containers; flag crash-looping services
 - `config` — Check bootstrap has been run and config files exist for enabled protocols
 - `ports` — Verify required ports are listening; detect systemd-resolved on port 53
-- `conflicts` — Detect DNS-tunnel port-group collisions on port 53 (XDNS vs dnstt+Slipstream); see `moav switch-dns`
+- `conflicts` — Check DNS-tunnel health. All four tunnels (dnstt, Slipstream, MasterDNS, XDNS) share port 53 via `dns-router`, fanned out by subdomain (`t.`/`s.`/`m.`/`x.`), so they coexist — this verifies enabled-vs-running state and that `dns-router` isn't crash-looping. Toggle individual tunnels with `ENABLE_*` or `moav switch-dns`
 - `env` — Compare `.env` with `.env.example` for missing variables; flag critical missing vars
 - `updates` — Check current version against latest GitHub release
 
@@ -369,6 +369,31 @@ Create distributable zip for an existing user.
 moav user package john        # Creates outputs/bundles/john.zip
 ```
 
+#### V2Ray subscription (in every bundle)
+Every user bundle includes a standard base64 **V2Ray subscription** — both as
+`outputs/bundles/<user>/subscription.txt` and as a click-to-copy block at the
+top of the bundle's `README.html`. Paste it once into
+[MahsaNG](https://github.com/GFW-knocker/MahsaNG), v2rayNG, Hiddify, Streisand,
+or any V2Ray app to import all proxy protocols at once — Reality, CDN, XHTTP,
+Trojan, Shadowsocks-2022, Hysteria2 (standard `vless://`/`trojan://`/`ss://`/
+`hysteria2://` URIs, IPv4 + IPv6).
+
+WireGuard/AmneziaWG/TrustTunnel/DNS-tunnel/GooseRelay/Telegram are intentionally
+excluded (not subscription-importable; the DNS tunnels and GooseRelay are set up
+in their own app tabs). Full walkthrough: [docs/mahsanet.md](mahsanet.md).
+
+#### `moav user gooserelay`
+Print GooseRelay setup instructions for a user (extracted from their bundle).
+
+```bash
+moav user gooserelay john     # Print tunnel_key + Apps Script setup guide
+```
+
+GooseRelay is opt-in (`ENABLE_GOOSERELAY=true` in `.env`). When enabled, each
+user bundle includes `gooserelay-instructions.txt` with the shared `tunnel_key`
+and a step-by-step guide for deploying the Google Apps Script forwarder. See
+[docs/protocols.md → GooseRelay](protocols.md#gooserelay) for full details.
+
 ---
 
 ### Testing & Client
@@ -387,7 +412,7 @@ moav test john --verbose      # Same as above
 - `--json` - Output results in JSON format
 - `-v`, `--verbose` - Show detailed debug output
 
-Tests: Reality, Trojan, Hysteria2, TrustTunnel, WireGuard, dnstt
+Tests: Reality, Trojan, Hysteria2, TrustTunnel, WireGuard, dnstt, Slipstream, MasterDNS
 
 **Sample output:**
 ```
@@ -404,6 +429,8 @@ Tests: Reality, Trojan, Hysteria2, TrustTunnel, WireGuard, dnstt
   ✓ hysteria2    Connected via Hysteria2
   ✓ wireguard    Config valid, endpoint reachable
   ○ dnstt        No dnstt config found in bundle
+  ○ slipstream   No slipstream config found in bundle
+  ○ masterdns    No masterdns config found in bundle
 
 ═══════════════════════════════════════════════════════════════
 ```
@@ -430,7 +457,7 @@ moav client connect john -p hysteria2       # Short form
 **Options:**
 - `--protocol`, `-p` - Specify protocol (default: auto)
 
-**Protocols:** `auto`, `reality`, `trojan`, `hysteria2`, `wireguard`, `tor`, `dnstt`
+**Protocols:** `auto`, `reality`, `trojan`, `hysteria2`, `wireguard`, `tor`, `dnstt`, `slipstream`, `masterdns`
 
 **Proxy endpoints (configurable in .env):**
 - SOCKS5: `localhost:10800` (CLIENT_SOCKS_PORT)
@@ -519,6 +546,27 @@ SNOWFLAKE_BANDWIDTH=5                # Bandwidth limit in Mbps
 SNOWFLAKE_CAPACITY=50                # Max concurrent clients
 ```
 
+#### `moav conduit`
+Show the Psiphon Conduit claim link, QR code, and sharing guide.
+
+```bash
+moav conduit              # Same as 'moav conduit link'
+moav conduit link         # Ryve claim deep link + QR + sharing walkthrough
+moav conduit status       # Running state + connected clients / bandwidth
+moav conduit help         # Usage
+```
+
+While Conduit runs it already serves Psiphon users (including in Iran) through
+the **public pool** — nothing needs to be shared for that. To give specific
+people a private path, use **Personal Pairing**: import the station into the
+Ryve app with the claim link this command prints, then generate a pairing
+link inside Ryve.
+
+> **⚠ Security:** the claim link/QR embeds this Conduit's **private key** (for
+> your own phone's Ryve app). Treat it like a password — do **not** post it
+> publicly. The link you share with users is the Personal Pairing link
+> generated inside Ryve, not the claim link. `moav donate info` is an alias.
+
 ---
 
 ### Migration
@@ -591,6 +639,8 @@ Profiles group related services together.
 | `proxy` | sing-box, decoy, certbot |
 | `wireguard` | wireguard, wstunnel |
 | `dnstt` | dnstt |
+| `slipstream` | slipstream |
+| `masterdns` | masterdns |
 | `trusttunnel` | trusttunnel |
 | `admin` | admin |
 | `conduit` | psiphon-conduit |
@@ -613,6 +663,8 @@ moav start all                # Start everything
 | sing-box | `proxy`, `singbox`, `reality` |
 | wireguard | `wg` |
 | dnstt | `dns` |
+| slipstream | `slip` |
+| masterdns | `mdns` |
 | psiphon-conduit | `conduit` |
 
 **Usage:**

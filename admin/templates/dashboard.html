@@ -283,12 +283,16 @@
             color: var(--blue);
         }
         .dl-link {
+            display: inline-block;
             font-family: var(--mono);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--blue);
             text-decoration: none;
+            border: 1px solid var(--blue);
+            border-radius: 3px;
+            padding: 0.05rem 0.35rem;
         }
-        .dl-link:hover { text-decoration: underline; }
+        .dl-link:hover { background: var(--blue); color: #000; }
         .empty-msg {
             color: var(--text-dim);
             font-size: 0.85rem;
@@ -851,6 +855,8 @@
                             {% if user.has_telemt %}<span class="tag">MTProxy</span>{% endif %}
                             {% if user.has_dnstt %}<span class="tag">dnstt</span>{% endif %}
                             {% if user.has_slipstream %}<span class="tag">Slip</span>{% endif %}
+                            {% if user.has_masterdns %}<span class="tag">MDNS</span>{% endif %}
+                            {% if user.has_gooserelay %}<span class="tag">Goose</span>{% endif %}
                             {% if user.is_donated %}<span class="tag tag-donated">donated</span>{% endif %}
                         </td>
                         <td style="text-align:right;">

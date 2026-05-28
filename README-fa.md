@@ -8,7 +8,11 @@
 
 ## ویژگی‌ها
 
-- **پروتکل‌های متعدد** - Reality (VLESS)، Trojan، Shadowsocks-2022، Hysteria2، XHTTP (VLESS+XHTTP+Reality)، XDNS (تونل DNS با mKCP)، TrustTunnel، AmneziaWG، WireGuard (مستقیم و wstunnel)، تونل‌های DNS (dnstt + Slipstream)، Telegram MTProxy، CDN (VLESS+WS)
+- **پروتکل‌های متعدد** — ۱۶+ پروتکل برای هر سناریوی سانسور:
+  - **پروکسی با پنهان‌کاری بالا** — Reality (VLESS)، Trojan، Hysteria2، XHTTP (VLESS+XHTTP+Reality)، CDN (VLESS+WS از طریق Cloudflare)
+  - **VPN کامل** — WireGuard (مستقیم و wstunnel)، AmneziaWG
+  - **تخصصی** — TrustTunnel (HTTP/2+QUIC)، Telegram MTProxy (Fake-TLS)، Shadowsocks-2022، GooseRelay (SOCKS5 از طریق Google Apps Script)
+  - **تونل‌های DNS** — dnstt، Slipstream، MasterDNS و XDNS — همه چهار تونل به‌صورت هم‌زمان روی پورت ۵۳ از طریق `dns-router` کار می‌کنند
 - **اولویت پنهان‌کاری** - تمام ترافیک شبیه HTTPS معمولی، WebSocket، DNS، یا IMAPS به نظر می‌رسد
 - **اعتبارنامه‌های جداگانه برای هر کاربر** - ایجاد، لغو و مدیریت کاربران به صورت مستقل
 - **نصب آسان** - مبتنی بر Docker Compose، راه‌اندازی با یک دستور
@@ -138,25 +142,27 @@ moav help                 # نمایش تمام دستورات
 
 ## پروتکل‌ها
 
-| پروتکل | پورت | پنهان‌کاری | سرعت | کاربرد |
-|--------|------|---------|-------|--------|
-| Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | اصلی، قابل اعتمادترین |
-| Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | سریع، کار می‌کند وقتی TCP محدود است |
-| Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | پشتیبان، از دامنه شما استفاده می‌کند |
-| Shadowsocks-2022 | 8388/tcp+udp | ★★★★☆ | ★★★★☆ | AEAD-2022 ضد پروب فعال؛ سازگار با اپ Outline (پیش‌فرض خاموش) |
-| CDN (VLESS+WS) | 443 از Cloudflare | ★★★★★ | ★★★☆☆ | وقتی IP سرور مسدود است |
-| TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | HTTP/2 و QUIC، شبیه HTTPS |
-| WireGuard (مستقیم) | 51820/udp | ★★★☆☆ | ★★★★★ | VPN کامل، نصب ساده |
-| AmneziaWG | 51821/udp | ★★★★★ | ★★★★☆ | وایرگارد مبهم‌سازی شده، دور زدن DPI |
-| WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | VPN وقتی UDP مسدود است |
-| تونل DNS (dnstt) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | آخرین راه‌حل، سخت برای مسدود کردن |
-| Slipstream | 53/udp | ★★★☆☆ | ★★☆☆☆ | QUIC-over-DNS، ۱.۵-۵ برابر سریعتر از dnstt |
-| Telegram MTProxy | 993/tcp | ★★★★☆ | ★★★☆☆ | Fake-TLS V2، دسترسی مستقیم به تلگرام |
-| XHTTP (VLESS+XHTTP+Reality) | 2096/tcp | ★★★★★ | ★★★★☆ | Xray-core، بدون نیاز به دامنه |
-| XDNS (VLESS+mKCP+DNS) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | تونل DNS با FinalMask، کار میکنه موقع قطعی شدید |
-| Psiphon Conduit | - | - | - | اهدای پهنای باند به Psiphon (۲+ میلیون کاربر) |
-| Tor Snowflake | - | - | - | اهدای پهنای باند به شبکه Tor |
-| MahsaNet | - | - | - | اهدای کانفیگ VPN به مهسا VPN (۲+ میلیون کاربر) |
+| پروتکل | پورت | پنهان‌کاری | سرعت | پیش‌فرض | کاربرد |
+|--------|------|---------|-------|---------|--------|
+| Reality (VLESS) | 443/tcp | ★★★★★ | ★★★★☆ | ✅ | اصلی، قابل اعتمادترین |
+| Hysteria2 | 443/udp | ★★★★☆ | ★★★★★ | ✅ | سریع، کار می‌کند وقتی TCP محدود است |
+| Trojan | 8443/tcp | ★★★★☆ | ★★★★☆ | ✅ | پشتیبان، از دامنه شما استفاده می‌کند |
+| Shadowsocks-2022 | 8388/tcp+udp | ★★★★☆ | ★★★★☆ | ⬜ | AEAD-2022 ضد پروب فعال؛ سازگار با اپ Outline |
+| CDN (VLESS+WS) | 443 از Cloudflare | ★★★★★ | ★★★☆☆ | ✅ | وقتی IP سرور مسدود است |
+| TrustTunnel | 4443/tcp+udp | ★★★★★ | ★★★★☆ | ✅ | HTTP/2 و QUIC، شبیه HTTPS |
+| WireGuard (مستقیم) | 51820/udp | ★★★☆☆ | ★★★★★ | ✅ | VPN کامل، نصب ساده |
+| AmneziaWG | 51821/udp | ★★★★★ | ★★★★☆ | ✅ | وایرگارد مبهم‌سازی شده، دور زدن DPI |
+| WireGuard (wstunnel) | 8080/tcp | ★★★★☆ | ★★★★☆ | ✅ | VPN وقتی UDP مسدود است |
+| تونل DNS (dnstt) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | ✅ | آخرین راه‌حل، سخت برای مسدود کردن |
+| Slipstream | 53/udp | ★★★☆☆ | ★★☆☆☆ | ✅ | QUIC-over-DNS، ۱.۵-۵ برابر سریعتر از dnstt |
+| MasterDNS | 53/udp | ★★★☆☆ | ★★★☆☆ | ✅ | تونل DNS پیشرفته (ARQ + تعادل بار)، مهسا v16 |
+| XDNS (VLESS+mKCP+DNS) | 53/udp | ★★★☆☆ | ★☆☆☆☆ | ✅ | تونل DNS با FinalMask؛ هر ۴ تونل DNS پورت ۵۳ را شریک می‌شوند |
+| GooseRelay | 8444/tcp | ★★★★★ | ★★☆☆☆ | ⬜ | SOCKS5 از طریق Google Apps Script، مهسا v16 |
+| Telegram MTProxy | 993/tcp | ★★★★☆ | ★★★☆☆ | ✅ | Fake-TLS V2، دسترسی مستقیم به تلگرام |
+| XHTTP (VLESS+XHTTP+Reality) | 2096/tcp | ★★★★★ | ★★★★☆ | ✅ | Xray-core، بدون نیاز به دامنه |
+| Psiphon Conduit | — | — | — | ⬜ | اهدای پهنای باند به Psiphon (۲+ میلیون کاربر) |
+| Tor Snowflake | — | — | — | ⬜ | اهدای پهنای باند به شبکه Tor |
+| MahsaNet | — | — | — | ⬜ | اهدای کانفیگ VPN به مهسا VPN (۲+ میلیون کاربر) |
 
 ## مدیریت کاربران
 
@@ -285,7 +291,8 @@ moav client connect user1 # اتصال به عنوان کاربر (پراکسی 
 | 2096/tcp | TCP | XHTTP (VLESS+XHTTP+Reality) | خیر |
 | 9443/tcp | TCP | داشبورد ادمین | خیر |
 | 9444/tcp | TCP | Grafana (مانیتورینگ) | خیر |
-| 53/udp | UDP | تونل DNS | بله |
+| 53/udp | UDP | تونل‌های DNS (dnstt / Slipstream / MasterDNS / XDNS — همه پورت ۵۳ را شریک می‌شوند) | بله |
+| 8444/tcp | TCP | GooseRelay (وقتی `ENABLE_GOOSERELAY=true`) | خیر |
 | 80/tcp | TCP | Let's Encrypt | بله (هنگام نصب) |
 
 ### حالت بدون دامنه
@@ -322,6 +329,8 @@ MoaV/
 │   ├── amneziawg/
 │   ├── trusttunnel/
 │   ├── dnstt/
+│   ├── masterdns/
+│   ├── gooserelay/
 │   ├── telemt/
 │   └── monitoring/
 ├── scripts/                # اسکریپت‌های مدیریت
