@@ -289,6 +289,41 @@
             margin-bottom: 16px;
         }
 
+        /* Collapsible proxy protocol sections — uses <details>/<summary>.
+           The subscription card at the top imports all of these in one paste,
+           so the per-protocol cards are collapsed by default for reference.
+           Logical properties (inline-end) flip naturally in the FA RTL block. */
+        details.protocol-section > summary.protocol-header {
+            list-style: none;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-inline-end: 40px;
+            transition: background 0.15s;
+        }
+        details.protocol-section > summary.protocol-header::-webkit-details-marker {
+            display: none;
+        }
+        details.protocol-section > summary.protocol-header::after {
+            content: "▸";
+            position: absolute;
+            inset-inline-end: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.5;
+            font-size: 14px;
+            transition: opacity 0.15s;
+        }
+        details.protocol-section[open] > summary.protocol-header::after {
+            content: "▾";
+        }
+        details.protocol-section > summary.protocol-header:hover {
+            background: var(--bg-secondary);
+        }
+        details.protocol-section > summary.protocol-header:hover::after {
+            opacity: 1;
+        }
+
         /* QR Code */
         .qr-section {
             display: flex;
@@ -583,7 +618,7 @@
         <div class="toc">
             <h3>Quick Navigation</h3>
             <ul class="toc-list">
-                <li style="{{MAHSANET_DISPLAY}}"><a href="#en" onclick="scrollToSection('mahsang-en')">★ MahsaNG <span class="toc-badge badge-primary">V2Ray sub</span></a></li>
+                <li style="{{MAHSANET_DISPLAY}}"><a href="#en" onclick="scrollToSection('mahsang-en')"> Import All ★ <span class="toc-badge badge-primary">V2Ray sub</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('reality-en')">1. Reality (VLESS) <span class="toc-badge badge-primary">Primary</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('hysteria2-en')">2. Hysteria2 <span class="toc-badge badge-secondary">Fast</span></a></li>
                 <li><a href="#en" onclick="scrollToSection('trojan-en')">3. Trojan <span class="toc-badge badge-secondary">Backup</span></a></li>
@@ -632,9 +667,9 @@
                 </div>
             </div>
             <div class="protocol-content">
-                <p class="protocol-desc">A standard <strong>V2Ray subscription</strong> — works in <a href="https://www.mahsaserver.com/" target="_blank"><strong>MahsaNG v16</strong></a>, v2rayNG, Hiddify, Streisand and most V2Ray apps. Copy it, then in your app tap <strong>+</strong> → <strong>Import from clipboard</strong> (or <strong>Subscriptions → +</strong> → paste) to import <strong>all compatible servers in one step</strong> — Reality, CDN, XHTTP, Trojan, Shadowsocks and Hysteria2 (IPv4 + IPv6).</p>
+                <p class="protocol-desc">A standard <strong>V2Ray subscription — works in MahsaNG v16, v2rayNG, Hiddify, Streisand and most V2Ray apps</strong>. Copy it, then in your app tap <strong>+</strong> → <strong>Import from clipboard</strong> (or <strong>Subscriptions → +</strong> → paste) to import <strong>all compatible servers in one step</strong> — Reality, CDN, XHTTP, Trojan, Shadowsocks and Hysteria2 (IPv4 + IPv6).</p>
                 <div class="config-box">
-                    <h4>Subscription (click to copy → paste into MahsaNG)</h4>
+                    <h4>Subscription (click to copy → paste into the app)</h4>
                     <div class="config-value" onclick="copyConfig(this)">{{MAHSANET_SUB}}</div>
                 </div>
                 <p class="protocol-desc" style="margin-top: 14px;">This brings in the proxy protocols. The DNS tunnels (MasterDNS, dnstt, Slipstream, XDNS) and GooseRelay are configured in MahsaNG's own tabs — see their sections below. <strong>MasterDNS</strong> is the most reliable DNS tunnel during heavy shutdowns.</p>
@@ -642,14 +677,14 @@
         </div>
 
         <!-- Reality (VLESS) -->
-        <div class="protocol-section" id="reality-en">
-            <div class="protocol-header">
+        <details class="protocol-section" id="reality-en">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>1. Reality (VLESS)</h2>
                     <span class="protocol-badge badge-primary">Primary</span>
                 </div>
                 <span class="protocol-port">Port 443/tcp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">Most reliable protocol. Impersonates legitimate TLS traffic to bypass deep packet inspection.</p>
                 <div class="qr-section">
@@ -676,17 +711,17 @@
                     <p><strong>v2rayNG:</strong> Settings → TLS/Reality → TLS Fragment → Length: <code>50-200</code>, Interval: <code>10-50</code></p>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- Hysteria2 -->
-        <div class="protocol-section" id="hysteria2-en">
-            <div class="protocol-header">
+        <details class="protocol-section" id="hysteria2-en">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>2. Hysteria2</h2>
                     <span class="protocol-badge badge-secondary">Fast</span>
                 </div>
                 <span class="protocol-port">Port 443/udp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">QUIC-based protocol optimized for lossy networks. Great for unstable connections.</p>
                 <div class="qr-section">
@@ -707,17 +742,17 @@
                     <div class="config-value" onclick="copyConfig(this)">{{CONFIG_HYSTERIA2}}</div>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- Trojan -->
-        <div class="protocol-section" id="trojan-en">
-            <div class="protocol-header">
+        <details class="protocol-section" id="trojan-en">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>3. Trojan</h2>
                     <span class="protocol-badge badge-secondary">Backup</span>
                 </div>
                 <span class="protocol-port">Port 8443/tcp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">Looks like normal HTTPS traffic. Battle-tested reliability.</p>
                 <div class="qr-section">
@@ -744,16 +779,16 @@
                     <p><strong>v2rayNG:</strong> Settings → TLS Fragment (Length: <code>50-200</code>, Interval: <code>10-50</code>) and MUX (Concurrency: <code>2-4</code>)</p>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- Shadowsocks-2022 -->
-        <div class="protocol-section" id="shadowsocks-en">
-            <div class="protocol-header">
+        <details class="protocol-section" id="shadowsocks-en">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>3b. Shadowsocks-2022</h2>
                 </div>
                 <span class="protocol-port">Port {{PORT_SS}}/tcp+udp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">Modern Shadowsocks (AEAD-2022) with anti-active-probing. Same protocol family Outline VPN uses — connect with NekoBox, Hiddify, Streisand, sing-box, or the Outline app via the standard <code>ss://</code> URI.</p>
                 <div class="qr-section">
@@ -774,17 +809,17 @@
                     <div class="config-value" onclick="copyConfig(this)">{{CONFIG_SHADOWSOCKS}}</div>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- CDN VLESS+WS -->
-        <div class="protocol-section" id="cdn-en">
-            <div class="protocol-header">
+        <details class="protocol-section" id="cdn-en">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>4. CDN VLESS+WS</h2>
                     <span class="protocol-badge badge-secondary">IP Blocked?</span>
                 </div>
                 <span class="protocol-port">Port 443/tcp (via Cloudflare)</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">Use this when the server IP is blocked. Traffic routes through Cloudflare CDN, hiding your server's real IP.</p>
 
@@ -817,17 +852,17 @@
                     <p><strong>v2rayNG:</strong> Settings → MUX → Concurrency: <code>2-4</code></p>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- XHTTP (Xray-core) -->
-        <div class="protocol-section" id="xhttp-en">
-            <div class="protocol-header">
+        <details class="protocol-section" id="xhttp-en">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>4b. XHTTP</h2>
                     <span class="protocol-badge badge-secondary">Xray-core</span>
                 </div>
                 <span class="protocol-port">Port 2096/tcp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">VLESS over XHTTP with Reality. Splits traffic into separate HTTP connections with no distinctive fingerprint, making it very hard to detect via DPI. Powered by Xray-core.</p>
 
@@ -857,7 +892,7 @@
                     <div class="config-value" onclick="copyConfig(this)">{{CONFIG_XHTTP}}</div>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- AmneziaWG -->
         <div class="protocol-section" id="amneziawg-en">
@@ -1480,7 +1515,7 @@
         <div class="toc">
             <h3>فهرست</h3>
             <ul class="toc-list">
-                <li style="{{MAHSANET_DISPLAY}}"><a href="#fa" onclick="scrollToSection('mahsang-fa')">★ مهسانگ <span class="toc-badge badge-primary">اشتراک V2Ray</span></a></li>
+                <li style="{{MAHSANET_DISPLAY}}"><a href="#fa" onclick="scrollToSection('mahsang-fa')">Import All ★<span class="toc-badge badge-primary">اشتراک V2Ray</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('reality-fa')">۱. Reality (VLESS) <span class="toc-badge badge-primary">اصلی</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('hysteria2-fa')">۲. Hysteria2 <span class="toc-badge badge-secondary">سریع</span></a></li>
                 <li><a href="#fa" onclick="scrollToSection('trojan-fa')">۳. Trojan <span class="toc-badge badge-secondary">پشتیبان</span></a></li>
@@ -1524,29 +1559,29 @@
         <div class="protocol-section" id="mahsang-fa" style="{{MAHSANET_DISPLAY}}">
             <div class="protocol-header">
                 <div class="protocol-title">
-                    <h2>★ درون‌ریزی همه با هم</h2>
+                    <h2>★ همه با هم</h2>
                     <span class="protocol-badge badge-primary">اشتراک V2Ray</span>
                 </div>
             </div>
             <div class="protocol-content">
                 <p class="protocol-desc">یک <strong>اشتراک استاندارد V2Ray</strong> — در <a href="https://www.mahsaserver.com/" target="_blank"><strong>MahsaNG نسخه ۱۶</strong></a>، v2rayNG، Hiddify، Streisand و بیشتر اپ‌های V2Ray کار می‌کند. آن را کپی کنید، سپس در اپ خود روی <strong>+</strong> → <strong>Import from clipboard</strong> (یا <strong>Subscriptions → +</strong> و پیست) بزنید تا <strong>همهٔ سرورهای سازگار یکجا</strong> اضافه شوند — Reality، CDN، XHTTP، Trojan، Shadowsocks و Hysteria2 (IPv4 و IPv6).</p>
                 <div class="config-box">
-                    <h4>اشتراک (کلیک کنید تا کپی شود ← در مهسانگ پیست کنید)</h4>
+                    <h4>اشتراک (کلیک کنید تا کپی شود ← در مهسا‌ان‌جی پیست کنید)</h4>
                     <div class="config-value" onclick="copyConfig(this)">{{MAHSANET_SUB}}</div>
                 </div>
-                <p class="protocol-desc" style="margin-top: 14px;">این کار پروتکل‌های پروکسی را وارد می‌کند. تونل‌های DNS (MasterDNS، dnstt، Slipstream، XDNS) و GooseRelay در تب‌های مخصوص خودشان در مهسانگ تنظیم می‌شوند — به بخش‌های مربوطه در پایین مراجعه کنید. <strong>MasterDNS</strong> در قطعی‌های شدید پایدارترین تونل DNS است.</p>
+                <p class="protocol-desc" style="margin-top: 14px;">این کار پروتکل‌های پروکسی را وارد می‌کند. تونل‌های DNS (MasterDNS، dnstt، Slipstream، XDNS) و GooseRelay در تب‌های مخصوص خودشان در مهسا‌ان‌جی تنظیم می‌شوند — به بخش‌های مربوطه در پایین مراجعه کنید. <strong>MasterDNS</strong> در قطعی‌های شدید پایدارترین تونل DNS است.</p>
             </div>
         </div>
 
         <!-- Reality (VLESS) -->
-        <div class="protocol-section" id="reality-fa">
-            <div class="protocol-header">
+        <details class="protocol-section" id="reality-fa">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>۱. Reality (VLESS)</h2>
                     <span class="protocol-badge badge-primary">اصلی</span>
                 </div>
                 <span class="protocol-port">پورت 443/tcp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">قابل اعتمادترین پروتکل. ترافیک TLS واقعی را تقلید می‌کند تا از بازرسی عمیق بسته‌ها عبور کند.</p>
                 <div class="qr-section">
@@ -1573,17 +1608,17 @@
                     <p><strong>v2rayNG:</strong> Settings → TLS/Reality → TLS Fragment → Length: <code>50-200</code>، Interval: <code>10-50</code></p>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- Hysteria2 -->
-        <div class="protocol-section" id="hysteria2-fa">
-            <div class="protocol-header">
+        <details class="protocol-section" id="hysteria2-fa">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>۲. Hysteria2</h2>
                     <span class="protocol-badge badge-secondary">سریع</span>
                 </div>
                 <span class="protocol-port">پورت 443/udp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">پروتکل مبتنی بر QUIC بهینه‌سازی شده برای شبکه‌های ناپایدار. عالی برای اتصالات نامنظم.</p>
                 <div class="qr-section">
@@ -1604,17 +1639,17 @@
                     <div class="config-value" onclick="copyConfig(this)">{{CONFIG_HYSTERIA2}}</div>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- Trojan -->
-        <div class="protocol-section" id="trojan-fa">
-            <div class="protocol-header">
+        <details class="protocol-section" id="trojan-fa">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>۳. Trojan</h2>
                     <span class="protocol-badge badge-secondary">پشتیبان</span>
                 </div>
                 <span class="protocol-port">پورت 8443/tcp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">شبیه ترافیک HTTPS معمولی به نظر می‌رسد. قابلیت اطمینان آزمایش‌شده.</p>
                 <div class="qr-section">
@@ -1641,16 +1676,16 @@
                     <p><strong>v2rayNG:</strong> Settings → TLS Fragment (Length: <code>50-200</code>، Interval: <code>10-50</code>) و MUX (Concurrency: <code>2-4</code>)</p>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- Shadowsocks-2022 -->
-        <div class="protocol-section" id="shadowsocks-fa">
-            <div class="protocol-header">
+        <details class="protocol-section" id="shadowsocks-fa">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>۳ب. Shadowsocks-2022</h2>
                 </div>
                 <span class="protocol-port">پورت {{PORT_SS}}/tcp+udp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">Shadowsocks مدرن (AEAD-2022) با مقاومت در برابر پروب فعال. همان خانواده پروتکل که Outline VPN استفاده می‌کند — با NekoBox، Hiddify، Streisand، sing-box یا اپ Outline از طریق لینک استاندارد <code>ss://</code> متصل شوید.</p>
                 <div class="qr-section">
@@ -1671,17 +1706,17 @@
                     <div class="config-value" onclick="copyConfig(this)">{{CONFIG_SHADOWSOCKS}}</div>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- CDN VLESS+WS -->
-        <div class="protocol-section" id="cdn-fa">
-            <div class="protocol-header">
+        <details class="protocol-section" id="cdn-fa">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>۴. CDN VLESS+WS</h2>
                     <span class="protocol-badge badge-secondary">IP مسدود؟</span>
                 </div>
                 <span class="protocol-port">پورت 443/tcp (از طریق Cloudflare)</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">زمانی استفاده کنید که IP سرور مسدود شده. ترافیک از طریق CDN کلودفلر عبور می‌کند.</p>
 
@@ -1714,17 +1749,17 @@
                     <p><strong>v2rayNG:</strong> Settings → MUX → Concurrency: <code>2-4</code></p>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- XHTTP (Xray-core) -->
-        <div class="protocol-section" id="xhttp-fa">
-            <div class="protocol-header">
+        <details class="protocol-section" id="xhttp-fa">
+            <summary class="protocol-header">
                 <div class="protocol-title">
                     <h2>۴ب. XHTTP</h2>
                     <span class="protocol-badge badge-secondary">Xray-core</span>
                 </div>
                 <span class="protocol-port">پورت 2096/tcp</span>
-            </div>
+            </summary>
             <div class="protocol-content">
                 <p class="protocol-desc">VLESS روی XHTTP با Reality. ترافیک را به اتصالات HTTP جداگانه تقسیم می‌کند بدون اثر انگشت قابل تشخیص، که شناسایی توسط DPI را بسیار دشوار می‌کند. با Xray-core کار می‌کند.</p>
 
@@ -1754,7 +1789,7 @@
                     <div class="config-value" onclick="copyConfig(this)">{{CONFIG_XHTTP}}</div>
                 </div>
             </div>
-        </div>
+        </details>
 
         <!-- AmneziaWG -->
         <div class="protocol-section" id="amneziawg-fa">
@@ -2046,7 +2081,7 @@
             </div>
         </div>
 
-        <!-- MasterDNS (تونل DNS مهسانگ نسخه ۱۶) -->
+        <!-- MasterDNS (تونل DNS مهسا‌ان‌جی نسخه ۱۶) -->
         <div class="protocol-section" id="masterdns-fa" style="{{MASTERDNS_DISPLAY}}">
             <div class="protocol-header">
                 <div class="protocol-title">
@@ -2323,7 +2358,11 @@
 
         function scrollToSection(id) {
             var el = document.getElementById(id);
-            if (el) setTimeout(function() { el.scrollIntoView({ behavior: 'smooth' }); }, 10);
+            if (!el) return;
+            // If the target is a collapsible <details>, open it before scrolling
+            // so the user lands on the expanded content, not the collapsed header.
+            if (el.tagName === 'DETAILS') el.open = true;
+            setTimeout(function() { el.scrollIntoView({ behavior: 'smooth' }); }, 10);
         }
 
         function copyConfig(el) {
