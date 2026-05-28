@@ -105,30 +105,42 @@ fi
 echo ""
 
 # -----------------------------------------------------------------------------
-# Clean up user files
+# Clean up user files. Removing bundle/state counts as "something was revoked"
+# — otherwise a user whose service entries were already gone (e.g. cleaned up
+# in a prior partial revoke) would be reported as a failure even though we
+# successfully scrubbed their files.
 # -----------------------------------------------------------------------------
+CLEANED_FILES=false
 if [[ "$KEEP_BUNDLE" != "--keep-bundle" ]] && [[ -d "$OUTPUT_DIR" ]]; then
     log_info "Removing user bundle: $OUTPUT_DIR"
     rm -rf "$OUTPUT_DIR"
+    CLEANED_FILES=true
 fi
 
 if [[ -d "$STATE_DIR/users/$USERNAME" ]]; then
     log_info "Removing user state: $STATE_DIR/users/$USERNAME"
     rm -rf "$STATE_DIR/users/$USERNAME"
+    CLEANED_FILES=true
 fi
 
 # Also try docker volume path
-docker run --rm -v moav_moav_state:/state alpine rm -rf "/state/users/$USERNAME" 2>/dev/null || true
+if docker run --rm -v moav_moav_state:/state alpine sh -c "[ -d /state/users/$USERNAME ] && rm -rf /state/users/$USERNAME" 2>/dev/null; then
+    CLEANED_FILES=true
+fi
 
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 echo ""
-if [[ "$REVOKED" == "true" ]]; then
+if [[ "$REVOKED" == "true" ]] || [[ "$CLEANED_FILES" == "true" ]]; then
     log_info "========================================"
-    log_info "User '$USERNAME' has been revoked"
+    if [[ "$REVOKED" == "true" ]]; then
+        log_info "User '$USERNAME' has been revoked"
+    else
+        log_info "User '$USERNAME' files cleaned up (no active service entries)"
+    fi
     log_info "========================================"
 else
-    log_error "User '$USERNAME' was not found in any service"
+    log_error "User '$USERNAME' not found — nothing to revoke (no service entries, no files)"
     exit 1
 fi
