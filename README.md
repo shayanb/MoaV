@@ -1,6 +1,6 @@
 # MoaV
 
-[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Docs](https://img.shields.io/badge/docs-moav.sh%2Fdocs-cyan.svg)](https://moav.sh/docs/)  [![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Website](https://img.shields.io/badge/website-moav.sh-cyan.svg)](https://moav.sh)  [![Docs](https://img.shields.io/badge/docs-moav.sh%2Fdocs-cyan.svg)](https://moav.sh/docs/)  [![Version](https://img.shields.io/badge/version-1.8.1-blue.svg)](CHANGELOG.md)  [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 English | **[فارسی](README-fa.md)** 
 
@@ -252,7 +252,7 @@ See [docs/CLIENTS.md](docs/CLIENTS.md) for complete list and setup instructions.
 | 443/tcp | TCP | Reality (VLESS) | Yes |
 | 443/udp | UDP | Hysteria2 | Yes |
 | 8443/tcp | TCP | Trojan | Yes |
-| 8388/tcp+udp | TCP+UDP | Shadowsocks-2022 (when `ENABLE_SS=true`) | No |
+| 8388/tcp+udp | TCP+UDP | Shadowsocks-2022 | No |
 | 4443/tcp+udp | TCP+UDP | TrustTunnel | Yes |
 | 2082/tcp | TCP | CDN WebSocket | Yes (Cloudflare) |
 | 51820/udp | UDP | WireGuard | No |
