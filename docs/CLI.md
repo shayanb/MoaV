@@ -232,15 +232,29 @@ Start services.
 
 ```bash
 moav start                    # Start DEFAULT_PROFILES from .env
-moav start all                # Start all services
+moav start all                # Start all services whose ENABLE_* is true
 moav start proxy              # Start proxy profile only
 moav start proxy admin        # Start multiple profiles
 moav start proxy wireguard admin  # Start three profiles
 ```
 
 **Arguments:**
-- No arguments: Uses `DEFAULT_PROFILES` from `.env`
-- Profile names: Start specific profiles (space-separated)
+- No arguments: uses `DEFAULT_PROFILES` from `.env`
+- Profile names: start specific profiles (space-separated)
+- `--force` / `-f`: bypass the profile-filtering prompt (see below)
+
+##### Profile filtering (1.8.2+)
+
+`DEFAULT_PROFILES` and `--profile all` are docker-compose constructs that don't know about MoaV's `ENABLE_*` flags. `moav start` bridges that:
+
+- **No-args** (reads `DEFAULT_PROFILES`): silently drops profiles whose `ENABLE_*` is `false` in `.env`. Prints one line — `Skipping disabled profiles: <list>` — when anything is filtered, so stale entries self-heal on the next start.
+- **`moav start all`**: expands `all` to the set of profiles whose `ENABLE_*` is true, instead of starting every Compose profile member. Build / logs / down ops still treat `--profile all` as everything.
+- **`moav start <name>` for a disabled profile**: prompts with three options:
+  1. **Enable + start** — sets `ENABLE_*=true` in `.env`, then starts (persists for next time).
+  2. **Skip** — don't start; `.env` stays as-is.
+  3. **Start once** — start now without modifying `.env` (won't auto-start next time).
+
+  Multi-flag profiles (`proxy`, `dnstunnel`) can't be auto-flipped — option 1 shows which underlying flags to set. Non-interactive shells default to skip. `--force` bypasses the prompt.
 
 #### `moav stop`
 Stop services.
@@ -567,6 +581,19 @@ link inside Ryve.
 > publicly. The link you share with users is the Personal Pairing link
 > generated inside Ryve, not the claim link. `moav donate info` is an alias.
 
+#### `moav conduit-offsets`
+Manage the Conduit lifetime-bandwidth offset auto-updater (1.7.9+).
+
+Conduit's `conduit_bytes_downloaded` / `conduit_bytes_uploaded` gauges reset on every container restart, so cumulative donation totals would be lost without intervention. MoaV banks each pre-restart total into a persistent offset that Prometheus adds back via recording rules; a systemd unit watches Conduit `start` events and runs the updater automatically.
+
+```bash
+moav conduit-offsets install    # Install the systemd watcher (default on first start)
+moav conduit-offsets status     # Show watcher state (enabled/disabled, last run)
+moav conduit-offsets uninstall  # Remove the watcher
+```
+
+`moav start` auto-installs the watcher the first time Conduit + monitoring run together (set `CONDUIT_OFFSETS_AUTOUPDATE=false` in `.env` to opt out). Hosts without systemd are skipped silently; run `scripts/update-conduit-offsets.sh` manually after each Conduit restart, or from cron. See [Monitoring → Conduit lifetime bandwidth](MONITORING.md#conduit-lifetime-bandwidth).
+
 ---
 
 ### Migration
@@ -632,26 +659,30 @@ Use this after:
 
 ## Profiles
 
-Profiles group related services together.
+Profiles group related services. Each maps to one or more `ENABLE_*` flags in `.env`; `moav start` filters disabled profiles automatically (see [Profile filtering](#moav-start)).
 
-| Profile | Services Included |
-|---------|-------------------|
-| `proxy` | sing-box, decoy, certbot |
-| `wireguard` | wireguard, wstunnel |
-| `dnstt` | dnstt |
-| `slipstream` | slipstream |
-| `masterdns` | masterdns |
-| `trusttunnel` | trusttunnel |
-| `admin` | admin |
-| `conduit` | psiphon-conduit |
-| `snowflake` | snowflake |
-| `client` | client (for testing) |
-| `all` | All of the above |
+| Profile | Services | Controlled by |
+|---------|----------|---------------|
+| `proxy` | sing-box, decoy, certbot | `ENABLE_REALITY` / `ENABLE_TROJAN` / `ENABLE_HYSTERIA2` / `ENABLE_SS` (any) |
+| `xhttp` | xray | `ENABLE_XHTTP` |
+| `wireguard` | wireguard, wstunnel, decoy, certbot | `ENABLE_WIREGUARD` |
+| `amneziawg` | amneziawg | `ENABLE_AMNEZIAWG` |
+| `dnstunnel` | dns-router, dnstt, slipstream, masterdns, xray (XDNS) | `ENABLE_DNSTT` / `ENABLE_SLIPSTREAM` / `ENABLE_MASTERDNS` / `ENABLE_XDNS` (any) |
+| `trusttunnel` | trusttunnel | `ENABLE_TRUSTTUNNEL` |
+| `telegram` | telemt | `ENABLE_TELEMT` |
+| `admin` | admin, docker-proxy | `ENABLE_ADMIN_UI` |
+| `conduit` | psiphon-conduit | `ENABLE_CONDUIT` |
+| `snowflake` | snowflake, snowflake-exporter | `ENABLE_SNOWFLAKE` |
+| `gooserelay` | gooserelay | `ENABLE_GOOSERELAY` (opt-in) |
+| `monitoring` | prometheus, grafana, grafana-proxy, node-exporter, cadvisor + per-protocol exporters | `ENABLE_MONITORING` (opt-in) |
+| `setup` | bootstrap, geoip-updater | (lifecycle, not user-toggled) |
+| `client` | client | (for local testing) |
+| `all` | All services above | (used by `moav start all`, `moav build`, `moav logs`, etc.) |
 
 **Usage:**
 ```bash
 moav start proxy admin        # Start proxy and admin profiles
-moav start all                # Start everything
+moav start all                # Expands to every profile whose ENABLE_* is true
 ```
 
 ---

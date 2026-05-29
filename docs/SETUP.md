@@ -231,6 +231,8 @@ This will:
 4. Create initial users (default: 5)
 5. Generate user bundles with configs and QR codes
 
+> **1.8.2 — interactive bootstrap niceties:** if you paste `https://your-domain.com/` as the domain, the prompt strips the scheme/slash and shows `Cleaned input: 'https://your-domain.com/' → 'your-domain.com'`. Arrow keys edit the line (readline enabled). If you Ctrl-C after typing the domain but before the email, the next `moav bootstrap` notices `DOMAIN` is set but `ACME_EMAIL` isn't, re-prompts for just the email, and still calls `ensure_admin_password` so a missed admin password doesn't slip through.
+
 **DNS Tunnel Preparation** (optional):
 
 If you want to use the DNS tunnel, free port 53 first:
@@ -257,19 +259,7 @@ moav start proxy admin wireguard # Add WireGuard
 moav start all                   # Everything
 ```
 
-**Available Profiles:**
-- `proxy` - Reality, Trojan, Hysteria2, CDN, Shadowsocks-2022 (sing-box + decoy)
-- `wireguard` - WireGuard VPN + wstunnel
-- `amneziawg` - AmneziaWG (obfuscated WireGuard)
-- `dnstt` - DNS tunnel
-- `trusttunnel` - TrustTunnel VPN
-- `telegram` - Telegram MTProxy (fake-TLS)
-- `xhttp` - XHTTP (VLESS+XHTTP+Reality via Xray-core)
-- `admin` - Admin dashboard
-- `conduit` - Psiphon bandwidth donation
-- `snowflake` - Tor bandwidth donation
-- `monitoring` - Grafana + Prometheus observability
-- `all` - Everything
+See [CLI Reference → Profiles](CLI.md#profiles) for the full profile/service/`ENABLE_*` matrix. Common profiles: `proxy`, `xhttp`, `wireguard`, `amneziawg`, `dnstunnel`, `trusttunnel`, `telegram`, `admin`, `conduit`, `snowflake`, `gooserelay`, `monitoring`. From 1.8.2, `moav start` filters profiles whose `ENABLE_*` is `false` in `.env` — disabled services never start by accident.
 
 **Open Firewall Ports:**
 ```bash

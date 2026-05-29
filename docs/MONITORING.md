@@ -100,6 +100,25 @@ Tor donation metrics from Snowflake Exporter:
 - Connections over time
 - Bandwidth over time
 
+> The Snowflake exporter follows the relay (1.8.2: profile membership moved from `[monitoring, all]` to `[snowflake, all]`). When `ENABLE_SNOWFLAKE=false` the exporter stays off too, so the Snowflake panels won't emit stale data.
+
+### MoaV - Conduit
+
+Psiphon donation metrics:
+
+- **Live bandwidth** (`conduit_bytes_downloaded` / `conduit_bytes_uploaded`) — in-memory gauges, reset on every Conduit container restart.
+- **Lifetime bandwidth** (`conduit_bytes_downloaded_lifetime` / `conduit_bytes_uploaded_lifetime`) — Prometheus recording rule that adds a per-install offset to the live counters, so cumulative donation totals survive restarts.
+- **Connected clients** + per-region splits.
+
+## Conduit lifetime bandwidth
+
+The lifetime gauges depend on two pieces that ship together (1.7.9+):
+
+1. **Recording rules** at `configs/monitoring/conduit_lifetime.rules.yml` — materialized from `conduit_lifetime.rules.yml.template` on first monitoring start (the live file is gitignored because it holds per-install offsets).
+2. **Offset auto-updater** (`scripts/update-conduit-offsets.sh`) — banks the running total into the offset just before a Conduit restart wipes the live gauges, then SIGHUPs Prometheus to reload the rule.
+
+A **systemd watcher** (`moav-conduit-offsets.service`) reacts to Conduit `start` events and runs the updater automatically with a settle delay. `moav start` auto-installs the watcher the first time Conduit + monitoring run together — opt out with `CONDUIT_OFFSETS_AUTOUPDATE=false`. Manage directly with [`moav conduit-offsets {install|uninstall|status}`](CLI.md#moav-conduit-offsets). Hosts without systemd skip the watcher silently; run the updater from cron or by hand after each Conduit restart instead.
+
 ## GeoIP Country Distribution
 
 All four protocol dashboards (sing-box, Xray, WireGuard, AmneziaWG) include a "Geographic Distribution" row showing user connections by country.
