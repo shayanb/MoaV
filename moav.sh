@@ -601,10 +601,12 @@ check_prerequisites() {
                     echo -e "  ${YELLOW}Services that require a domain (will be disabled):${NC}"
                     echo "    • Trojan, Hysteria2, CDN VLESS (need TLS certificates)"
                     echo "    • TrustTunnel"
-                    echo "    • DNS tunnels (dnstt + Slipstream)"
+                    echo "    • DNS tunnels (dnstt, Slipstream, MasterDNS)"
                     echo ""
                     echo -e "  ${GREEN}Services that work without a domain:${NC}"
                     echo "    • Reality (VLESS) — uses dl.google.com for TLS camouflage"
+                    echo "    • XHTTP (VLESS+Reality)"
+                    echo "    • Shadowsocks-2022"
                     echo "    • WireGuard (direct UDP)"
                     echo "    • AmneziaWG (DPI-resistant WireGuard)"
                     echo "    • Telegram MTProxy (fake-TLS, IP only)"
@@ -615,9 +617,12 @@ check_prerequisites() {
 
                     if confirm "Continue with domainless mode?" "y"; then
                         domainless_mode=true
-                        # Disable cert-based protocols (Reality stays — works without domain)
-                        # Use grep to check if line exists, then sed to replace, or append if missing
-                        for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
+                        # Disable cert-based protocols (Reality stays — works without domain).
+                        # The set MUST stay in sync with scripts/bootstrap.sh:41-46 —
+                        # MasterDNS was added in 1.8.0; missing it here caused the
+                        # bootstrap container to error out with "DOMAIN required"
+                        # right after the user opted into domainless.
+                        for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_MASTERDNS ENABLE_TRUSTTUNNEL; do
                             if grep -q "^${var}=" .env 2>/dev/null; then
                                 sed -i "s|^${var}=.*|${var}=false|" .env
                             else
@@ -632,7 +637,7 @@ check_prerequisites() {
                         _dl_profiles=$(derive_enabled_profiles ".env")
                         sed -i "s|^DEFAULT_PROFILES=.*|DEFAULT_PROFILES=\"${_dl_profiles}\"|" .env
                         success "Domain-less mode enabled"
-                        info "Reality, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, and Snowflake will be available"
+                        info "Reality, XHTTP, Shadowsocks-2022, WireGuard, AmneziaWG, Telegram MTProxy, Admin, Conduit, and Snowflake will be available"
                     else
                         echo ""
                         info "Please enter a domain to use all services."
@@ -6192,10 +6197,12 @@ cmd_domainless() {
     echo -e "  ${YELLOW}Will be disabled:${NC}"
     echo "    • Trojan, Hysteria2, CDN VLESS (need TLS certificates)"
     echo "    • TrustTunnel"
-    echo "    • DNS tunnels (dnstt + Slipstream)"
+    echo "    • DNS tunnels (dnstt, Slipstream, MasterDNS)"
     echo ""
     echo -e "  ${GREEN}Will remain available:${NC}"
     echo "    • Reality (VLESS) — uses dl.google.com for TLS camouflage"
+    echo "    • XHTTP (VLESS+Reality)"
+    echo "    • Shadowsocks-2022"
     echo "    • WireGuard (direct UDP)"
     echo "    • AmneziaWG (DPI-resistant WireGuard)"
     echo "    • Telegram MTProxy (fake-TLS, IP only)"
@@ -6220,8 +6227,11 @@ cmd_domainless() {
         fi
     fi
 
-    # Disable cert-based protocols (Reality stays — works without domain)
-    for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_TRUSTTUNNEL; do
+    # Disable cert-based protocols (Reality stays — works without domain).
+    # Keep this set in sync with scripts/bootstrap.sh:41-46. MasterDNS
+    # was added in 1.8.0; missing it here would let the bootstrap
+    # container error out immediately after `moav domainless`.
+    for var in ENABLE_TROJAN ENABLE_HYSTERIA2 ENABLE_DNSTT ENABLE_SLIPSTREAM ENABLE_MASTERDNS ENABLE_TRUSTTUNNEL; do
         if grep -q "^${var}=" .env; then
             sed -i "s/^${var}=.*/${var}=false/" .env
         else
