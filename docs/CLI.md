@@ -243,18 +243,17 @@ moav start proxy wireguard admin  # Start three profiles
 - Profile names: start specific profiles (space-separated)
 - `--force` / `-f`: bypass the profile-filtering prompt (see below)
 
-##### Profile filtering (1.8.2+)
+##### Disabled profiles
 
-`DEFAULT_PROFILES` and `--profile all` are docker-compose constructs that don't know about MoaV's `ENABLE_*` flags. `moav start` bridges that:
+`moav start` respects the `ENABLE_*` flags in `.env`:
 
-- **No-args** (reads `DEFAULT_PROFILES`): silently drops profiles whose `ENABLE_*` is `false` in `.env`. Prints one line — `Skipping disabled profiles: <list>` — when anything is filtered, so stale entries self-heal on the next start.
-- **`moav start all`**: expands `all` to the set of profiles whose `ENABLE_*` is true, instead of starting every Compose profile member. Build / logs / down ops still treat `--profile all` as everything.
-- **`moav start <name>` for a disabled profile**: prompts with three options:
-  1. **Enable + start** — sets `ENABLE_*=true` in `.env`, then starts (persists for next time).
+- **No args** or **`moav start all`**: starts only the profiles whose `ENABLE_*` is `true`. Anything disabled is skipped (you'll see `Skipping disabled profiles: <list>`).
+- **`moav start <name>`** for a profile that's disabled in `.env`: you get a prompt:
+  1. **Enable + start** — flips `ENABLE_*=true` in `.env`, then starts (persists for next time).
   2. **Skip** — don't start; `.env` stays as-is.
   3. **Start once** — start now without modifying `.env` (won't auto-start next time).
 
-  Multi-flag profiles (`proxy`, `dnstunnel`) can't be auto-flipped — option 1 shows which underlying flags to set. Non-interactive shells default to skip. `--force` bypasses the prompt.
+  For profiles backed by multiple flags (`proxy`, `dnstunnel`), option 1 shows which flags to set manually. `--force` bypasses the prompt. Non-interactive shells default to skip.
 
 #### `moav stop`
 Stop services.
@@ -582,17 +581,15 @@ link inside Ryve.
 > generated inside Ryve, not the claim link. `moav donate info` is an alias.
 
 #### `moav conduit-offsets`
-Manage the Conduit lifetime-bandwidth offset auto-updater (1.7.9+).
-
-Conduit's `conduit_bytes_downloaded` / `conduit_bytes_uploaded` gauges reset on every container restart, so cumulative donation totals would be lost without intervention. MoaV banks each pre-restart total into a persistent offset that Prometheus adds back via recording rules; a systemd unit watches Conduit `start` events and runs the updater automatically.
+Manage the watcher that keeps Conduit's **lifetime bandwidth** Grafana panels accurate across container restarts.
 
 ```bash
-moav conduit-offsets install    # Install the systemd watcher (default on first start)
+moav conduit-offsets install    # Install the systemd watcher
 moav conduit-offsets status     # Show watcher state (enabled/disabled, last run)
 moav conduit-offsets uninstall  # Remove the watcher
 ```
 
-`moav start` auto-installs the watcher the first time Conduit + monitoring run together (set `CONDUIT_OFFSETS_AUTOUPDATE=false` in `.env` to opt out). Hosts without systemd are skipped silently; run `scripts/update-conduit-offsets.sh` manually after each Conduit restart, or from cron. See [Monitoring → Conduit lifetime bandwidth](MONITORING.md#conduit-lifetime-bandwidth).
+The watcher installs itself automatically the first time Conduit and monitoring run together — you usually don't need to touch this. Set `CONDUIT_OFFSETS_AUTOUPDATE=false` in `.env` to opt out. Hosts without systemd skip the watcher; run `scripts/update-conduit-offsets.sh` from cron instead. See [Monitoring → Conduit lifetime bandwidth](MONITORING.md#conduit-lifetime-bandwidth).
 
 ---
 

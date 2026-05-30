@@ -4,56 +4,72 @@ How MoaV is wired together. For protocol-level details see [protocols.md](protoc
 
 ## Container topology
 
-Every protocol is one or more containers grouped into a docker-compose **profile**. `moav start` translates `ENABLE_*` flags in `.env` into the set of profiles to bring up (see [CLI → Profile filtering](CLI.md#moav-start)).
+Every protocol is one or more containers grouped into a docker-compose **profile**. `moav start` reads `ENABLE_*` flags from `.env` and only brings up the profiles whose flag is on (see [CLI → Disabled profiles](CLI.md#moav-start)).
 
 ```
-                      ┌─────────────┐
-                      │   .env      │   ENABLE_* flags
-                      └──────┬──────┘
-                             │
-                  ┌──────────▼──────────┐
-                  │ derive_enabled_     │  moav.sh
-                  │ profiles()          │
-                  └──────────┬──────────┘
-                             │
-        ┌────────────┬───────┼───────┬────────────┬─────────────┐
-        ▼            ▼       ▼       ▼            ▼             ▼
-   ┌────────┐  ┌─────────┐ ┌────┐ ┌─────────┐ ┌─────────┐ ┌──────────┐
-   │ proxy  │  │wireguard│ │xhttp│ │dnstunnel│ │trustnl. │ │ admin    │
-   │ (sing- │  │ + wstun.│ │xray │ │dns-rtr+ │ │trust    │ │ admin+   │
-   │  box)  │  │         │ │     │ │4 tunnels│ │tunnel   │ │ proxy    │
-   └────────┘  └─────────┘ └────┘ └─────────┘ └─────────┘ └──────────┘
-   Reality,    WG-over-WS  VLESS+ dnstt/Slip/ HTTP/2 +    FastAPI +
-   Trojan,                 Reality MasterDNS/ QUIC (TLS)  HTTP Basic
-   Hysteria2,              +XHTTP  XDNS                   auth
-   SS-2022,
-   CDN VLESS+WS
-```
+        .env  (ENABLE_* flags)
+                │
+                ▼
+    Compose profile resolution
+                │
+                ▼  (only enabled profiles start)
 
-Other profiles: `amneziawg`, `telegram` (telemt), `conduit` (Psiphon), `snowflake` (Tor), `gooserelay` (SOCKS5 over Google Apps Script), `monitoring` (Prometheus + Grafana + exporters), `setup` (bootstrap + GeoIP updater), `client` (local testing).
+
+  proxy        sing-box
+                 ├─ Reality (VLESS)
+                 ├─ Trojan
+                 ├─ Hysteria2
+                 ├─ Shadowsocks-2022
+                 └─ CDN VLESS+WS
+
+  xhttp        xray   (VLESS + XHTTP + Reality)
+
+  wireguard    wireguard + wstunnel
+                 (direct UDP + WebSocket fallback)
+
+  amneziawg    amneziawg   (obfuscated WireGuard)
+
+  dnstunnel    dns-router + dnstt + slipstream
+               + masterdns + xray (XDNS)
+                 (all four DNS tunnels share port 53)
+
+  trusttunnel  trusttunnel   (HTTP/2 + QUIC, TLS)
+
+  telegram     telemt   (MTProxy, fake-TLS)
+
+  admin        admin + docker-proxy
+                 (FastAPI dashboard, HTTP Basic auth)
+
+  conduit      psiphon-conduit       ─┐
+  snowflake    snowflake + exporter   ├─ bandwidth donations
+  gooserelay   gooserelay            ─┘
+
+  monitoring   prometheus + grafana
+               + per-protocol exporters
+
+  setup        bootstrap + geoip-updater   (one-shot lifecycle)
+  client       client                      (local testing)
+```
 
 ## DNS-router fan-out
 
-All four DNS tunnels share **port 53** via `dns-router`, a small Go service that fans queries out by subdomain suffix. Each tunnel listens on an internal port; only `dns-router` binds the public port.
+All four DNS tunnels share **port 53** through a small Go service called `dns-router`, which inspects each query's subdomain prefix and forwards to the matching backend. Each tunnel container listens on its own internal port; only `dns-router` binds the public port.
 
 ```
-                         Public 53/udp
-                              │
-                       ┌──────▼──────┐
-                       │ dns-router  │   subdomain-match routing
-                       └──┬──┬──┬──┬─┘
-            t.*           │  │  │  │       x.*
-        ┌──────────┐ s.*  │  │  │  │  m.*  ┌──────────┐
-        │  dnstt   ◄──────┘  │  │  └──────►│ masterdns│
-        │  :5353   │ ┌──────►│  │          │  :5355   │
-        └──────────┘ │       │  └────────► xray :5355
-                ┌────▼────┐  │              (XDNS via FinalMask)
-                │slipstrm │  └────────► (other tunnels can be added)
-                │ :5354   │
-                └─────────┘
+              Public 53/udp
+                   │
+            ┌──────▼──────┐
+            │ dns-router  │
+            └──────┬──────┘
+                   │
+   subdomain routing:
+       t.*  ─────►  dnstt
+       s.*  ─────►  slipstream
+       m.*  ─────►  masterdns
+       x.*  ─────►  xray   (XDNS via FinalMask)
 ```
 
-Add a tunnel only by adding its NS record (`t.` / `s.` / `m.` / `x.`); see [DNS → NS Delegations](DNS.md#steps-36-ns-delegations-for-the-four-dns-tunnels). Disabling a tunnel via `ENABLE_*=false` removes its container; `dns-router` just doesn't route to it.
+Delegating a tunnel only requires adding its NS record (`t.` / `s.` / `m.` / `x.`); see [DNS → NS Delegations](DNS.md#steps-36-ns-delegations-for-the-four-dns-tunnels). Disabling a tunnel via `ENABLE_*=false` removes its container; `dns-router` simply has no backend to forward to.
 
 ## Bundle generation flow
 
@@ -88,32 +104,39 @@ Bundles split into three groups:
 
 ## Monitoring stack
 
-The `monitoring` profile is opt-in. When enabled it adds Prometheus + Grafana plus a per-protocol exporter set; each exporter is in the same profile as its target service, not in `monitoring` itself, so disabling a protocol disables its metrics.
+The `monitoring` profile is opt-in. When enabled, it adds Prometheus + Grafana plus a set of exporters — one per protocol. Each exporter lives in the same Compose profile as its target service (not in `monitoring`), so disabling a protocol takes its metrics down too.
 
 ```
-     ┌─────────────┐
-     │  Prometheus │ ←── scrape ──┐
-     └──────┬──────┘              │
-            │                     │
-            │ recording rules     ├─────► clash-exporter  (sing-box Clash API)
-            │ (Conduit lifetime)  ├─────► singbox-exporter (log parser)
-            ▼                     ├─────► xray-exporter
-     ┌─────────────┐              ├─────► telemt-exporter (REST /v1/health)
-     │   Grafana   │              ├─────► wireguard-exporter
-     │  + dashbds  │              ├─────► amneziawg-exporter
-     └─────────────┘              ├─────► snowflake-exporter (Snowflake profile)
-            ▲                     ├─────► node-exporter (host)
-            │                     └─────► cAdvisor (containers)
-            │
-        Optional: grafana-proxy → Cloudflare CDN
+   Exporters (each in its target's profile)
+     ├── clash-exporter      (sing-box Clash API)
+     ├── singbox-exporter    (log parser)
+     ├── xray-exporter
+     ├── telemt-exporter     (REST /v1/health)
+     ├── wireguard-exporter
+     ├── amneziawg-exporter
+     ├── snowflake-exporter  (snowflake profile)
+     ├── node-exporter       (host metrics)
+     └── cAdvisor            (container metrics)
+                │
+                │ scraped by
+                ▼
+         ┌──────────────┐
+         │  Prometheus  │  + recording rules (e.g. Conduit lifetime)
+         └──────┬───────┘
+                │
+                ▼
+         ┌──────────────┐
+         │   Grafana    │  (+ optional grafana-proxy → Cloudflare CDN)
+         │  dashboards  │
+         └──────────────┘
 ```
 
-Pre-built dashboards land in `configs/monitoring/grafana/dashboards/`. The Conduit lifetime panels depend on `conduit_lifetime.rules.yml` + the offset-watcher pair — see [Monitoring → Conduit lifetime bandwidth](MONITORING.md#conduit-lifetime-bandwidth).
+Pre-built dashboards land in `configs/monitoring/grafana/dashboards/`. The Conduit lifetime panels depend on a recording rule plus an offset watcher — see [Monitoring → Conduit lifetime bandwidth](MONITORING.md#conduit-lifetime-bandwidth).
 
 ## See also
 
 - [Setup Guide](SETUP.md) — step-by-step deployment walkthrough
 - [DNS Configuration](DNS.md) — NS records, resolver-mode vs direct-mode XDNS, port 53
-- [CLI Reference](CLI.md) — every `moav` command, including the profile filtering UX
+- [CLI Reference](CLI.md) — every `moav` command, including the disabled-profile prompt
 - [Supported Protocols](protocols.md) — protocol-level cipher, port, and client-compat detail
 - [Monitoring](MONITORING.md) — dashboards, Conduit lifetime, GeoIP setup

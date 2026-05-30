@@ -100,7 +100,7 @@ Tor donation metrics from Snowflake Exporter:
 - Connections over time
 - Bandwidth over time
 
-> The Snowflake exporter follows the relay (1.8.2: profile membership moved from `[monitoring, all]` to `[snowflake, all]`). When `ENABLE_SNOWFLAKE=false` the exporter stays off too, so the Snowflake panels won't emit stale data.
+> The Snowflake exporter only runs when the Snowflake relay does. With `ENABLE_SNOWFLAKE=false`, no Snowflake panels emit data.
 
 ### MoaV - Conduit
 
@@ -112,12 +112,9 @@ Psiphon donation metrics:
 
 ## Conduit lifetime bandwidth
 
-The lifetime gauges depend on two pieces that ship together (1.7.9+):
+Conduit's live bandwidth gauges reset every time the container restarts. The **Lifetime Download / Lifetime Upload** panels work around that by adding a persistent offset back — so your cumulative donation totals keep growing across restarts.
 
-1. **Recording rules** at `configs/monitoring/conduit_lifetime.rules.yml` — materialized from `conduit_lifetime.rules.yml.template` on first monitoring start (the live file is gitignored because it holds per-install offsets).
-2. **Offset auto-updater** (`scripts/update-conduit-offsets.sh`) — banks the running total into the offset just before a Conduit restart wipes the live gauges, then SIGHUPs Prometheus to reload the rule.
-
-A **systemd watcher** (`moav-conduit-offsets.service`) reacts to Conduit `start` events and runs the updater automatically with a settle delay. `moav start` auto-installs the watcher the first time Conduit + monitoring run together — opt out with `CONDUIT_OFFSETS_AUTOUPDATE=false`. Manage directly with [`moav conduit-offsets {install|uninstall|status}`](CLI.md#moav-conduit-offsets). Hosts without systemd skip the watcher silently; run the updater from cron or by hand after each Conduit restart instead.
+This is automatic once monitoring and Conduit are both running. A systemd watcher banks the pre-restart total and reloads Prometheus the moment Conduit comes back up. Manage it with [`moav conduit-offsets`](CLI.md#moav-conduit-offsets); set `CONDUIT_OFFSETS_AUTOUPDATE=false` in `.env` to opt out. Hosts without systemd can run `scripts/update-conduit-offsets.sh` from cron.
 
 ## GeoIP Country Distribution
 

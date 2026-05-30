@@ -90,7 +90,7 @@ Every censorship technique creates its own workaround. Block VPN protocols, deve
 But the creativity doesn't stop at DNS:
 
 - **[BaleVPN](https://github.com/kookoo1sabzy/BaleVPN)** routes traffic through Bale — Iran's officially approved video-call platform. The tunnel encodes IP traffic as what looks like a Bale voice call. To the network, an approved domestic app doing approved domestic things. To the user, internet access. The government built the infrastructure for its own circumvention.
-- **[GooseRelay](protocols.md#gooserelay)** (native to MoaV since 1.8.0) routes traffic through Google Apps Script. To the censor, an HTTPS request to a Google Workspace serverless function used by millions of businesses. Blocking GooseRelay means blocking Apps Script globally, which means breaking every company and university using it in the country. The cost of the block exceeds the benefit.
+- **[GooseRelay](protocols.md#gooserelay)** (shipped natively in MoaV) routes traffic through Google Apps Script. To the censor, an HTTPS request to a Google Workspace serverless function used by millions of businesses. Blocking GooseRelay means blocking Apps Script globally, which means breaking every company and university using it in the country. The cost of the block exceeds the benefit.
 - **[SNI Spoofing](https://github.com/aleskxyz/SNI-Spoofing-Go)** exploits a different seam — the unencrypted hostname in the TLS handshake. A local proxy sends a fake ClientHello with a decoy hostname (say, `microsoft.com`) while the real connection continues underneath. The DPI box sees something benign; the traffic gets through.
 
 The censor's playbook has a finite number of pages. The circumvention community keeps adding new chapters.

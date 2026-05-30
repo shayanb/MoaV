@@ -231,7 +231,7 @@ This will:
 4. Create initial users (default: 5)
 5. Generate user bundles with configs and QR codes
 
-> **1.8.2 — interactive bootstrap niceties:** if you paste `https://your-domain.com/` as the domain, the prompt strips the scheme/slash and shows `Cleaned input: 'https://your-domain.com/' → 'your-domain.com'`. Arrow keys edit the line (readline enabled). If you Ctrl-C after typing the domain but before the email, the next `moav bootstrap` notices `DOMAIN` is set but `ACME_EMAIL` isn't, re-prompts for just the email, and still calls `ensure_admin_password` so a missed admin password doesn't slip through.
+> The domain prompt accepts your domain in any form (`example.com`, `https://example.com/`, `example.com:443` — all work). If you stop mid-way, re-running `moav bootstrap` picks up where you left off.
 
 **DNS Tunnel Preparation** (optional):
 
