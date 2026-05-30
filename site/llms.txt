@@ -2,6 +2,10 @@
 
 > Multi-protocol Internet censorship circumvention stack optimized for hostile network environments. Bundles 16+ transports — Reality (VLESS), Trojan, Hysteria2, XHTTP, Shadowsocks-2022, CDN VLESS+WS, WireGuard (direct + over WebSocket), AmneziaWG, TrustTunnel (HTTP/2+QUIC), Telegram MTProxy, plus four DNS tunnels (dnstt, Slipstream, MasterDNS, XDNS) sharing port 53 through a subdomain-routing daemon. Optional bandwidth donation paths via Psiphon Conduit, Tor Snowflake, and GooseRelay. Single-host Docker Compose deployment with per-user bundle generation (configs, QR codes, V2Ray subscription) and an optional Prometheus + Grafana monitoring stack.
 
+## Why MoaV exists
+
+- [Mission & Philosophy](https://moav.sh/docs/philosophy/): the ideology — why MoaV exists, the multi-protocol thesis, Iran's shutdown history, why being infrastructure matters
+
 ## Docs
 
 - [Quick Start](https://moav.sh/docs/quick-start/): one-command install and minimal first run
@@ -21,5 +25,4 @@
 
 - [GitHub repository](https://github.com/shayanb/MoaV): source, issues, releases
 - [Changelog](https://github.com/shayanb/MoaV/blob/main/CHANGELOG.md): release notes, behavior changes per version
-- [Mission & Philosophy](https://moav.sh/docs/philosophy/): why MoaV exists and what it deliberately avoids
 - [Protocol Integration Checklist](https://moav.sh/docs/devdocs/PROTOCOL-INTEGRATION-CHECKLIST/): contributor guide for adding a new protocol
